@@ -169,6 +169,11 @@ internal sealed class McpToolSchemas(SchemaModel schema, IFieldTypeRegistry fiel
             ["timeZone"] = Text("An IANA time zone, such as Europe/Berlin, when at is a wall-clock time."),
             ["locale"] = Locale(),
         };
+        if (actions.Contains(McpContentTools.Unpublish))
+        {
+            AddDryRun(properties, "For an unpublish only. ");
+        }
+
         return Tool(properties, ["type", "id", "action", "at"]);
     }
 
@@ -199,15 +204,15 @@ internal sealed class McpToolSchemas(SchemaModel schema, IFieldTypeRegistry fiel
         properties["withTotal"] = new JsonObject { ["type"] = "boolean", ["description"] = "False leaves the total out, which saves a count." };
     }
 
-    private static void AddDryRun(JsonObject properties)
+    private static void AddDryRun(JsonObject properties, string only = "")
     {
         properties[McpConfirmations.DryRun] = new JsonObject
         {
             ["type"] = "boolean",
             ["default"] = true,
-            ["description"] = "True, the default, changes nothing and answers the plan with a confirmationToken. False runs the call, and needs that token.",
+            ["description"] = only + "True, the default, changes nothing and answers the plan with a confirmationToken. False runs the call, and needs that token.",
         };
-        properties[McpConfirmations.Token] = Text("The confirmationToken of the dry run of this same call, which lasts five minutes. Needed when dryRun is false.");
+        properties[McpConfirmations.Token] = Text(only + "The confirmationToken of the dry run of this same call, which lasts five minutes. Needed when dryRun is false.");
     }
 
     private static void AddRead(JsonObject properties, SchemaType type, bool drafts)

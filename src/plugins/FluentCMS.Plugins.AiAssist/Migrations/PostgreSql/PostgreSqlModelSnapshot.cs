@@ -68,6 +68,12 @@ namespace FluentCMS.Plugins.AiAssist.Migrations.PostgreSql
                         .HasColumnType("character varying(32)")
                         .HasColumnName("principal_kind");
 
+                    b.Property<string>("PrincipalName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("principal_name");
+
                     b.Property<long>("PromptTokens")
                         .HasColumnType("bigint")
                         .HasColumnName("prompt_tokens");

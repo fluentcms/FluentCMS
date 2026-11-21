@@ -42,6 +42,12 @@ internal static class ContentJson
             list["nextCursor"] = cursor;
         }
 
+        // Only when true, so that a list without a search, or one the index did not cut, keeps its shape.
+        if (result.SearchTruncated)
+        {
+            list["searchTruncated"] = true;
+        }
+
         return list;
     }
 

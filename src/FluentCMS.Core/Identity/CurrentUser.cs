@@ -10,8 +10,11 @@ namespace FluentCMS.Core.Identity;
 // external logins and preferences.
 internal sealed record CurrentPrincipal(Guid Id, PrincipalKind Kind, string Name, UserInfo? User);
 
-internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserManager users, SystemDbContext context, UserSessions sessions, TwoFactorService twoFactor, UserLogins logins, UserPreferences preferences)
+internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserManager users, SystemDbContext context, UserSessions sessions, TwoFactorService twoFactor, UserLogins logins, UserPreferences preferences, TimeProvider time)
 {
+    // How long after the sign-in on the hosted pages a token may still enrol an authenticator and turn two-factor on.
+    internal static readonly TimeSpan RecentSignIn = TimeSpan.FromMinutes(10);
+
     public async Task<CurrentPrincipal> GetAsync(CancellationToken cancellationToken)
     {
         var principal = Caller();
@@ -38,9 +41,9 @@ internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserMan
     public async Task<TwoFactorStatus> TwoFactorAsync(CancellationToken cancellationToken) =>
         await twoFactor.StatusAsync(await UserAsync(), cancellationToken);
 
-    public async Task<AuthenticatorSetup> EnrolAuthenticatorAsync(string issuer) => await twoFactor.EnrolAsync(await UserAsync(), issuer);
+    public async Task<AuthenticatorSetup> EnrolAuthenticatorAsync(string issuer) => await twoFactor.EnrolAsync(await RecentlySignedInAsync(), issuer);
 
-    public async Task<IReadOnlyList<string>> VerifyAuthenticatorAsync(string? code) => await twoFactor.VerifyAsync(await UserAsync(), code);
+    public async Task<IReadOnlyList<string>> VerifyAuthenticatorAsync(string? code) => await twoFactor.VerifyAsync(await RecentlySignedInAsync(), code);
 
     public async Task<IReadOnlyList<string>> RegenerateRecoveryCodesAsync(string? code) =>
         await twoFactor.RegenerateRecoveryCodesAsync(await UserAsync(), code);
@@ -57,6 +60,20 @@ internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserMan
 
     public async Task<UserPreferencesInfo> SetPreferencesAsync(UserPreferencesInfo wanted, CancellationToken cancellationToken) =>
         await preferences.SetAsync((await UserAsync()).Id, wanted, cancellationToken);
+
+    // Turning two-factor on with an authenticator of one's own keeps the owner out, who has no code of it, so a token alone
+    // is not enough: the user signed in on the hosted pages a short while ago, which a token that leaked later did not, and
+    // refreshing a token does not make its sign-in newer. Turning it off or replacing the codes takes a code instead.
+    private async Task<CmsUser> RecentlySignedInAsync()
+    {
+        var user = await UserAsync();
+        if (TokenClaims.SignedInAt(Caller()) is not { } signedInAt || time.GetUtcNow() - signedInAt > RecentSignIn)
+        {
+            throw new ValidationException([new ValidationError("", IdentityErrorCodes.RecentSignInRequired, $"Setting up two-factor sign-in needs a sign-in of the last {RecentSignIn.TotalMinutes:0} minutes; sign in again, then set it up.")]);
+        }
+
+        return user;
+    }
 
     private async Task<CmsUser> UserAsync() =>
         Caller() is { Kind: PrincipalKind.AdminUser } principal && await users.FindByIdAsync(principal.Id.ToString("D")) is { DeactivatedAt: null } user

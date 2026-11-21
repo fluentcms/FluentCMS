@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Agents;
 using FluentCMS.Authorization;
 using FluentCMS.Content;
+using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -59,6 +60,9 @@ internal sealed class McpContentTools(
     public const string DiscardDraft = "discard_draft";
     public const string Delete = "delete";
 
+    private const string CutSearch =
+        "An answer whose search q reached the most matches the search index gives has searchTruncated true: entries may be missing from it and from its total, and a narrower search may bring the matches under the limit.";
+
     private static readonly string[] Verbs = [List, Get, Search, CreateDraft, UpdateDraft, DiscardDraft, Delete];
 
     private static readonly McpToolAnnotations Reads = new() { ReadOnly = true, Idempotent = true };
@@ -98,7 +102,7 @@ internal sealed class McpContentTools(
             case Unpublish:
                 return await UnpublishAsync(request, cancellationToken);
             case Schedule:
-                return await ScheduleAsync(arguments, cancellationToken);
+                return await ScheduleAsync(request, cancellationToken);
             case Query:
                 return await QueryAsync(arguments, cancellationToken);
             case Bulk:
@@ -176,7 +180,7 @@ internal sealed class McpContentTools(
         tools.Add(Tool(name, Get, $"Reads one {named} entry by its id.", McpToolSchemas.Get(type, may.Drafts), Reads, $"Get {name}"));
         if (search)
         {
-            tools.Add(Tool(name, Search, $"Searches the {name} entries by text, with the filters, sorting and paging of {Name(name, List)}.", schemas.List(type, may.Drafts, search: true), Reads, $"Search {name}"));
+            tools.Add(Tool(name, Search, $"Searches the {name} entries by text, with the filters, sorting and paging of {Name(name, List)}. {CutSearch}", schemas.List(type, may.Drafts, search: true), Reads, $"Search {name}"));
         }
 
         if (may.Create)
@@ -247,7 +251,9 @@ internal sealed class McpContentTools(
             List<string> actions = [.. new[] { Publish, Unpublish }.Where(action => (action == Publish ? publishable : unpublishable).Count > 0)];
             tools.Add(new McpToolDescriptor(
                 Schedule,
-                "Schedules a publish or an unpublish of an entry for a later time. A publish publishes the draft as it is when scheduled.",
+                unpublishable.Count > 0
+                    ? "Schedules a publish or an unpublish of an entry for a later time. A publish publishes the draft as it is when scheduled, and is scheduled at once. An unpublish needs a confirmation, as the unpublish tool does: a call answers the plan first, which is the entry and the published references that would break, with a confirmationToken, and schedules nothing. The same call with dryRun false and that token, within five minutes, schedules it."
+                    : "Schedules a publish of an entry for a later time. It publishes the draft as it is when scheduled.",
                 McpToolSchemas.Schedule([.. publishable.Union(unpublishable, StringComparer.Ordinal)], actions))
             {
                 Title = "Schedule",
@@ -259,7 +265,7 @@ internal sealed class McpContentTools(
         {
             tools.Add(new McpToolDescriptor(
                 Query,
-                "Lists the entries of any content type the caller may read, with the filters, sorting and paging of the REST APIs. It reaches the types that have no tools of their own. An answer that would be too long ends early with truncated true and the nextCursor to go on from.",
+                $"Lists the entries of any content type the caller may read, with the filters, sorting and paging of the REST APIs. It reaches the types that have no tools of their own. An answer that would be too long ends early with truncated true and the nextCursor to go on from.{(described.Search ? " " + CutSearch : "")}",
                 schemas.Query([.. exposed.Select(type => type.Name)], described.Search))
             {
                 Title = "Query",
@@ -446,14 +452,16 @@ internal sealed class McpContentTools(
         McpArguments.Only(request.Arguments, "type", "id", "locale", McpConfirmations.DryRun, McpConfirmations.Token);
         var described = await access.ContentAsync(cancellationToken);
         return Available(described, request.Arguments) is { } type
-            ? await dryRuns.UnpublishAsync(request, type, Reach(described), cancellationToken)
+            ? await dryRuns.UnpublishAsync(request, type, Reach(described), schedule: null, cancellationToken)
             : NotAvailable(request.Arguments);
     }
 
-    private async Task<McpToolResult> ScheduleAsync(JsonElement arguments, CancellationToken cancellationToken)
+    private async Task<McpToolResult> ScheduleAsync(McpToolCall request, CancellationToken cancellationToken)
     {
-        McpArguments.Only(arguments, "type", "id", "action", "at", "timeZone", "locale");
-        if (await AvailableAsync(arguments, cancellationToken) is not { } type)
+        var arguments = request.Arguments;
+        McpArguments.Only(arguments, "type", "id", "action", "at", "timeZone", "locale", McpConfirmations.DryRun, McpConfirmations.Token);
+        var described = await access.ContentAsync(cancellationToken);
+        if (Available(described, arguments) is not { } type)
         {
             return NotAvailable(arguments);
         }
@@ -470,6 +478,21 @@ internal sealed class McpContentTools(
 
         var id = McpArguments.Id(arguments);
         var schedule = surface.ParseSchedule(McpArguments.Element(body));
+
+        // An unpublish set a moment ahead takes live content down as unpublish does, so it is planned and confirmed as one.
+        if (schedule.Action == ScheduleAction.Unpublish)
+        {
+            return await dryRuns.UnpublishAsync(request, type, Reach(described), schedule, cancellationToken);
+        }
+
+        foreach (var name in (ReadOnlySpan<string>)[McpConfirmations.DryRun, McpConfirmations.Token])
+        {
+            if (arguments.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null)
+            {
+                throw McpArguments.Invalid(name, $"'{name}' goes with an unpublish; a publish is scheduled at once.");
+            }
+        }
+
         var options = new LocaleOptions { Locale = McpArguments.Text(arguments, "locale") };
         return McpArguments.Result(surface.ToJson(await content.ScheduleAsync(type.Name, id, schedule, options, cancellationToken)));
     }

@@ -80,6 +80,9 @@ public static class TestProvider
     public static string SqlServerOnlyReason(string because) =>
         $"Runs on SQL Server only, because it tests {because}; this run is {Name}.";
 
+    public static string PostgreSqlOnlyReason(string because) =>
+        $"Runs on {PostgreSql} only, because it tests {because}; this run is {Name}.";
+
     private static string Read()
     {
         var name = Environment.GetEnvironmentVariable(Variable);
@@ -129,6 +132,19 @@ public sealed class SqlServerFactAttribute : FactAttribute
         if (!TestProvider.IsSqlServer)
         {
             Skip = TestProvider.SqlServerOnlyReason(because);
+        }
+    }
+}
+
+// A test of PostgreSQL itself, skipped with the reason on the other providers.
+public sealed class PostgreSqlFactAttribute : FactAttribute
+{
+    public PostgreSqlFactAttribute(string because, [CallerFilePath] string? sourceFilePath = null, [CallerLineNumber] int sourceLineNumber = -1)
+        : base(sourceFilePath, sourceLineNumber)
+    {
+        if (!TestProvider.IsPostgreSql)
+        {
+            Skip = TestProvider.PostgreSqlOnlyReason(because);
         }
     }
 }

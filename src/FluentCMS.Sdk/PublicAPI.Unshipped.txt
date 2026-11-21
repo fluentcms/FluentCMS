@@ -829,6 +829,8 @@ FluentCMS.Content.PagedResult<T>.NextCursor.get -> string?
 FluentCMS.Content.PagedResult<T>.Page.get -> int?
 FluentCMS.Content.PagedResult<T>.PageSize.get -> int
 FluentCMS.Content.PagedResult<T>.PagedResult(System.Collections.Generic.IReadOnlyList<T>! items, long? total, int? page, int pageSize, string? nextCursor) -> void
+FluentCMS.Content.PagedResult<T>.SearchTruncated.get -> bool
+FluentCMS.Content.PagedResult<T>.SearchTruncated.init -> void
 FluentCMS.Content.PagedResult<T>.Total.get -> long?
 FluentCMS.Content.Principal
 FluentCMS.Content.Principal.Claim(string! type) -> string?
@@ -916,6 +918,17 @@ FluentCMS.Content.TextField.Ne(string! value) -> FluentCMS.Content.FieldFilter!
 FluentCMS.Content.TextField.NotIn(params System.Collections.Generic.IReadOnlyList<string!>! values) -> FluentCMS.Content.FieldFilter!
 FluentCMS.Content.TextField.StartsWith(string! value) -> FluentCMS.Content.FieldFilter!
 FluentCMS.Content.TextField.TextField(string! path) -> void
+FluentCMS.Content.ValidatedField
+FluentCMS.Content.ValidatedField.<Clone>$() -> FluentCMS.Content.ValidatedField!
+FluentCMS.Content.ValidatedField.Deconstruct(out FluentCMS.Schema.SchemaField! Field, out string! Path, out object? Value) -> void
+FluentCMS.Content.ValidatedField.Equals(FluentCMS.Content.ValidatedField? other) -> bool
+FluentCMS.Content.ValidatedField.Field.get -> FluentCMS.Schema.SchemaField!
+FluentCMS.Content.ValidatedField.Field.init -> void
+FluentCMS.Content.ValidatedField.Path.get -> string!
+FluentCMS.Content.ValidatedField.Path.init -> void
+FluentCMS.Content.ValidatedField.ValidatedField(FluentCMS.Schema.SchemaField! Field, string! Path, object? Value) -> void
+FluentCMS.Content.ValidatedField.Value.get -> object?
+FluentCMS.Content.ValidatedField.Value.init -> void
 FluentCMS.Content.ValidationContext
 FluentCMS.Content.ValidationContext.AddError(string! code, string! message) -> void
 FluentCMS.Content.ValidationContext.AddError(string! path, string! code, string! message) -> void
@@ -923,6 +936,7 @@ FluentCMS.Content.ValidationContext.Container.get -> FluentCMS.Schema.SchemaType
 FluentCMS.Content.ValidationContext.Entry.get -> object?
 FluentCMS.Content.ValidationContext.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ValidationError!>!
 FluentCMS.Content.ValidationContext.Field.get -> FluentCMS.Schema.SchemaField?
+FluentCMS.Content.ValidationContext.Fields.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ValidatedField!>!
 FluentCMS.Content.ValidationContext.Mode.get -> FluentCMS.Content.ValidationMode
 FluentCMS.Content.ValidationContext.Operation.get -> FluentCMS.Content.OperationContext!
 FluentCMS.Content.ValidationContext.Path.get -> string!
@@ -1650,6 +1664,7 @@ FluentCMS.Media.IMediaService.MoveFolderAsync(System.Guid id, System.Guid? paren
 FluentCMS.Media.IMediaService.OpenImageAsync(System.Guid id, FluentCMS.Media.MediaImageOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaImage!>!
 FluentCMS.Media.IMediaService.RenameFolderAsync(System.Guid id, string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaFolder!>!
 FluentCMS.Media.IMediaService.ReplaceAsync(System.Guid id, FluentCMS.Media.MediaUploadFile! file, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaAsset!>!
+FluentCMS.Media.IMediaService.RequireUpdateAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Media.IMediaService.SetPresetAsync(string! name, FluentCMS.Media.MediaImageOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaPreset!>!
 FluentCMS.Media.IMediaService.UpdateAsync(System.Guid id, FluentCMS.Media.MediaAssetChanges! changes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaAsset!>!
 FluentCMS.Media.IMediaService.UploadAsync(FluentCMS.Media.MediaUpload! upload, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Media.MediaAsset!>!>!
@@ -2824,6 +2839,9 @@ override FluentCMS.Content.ContentReference.Equals(object? obj) -> bool
 override FluentCMS.Content.ContentReference.GetHashCode() -> int
 override FluentCMS.Content.ContentReference.ToString() -> string!
 override FluentCMS.Content.QueryField.ToString() -> string!
+override FluentCMS.Content.ValidatedField.Equals(object? obj) -> bool
+override FluentCMS.Content.ValidatedField.GetHashCode() -> int
+override FluentCMS.Content.ValidatedField.ToString() -> string!
 override FluentCMS.Events.McpClientApprovedEvent.<Clone>$() -> FluentCMS.Events.McpClientApprovedEvent!
 override FluentCMS.Events.McpClientApprovedEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.McpClientApprovedEvent.GetHashCode() -> int
@@ -3395,6 +3413,8 @@ static FluentCMS.Content.SortField.operator !=(FluentCMS.Content.SortField? left
 static FluentCMS.Content.SortField.operator ==(FluentCMS.Content.SortField? left, FluentCMS.Content.SortField? right) -> bool
 static FluentCMS.Content.SystemOperation.Allows(FluentCMS.Content.Origin origin) -> bool
 static FluentCMS.Content.SystemOperation.Begin(FluentCMS.Content.IOperationContextAccessor! accessor, System.TimeProvider! time, FluentCMS.Content.Origin origin, FluentCMS.Sites.SiteId site, string! locale = "", string? correlationId = null) -> System.IDisposable!
+static FluentCMS.Content.ValidatedField.operator !=(FluentCMS.Content.ValidatedField? left, FluentCMS.Content.ValidatedField? right) -> bool
+static FluentCMS.Content.ValidatedField.operator ==(FluentCMS.Content.ValidatedField? left, FluentCMS.Content.ValidatedField? right) -> bool
 static FluentCMS.Content.ValidationError.operator !=(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationError.operator ==(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationResult.Success.get -> FluentCMS.Content.ValidationResult!
@@ -3952,3 +3972,6 @@ static FluentCMS.Events.MemberLoginUnlinkedEvent.operator ==(FluentCMS.Events.Me
 FluentCMS.Agents.McpClientRegistrationPolicy.MaxClients.get -> int
 FluentCMS.Agents.McpClientRegistrationPolicy.MaxClients.init -> void
 FluentCMS.Agents.IMcpClients.RemoveUnusedAsync(System.DateTimeOffset neverUsedBefore, System.DateTimeOffset unusedBefore, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+FluentCMS.Agents.IMcpClients.RemoveOpenApprovedAsync(System.DateTimeOffset? registeredFrom, System.DateTimeOffset? registeredBefore, int limit, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+FluentCMS.Agents.McpClientRegistrationPolicy.MaxConsentsPerUser.get -> int
+FluentCMS.Agents.McpClientRegistrationPolicy.MaxConsentsPerUser.init -> void

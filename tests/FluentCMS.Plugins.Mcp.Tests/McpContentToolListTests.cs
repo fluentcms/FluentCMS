@@ -39,6 +39,22 @@ public sealed class McpContentToolListTests(McpToolsFixture fixture) : IClassFix
         (await OkAsync(client, "post_search", new { q = "harbour" })).GetProperty("items").GetArrayLength().ShouldBe(0);
     }
 
+    // As REST's searchTruncated (#3302).
+    [Fact]
+    public async Task ASearchSaysWhenItReachedTheMostMatchesOfTheIndex()
+    {
+        await using var host = Host(Path.GetTempPath(), new FakeDownloads()).Configure(cms => cms.Providers.Use<ISearchIndex, FullHits>());
+        using var http = await RoleAsync(host, Grant("content.post.read"));
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+
+        var tools = await ToolsAsync(client);
+        tools["post_search"].Description!.ShouldContain("searchTruncated true");
+        tools[McpContentTools.Query].Description!.ShouldContain("searchTruncated true");
+        (await OkAsync(client, "post_search", new { q = "harbour" })).GetProperty("searchTruncated").GetBoolean().ShouldBeTrue();
+        (await OkAsync(client, McpContentTools.Query, new { type = "post", q = "harbour" })).GetProperty("searchTruncated").GetBoolean().ShouldBeTrue();
+        (await OkAsync(client, "post_list")).TryGetProperty("searchTruncated", out _).ShouldBeFalse();
+    }
+
     [Fact]
     public async Task APrincipalThatMayOnlyReadATypeListsItsListAndGetToolsOnly()
     {
@@ -316,5 +332,12 @@ public sealed class McpContentToolListTests(McpToolsFixture fixture) : IClassFix
     public sealed class NoHits : ISearchIndex
     {
         public Task<IReadOnlyList<Guid>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Guid>>([]);
+    }
+
+    // As many ids as it is asked for, of no entry.
+    public sealed class FullHits : ISearchIndex
+    {
+        public Task<IReadOnlyList<Guid>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Guid>>([.. Enumerable.Range(0, request.Limit).Select(_ => Guid.CreateVersion7())]);
     }
 }

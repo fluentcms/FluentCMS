@@ -66,6 +66,12 @@ namespace FluentCMS.Plugins.AiAssist.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("principal_kind");
 
+                    b.Property<string>("PrincipalName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("principal_name");
+
                     b.Property<long>("PromptTokens")
                         .HasColumnType("INTEGER")
                         .HasColumnName("prompt_tokens");

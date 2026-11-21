@@ -99,17 +99,26 @@ public sealed class InvitationTests : IDisposable
         Succeeded(await AcceptAsync(_fixture, token));
     }
 
-    // Sign-in takes a name or an address, so the invitee may not pick a name that is another user's address (#3296).
+    // Sign-in takes a name or an address, so the invitee may not pick a name that is another user's address (#3296). Nor is
+    // the invitee told whose addresses the users have: a name that is an address other than the invitation's own gets one
+    // answer, whether or not a user has it (#3373).
     [Fact]
-    public async Task AnInviteeCannotPickANameThatIsAnotherUsersAddress()
+    public async Task AnInviteeCannotPickANameThatIsAnotherUsersAddressNorLearnWhetherItIsOne()
     {
         var bob = await _fixture.CreateUserAsync("bob");
         await InviteAsync(_fixture, "ann@example.com", BuiltInRoles.Editor);
         var token = TokenOf(_fixture.Email.Sent.Single());
 
-        (await AcceptAsync(_fixture, token, bob.Email!)).Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(Microsoft.AspNetCore.Identity.IdentityErrorDescriber.DuplicateUserName));
+        var taken = (await AcceptAsync(_fixture, token, bob.Email!)).Errors.ShouldHaveSingleItem();
+        var free = (await AcceptAsync(_fixture, token, "nobody@example.com")).Errors.ShouldHaveSingleItem();
+
+        taken.Code.ShouldBe(nameof(Microsoft.AspNetCore.Identity.IdentityErrorDescriber.InvalidUserName));
+        (free.Code, free.Description).ShouldBe((taken.Code, taken.Description));
+        taken.Description.ShouldNotContain(bob.Email!);
         _fixture.Invitations().Single().AcceptedAt.ShouldBeNull();
-        Succeeded(await AcceptAsync(_fixture, token));
+
+        // Its own address is a name the invitee may take.
+        Succeeded(await AcceptAsync(_fixture, token, "Ann@Example.com"));
     }
 
     [Fact]

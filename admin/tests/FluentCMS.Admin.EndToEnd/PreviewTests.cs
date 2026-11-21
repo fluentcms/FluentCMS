@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.Playwright;
@@ -12,7 +13,9 @@ namespace FluentCMS.Admin.EndToEnd;
 
 // The preview of A-29 for the class's editor: a draft of showcase, the one type with a preview template, is shown in the pane
 // at phone, tablet and full width from the preview origin of config.json, which the browser answers with a page that speaks
-// version 1 of the postMessage contract; a save tells the page to refresh, and the page shows it without loading again.
+// version 1 of the postMessage contract; a save tells the page to refresh, and the page shows it without loading again. The
+// pane takes focus as it opens, sits beside the form or below it and fits any window, forgets ready when the page navigates to
+// one that does not say it, and ignores a message of another window than its frame's.
 public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
 {
     private const string Template = EndToEndHost.PreviewOrigin + "/showcase/{id}?preview={token}";
@@ -34,42 +37,168 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
             return route.FulfillAsync(new RouteFulfillOptions { Status = 200, ContentType = "text/html", Body = Page(admin) });
         });
 
-        var open = tab.Page.Locator(".content-form-history fluent-button").Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(Repository.AdminText("Content.Preview.Open"))}\s*$") });
+        var open = Ui.ButtonIn(tab.Page.Locator(".content-form-history"), Repository.AdminText("Content.Preview.Open"));
         await Ui.PressAsync(open, "Enter");
 
         var pane = tab.Page.Locator(".content-preview");
         var frame = pane.Locator("iframe");
         await Expect(frame).ToHaveAttributeAsync("src", new Regex($"^{Regex.Escape(EndToEndHost.PreviewOrigin)}/showcase/{id:D}\\?preview=[^&]+$"));
         await Expect(frame).ToHaveCSSAsync("width", "390px");
+        await Expect(pane).ToBeFocusedAsync();
         await Expect(pane).ToHaveAttributeAsync("data-ready", "true");
+        (await ControlledAsync(tab.Page, Repository.AdminText("Content.Preview.Open"))).ShouldBe(["content-preview"]);
         var page = tab.Page.FrameLocator(".content-preview iframe");
         await Expect(page.Locator("#state")).ToHaveTextAsync("ready");
 
-        await tab.Page.Locator("[data-field='title'] input").FillAsync($"Changed {Mark}");
-        var save = tab.Page.Locator(".content-form-toolbar fluent-button").Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(Repository.AdminText("Content.Form.Save"))}\s*$") });
-        var saved = await tab.AnswerAsync(() => Ui.PressAsync(save, "Enter"), "PUT", tab.ManagementUrl($"content/showcase/{id:D}"));
-        saved.Status.ShouldBe(200);
+        await SaveAsync(tab, id);
 
         await Expect(page.Locator("#state")).ToHaveTextAsync("refresh 2");
         Volatile.Read(ref loads).ShouldBe(1);
 
-        // The tablet width sits beside the form as the phone's does; full width puts the pane above it, as wide as it.
+        // The pane sits beside the form in a window wide enough for the sidebar, 20rem of form and the frame, from 68rem at
+        // phone width and from 95rem at tablet width, and below it otherwise; the frame stays within the pane and the pane within
+        // the form's area and the window. Each width is measured on both sides of its breakpoint.
         var width = tab.Page.GetByLabel(Repository.AdminText("Content.Preview.Width"), new PageGetByLabelOptions { Exact = true });
         var layout = tab.Page.Locator(".content-form-layout");
-        await width.SelectOptionAsync("tablet");
-        await Expect(frame).ToHaveCSSAsync("width", "820px");
-        await Expect(layout).ToHaveAttributeAsync("data-preview", "beside");
+        var form = layout.Locator(".content-form");
+        (string Width, int Window, bool Beside)[] windows =
+        [
+            ("tablet", 1600, true), ("tablet", 1530, true), ("tablet", 1500, false), ("tablet", 1100, false), ("tablet", 900, false), ("tablet", 600, false),
+            ("phone", 1100, true), ("phone", 1080, false),
+        ];
+        foreach (var (size, window, beside) in windows)
+        {
+            await tab.Page.SetViewportSizeAsync(window, 900);
+            await width.SelectOptionAsync(size);
+            await Expect(pane).ToHaveAttributeAsync("data-width", size);
+            var at = $"{size} at {window} pixels";
+            if (beside)
+            {
+                await Expect(frame).ToHaveCSSAsync("width", size == "tablet" ? "820px" : "390px");
+            }
+
+            var shown = (await frame.BoundingBoxAsync()).ShouldNotBeNull();
+            var box = (await pane.BoundingBoxAsync()).ShouldNotBeNull();
+            var room = (await layout.BoundingBoxAsync()).ShouldNotBeNull();
+            var fields = (await form.BoundingBoxAsync()).ShouldNotBeNull();
+            (shown.X + shown.Width).ShouldBeLessThanOrEqualTo(box.X + box.Width + 1, $"the frame, {at}");
+            (box.X + box.Width).ShouldBeLessThanOrEqualTo(room.X + room.Width + 1, $"the pane, {at}");
+            (room.X + room.Width).ShouldBeLessThanOrEqualTo(window, $"the form's area, {at}");
+            (await pane.EvaluateAsync<bool>("pane => pane.scrollWidth <= pane.clientWidth")).ShouldBeTrue($"the pane scrolls, {at}");
+            if (beside)
+            {
+                box.X.ShouldBeGreaterThanOrEqualTo(fields.X + fields.Width - 1, $"the pane is beside the form, {at}");
+            }
+            else
+            {
+                box.Y.ShouldBeGreaterThanOrEqualTo(fields.Y + fields.Height - 1, $"the pane is below the form, {at}");
+            }
+        }
+
+        // Full width puts the pane below the form, as wide as it.
+        await tab.Page.SetViewportSizeAsync(1600, 900);
         await width.SelectOptionAsync("full");
         await Expect(layout).ToHaveAttributeAsync("data-preview", "full");
         var full = (await frame.BoundingBoxAsync()).ShouldNotBeNull();
         var area = (await layout.BoundingBoxAsync()).ShouldNotBeNull();
+        var above = (await form.BoundingBoxAsync()).ShouldNotBeNull();
         full.Width.ShouldBeGreaterThan(820);
         full.Width.ShouldBe(area.Width, 2);
+        (await pane.BoundingBoxAsync()).ShouldNotBeNull().Y.ShouldBeGreaterThanOrEqualTo(above.Y + above.Height - 1);
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
+    // The page said ready, then the editor follows its link to a page without the script, whose load is the frame's next: the
+    // pane forgets ready, gives the five seconds again, and the next save loads the frame instead of telling it to refresh.
+    [Fact]
+    public async Task APageThatNavigatesToOneWithoutTheContractIsLoadedAgainOnASave()
+    {
+        using var api = await Host.ManagementClientAsync();
+        await SetTemplateAsync(api);
+        var id = await CreateAsync(api, $"Showcase {Mark}");
+
+        var browser = await OpenBrowserAsync();
+        var tab = await SignedInTabAsync(browser, $"content/showcase/{id:D}");
+        var loads = 0;
+        var admin = Host.Origin.GetLeftPart(UriPartial.Authority);
+        await tab.Page.RouteAsync($"{EndToEndHost.PreviewOrigin}/**", route =>
+        {
+            Interlocked.Increment(ref loads);
+            return route.FulfillAsync(new RouteFulfillOptions
+            {
+                Status = 200,
+                ContentType = "text/html",
+                Body = route.Request.Url.EndsWith("/plain", StringComparison.Ordinal) ? """<!doctype html><title>Plain</title><p id="state">plain</p>""" : Page(admin),
+            });
+        });
+
+        await Ui.PressAsync(Ui.ButtonIn(tab.Page.Locator(".content-form-history"), Repository.AdminText("Content.Preview.Open")), "Enter");
+        var pane = tab.Page.Locator(".content-preview");
+        var page = tab.Page.FrameLocator(".content-preview iframe");
+        await Expect(pane).ToHaveAttributeAsync("data-ready", "true");
+        await Expect(page.Locator("#state")).ToHaveTextAsync("ready");
+
+        await page.Locator("#away").ClickAsync();
+
+        await Expect(page.Locator("#state")).ToHaveTextAsync("plain");
+        await Expect(pane).Not.ToHaveAttributeAsync("data-ready", "true");
+        await Expect(pane.Locator(".content-preview-notice")).ToHaveTextAsync(Repository.AdminText("Content.Preview.Silent"));
+        Volatile.Read(ref loads).ShouldBe(2);
+
+        // The save is waited for by what it does to the page, the frame loaded again: after the frame's own navigation the
+        // browser did not always report the answer to the save, which the form had shown as saved.
+        await tab.Page.Locator("[data-field='title'] input").FillAsync($"Changed {Mark}");
+        await Ui.PressAsync(Ui.ButtonIn(tab.Page.Locator(".content-form-toolbar"), Repository.AdminText("Content.Form.Save")), "Enter");
+
+        await Expect(page.Locator("#state")).ToHaveTextAsync("ready");
+        Volatile.Read(ref loads).ShouldBe(3);
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    // A frame inside the page is of the preview origin too, so only its window tells its ready from the page's, which says none.
+    [Fact]
+    public async Task AReadyFromAnotherWindowOfThePreviewOriginIsIgnored()
+    {
+        using var api = await Host.ManagementClientAsync();
+        await SetTemplateAsync(api);
+        var id = await CreateAsync(api, $"Showcase {Mark}");
+
+        var browser = await OpenBrowserAsync();
+        var tab = await SignedInTabAsync(browser, $"content/showcase/{id:D}");
+        var admin = Host.Origin.GetLeftPart(UriPartial.Authority);
+        await tab.Page.RouteAsync($"{EndToEndHost.PreviewOrigin}/**", route => route.FulfillAsync(new RouteFulfillOptions
+        {
+            Status = 200,
+            ContentType = "text/html",
+            Body = route.Request.Url.EndsWith("/nested", StringComparison.Ordinal) ? Nested(admin) : """<!doctype html><title>Showcase</title><iframe src="/nested"></iframe>""",
+        }));
+
+        var open = Ui.ButtonIn(tab.Page.Locator(".content-form-history"), Repository.AdminText("Content.Preview.Open"));
+        await Ui.PressAsync(open, "Enter");
+
+        var pane = tab.Page.Locator(".content-preview");
+        await Expect(tab.Page.FrameLocator(".content-preview iframe").FrameLocator("iframe").Locator("#state")).ToHaveTextAsync("posted");
+        await Expect(pane.Locator(".content-preview-notice")).ToHaveTextAsync(Repository.AdminText("Content.Preview.Silent"));
+        await Expect(pane).Not.ToHaveAttributeAsync("data-ready", "true");
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    private static string Nested(string admin) => $$"""
+        <!doctype html>
+        <html lang="en">
+        <head><meta charset="utf-8"><title>Nested</title></head>
+        <body>
+        <p id="state">loading</p>
+        <script>
+        top.postMessage({ protocol: "fluentcms-preview", version: 1, type: "ready", url: location.href }, {{System.Text.Json.JsonSerializer.Serialize(admin)}});
+        document.getElementById("state").textContent = "posted";
+        </script>
+        </body>
+        </html>
+        """;
+
     // The page a front end serves for a preview, reduced to the contract: it says ready to the admin's origin alone, with no
-    // token, and shows each refresh it is told of.
+    // token, shows each refresh it is told of, and links to a page without the script.
     private static string Page(string admin) => $$"""
         <!doctype html>
         <html lang="en">
@@ -91,9 +220,36 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
         parent.postMessage({ protocol: "fluentcms-preview", version: 1, type: "ready", url: location.origin + location.pathname }, admin);
         document.getElementById("state").textContent = "ready";
         </script>
+        <a id="away" href="/plain">Away</a>
         </body>
         </html>
         """;
+
+    private static async Task SaveAsync(AdminTab tab, Guid id)
+    {
+        await tab.Page.Locator("[data-field='title'] input").FillAsync($"Changed {Guid.NewGuid():N}");
+        var save = Ui.ButtonIn(tab.Page.Locator(".content-form-toolbar"), Repository.AdminText("Content.Form.Save"));
+        var saved = await tab.AnswerAsync(() => Ui.PressAsync(save, "Enter"), "PUT", tab.ManagementUrl($"content/showcase/{id:D}"));
+        saved.Status.ShouldBe(200);
+    }
+
+    // The ids the browser's accessibility tree resolves a button's aria-controls to; the button of the component library is in
+    // a shadow root, which could hide them.
+    private static async Task<string[]> ControlledAsync(IPage page, string button)
+    {
+        var cdp = await page.Context.NewCDPSessionAsync(page);
+        var tree = (await cdp.SendAsync("Accessibility.getFullAXTree")).ShouldNotBeNull();
+        await cdp.DetachAsync();
+        return [.. tree.GetProperty("nodes").EnumerateArray()
+            .Where(node => Value(node, "role") == "button" && Value(node, "name") == button && node.TryGetProperty("properties", out _))
+            .SelectMany(node => node.GetProperty("properties").EnumerateArray())
+            .Where(property => property.GetProperty("name").GetString() == "controls" && property.GetProperty("value").TryGetProperty("relatedNodes", out _))
+            .SelectMany(property => property.GetProperty("value").GetProperty("relatedNodes").EnumerateArray())
+            .Select(related => related.GetProperty("idref").GetString() ?? "")];
+    }
+
+    private static string? Value(JsonElement node, string member) =>
+        node.TryGetProperty(member, out var found) && found.TryGetProperty("value", out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
     // The instance's defaults, so that every site has the template; a run that set it before writes it again on its version.
     private static async Task SetTemplateAsync(HttpClient api)

@@ -16,8 +16,12 @@ internal sealed record RedactedSetting(string Json, SettingsSource Source, int V
 // What a read resolved to: the document, where it came from, and the version of the row that a write to the same scope would
 // replace (0 when there is none), which is not the version of the row the document came from when that was a level below.
 // The inherited secrets are the secret keys of a site that come from the instance default, whose values the document holds
-// as the default does now; none for the instance defaults themselves.
-internal sealed record ResolvedSetting(string Json, SettingsSource Source, int Version, IReadOnlyList<string> InheritedSecrets);
+// as the default does now; none for the instance defaults themselves. The unreadable secrets are the secret keys of the
+// document whose stored value the key ring cannot unprotect, which the document leaves out or holds at their code defaults.
+internal sealed record ResolvedSetting(string Json, SettingsSource Source, int Version, IReadOnlyList<string> InheritedSecrets)
+{
+    public IReadOnlyList<string> UnreadableSecrets { get; init; } = [];
+}
 
 // What readers on this instance keep. A write drops everything of its area before it returns, and a read that was under way
 // when the write happened is not kept, because it may have read the old row. Another instance is not told: its readers

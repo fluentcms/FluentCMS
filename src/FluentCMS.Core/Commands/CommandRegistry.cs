@@ -27,6 +27,7 @@ internal static class CommandRegistry
         new JobsRunCommand(),
         new JobsRetryCommand(),
         new SeedCommand(),
+        new SettingsReprotectCommand(),
         new ExportCommand(),
         new ImportCommand(),
         new BackupCommand(),
