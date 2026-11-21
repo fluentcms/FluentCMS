@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
@@ -10,6 +11,7 @@ using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Events;
 using FluentCMS.Testing;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.TestHost;
@@ -336,6 +338,14 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         (await fixture.DeleteAsync($"users/{user.Id:D}/sessions/{sessionId}")).Status.ShouldBe(HttpStatusCode.NoContent);
         (await fixture.GetAsync("me", client)).Status.ShouldBe(HttpStatusCode.Unauthorized);
         (await fixture.DeleteAsync($"users/{user.Id:D}/sessions/{sessionId}")).Json["code"]!.GetValue<string>().ShouldBe("FCMS3047");
+
+        // One row for the end, of the administrator, naming the session; the refused second call writes none (#3207).
+        var ended = await SessionEndedAsync(user.Id);
+        ended.ActorType.ShouldBe(PrincipalKind.AdminUser);
+        ended.ActorId.ShouldNotBe(user.Id);
+        ended.SiteId.ShouldBeNull();
+        Details(ended)["reason"].ShouldBe(SessionEndReasons.Revoked);
+        Details(ended)["session"].ShouldBe(sessionId);
     }
 
     [Fact]
@@ -347,6 +357,13 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
 
         (await fixture.DeleteAsync($"me/sessions/{sessionId}", client)).Status.ShouldBe(HttpStatusCode.NoContent);
         (await fixture.GetAsync("me", client)).Status.ShouldBe(HttpStatusCode.Unauthorized);
+
+        var ended = await SessionEndedAsync(user.Id);
+        ended.ActorType.ShouldBe(PrincipalKind.AdminUser);
+        ended.ActorId.ShouldBe(user.Id);
+        Details(ended)["reason"].ShouldBe(SessionEndReasons.Revoked);
+        Details(ended)["session"].ShouldBe(sessionId);
+        ended.Details!.ShouldNotContain(client.DefaultRequestHeaders.Authorization!.Parameter!);
     }
 
     [Fact]
@@ -400,6 +417,14 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         await using var scope = fixture.Host.Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<ActivityRow>().AsNoTracking()
             .SingleAsync(row => row.Action == action && row.TargetId == roleId, TestContext.Current.CancellationToken);
+    }
+
+    private async Task<ActivityRow> SessionEndedAsync(Guid userId)
+    {
+        await DrainOutboxAsync();
+        await using var scope = fixture.Host.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<ActivityRow>().AsNoTracking()
+            .SingleAsync(row => row.Action == "user.sessions_ended" && row.TargetId == userId.ToString("D"), TestContext.Current.CancellationToken);
     }
 
     private static Dictionary<string, string?> Details(ActivityRow row) =>

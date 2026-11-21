@@ -2,6 +2,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Storage;
+using FluentCMS.Events;
 
 namespace FluentCMS.Core.Identity;
 
@@ -10,7 +11,7 @@ namespace FluentCMS.Core.Identity;
 // external logins and preferences.
 internal sealed record CurrentPrincipal(Guid Id, PrincipalKind Kind, string Name, UserInfo? User);
 
-internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserManager users, SystemDbContext context, UserSessions sessions, TwoFactorService twoFactor, UserLogins logins, UserPreferences preferences, TimeProvider time)
+internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserManager users, SystemDbContext context, UserSessions sessions, SessionEvents sessionEvents, TwoFactorService twoFactor, UserLogins logins, UserPreferences preferences, TimeProvider time)
 {
     // How long after the sign-in on the hosted pages a token may still enrol an authenticator and turn two-factor on.
     internal static readonly TimeSpan RecentSignIn = TimeSpan.FromMinutes(10);
@@ -32,7 +33,11 @@ internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserMan
 
     public async Task RevokeSessionAsync(Guid sessionId, CancellationToken cancellationToken)
     {
-        if (Caller() is not { Kind: PrincipalKind.AdminUser } principal || !await sessions.RevokeAsync(principal.Id, sessionId, cancellationToken))
+        if (Caller() is not { Kind: PrincipalKind.AdminUser } principal
+            || !await sessionEvents.EndAsync(
+                () => sessions.RevokeAsync(principal.Id, sessionId, cancellationToken),
+                new UserSessionsEndedEvent(principal.Id, principal.Name, SessionEndReasons.Revoked, sessionId),
+                cancellationToken))
         {
             throw UserViews.SessionNotFound(sessionId);
         }

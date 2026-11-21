@@ -120,3 +120,48 @@ public static class LoginFailureReasons
     /// <summary>The user may not sign in, such as a deactivated one.</summary>
     public const string NotAllowed = "not_allowed";
 }
+
+/// <summary>
+/// Sessions of an admin user ended: one session by its id, or together the sessions of a sign-in or every session of the
+/// user. The actor of its source is the one who ended them: the user, an administrator, or the system. It never carries a
+/// token.
+/// </summary>
+/// <param name="UserId">The id of the user.</param>
+/// <param name="UserName">Its user name.</param>
+/// <param name="Reason">Why they ended: one of <see cref="SessionEndReasons"/>.</param>
+/// <param name="SessionId">The session ended by its id, or <see langword="null"/> when sessions ended together.</param>
+public sealed record UserSessionsEndedEvent(Guid UserId, string UserName, string Reason, Guid? SessionId) : CmsEvent;
+
+/// <summary>The names <see cref="UserSessionsEndedEvent.Reason"/> and <see cref="MemberSessionsEndedEvent.Reason"/> use.</summary>
+public static class SessionEndReasons
+{
+    /// <summary>The user or member signed out.</summary>
+    public const string SignedOut = "signed_out";
+
+    /// <summary>The session was ended by its id, by its owner or by an administrator.</summary>
+    public const string Revoked = "revoked";
+
+    /// <summary>The password was changed or reset.</summary>
+    public const string PasswordChanged = "password_changed";
+
+    /// <summary>The user or member was deactivated.</summary>
+    public const string Deactivated = "deactivated";
+
+    /// <summary>The member was deleted.</summary>
+    public const string Deleted = "deleted";
+
+    /// <summary>An external login was removed.</summary>
+    public const string LoginRemoved = "login_removed";
+
+    /// <summary>Another change to how the user signs in, such as its two-factor sign-in or its email address.</summary>
+    public const string SecurityChanged = "security_changed";
+
+    /// <summary>Another user or member signed in over the sign-in, in the same browser.</summary>
+    public const string Replaced = "replaced";
+
+    /// <summary>A sign-in with the second factor ended what the same sign-in was given without it.</summary>
+    public const string SecondFactor = "second_factor";
+
+    /// <summary>The identity provider the user signed in with signed it out.</summary>
+    public const string RemoteSignOut = "remote_sign_out";
+}
