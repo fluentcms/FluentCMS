@@ -1,5 +1,218 @@
-@* The members of the instance and their groups (spec 4.15). The page shows its heading until its issue writes it. *@
+@* The members of the instance, read in pages with a search by name and address and the filters group, verified and active,
+   and a member added (spec 4.15). Every call needs members.manage for the instance, which the shell's gate asks for before
+   the page shows. *@
 @page "/members"
+@implements IDisposable
+@inject IManagementApi Api
+@inject NavigationManager Navigation
+@inject IAnnouncer Announcer
+@inject FormatService Formats
+@inject TimeProvider Time
 @inject IStringLocalizer<MembersResources> L
 
 <h1 tabindex="-1">@L["Members.Page.Heading"]</h1>
+<p><a href="members/groups">@L["Members.Page.Groups"]</a></p>
+
+<div class="members-filters" role="group" aria-label="@L["Members.Filters.Label"]">
+    @if (groups is not null)
+    {
+        <CmsSelect Label="@L["Members.Filters.Group"]"
+                   Options="@GroupOptions"
+                   Value="@Group"
+                   ValueChanged="@(value => SetFilter(MembersApi.GroupFilter, value))"
+                   Placeholder="@L["Members.Filters.AnyGroup"]" />
+    }
+    else
+    {
+        <p role="@(groupsFailed ? "alert" : "status")">
+            @(groupsFailed ? L["Members.Filters.GroupsFailed"] : L["Members.Filters.GroupsLoading"])
+            @if (groupsFailed)
+            {
+                <CmsButton OnClick="ReadGroupsAsync">@L["Members.Filters.TryAgain"]</CmsButton>
+            }
+        </p>
+    }
+    <CmsSelect Label="@L["Members.Filters.Verified"]"
+               Options="@VerifiedOptions"
+               Value="@Verified"
+               ValueChanged="@(value => SetFilter(MembersApi.VerifiedFilter, value))"
+               Placeholder="@L["Members.Filters.Any"]" />
+    <CmsSelect Label="@L["Members.Filters.Active"]"
+               Options="@ActiveOptions"
+               Value="@Active"
+               ValueChanged="@(value => SetFilter(MembersApi.ActiveFilter, value))"
+               Placeholder="@L["Members.Filters.Any"]" />
+</div>
+
+<RecordList @ref="list"
+            TItem="MemberRecord"
+            Label="@L["Members.Page.Heading"]"
+            Read="@Api.GetMembersAsync"
+            Filters="@Filters"
+            SearchLabel="@L["Members.List.Search"]"
+            EmptyText="@L["Members.List.Empty"]"
+            RowLabel="@(member => member.Email)"
+            OnRowActivated="@Open">
+    <Columns>
+        <CmsDataGridColumn TItem="MemberRecord" Name="email" Title="@L["Members.List.Email"]" Order="0">
+            <a href="@Route(context)" tabindex="-1">@context.Email</a>
+        </CmsDataGridColumn>
+        <CmsDataGridColumn TItem="MemberRecord" Name="displayName" Title="@L["Members.List.DisplayName"]" Order="1" Value="@(member => member.DisplayName)" />
+        <CmsDataGridColumn TItem="MemberRecord" Name="groups" Title="@L["Members.List.Groups"]" Order="2" Value="@(member => string.Join(", ", member.Groups.Select(group => group.Name)))" />
+        <CmsDataGridColumn TItem="MemberRecord" Name="state" Title="@L["Members.List.State"]" Order="3" Value="@State" />
+        <CmsDataGridColumn TItem="MemberRecord" Name="lastLoginAt" Title="@L["Members.List.LastSignIn"]" Order="4" Value="@LastSignIn" />
+    </Columns>
+</RecordList>
+
+<CmsCard Title="@L["Members.Add.Heading"]">
+    <form @onsubmit="AddAsync">
+        <CmsStack>
+            <p>@L["Members.Add.Note"]</p>
+            <CmsTextInput Type="CmsTextInputType.Email"
+                          Label="@L["Members.Add.Email"]"
+                          Required="true"
+                          Autocomplete="off"
+                          Value="@email"
+                          ValueChanged="@(value => email = value)"
+                          Error="@emailError" />
+            <CmsTextInput Label="@L["Members.Add.DisplayName"]"
+                          Autocomplete="off"
+                          Value="@displayName"
+                          ValueChanged="@(value => displayName = value)"
+                          Error="@displayNameError" />
+            <div>
+                <CmsButton Submit="true" Appearance="CmsButtonAppearance.Primary" Disabled="@busy">@L["Members.Add.Submit"]</CmsButton>
+            </div>
+        </CmsStack>
+    </form>
+    <p class="members-message" tabindex="-1" @ref="addElement">@addMessage</p>
+</CmsCard>
+
+@code {
+    private static readonly IReadOnlyList<string> Filters = [MembersApi.GroupFilter, MembersApi.VerifiedFilter, MembersApi.ActiveFilter];
+
+    private RecordList<MemberRecord>? list;
+    private IReadOnlyList<MemberGroupRecord>? groups;
+    private bool groupsFailed;
+    private string? email;
+    private string? displayName;
+    private string? emailError;
+    private string? displayNameError;
+    private string? addMessage;
+    private bool busy;
+    private bool focusAdd;
+    private ElementReference addElement;
+    private readonly CancellationTokenSource closing = new();
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    [SupplyParameterFromQuery(Name = MembersApi.GroupFilter)]
+    public string? Group { get; set; }
+
+    [SupplyParameterFromQuery(Name = MembersApi.VerifiedFilter)]
+    public string? Verified { get; set; }
+
+    [SupplyParameterFromQuery(Name = MembersApi.ActiveFilter)]
+    public string? Active { get; set; }
+
+    private IReadOnlyList<CmsOption> GroupOptions => [.. (groups ?? []).Select(group => new CmsOption(group.Id.ToString("D"), group.Name))];
+
+    private IReadOnlyList<CmsOption> VerifiedOptions => [new("true", L["Members.Filters.VerifiedOnly"]), new("false", L["Members.Filters.NotVerifiedOnly"])];
+
+    private IReadOnlyList<CmsOption> ActiveOptions => [new("true", L["Members.Filters.ActiveOnly"]), new("false", L["Members.Filters.DeactivatedOnly"])];
+
+    protected override Task OnInitializedAsync() => ReadGroupsAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAdd)
+        {
+            focusAdd = false;
+            await addElement.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task ReadGroupsAsync()
+    {
+        (groups, groupsFailed) = (null, false);
+        try
+        {
+            groups = await Api.GetMemberGroupsAsync(Closing);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            groupsFailed = true;
+        }
+    }
+
+    private void SetFilter(string name, string? value) => list?.SetFilter(name, value);
+
+    // The new member's page, where its groups are given; the server has mailed it a link to choose its password.
+    private async Task AddAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            (emailError, addMessage) = (L["Members.Add.EmailRequired"], null);
+            return;
+        }
+
+        (busy, emailError, displayNameError, addMessage) = (true, null, null, null);
+        try
+        {
+            var added = await Api.CreateMemberAsync(email.Trim(), string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim(), Closing);
+            Announcer.Announce(L["Members.Add.Added", added.Email]);
+            Navigation.NavigateTo(Route(added));
+            return;
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.InvalidEmail))
+        {
+            emailError = L["Members.Add.EmailInvalid"];
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.EmailTaken))
+        {
+            emailError = L["Members.Add.EmailTaken"];
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.InvalidMember, "displayName"))
+        {
+            displayNameError = L["Members.Add.DisplayNameInvalid"];
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.NoMailLink))
+        {
+            (addMessage, focusAdd) = (L["Members.Add.NoMailLink"], true);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            (addMessage, focusAdd) = (L["Members.Add.Failed"], true);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private static string Route(MemberRecord member) => $"members/{member.Id:D}";
+
+    private void Open(MemberRecord member) => Navigation.NavigateTo(Route(member));
+
+    private string State(MemberRecord member) => string.Join(", ", MemberTexts.States(member, L, Formats, Time.GetUtcNow()));
+
+    private string LastSignIn(MemberRecord member) => member.LastLoginAt is { } last ? Formats.DateTime(last) : L["Members.List.NeverSignedIn"];
+}

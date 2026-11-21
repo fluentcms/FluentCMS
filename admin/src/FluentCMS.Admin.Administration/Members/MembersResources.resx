@@ -15,4 +15,490 @@
   <data name="Members.Page.Heading" xml:space="preserve">
     <value>Members</value>
   </data>
+  <data name="Members.Page.Groups" xml:space="preserve">
+    <value>Member groups</value>
+  </data>
+  <data name="Members.Filters.Label" xml:space="preserve">
+    <value>Filters</value>
+  </data>
+  <data name="Members.Filters.Group" xml:space="preserve">
+    <value>Group</value>
+  </data>
+  <data name="Members.Filters.AnyGroup" xml:space="preserve">
+    <value>Any group</value>
+  </data>
+  <data name="Members.Filters.GroupsLoading" xml:space="preserve">
+    <value>Loading the groups…</value>
+  </data>
+  <data name="Members.Filters.GroupsFailed" xml:space="preserve">
+    <value>The groups could not be loaded.</value>
+  </data>
+  <data name="Members.Filters.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Members.Filters.Verified" xml:space="preserve">
+    <value>Email address</value>
+  </data>
+  <data name="Members.Filters.Active" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="Members.Filters.Any" xml:space="preserve">
+    <value>Any</value>
+  </data>
+  <data name="Members.Filters.VerifiedOnly" xml:space="preserve">
+    <value>Verified</value>
+  </data>
+  <data name="Members.Filters.NotVerifiedOnly" xml:space="preserve">
+    <value>Not verified</value>
+  </data>
+  <data name="Members.Filters.ActiveOnly" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="Members.Filters.DeactivatedOnly" xml:space="preserve">
+    <value>Deactivated</value>
+  </data>
+  <data name="Members.List.Search" xml:space="preserve">
+    <value>Search by name or email address</value>
+  </data>
+  <data name="Members.List.Empty" xml:space="preserve">
+    <value>There are no members yet.</value>
+  </data>
+  <data name="Members.List.Email" xml:space="preserve">
+    <value>Email address</value>
+  </data>
+  <data name="Members.List.DisplayName" xml:space="preserve">
+    <value>Display name</value>
+  </data>
+  <data name="Members.List.Groups" xml:space="preserve">
+    <value>Groups</value>
+  </data>
+  <data name="Members.List.State" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="Members.List.LastSignIn" xml:space="preserve">
+    <value>Last sign-in</value>
+  </data>
+  <data name="Members.List.NeverSignedIn" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="Members.State.Active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="Members.State.Deactivated" xml:space="preserve">
+    <value>Deactivated</value>
+  </data>
+  <data name="Members.State.Verified" xml:space="preserve">
+    <value>Address verified</value>
+  </data>
+  <data name="Members.State.NotVerified" xml:space="preserve">
+    <value>Address not verified</value>
+  </data>
+  <data name="Members.State.LockedOut" xml:space="preserve">
+    <value>Locked out until {0}</value>
+  </data>
+  <data name="Members.Member.Named" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="Members.Add.Heading" xml:space="preserve">
+    <value>Add a member</value>
+  </data>
+  <data name="Members.Add.Note" xml:space="preserve">
+    <value>The member is sent a link to choose its password, which also verifies its address.</value>
+  </data>
+  <data name="Members.Add.Email" xml:space="preserve">
+    <value>Email address</value>
+  </data>
+  <data name="Members.Add.EmailRequired" xml:space="preserve">
+    <value>Enter the email address of the member.</value>
+  </data>
+  <data name="Members.Add.EmailInvalid" xml:space="preserve">
+    <value>This is not a valid email address.</value>
+  </data>
+  <data name="Members.Add.EmailTaken" xml:space="preserve">
+    <value>A member has this email address already.</value>
+  </data>
+  <data name="Members.Add.DisplayName" xml:space="preserve">
+    <value>Display name (optional)</value>
+  </data>
+  <data name="Members.Add.DisplayNameInvalid" xml:space="preserve">
+    <value>A display name has at most 128 characters and no control character.</value>
+  </data>
+  <data name="Members.Add.Submit" xml:space="preserve">
+    <value>Add the member</value>
+  </data>
+  <data name="Members.Add.Added" xml:space="preserve">
+    <value>The member {0} was added and sent a link to choose its password.</value>
+  </data>
+  <data name="Members.Add.NoMailLink" xml:space="preserve">
+    <value>Not added: the link that lets a new member choose its password has nowhere to go. Set FluentCms:PublicOrigin, or the reset-password link of the members' options, on the server.</value>
+  </data>
+  <data name="Members.Add.Failed" xml:space="preserve">
+    <value>The member could not be added. Try again.</value>
+  </data>
+  <data name="Members.Detail.Heading" xml:space="preserve">
+    <value>Member</value>
+  </data>
+  <data name="Members.Detail.Loading" xml:space="preserve">
+    <value>Loading the member…</value>
+  </data>
+  <data name="Members.Detail.NotFound" xml:space="preserve">
+    <value>Member not found</value>
+  </data>
+  <data name="Members.Detail.BackToList" xml:space="preserve">
+    <value>Back to the members</value>
+  </data>
+  <data name="Members.Detail.Failed" xml:space="preserve">
+    <value>The member could not be loaded.</value>
+  </data>
+  <data name="Members.Detail.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Members.Detail.Account" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="Members.Detail.Email" xml:space="preserve">
+    <value>Email address</value>
+  </data>
+  <data name="Members.Detail.Address" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="Members.Detail.Verified" xml:space="preserve">
+    <value>Verified</value>
+  </data>
+  <data name="Members.Detail.NotVerified" xml:space="preserve">
+    <value>Not verified</value>
+  </data>
+  <data name="Members.Detail.Created" xml:space="preserve">
+    <value>Created</value>
+  </data>
+  <data name="Members.Detail.LastSignIn" xml:space="preserve">
+    <value>Last sign-in</value>
+  </data>
+  <data name="Members.Detail.NeverSignedIn" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="Members.Detail.State" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="Members.Detail.DeactivatedOn" xml:space="preserve">
+    <value>Deactivated on {0}</value>
+  </data>
+  <data name="Members.Detail.Lockout" xml:space="preserve">
+    <value>Lockout</value>
+  </data>
+  <data name="Members.Detail.LockedOutUntil" xml:space="preserve">
+    <value>Locked out until {0}. A lockout ends by itself; no action ends it early.</value>
+  </data>
+  <data name="Members.Detail.DisplayName" xml:space="preserve">
+    <value>Display name</value>
+  </data>
+  <data name="Members.Detail.DisplayNameHelp" xml:space="preserve">
+    <value>Left empty, the member has none.</value>
+  </data>
+  <data name="Members.Detail.DisplayNameInvalid" xml:space="preserve">
+    <value>A display name has at most 128 characters and no control character.</value>
+  </data>
+  <data name="Members.Detail.Rename" xml:space="preserve">
+    <value>Save the name</value>
+  </data>
+  <data name="Members.Detail.Renamed" xml:space="preserve">
+    <value>The display name was saved.</value>
+  </data>
+  <data name="Members.Detail.NameCleared" xml:space="preserve">
+    <value>The display name was cleared.</value>
+  </data>
+  <data name="Members.Detail.Deactivate" xml:space="preserve">
+    <value>Deactivate</value>
+  </data>
+  <data name="Members.Detail.DeactivateQuestion" xml:space="preserve">
+    <value>Deactivate {0}? The member's sessions end and it cannot sign in until it is reactivated.</value>
+  </data>
+  <data name="Members.Detail.DeactivateConfirm" xml:space="preserve">
+    <value>Deactivate the member</value>
+  </data>
+  <data name="Members.Detail.Deactivated" xml:space="preserve">
+    <value>The member was deactivated.</value>
+  </data>
+  <data name="Members.Detail.Reactivate" xml:space="preserve">
+    <value>Reactivate</value>
+  </data>
+  <data name="Members.Detail.Reactivated" xml:space="preserve">
+    <value>The member was reactivated.</value>
+  </data>
+  <data name="Members.Detail.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Members.Detail.DeleteQuestion" xml:space="preserve">
+    <value>Delete {0}? The member is removed with its groups and logins, and its sessions end. This cannot be undone.</value>
+  </data>
+  <data name="Members.Detail.DeleteConfirm" xml:space="preserve">
+    <value>Delete the member</value>
+  </data>
+  <data name="Members.Detail.Deleted" xml:space="preserve">
+    <value>The member {0} was deleted.</value>
+  </data>
+  <data name="Members.Detail.DeleteFailed" xml:space="preserve">
+    <value>The member could not be deleted. Try again.</value>
+  </data>
+  <data name="Members.Detail.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Members.Detail.NothingChanged" xml:space="preserve">
+    <value>Nothing was changed.</value>
+  </data>
+  <data name="Members.Detail.Changed" xml:space="preserve">
+    <value>The member changed meanwhile; it is shown as it now stands.</value>
+  </data>
+  <data name="Members.Detail.ChangeFailed" xml:space="preserve">
+    <value>The change could not be made. Try again.</value>
+  </data>
+  <data name="Members.Groups.Heading" xml:space="preserve">
+    <value>Groups</value>
+  </data>
+  <data name="Members.Groups.None" xml:space="preserve">
+    <value>The member is in no group.</value>
+  </data>
+  <data name="Members.Groups.Remove" xml:space="preserve">
+    <value>Take out</value>
+  </data>
+  <data name="Members.Groups.RemoveWhich" xml:space="preserve">
+    <value> of the group {0}</value>
+  </data>
+  <data name="Members.Groups.Loading" xml:space="preserve">
+    <value>Loading the groups…</value>
+  </data>
+  <data name="Members.Groups.ReadFailed" xml:space="preserve">
+    <value>The groups could not be loaded.</value>
+  </data>
+  <data name="Members.Groups.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Members.Groups.Add" xml:space="preserve">
+    <value>Group to put the member in</value>
+  </data>
+  <data name="Members.Groups.Placeholder" xml:space="preserve">
+    <value>Choose a group</value>
+  </data>
+  <data name="Members.Groups.AddButton" xml:space="preserve">
+    <value>Put in the group</value>
+  </data>
+  <data name="Members.Groups.Added" xml:space="preserve">
+    <value>The member was put in the group {0}.</value>
+  </data>
+  <data name="Members.Groups.Removed" xml:space="preserve">
+    <value>The member was taken out of the group {0}.</value>
+  </data>
+  <data name="Members.Groups.AboveReach" xml:space="preserve">
+    <value>Not changed: the group's role gives a permission you do not hold. Putting a member in a group, or taking it out, needs every grant of the group's role.</value>
+  </data>
+  <data name="Members.Groups.Changed" xml:space="preserve">
+    <value>The groups of the member changed meanwhile; they are shown as they now stand.</value>
+  </data>
+  <data name="Members.Groups.GroupGone" xml:space="preserve">
+    <value>That group no longer exists.</value>
+  </data>
+  <data name="Members.Groups.Failed" xml:space="preserve">
+    <value>The group could not be changed. Try again.</value>
+  </data>
+  <data name="Members.Sessions.Heading" xml:space="preserve">
+    <value>Sessions</value>
+  </data>
+  <data name="Members.Sessions.Loading" xml:space="preserve">
+    <value>Loading the sessions…</value>
+  </data>
+  <data name="Members.Sessions.Failed" xml:space="preserve">
+    <value>The sessions could not be loaded.</value>
+  </data>
+  <data name="Members.Sessions.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Members.Sessions.None" xml:space="preserve">
+    <value>The member is signed in nowhere.</value>
+  </data>
+  <data name="Members.Sessions.Started" xml:space="preserve">
+    <value>{0}, signed in {1}</value>
+  </data>
+  <data name="Members.Sessions.UnknownApp" xml:space="preserve">
+    <value>An unnamed app</value>
+  </data>
+  <data name="Members.Sessions.End" xml:space="preserve">
+    <value>End</value>
+  </data>
+  <data name="Members.Sessions.EndWhich" xml:space="preserve">
+    <value> the session of {0}</value>
+  </data>
+  <data name="Members.Sessions.EndWhichStarted" xml:space="preserve">
+    <value> the session of {0} signed in {1}</value>
+  </data>
+  <data name="Members.Sessions.Ended" xml:space="preserve">
+    <value>The session of {0} was ended.</value>
+  </data>
+  <data name="Members.Sessions.AlreadyEnded" xml:space="preserve">
+    <value>That session had ended already.</value>
+  </data>
+  <data name="Members.Sessions.EndFailed" xml:space="preserve">
+    <value>The session could not be ended. Try again.</value>
+  </data>
+  <data name="Members.Logins.Heading" xml:space="preserve">
+    <value>External logins</value>
+  </data>
+  <data name="Members.Logins.Loading" xml:space="preserve">
+    <value>Loading the external logins…</value>
+  </data>
+  <data name="Members.Logins.Failed" xml:space="preserve">
+    <value>The external logins could not be loaded.</value>
+  </data>
+  <data name="Members.Logins.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Members.Logins.None" xml:space="preserve">
+    <value>The member signs in through no provider.</value>
+  </data>
+  <data name="Members.Logins.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Members.Logins.RemoveWhich" xml:space="preserve">
+    <value> the login through {0}</value>
+  </data>
+  <data name="Members.Logins.Removed" xml:space="preserve">
+    <value>The login through {0} was removed.</value>
+  </data>
+  <data name="Members.Logins.LastWayIn" xml:space="preserve">
+    <value>Not removed: the login through {0} is the member's last way to sign in.</value>
+  </data>
+  <data name="Members.Logins.AlreadyRemoved" xml:space="preserve">
+    <value>That login had been removed already.</value>
+  </data>
+  <data name="Members.Logins.RemoveFailed" xml:space="preserve">
+    <value>The login could not be removed. Try again.</value>
+  </data>
+  <data name="Members.GroupsPage.Heading" xml:space="preserve">
+    <value>Member groups</value>
+  </data>
+  <data name="Members.GroupList.Heading" xml:space="preserve">
+    <value>Groups</value>
+  </data>
+  <data name="Members.GroupList.Loading" xml:space="preserve">
+    <value>Loading the groups…</value>
+  </data>
+  <data name="Members.GroupList.Failed" xml:space="preserve">
+    <value>The groups could not be loaded.</value>
+  </data>
+  <data name="Members.GroupList.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Members.GroupList.None" xml:space="preserve">
+    <value>There are no member groups yet.</value>
+  </data>
+  <data name="Members.GroupList.Role" xml:space="preserve">
+    <value>Role: {0}</value>
+  </data>
+  <data name="Members.GroupList.MembersOne" xml:space="preserve">
+    <value>1 member</value>
+  </data>
+  <data name="Members.GroupList.Members" xml:space="preserve">
+    <value>{0} members</value>
+  </data>
+  <data name="Members.GroupList.MembersOf" xml:space="preserve">
+    <value> in the group {0}</value>
+  </data>
+  <data name="Members.GroupList.Change" xml:space="preserve">
+    <value>Change</value>
+  </data>
+  <data name="Members.GroupList.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Members.GroupList.Which" xml:space="preserve">
+    <value> the group {0}</value>
+  </data>
+  <data name="Members.GroupList.DeleteQuestion" xml:space="preserve">
+    <value>Delete the group {0}? Its members leave it and lose what its role gives them. This cannot be undone.</value>
+  </data>
+  <data name="Members.GroupList.DeleteConfirm" xml:space="preserve">
+    <value>Delete the group</value>
+  </data>
+  <data name="Members.GroupList.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Members.GroupList.NothingChanged" xml:space="preserve">
+    <value>Nothing was changed.</value>
+  </data>
+  <data name="Members.GroupList.Deleted" xml:space="preserve">
+    <value>The group {0} was deleted.</value>
+  </data>
+  <data name="Members.GroupList.AboveReach" xml:space="preserve">
+    <value>The group {0} was not deleted: its role gives a permission you do not hold. Deleting a group needs every grant of its role.</value>
+  </data>
+  <data name="Members.GroupList.AlreadyDeleted" xml:space="preserve">
+    <value>The group {0} had been deleted already.</value>
+  </data>
+  <data name="Members.GroupList.DeleteFailed" xml:space="preserve">
+    <value>The group could not be deleted. Try again.</value>
+  </data>
+  <data name="Members.GroupForm.NewHeading" xml:space="preserve">
+    <value>New group</value>
+  </data>
+  <data name="Members.GroupForm.ChangeHeading" xml:space="preserve">
+    <value>Change the group {0}</value>
+  </data>
+  <data name="Members.GroupForm.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Members.GroupForm.NameHelp" xml:space="preserve">
+    <value>Lower-case letters, digits, '-' and '_', starting with a letter or a digit. Row rules read the groups of a member by this name.</value>
+  </data>
+  <data name="Members.GroupForm.NameRequired" xml:space="preserve">
+    <value>Enter the name of the group.</value>
+  </data>
+  <data name="Members.GroupForm.NameInvalid" xml:space="preserve">
+    <value>A group name is 1 to 64 lower-case letters, digits, '-' or '_', and starts with a letter or a digit.</value>
+  </data>
+  <data name="Members.GroupForm.NameTaken" xml:space="preserve">
+    <value>A group has this name already.</value>
+  </data>
+  <data name="Members.GroupForm.Description" xml:space="preserve">
+    <value>Description (optional)</value>
+  </data>
+  <data name="Members.GroupForm.DescriptionInvalid" xml:space="preserve">
+    <value>A description has at most 512 characters and no control character.</value>
+  </data>
+  <data name="Members.GroupForm.Role" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="Members.GroupForm.RoleHelp" xml:space="preserve">
+    <value>The members of the group hold this role.</value>
+  </data>
+  <data name="Members.GroupForm.RoleRequired" xml:space="preserve">
+    <value>Choose the role the members of the group hold.</value>
+  </data>
+  <data name="Members.GroupForm.RoleGone" xml:space="preserve">
+    <value>That role no longer exists. Choose another.</value>
+  </data>
+  <data name="Members.GroupForm.Create" xml:space="preserve">
+    <value>Create the group</value>
+  </data>
+  <data name="Members.GroupForm.Save" xml:space="preserve">
+    <value>Save the group</value>
+  </data>
+  <data name="Members.GroupForm.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Members.GroupForm.NothingChanged" xml:space="preserve">
+    <value>Nothing was changed.</value>
+  </data>
+  <data name="Members.GroupForm.Created" xml:space="preserve">
+    <value>The group {0} was created.</value>
+  </data>
+  <data name="Members.GroupForm.Saved" xml:space="preserve">
+    <value>The group {0} was saved.</value>
+  </data>
+  <data name="Members.GroupForm.AboveReach" xml:space="preserve">
+    <value>Not saved: the role gives a permission you do not hold. Making or changing a group needs every grant of its role, the one it has and the one it gets.</value>
+  </data>
+  <data name="Members.GroupForm.Gone" xml:space="preserve">
+    <value>The group {0} no longer exists.</value>
+  </data>
+  <data name="Members.GroupForm.Failed" xml:space="preserve">
+    <value>The group could not be saved. Try again.</value>
+  </data>
 </root>
