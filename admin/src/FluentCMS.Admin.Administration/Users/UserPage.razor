@@ -131,8 +131,9 @@ else
         <p class="users-message" tabindex="-1" @ref="rolesElement">@rolesMessage</p>
     </CmsCard>
 
-    <UserSessions UserId="@Id" />
-    <UserLogins UserId="@Id" />
+    @* A new security stamp ends every session of the user, so the card is drawn afresh, and reads them again, after one. *@
+    <UserSessions @key="sessionsRead" UserId="@Id" />
+    <UserLogins UserId="@Id" OnRemoved="@ReadSessions" />
 }
 
 @code {
@@ -152,6 +153,7 @@ else
     private ElementReference questionElement;
     private Func<ElementReference>? focusAfterRender;
     private CancellationTokenSource? reading;
+    private int sessionsRead;
 
     [Parameter]
     public Guid Id { get; set; }
@@ -235,11 +237,12 @@ else
         focusAfterRender = () => accountElement;
     }
 
+    // Deactivate and the two-factor reset give the user a new security stamp, which ends its sessions on the server.
     private Task ConfirmAsync(Question question) => question == Question.Deactivate
-        ? ChangeAsync(Api.DeactivateAsync, L["Users.Detail.Deactivated"])
-        : ChangeAsync(Api.ResetTwoFactorAsync, L["Users.Detail.TwoFactorReset"]);
+        ? ChangeAsync(Api.DeactivateAsync, L["Users.Detail.Deactivated"], endsSessions: true)
+        : ChangeAsync(Api.ResetTwoFactorAsync, L["Users.Detail.TwoFactorReset"], endsSessions: true);
 
-    private Task ReactivateAsync() => ChangeAsync(Api.ReactivateAsync, L["Users.Detail.Reactivated"]);
+    private Task ReactivateAsync() => ChangeAsync(Api.ReactivateAsync, L["Users.Detail.Reactivated"], endsSessions: true);
 
     private Task ToggleMustChangeAsync()
     {
@@ -250,7 +253,7 @@ else
     }
 
     // A change of the account card, whose answer is the user as it now stands.
-    private async Task ChangeAsync(Func<Guid, CancellationToken, Task<UserRecord>> change, string done)
+    private async Task ChangeAsync(Func<Guid, CancellationToken, Task<UserRecord>> change, string done, bool endsSessions = false)
     {
         if (busy)
         {
@@ -262,6 +265,10 @@ else
         {
             user = await change(Id, CancellationToken.None);
             accountMessage = done;
+            if (endsSessions)
+            {
+                ReadSessions();
+            }
         }
         catch (Exception exception) when (UserProblems.Has(exception, UserProblems.LastSuperAdmin))
         {
@@ -340,6 +347,8 @@ else
         // A role removed takes its button with it, so focus goes to the result.
         focusAfterRender = () => rolesElement;
     }
+
+    private void ReadSessions() => sessionsRead++;
 
     // The tab signs in again with its second factor after the sign-out; the account page turns two-factor sign-in on.
     private Task SignOutAsync() => Session.SignOutAsync(CancellationToken.None);

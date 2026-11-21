@@ -49,6 +49,10 @@
     [Parameter, EditorRequired]
     public Guid UserId { get; set; }
 
+    // Raised when a login was removed, which gives the user a new security stamp and so ends its sessions.
+    [Parameter]
+    public EventCallback OnRemoved { get; set; }
+
     protected override Task OnInitializedAsync() => ReadAsync();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -96,6 +100,7 @@
         {
             await Api.RemoveLoginAsync(UserId, login.Provider, Closing);
             message = L["Users.Logins.Removed", Name(login)];
+            await OnRemoved.InvokeAsync();
             await ReadAsync();
         }
         catch (Exception exception) when (UserProblems.Has(exception, UserProblems.LastWayIn))

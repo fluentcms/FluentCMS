@@ -107,6 +107,40 @@ public sealed class UserPageTests : UsersTestContext
         Buttons(Section(app, "Account")).ShouldContain("Deactivate");
     }
 
+    // Deactivate, reactivate, the two-factor reset and the removal of a login end the user's sessions on the server, so the
+    // card reads them again after each and lists none of those ended.
+    [Fact]
+    public void TheSessionsAreReadAgainAfterEachChangeThatEndsThem()
+    {
+        UserOf(Grace)["twoFactorEnabled"] = true;
+        var app = Open(Grace);
+        var sessions = $"users/{Grace:D}/sessions";
+        Items(Section(app, "Sessions")).ShouldHaveSingleItem();
+
+        Button(Section(app, "Account"), "Deactivate").Click();
+        app.WaitForAssertion(() => Button(Section(app, "Account"), "Deactivate the user"));
+        Button(Section(app, "Account"), "Deactivate the user").Click();
+        app.WaitForAssertion(() => Section(app, "Sessions").TextContent.ShouldContain("The user is signed in nowhere."));
+        Management.Count(sessions).ShouldBe(2);
+
+        Sessions[Grace].Add(new JsonObject { ["id"] = Guid.NewGuid(), ["clientId"] = "cli", ["clientName"] = "CLI", ["createdAt"] = Created, ["scopes"] = new JsonArray() });
+        Button(Section(app, "Account"), "Reactivate").Click();
+        app.WaitForAssertion(() => Management.Count(sessions).ShouldBe(3));
+        app.WaitForAssertion(() => Section(app, "Sessions").TextContent.ShouldContain("The user is signed in nowhere."));
+
+        Sessions[Grace].Add(new JsonObject { ["id"] = Guid.NewGuid(), ["clientId"] = "cli", ["clientName"] = "CLI", ["createdAt"] = Created, ["scopes"] = new JsonArray() });
+        Button(Section(app, "Account"), "Reset two-factor sign-in").Click();
+        app.WaitForAssertion(() => Button(Section(app, "Account"), "Cancel"));
+        Button(Section(app, "Account"), "Reset two-factor sign-in").Click();
+        app.WaitForAssertion(() => Management.Count(sessions).ShouldBe(4));
+        app.WaitForAssertion(() => Section(app, "Sessions").TextContent.ShouldContain("The user is signed in nowhere."));
+
+        Sessions[Grace].Add(new JsonObject { ["id"] = Guid.NewGuid(), ["clientId"] = "cli", ["clientName"] = "CLI", ["createdAt"] = Created, ["scopes"] = new JsonArray() });
+        Button(Section(app, "External logins"), "Remove the login through GitHub").Click();
+        app.WaitForAssertion(() => Management.Count(sessions).ShouldBe(5));
+        app.WaitForAssertion(() => Section(app, "Sessions").TextContent.ShouldContain("The user is signed in nowhere."));
+    }
+
     [Fact]
     public void ASessionIsEndedAndAnExternalLoginRemovedWithFocusOnTheResult()
     {

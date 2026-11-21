@@ -161,6 +161,40 @@ public sealed class UsersPageTests : UsersTestContext
         Items(Section(app, "Pending invitations")).ShouldHaveSingleItem();
     }
 
+    // A send ends the pending invitation to the address before the mail goes, and a mail that fails does not bring it back.
+    [Fact]
+    public void AFailedSendReadsThePendingInvitationsAgain()
+    {
+        Invitations.Add(new JsonObject
+        {
+            ["id"] = Laptop,
+            ["email"] = "sam@example.com",
+            ["roleIds"] = new JsonArray(),
+            ["createdAt"] = Created,
+            ["createdBy"] = Ada,
+            ["expiresAt"] = "2026-11-09T08:00:00+00:00",
+        });
+        Management.Answer = (method, path) =>
+        {
+            if (method != HttpMethod.Post || path != "invitations")
+            {
+                return null;
+            }
+
+            Invitations.Clear();
+            return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+        };
+        var app = Load("users");
+        app.WaitForAssertion(() => Items(Section(app, "Pending invitations")).ShouldHaveSingleItem());
+
+        Section(app, "Invite a user").QuerySelector("input[type=email]")!.Input("sam@example.com");
+        Section(app, "Invite a user").QuerySelector("form")!.Submit();
+
+        app.WaitForAssertion(() => Message(app, "Invite a user").ShouldBe("The invitation could not be sent. Try again."));
+        app.WaitForAssertion(() => Section(app, "Pending invitations").TextContent.ShouldContain("No invitation is waiting to be accepted."));
+        Management.Count("invitations").ShouldBe(3);
+    }
+
     [Fact]
     public void AnInvitationNoLongerPendingIsSaidAndTheListReadAgain()
     {

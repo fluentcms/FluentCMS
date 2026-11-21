@@ -171,12 +171,15 @@ public abstract class UsersTestContext : AdministrationTestContext
                 break;
             case ["deactivate"]:
                 user["deactivatedAt"] = "2026-11-20T10:00:00+00:00";
+                EndSessions(target);
                 break;
             case ["reactivate"]:
                 user["deactivatedAt"] = null;
+                EndSessions(target);
                 break;
             case ["two-factor", "reset"]:
                 user["twoFactorEnabled"] = false;
+                EndSessions(target);
                 break;
             case ["roles", var role] when method == HttpMethod.Put:
                 user["roles"]!.AsArray().Add(RoleOfUser(Guid.Parse(role)));
@@ -191,6 +194,7 @@ public abstract class UsersTestContext : AdministrationTestContext
             case ["logins"]:
                 return Json(new JsonObject { ["items"] = Logins.GetValueOrDefault(target)?.DeepClone() ?? new JsonArray() });
             case ["logins", var provider]:
+                EndSessions(target);
                 return Remove(Logins[target], Logins[target].Single(item => (string)item!["provider"]! == provider)!);
             default:
                 return null;
@@ -198,6 +202,10 @@ public abstract class UsersTestContext : AdministrationTestContext
 
         return Json(user.DeepClone());
     }
+
+    // As the server, where a new security stamp, which deactivate, reactivate, the two-factor reset and the removal of a
+    // login give, ends every session of the user.
+    private void EndSessions(Guid user) => Sessions.GetValueOrDefault(user)?.Clear();
 
     private static HttpResponseMessage Remove(JsonArray items, JsonNode item)
     {

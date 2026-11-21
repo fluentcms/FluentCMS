@@ -214,7 +214,6 @@
             sentMessage = L["Users.Invite.Sent", sent.Email, Formats.DateTime(sent.ExpiresAt)];
             (email, roleToAdd) = (null, null);
             chosen.Clear();
-            await ReadAsync();
         }
         catch (Exception exception) when (UserProblems.Has(exception, UserProblems.InvalidEmail, "email"))
         {
@@ -247,6 +246,9 @@
             busy = false;
         }
 
+        // A send ends the pending invitations to the address before the mail goes, and a mail that fails does not bring them
+        // back, so the list is read again whatever the answer.
+        await ReadAsync();
         if (sentMessage is not null)
         {
             focusAfterRender = sentElement;
