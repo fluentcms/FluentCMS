@@ -26,5 +26,5 @@
 
     protected override void OnInitialized() => address = new ContentLocaleAddress(Context, Navigation, Announcer, Document, L);
 
-    protected override Task OnParametersSetAsync() => address!.FollowAsync(Type, Locale);
+    protected override Task OnParametersSetAsync() => ContentRoutes.IsEntry(Navigation, Type, Id) ? address!.FollowAsync(Type, Locale) : Task.CompletedTask;
 }

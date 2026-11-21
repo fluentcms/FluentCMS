@@ -73,6 +73,7 @@ else
     private string? path;
     private RecordQuery shown = new(null, 1, 0);
     private bool read;
+    private bool reloadPending;
     private string? searchText;
     private IReadOnlyList<TItem> items = [];
     private long total;
@@ -177,9 +178,16 @@ else
         Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(new Dictionary<string, object?> { [name] = string.IsNullOrEmpty(value) ? null : value, ["page"] = null }));
     }
 
-    // Reads the page the address names again, as after the page changed a record.
+    // Reads the page the address names again, as after the page changed a record. While the address is another path's, as
+    // while the router waits for the next page, the read waits for the list's own address.
     public async Task ReloadAsync()
     {
+        if (PathOf(Navigation.Uri) != path)
+        {
+            reloadPending = true;
+            return;
+        }
+
         await ReadAddressAsync(again: true);
         StateHasChanged();
     }
@@ -207,10 +215,12 @@ else
             Filters = Filters.Select(name => (Name: name, Value: ValueOf(query, name))).Where(filter => filter.Value is { Length: > 0 })
                 .ToDictionary(filter => filter.Name, filter => filter.Value!, StringComparer.Ordinal),
         };
-        if (read && asked == shown && !again)
+        if (read && asked == shown && !again && !reloadPending)
         {
             return;
         }
+
+        reloadPending = false;
 
         var searched = read && asked with { Page = shown.Page } != shown;
         (shown, read, searchText) = (asked, true, asked.Search);

@@ -264,6 +264,11 @@ else if (view is { } shownView)
 
     protected override async Task OnParametersSetAsync()
     {
+        if (!ContentRoutes.IsList(Navigation, Type))
+        {
+            return;
+        }
+
         // The access and the schema are those of the content locale, so they are read in it before anything else.
         address ??= new ContentLocaleAddress(Context, Navigation, Announcer, Document, L);
         await address.FollowAsync(Type, LocaleQuery);
