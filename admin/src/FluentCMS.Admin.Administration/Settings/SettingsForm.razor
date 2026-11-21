@@ -7,6 +7,7 @@
 @using System.Diagnostics.CodeAnalysis
 @using System.Net
 @inject IManagementApi Api
+@inject ICurrentSite CurrentSite
 @inject FieldEditorRegistry Editors
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<SettingsResources> L
@@ -148,14 +149,19 @@ else
     [Parameter]
     public bool Defaults { get; set; }
 
-    private SettingsScope Scope => new(Area, Defaults);
+    // Taken once, with the site of the session when the form first reads: every read and write of the form names it.
+    private SettingsScope Scope { get; set; } = null!;
 
     // The area read again over a save, with the fields the user changed whose value the newer one does not have.
     private sealed record Conflict(SettingsRead Theirs, IReadOnlyList<SchemaFieldDescription> Rows);
 
     private bool Changed => typed.Count > 0 || (read is not null && !JsonNode.DeepEquals(values, read.Value));
 
-    protected override Task OnInitializedAsync() => ReadAsync();
+    protected override Task OnInitializedAsync()
+    {
+        Scope = new SettingsScope(Area, Defaults, CurrentSite.Site);
+        return ReadAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

@@ -51,6 +51,9 @@
   <data name="Settings.Area.Name.branding" xml:space="preserve">
     <value>Branding</value>
   </data>
+  <data name="Settings.Area.Name.preview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
   <data name="Settings.Area.Name.media" xml:space="preserve">
     <value>Media</value>
   </data>

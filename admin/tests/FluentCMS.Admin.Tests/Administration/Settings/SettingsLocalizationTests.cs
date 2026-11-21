@@ -20,14 +20,37 @@ public sealed class SettingsLocalizationTests : AdministrationTestContext
     [InlineData(PseudoCulture.RightToLeft)]
     public void EveryTextOfTheSettingsPageComesFromTheResources(string culture)
     {
+        // Every area the reference host registers, core's and the first-party plugins', is named by the resources.
         settings.Areas.Add(FakeSettings.Area("branding", site: true, defaults: true));
+        settings.Areas.Add(FakeSettings.Area("preview", site: true, defaults: true));
         settings.Areas.Add(FakeSettings.Area("ai", "ai", site: true, defaults: true));
         settings.Areas.Add(FakeSettings.Area("media", "media", site: false, defaults: true));
+        settings.Areas.Add(FakeSettings.Area("mcp", "mcp", site: true, defaults: true));
 
-        var app = LoadLocalized(culture, "settings", ready: app => app.FindAll("main .settings-areas a").Count.ShouldBe(3));
+        var app = LoadLocalized(culture, "settings", ready: app => app.FindAll("main .settings-areas a").Count.ShouldBe(5));
 
         // The heading of an area's first page is {Area}.Page.Heading of its resources, which the end-to-end tests find it by.
         Heading(app).ShouldBe(Localized<SettingsResources>("Settings.Page.Heading"));
+    }
+
+    [Theory]
+    [InlineData(PseudoCulture.LeftToRight)]
+    [InlineData(PseudoCulture.RightToLeft)]
+    public void EveryTextOfThePageOfCoresPreviewAreaComesFromTheResources(string culture)
+    {
+        // The name of a property is data the schema gives, marked as the fake's data is.
+        var templates = PseudoCulture.Transform("templates", culture == PseudoCulture.RightToLeft);
+        settings.Areas.Add(FakeSettings.Area("preview", site: true, defaults: true));
+        var schema = new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = new JsonObject { [templates] = new JsonObject { ["type"] = "object", ["additionalProperties"] = new JsonObject { ["type"] = "string" } } },
+        };
+        settings.Add("preview", schema, new JsonObject { [templates] = new JsonObject() });
+
+        var app = LoadLocalized(culture, "settings/preview", ready: app => app.Find(".settings-source"));
+
+        Heading(app).ShouldBe(Localized<SettingsResources>("Settings.Area.Name.preview"));
     }
 
     [Theory]

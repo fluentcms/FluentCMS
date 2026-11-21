@@ -42,8 +42,9 @@ internal sealed record SettingsRead
     public required JsonObject Schema { get; init; }
 }
 
-// Where an area is read and written: the site of the request, or the instance defaults.
-internal sealed record SettingsScope(string Area, bool Defaults)
+// Where an area is read and written: the site of the request, or the instance defaults. Site is the site the form read in,
+// which its writes name, as the content form's do, so that a write never goes to a site the session switched to since.
+internal sealed record SettingsScope(string Area, bool Defaults, string? Site = null)
 {
     public string Path => $"settings/{Uri.EscapeDataString(Area)}" + (Defaults ? "/defaults" : "");
 }
@@ -81,7 +82,7 @@ internal static class SettingsCalls
     {
         ArgumentNullException.ThrowIfNull(api);
         ArgumentNullException.ThrowIfNull(scope);
-        return (await api.SendAsync(new ApiRequest(HttpMethod.Get, scope.Path) { NoLocale = true }, SettingsJsonContext.Default.SettingsRead, cancellationToken)).Value;
+        return (await api.SendAsync(new ApiRequest(HttpMethod.Get, scope.Path) { Site = scope.Site, NoLocale = true }, SettingsJsonContext.Default.SettingsRead, cancellationToken)).Value;
     }
 
     // The whole document over the version it was read at. A secret key it leaves out keeps what is stored, so the caller
@@ -90,7 +91,7 @@ internal static class SettingsCalls
     {
         ArgumentNullException.ThrowIfNull(api);
         ArgumentNullException.ThrowIfNull(scope);
-        var request = new ApiRequest(HttpMethod.Put, scope.Path) { Body = document, IfMatch = Tag(version), NoLocale = true };
+        var request = new ApiRequest(HttpMethod.Put, scope.Path) { Body = document, IfMatch = Tag(version), Site = scope.Site, NoLocale = true };
         return (await api.SendAsync(request, SettingsJsonContext.Default.SettingsRead, cancellationToken)).Value;
     }
 
@@ -99,7 +100,7 @@ internal static class SettingsCalls
     {
         ArgumentNullException.ThrowIfNull(api);
         ArgumentNullException.ThrowIfNull(scope);
-        await api.SendAsync(new ApiRequest(HttpMethod.Delete, scope.Path) { IfMatch = Tag(version), NoLocale = true }, cancellationToken);
+        await api.SendAsync(new ApiRequest(HttpMethod.Delete, scope.Path) { IfMatch = Tag(version), Site = scope.Site, NoLocale = true }, cancellationToken);
     }
 
     private static string Tag(int version) => version.ToString(CultureInfo.InvariantCulture);

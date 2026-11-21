@@ -99,6 +99,34 @@ public sealed class SettingsPageTests : AdministrationTestContext
         app.Find(".settings-message").TextContent.ShouldBe("The settings are reset.");
     }
 
+    // The layout drops the form during a site switch; were the form kept, its save and reset would still name the site it read.
+    [Fact]
+    public void ASaveAndAResetNameTheSiteTheFormReadAfterTheSessionsSiteChanged()
+    {
+        var shop = new Guid("0193a1b2-0000-7000-8000-00000000a002");
+        Management.AddSite(shop, "Shop", "shop");
+        settings.Areas.Add(FakeSettings.Area("blog", site: true, defaults: false));
+        settings.Add("blog", BlogSchema(), BlogValue(), source: "site", version: 2).ResetTo = BlogValue();
+        GrantArea("settings.blog.manage", instanceOnly: false);
+        var app = Load("settings/blog");
+        app.WaitForAssertion(() => Source(app).ShouldBe("site"));
+
+        var session = Services.GetRequiredService<FluentCMS.Admin.Shell.ShellSite>();
+        session.Current = Context.Sites.Single(site => site.Id == shop);
+        Input(app, "Site name").Input("Main news");
+        Input(app, "Api key").Input(Typed);
+        Button(app, "Save").Click();
+        app.WaitForAssertion(() => Source(app).ShouldBe("site"));
+        app.WaitForAssertion(() => app.Find(".settings-message").TextContent.ShouldBe("The settings are saved."));
+        Button(app, "Reset to the defaults").Click();
+        Button(app, "Reset").Click();
+        app.WaitForAssertion(() => Source(app).ShouldBe("default"));
+
+        settings.Writes.Select(write => write.Method).ShouldBe([HttpMethod.Put, HttpMethod.Delete]);
+        Management.Requests.Where(request => request.Path == "settings/blog").Select(request => request.Site).ShouldAllBe(site => site == MainSite.ToString("D"));
+        Management.Requests.Count(request => request.Path == "settings/blog").ShouldBe(4);
+    }
+
     [Fact]
     public void TheDefaultsAreChangedByACallerWhoMayAndTheSwitchShowsOnlyToOneWhoMayManageBoth()
     {
