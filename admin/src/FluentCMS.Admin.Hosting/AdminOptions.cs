@@ -10,7 +10,8 @@ public sealed partial class AdminOptions
 {
     public const string Section = "Admin";
 
-    // Off until the admin is released (A-47): off, nothing is served under /admin and no client is registered.
+    // Off until the admin is released (A-47): off, nothing is served under /admin, no client is registered, and the one
+    // registered while it was on is deleted at start.
     public bool Enabled { get; set; }
 
     // The origin and path base of the API, such as https://cms.example.com. Empty, it is FluentCms:PublicOrigin, or the
