@@ -185,8 +185,8 @@ internal sealed class AdminPlugins(
 
     // The router's OnNavigateAsync: a page of a half loads the half, and a page of an area of administration its assembly,
     // once the shell knows the site, if the user may see it; an open page of that assembly loads it at once. A navigation
-    // tries a failed load again. What the user sees is
-    // decided by the gate of the page the router renders, which does not trust that a route is rendered only once this ends.
+    // tries a failed load again. What the user sees is decided by the gate of the page the router renders, which does not
+    // trust that a route is rendered only once this ends.
     public async Task NavigateAsync(string route, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(route);
