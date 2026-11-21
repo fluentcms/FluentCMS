@@ -1,0 +1,455 @@
+@* A member of the instance (spec 4.15): its account, with its display name changed, deactivate and reactivate, and delete
+   after a question that names it; its groups, each taken out and one added; its sessions and its external logins. Putting
+   a member in a group, or taking it out, needs every grant of the group's role (FCMS3103), which the server decides; the
+   page offers it and names the refusal. *@
+@page "/members/{Id:guid}"
+@implements IDisposable
+@inject IManagementApi Api
+@inject NavigationManager Navigation
+@inject IAnnouncer Announcer
+@inject FormatService Formats
+@inject TimeProvider Time
+@inject IStringLocalizer<MembersResources> L
+
+@if (member is null)
+{
+    <h1 tabindex="-1">@(state == State.NotFound ? L["Members.Detail.NotFound"] : L["Members.Detail.Heading"])</h1>
+    @if (state == State.Loading)
+    {
+        <p role="status">@L["Members.Detail.Loading"]</p>
+    }
+    else if (state == State.NotFound)
+    {
+        <p><a href="members">@L["Members.Detail.BackToList"]</a></p>
+    }
+    else
+    {
+        <p role="alert">@L["Members.Detail.Failed"] <CmsButton OnClick="ReadAsync">@L["Members.Detail.TryAgain"]</CmsButton></p>
+    }
+}
+else
+{
+    <PageCrumb Text="@MemberTexts.Name(member)" />
+    <h1 tabindex="-1">@MemberTexts.Name(member)</h1>
+
+    <CmsCard Title="@L["Members.Detail.Account"]">
+        <dl>
+            <dt>@L["Members.Detail.Email"]</dt>
+            <dd>@member.Email</dd>
+            <dt>@L["Members.Detail.Address"]</dt>
+            <dd>@(member.EmailVerified ? L["Members.Detail.Verified"] : L["Members.Detail.NotVerified"])</dd>
+            <dt>@L["Members.Detail.Created"]</dt>
+            <dd>@Formats.DateTime(member.CreatedAt)</dd>
+            <dt>@L["Members.Detail.LastSignIn"]</dt>
+            <dd>@(member.LastLoginAt is { } last ? Formats.DateTime(last) : L["Members.Detail.NeverSignedIn"])</dd>
+            <dt>@L["Members.Detail.State"]</dt>
+            <dd>@(member.DeactivatedAt is { } deactivated ? L["Members.Detail.DeactivatedOn", Formats.DateTime(deactivated)] : L["Members.State.Active"])</dd>
+            @if (MemberTexts.LockedOut(member, Time.GetUtcNow()) is { } lockout)
+            {
+                <dt>@L["Members.Detail.Lockout"]</dt>
+                <dd>@L["Members.Detail.LockedOutUntil", Formats.DateTime(lockout)]</dd>
+            }
+        </dl>
+
+        <form @onsubmit="RenameAsync">
+            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                <CmsTextInput Label="@L["Members.Detail.DisplayName"]"
+                              Autocomplete="off"
+                              Value="@displayName"
+                              ValueChanged="@(value => displayName = value)"
+                              Disabled="@busy"
+                              Error="@displayNameError"
+                              Help="@L["Members.Detail.DisplayNameHelp"]" />
+                <CmsButton Submit="true" Disabled="@busy">@L["Members.Detail.Rename"]</CmsButton>
+            </CmsStack>
+        </form>
+
+        @if (asking is { } question)
+        {
+            <div role="group" aria-labelledby="@QuestionId">
+                <p id="@QuestionId" tabindex="-1" @ref="questionElement">
+                    @(question == Question.Delete ? L["Members.Detail.DeleteQuestion", MemberTexts.Named(member, L)] : L["Members.Detail.DeactivateQuestion", MemberTexts.Named(member, L)])
+                </p>
+                <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                    <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="@(() => ConfirmAsync(question))">
+                        @(question == Question.Delete ? L["Members.Detail.DeleteConfirm"] : L["Members.Detail.DeactivateConfirm"])
+                    </CmsButton>
+                    <CmsButton Disabled="@busy" OnClick="Cancel">@L["Members.Detail.Cancel"]</CmsButton>
+                </CmsStack>
+            </div>
+        }
+        else
+        {
+            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                @if (member.DeactivatedAt is not null)
+                {
+                    <CmsButton Disabled="@busy" OnClick="ReactivateAsync">@L["Members.Detail.Reactivate"]</CmsButton>
+                }
+                else
+                {
+                    <CmsButton Disabled="@busy" OnClick="@(() => Ask(Question.Deactivate))">@L["Members.Detail.Deactivate"]</CmsButton>
+                }
+                <CmsButton Disabled="@busy" OnClick="@(() => Ask(Question.Delete))">@L["Members.Detail.Delete"]</CmsButton>
+            </CmsStack>
+        }
+
+        <p class="members-message" tabindex="-1" @ref="accountElement">@accountMessage</p>
+    </CmsCard>
+
+    <CmsCard Title="@L["Members.Groups.Heading"]">
+        @if (member.Groups.Count == 0)
+        {
+            <p>@L["Members.Groups.None"]</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var group in member.Groups)
+                {
+                    <li @key="group.Id">
+                        @group.Name
+                        <CmsButton Disabled="@busy" OnClick="@(() => RemoveFromGroupAsync(group))">
+                            @L["Members.Groups.Remove"]<span class="cms-visually-hidden">@L["Members.Groups.RemoveWhich", group.Name]</span>
+                        </CmsButton>
+                    </li>
+                }
+            </ul>
+        }
+        @if (groups is null)
+        {
+            <p role="@(groupsFailed ? "alert" : "status")">
+                @(groupsFailed ? L["Members.Groups.ReadFailed"] : L["Members.Groups.Loading"])
+                @if (groupsFailed)
+                {
+                    <CmsButton OnClick="ReadGroupsAsync">@L["Members.Groups.TryAgain"]</CmsButton>
+                }
+            </p>
+        }
+        else
+        {
+            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                <CmsSelect Label="@L["Members.Groups.Add"]"
+                           Options="@GroupOptions"
+                           Value="@groupToAdd?.ToString("D")"
+                           ValueChanged="@(value => groupToAdd = Guid.TryParse(value, out var id) ? id : null)"
+                           Placeholder="@L["Members.Groups.Placeholder"]"
+                           Disabled="@busy" />
+                <CmsButton Disabled="@(busy || groupToAdd is null)" OnClick="AddToGroupAsync">@L["Members.Groups.AddButton"]</CmsButton>
+            </CmsStack>
+        }
+        <p class="members-message" tabindex="-1" @ref="groupsElement">@groupsMessage</p>
+    </CmsCard>
+
+    @* A deactivate and a removed login end every session of the member on the server, so the card is drawn afresh, and
+       reads them again, after one. *@
+    <MemberSessions @key="sessionsRead" MemberId="@Id" />
+    <MemberLogins MemberId="@Id" OnRemoved="@ReadSessions" />
+}
+
+@code {
+    private const string QuestionId = "members-detail-question";
+
+    private MemberRecord? member;
+    private Guid? shownId;
+    private State state = State.Loading;
+    private Question? asking;
+    private IReadOnlyList<MemberGroupRecord>? groups;
+    private bool groupsFailed;
+    private Guid? groupToAdd;
+    private string? displayName;
+    private string? displayNameError;
+    private bool busy;
+    private string? accountMessage;
+    private string? groupsMessage;
+    private ElementReference accountElement;
+    private ElementReference groupsElement;
+    private ElementReference questionElement;
+    private Func<ElementReference>? focusAfterRender;
+    private CancellationTokenSource? reading;
+    private readonly CancellationTokenSource closing = new();
+    private int sessionsRead;
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private enum State
+    {
+        Loading,
+        Ready,
+        NotFound,
+        Failed,
+    }
+
+    private enum Question
+    {
+        Deactivate,
+        Delete,
+    }
+
+    // The groups the member is not in yet.
+    private IReadOnlyList<CmsOption> GroupOptions =>
+        [.. (groups ?? []).Where(group => member!.Groups.All(held => held.Id != group.Id)).Select(group => new CmsOption(group.Id.ToString("D"), group.Name))];
+
+    // The page is one instance for every id, so another id reads its member afresh.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (shownId != Id)
+        {
+            shownId = Id;
+            (member, asking, groupToAdd, accountMessage, groupsMessage, displayNameError) = (null, null, null, null, null, null);
+            await Task.WhenAll(ReadAsync(), groups is null ? ReadGroupsAsync() : Task.CompletedTask);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender?.Invoke() is { Id: not null } element)
+        {
+            focusAfterRender = null;
+            await element.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+        var current = reading = new CancellationTokenSource();
+        state = State.Loading;
+        try
+        {
+            Show(await Api.GetMemberAsync(Id, current.Token));
+            state = State.Ready;
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.MemberNotFound))
+        {
+            (member, state) = (null, State.NotFound);
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            (member, state) = (null, State.Failed);
+        }
+    }
+
+    private async Task ReadGroupsAsync()
+    {
+        (groups, groupsFailed) = (null, false);
+        try
+        {
+            groups = await Api.GetMemberGroupsAsync(Closing);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            groupsFailed = true;
+        }
+    }
+
+    // The member as the server answered it. The name's input takes its name when the member is first shown, when the save
+    // of the name answered, and while it still holds the name shown before, so that a save does not send a stale name back;
+    // a name the user typed and has not saved is kept.
+    private void Show(MemberRecord shown, bool takeName = false)
+    {
+        if (takeName || member is null || displayName == member.DisplayName)
+        {
+            displayName = shown.DisplayName;
+        }
+
+        member = shown;
+    }
+
+    private void Ask(Question question)
+    {
+        (asking, accountMessage) = (question, null);
+        focusAfterRender = () => questionElement;
+    }
+
+    private void Cancel()
+    {
+        asking = null;
+        accountMessage = L["Members.Detail.NothingChanged"];
+        focusAfterRender = () => accountElement;
+    }
+
+    private Task ConfirmAsync(Question question) => question == Question.Delete
+        ? DeleteAsync()
+        : ChangeAsync(Api.DeactivateMemberAsync, L["Members.Detail.Deactivated"], endsSessions: true);
+
+    private Task ReactivateAsync() => ChangeAsync(Api.ReactivateMemberAsync, L["Members.Detail.Reactivated"]);
+
+    // An empty name clears it.
+    private async Task RenameAsync()
+    {
+        displayNameError = null;
+        var name = displayName?.Trim() ?? "";
+        await ChangeAsync((id, token) => Api.RenameMemberAsync(id, name, token), name.Length == 0 ? L["Members.Detail.NameCleared"] : L["Members.Detail.Renamed"], renames: true);
+    }
+
+    // A change of the account card, whose answer is the member as it now stands.
+    private async Task ChangeAsync(Func<Guid, CancellationToken, Task<MemberRecord>> change, string done, bool endsSessions = false, bool renames = false)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        (busy, asking) = (true, null);
+        try
+        {
+            Show(await change(Id, Closing), takeName: renames);
+            accountMessage = done;
+            if (endsSessions)
+            {
+                ReadSessions();
+            }
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.InvalidMember, "displayName"))
+        {
+            (displayNameError, accountMessage) = (L["Members.Detail.DisplayNameInvalid"], null);
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.MemberChanged))
+        {
+            accountMessage = L["Members.Detail.Changed"];
+            await ReadAsync();
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.MemberNotFound))
+        {
+            await ReadAsync();
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            accountMessage = L["Members.Detail.ChangeFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        focusAfterRender = () => accountElement;
+    }
+
+    // The member's sessions end with it, and the list is shown as it was when the member was opened from it, in place of the
+    // member's entry of the history, so that Back does not land on an address that finds nothing.
+    private async Task DeleteAsync()
+    {
+        if (busy || member is not { } deleted)
+        {
+            return;
+        }
+
+        (busy, asking) = (true, null);
+        try
+        {
+            await Api.DeleteMemberAsync(Id, Closing);
+            Announcer.Announce(L["Members.Detail.Deleted", MemberTexts.Named(deleted, L)]);
+            Navigation.NavigateTo(MembersPage.ListAddress(Navigation.HistoryEntryState), replace: true);
+            return;
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.MemberNotFound))
+        {
+            await ReadAsync();
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.MemberChanged))
+        {
+            accountMessage = L["Members.Detail.Changed"];
+            await ReadAsync();
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            accountMessage = L["Members.Detail.DeleteFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        focusAfterRender = () => accountElement;
+    }
+
+    private Task AddToGroupAsync()
+    {
+        if (groupToAdd is not { } id)
+        {
+            return Task.CompletedTask;
+        }
+
+        var name = groups?.FirstOrDefault(group => group.Id == id)?.Name ?? id.ToString("D");
+        return GroupChangeAsync((memberId, token) => Api.AddToGroupAsync(memberId, id, token), L["Members.Groups.Added", name]);
+    }
+
+    private Task RemoveFromGroupAsync(MemberGroupRef group) =>
+        GroupChangeAsync((memberId, token) => Api.RemoveFromGroupAsync(memberId, group.Id, token), L["Members.Groups.Removed", group.Name]);
+
+    private async Task GroupChangeAsync(Func<Guid, CancellationToken, Task<MemberRecord>> change, string done)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            Show(await change(Id, Closing));
+            (groupsMessage, groupToAdd) = (done, null);
+        }
+        catch (Exception exception) when (MemberProblems.IsAboveReach(exception))
+        {
+            groupsMessage = L["Members.Groups.AboveReach"];
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.AlreadyInGroup) || MemberProblems.Has(exception, MemberProblems.NotInGroup))
+        {
+            (groupsMessage, groupToAdd) = (L["Members.Groups.Changed"], null);
+            await ReadAsync();
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.GroupNotFound))
+        {
+            (groupsMessage, groupToAdd) = (L["Members.Groups.GroupGone"], null);
+            await Task.WhenAll(ReadAsync(), ReadGroupsAsync());
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.MemberNotFound))
+        {
+            await ReadAsync();
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            groupsMessage = L["Members.Groups.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        // A group taken out takes its button with it, so focus goes to the result.
+        focusAfterRender = () => groupsElement;
+    }
+
+    private void ReadSessions() => sessionsRead++;
+}
