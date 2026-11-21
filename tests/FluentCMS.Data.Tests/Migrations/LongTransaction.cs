@@ -25,7 +25,8 @@ internal sealed class LongTransaction : DbCommandInterceptor
         services.AddSingleton<IDistributedLock>(provider => new DatabaseDistributedLock(
             provider.GetRequiredService<IServiceScopeFactory>(),
             TimeProvider.System,
-            provider.GetRequiredService<ILogger<DatabaseDistributedLock>>())
+            provider.GetRequiredService<ILogger<DatabaseDistributedLock>>(),
+            provider.GetRequiredService<LeaseRenewalInterceptor>())
         {
             Lease = TimeSpan.FromMilliseconds(300),
         });
