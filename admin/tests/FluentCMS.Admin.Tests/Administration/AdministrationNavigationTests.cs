@@ -278,6 +278,66 @@ public sealed class AdministrationNavigationTests : AdministrationTestContext
         pages.ShouldNotContain(typeof(RolesPage));
     }
 
+    // The no-access and not-found states are one page, which the RouteView keeps from one route to the next: its heading
+    // follows the address after a link, and the layout stays. The caller holds users and jobs through a role of the site
+    // only, so their instance-only areas answer no access, before the assembly is loaded and once roles has loaded it.
+    [Theory]
+    [InlineData("users", "no-such-page")]
+    [InlineData("no-such-page", "users")]
+    [InlineData("no-such-page", "jobs")]
+    [InlineData("roles", "users", "no-such-page", "jobs")]
+    [InlineData("roles", "no-such-page", "users", "no-such-page")]
+    public void TheNoAccessAndNotFoundStatesFollowTheAddressAndKeepTheLayout(params string[] routes)
+    {
+        Grant(["roles.manage", "users.manage", "jobs.manage"]);
+        var app = Load(routes[0]);
+        app.WaitForAssertion(() => Heading(app).ShouldBe(HeadingOf(routes[0])));
+        var layout = app.FindComponent<AdminLayout>().Instance;
+
+        foreach (var route in routes[1..])
+        {
+            Navigation.NavigateTo(route);
+            app.WaitForAssertion(() => Heading(app).ShouldBe(HeadingOf(route)));
+        }
+
+        app.FindComponent<AdminLayout>().Instance.ShouldBeSameAs(layout);
+
+        static string HeadingOf(string route) => route switch
+        {
+            "roles" => "Roles",
+            "users" or "jobs" => "No access",
+            _ => "Page not found",
+        };
+    }
+
+    // The first download of a half's assembly, overtaken by its route in a content locale whose access lacks the page: the
+    // router answers the address before its navigation has read that access, and the heading follows once it has.
+    [Fact]
+    public async Task AHalfsFirstDownloadOvertakenByItsRouteInALocaleThatDeniesItEndsOnNoAccess()
+    {
+        UseTheSampleHalf();
+        Management.AddLocale(MainSite, "fr", 1);
+        Grant(["roles.manage", "reviews.notes.manage"]);
+        var french = Management.Access[MainSite].DeepClone().AsObject();
+        french["permissions"] = new System.Text.Json.Nodes.JsonArray("schema.read", "roles.manage");
+        Management.LocaleAccess[(MainSite, "fr")] = french;
+        var app = Load("roles");
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/roles"));
+        var layout = app.FindComponent<AdminLayout>().Instance;
+        var download = Loader.Hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Navigation.NavigateTo("reviews");
+        app.WaitForAssertion(() => Loader.Loads.ShouldBe(2));
+        Navigation.NavigateTo("reviews?locale=fr");
+        await DrainAsync(app);
+        download.SetResult();
+
+        app.WaitForAssertion(() => Heading(app).ShouldBe("No access"));
+        Context.ContentLocale.ShouldBe("fr");
+        app.FindAll("main .cms-card").ShouldBeEmpty();
+        app.FindComponent<AdminLayout>().Instance.ShouldBeSameAs(layout);
+    }
+
     // The page type every RouteView draws, after each update of the markup.
     private static ConcurrentQueue<Type> Record(IRenderedComponent<AdminApp> app)
     {
