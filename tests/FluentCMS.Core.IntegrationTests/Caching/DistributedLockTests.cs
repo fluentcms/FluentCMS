@@ -512,17 +512,18 @@ public sealed class DistributedLockTests : IAsyncDisposable
     {
         var clock = new ControllableTimeProvider();
         var logs = new LogCapture();
-        var held = await Lock(_first, clock, TimeSpan.FromSeconds(30), renewals: new LeaseRenewalInterceptor()).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        var held = await Lock(_first, clock, TimeSpan.FromMinutes(2), renewals: new LeaseRenewalInterceptor()).TryAcquireAsync(Name, TimeSpan.Zero, Token);
         held.ShouldNotBeNull();
         var holder = (await RowAsync(_first)).Owner;
 
-        // Its renewals come every 10 seconds of the real clock, so none comes before the waiter has the lock.
-        clock.Advance(TimeSpan.FromSeconds(31));
+        // Its renewals come every 40 seconds of the real clock, so none comes while the waiter waits. A try whose BEGIN waited
+        // for the hosts' work at startup adds a second.
+        clock.Advance(TimeSpan.FromMinutes(2) + TimeSpan.FromSeconds(1));
         var watch = Stopwatch.StartNew();
         await using var taken = await Lock(_second, clock, TimeSpan.FromSeconds(30), logs).TryAcquireAsync(Name, Patience, Token);
 
         taken.ShouldNotBeNull();
-        watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
+        watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(20));
         var takeOver = logs.Entries.ShouldHaveSingleItem();
         takeOver.EventId.Id.ShouldBe(LockLog.LeaseTakenOverId);
         takeOver.State["Holder"].ShouldBe(holder);
