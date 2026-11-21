@@ -206,24 +206,15 @@ public sealed class MemberPageTests : MembersTestContext
         app.WaitForAssertion(() => app.FindAll("main table tbody tr").Select(row => row.QuerySelector("td")!.TextContent.Trim()).ShouldBe(["grace@example.com"]));
     }
 
-    // The member is opened by Enter on its row or by a click on its address; the list it goes back to takes the place of the
-    // member's entry of the history, so that Back does not reach the address of a member that is gone.
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void ADeleteGoesBackToTheListAsItWasOpenedInPlaceOfTheMember(bool byKeyboard)
+    // The list it goes back to takes the place of the member's entry of the history, so that Back does not reach the address
+    // of a member that is gone.
+    [Fact]
+    public void ADeleteGoesBackToTheListAsItWasOpenedInPlaceOfTheMember()
     {
         var list = $"members?group={Readers:D}&active=true";
         var app = Load(list);
         app.WaitForAssertion(() => app.FindAll("main table tbody tr").Count.ShouldBe(1));
-        if (byKeyboard)
-        {
-            app.Find("main table tbody tr").KeyDown(new KeyboardEventArgs { Key = "Enter" });
-        }
-        else
-        {
-            app.Find("main table tbody tr a").Click();
-        }
+        app.Find("main table tbody tr").KeyDown(new KeyboardEventArgs { Key = "Enter" });
 
         app.WaitForAssertion(() => Section(app, "Groups").QuerySelector("select").ShouldNotBeNull());
         Navigation.Uri.ShouldEndWith($"/members/{Ada:D}");

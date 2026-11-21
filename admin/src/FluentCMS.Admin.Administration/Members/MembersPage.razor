@@ -55,8 +55,7 @@
             OnRowActivated="@Open">
     <Columns>
         <CmsDataGridColumn TItem="MemberRecord" Name="email" Title="@L["Members.List.Email"]" Order="0">
-            @* A click opens the member as Enter does, with the list's address; the link stays for a new tab. *@
-            <a href="@Route(context)" tabindex="-1" @onclick="@(() => Open(context))" @onclick:preventDefault>@context.Email</a>
+            <a href="@Route(context)" tabindex="-1">@context.Email</a>
         </CmsDataGridColumn>
         <CmsDataGridColumn TItem="MemberRecord" Name="displayName" Title="@L["Members.List.DisplayName"]" Order="1" Value="@(member => member.DisplayName)" />
         <CmsDataGridColumn TItem="MemberRecord" Name="groups" Title="@L["Members.List.Groups"]" Order="2" Value="@(member => string.Join(", ", member.Groups.Select(group => group.Name)))" />
