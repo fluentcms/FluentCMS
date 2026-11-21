@@ -1,4 +1,5 @@
 using Bunit;
+using Bunit.TestDoubles;
 using FluentCMS.Admin.Components;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
@@ -126,9 +127,9 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
 
     // A route change, Back included, asks with Stay and Leave, since the page that holds the secret goes with it.
     [Fact]
-    public void ARouteChangeAsksFirstAndStayKeepsThePage()
+    public async Task ARouteChangeAsksFirstAndStayKeepsThePage()
     {
-        var navigation = Services.GetRequiredService<NavigationManager>();
+        var navigation = (BunitNavigationManager)Services.GetRequiredService<NavigationManager>();
         var dialog = RenderBound();
         var start = navigation.Uri;
 
@@ -136,6 +137,7 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
         dialog.WaitForAssertion(() => dialog.Find(".cms-secret-leave[role=alert]").TextContent.ShouldContain(Text("SecretLeaveQuestion")));
         Button(dialog, "SecretStay").Click();
 
+        await EndedAsync(navigation, 0, NavigationState.Prevented);
         dialog.WaitForAssertion(() => dialog.FindAll(".cms-secret-leave").ShouldBeEmpty());
         navigation.Uri.ShouldBe(start);
         bound.ShouldBe(Secret);
@@ -144,20 +146,22 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
         dialog.WaitForAssertion(() => dialog.Find(".cms-secret-leave"));
         Button(dialog, "SecretLeave").Click();
 
-        dialog.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/elsewhere"));
+        await EndedAsync(navigation, 1, NavigationState.Succeeded);
+        navigation.Uri.ShouldEndWith("/elsewhere");
     }
 
     // The caller's own navigation after Done, as to the new key's page, is not asked about.
     [Fact]
-    public void ANavigationAfterDoneIsNotAskedAbout()
+    public async Task ANavigationAfterDoneIsNotAskedAbout()
     {
-        var navigation = Services.GetRequiredService<NavigationManager>();
+        var navigation = (BunitNavigationManager)Services.GetRequiredService<NavigationManager>();
         var dialog = RenderBound();
 
         Button(dialog, "SecretDone").Click();
-        dialog.InvokeAsync(() => navigation.NavigateTo("elsewhere"));
+        await dialog.InvokeAsync(() => navigation.NavigateTo("elsewhere"));
 
-        dialog.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/elsewhere"));
+        await EndedAsync(navigation, 0, NavigationState.Succeeded);
+        navigation.Uri.ShouldEndWith("/elsewhere");
         dialog.FindAll(".cms-secret-leave").ShouldBeEmpty();
     }
 
@@ -166,6 +170,20 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
     {
         Should.Throw<InvalidOperationException>(() => Render<CmsSecretDialog>(p => p.Add(x => x.Label, "Secret"))).Message.ShouldContain("Title");
         Should.Throw<InvalidOperationException>(() => Render<CmsSecretDialog>(p => p.Add(x => x.Title, "New key"))).Message.ShouldContain("Label");
+    }
+
+    // A navigation ends after the dialog's last render, when its location-changing handler returns, so the wait is on the
+    // navigation manager's record of it, which holds each navigation once it has ended, and not on a render.
+    private static async Task EndedAsync(BunitNavigationManager navigation, int ended, NavigationState state)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (navigation.History.Count <= ended)
+        {
+            DateTime.UtcNow.ShouldBeLessThan(deadline, $"the navigation did not end {state}");
+            await Task.Delay(20, Xunit.TestContext.Current.CancellationToken);
+        }
+
+        navigation.History.First().State.ShouldBe(state);
     }
 
     private IRenderedComponent<CmsSecretDialog> RenderBound() =>
