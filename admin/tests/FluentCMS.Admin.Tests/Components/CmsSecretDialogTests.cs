@@ -19,8 +19,10 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
     private const string WriteText = "navigator.clipboard.writeText";
     private const string Show = "Microsoft.FluentUI.Blazor.Components.Dialog.Show";
     private const string Hide = "Microsoft.FluentUI.Blazor.Components.Dialog.Hide";
+    private const string Focus = "Blazor._internal.domWrapper.focus";
 
     private string? bound = Secret;
+    private int closed;
 
     [Fact]
     public void TheSecretIsHiddenUntilTheUserShowsIt()
@@ -97,19 +99,23 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
     public async Task EscapeDoesNotCloseIt()
     {
         var dialog = RenderBound();
-        var host = dialog.Find("fluent-dialog");
 
-        await host.TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = host.Id, OldState = "open", NewState = "closed" });
+        await ClosedByTheBrowserAsync(dialog);
 
         dialog.WaitForAssertion(() => JSInterop.Invocations.Count(invocation => invocation.Identifier == Show).ShouldBe(2));
         bound.ShouldBe(Secret);
+        closed.ShouldBe(0);
     }
 
-    // A secret passed one way would give a dialog that Done never closes.
+    // A secret passed one way would give a dialog that Done never closes, so the binding is asked for before any secret comes.
     [Fact]
-    public void ASecretWithoutItsBindingIsRefused() =>
+    public void ASecretWithoutItsBindingIsRefused()
+    {
+        Should.Throw<InvalidOperationException>(() => Render<CmsSecretDialog>(p => p.Add(x => x.Title, "New key").Add(x => x.Label, "Secret")))
+            .Message.ShouldContain("SecretChanged");
         Should.Throw<InvalidOperationException>(() => Render<CmsSecretDialog>(p => p.Add(x => x.Title, "New key").Add(x => x.Label, "Secret").Add(x => x.Secret, Secret)))
             .Message.ShouldContain("SecretChanged");
+    }
 
     // While it is open, the browser asks before a reload, a close or another site; once it is closed, nothing asks.
     [Fact]
@@ -125,11 +131,12 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
         dialog.FindComponents<NavigationLock>().ShouldBeEmpty();
     }
 
-    // A route change, Back included, asks with Stay and Leave, since the page that holds the secret goes with it.
+    // A route change, Back included, asks with Stay and Leave, since the page that holds the secret goes with it. Leave drops
+    // the secret before the route changes, so that a page kept across it does not show it on the new route.
     [Fact]
     public async Task ARouteChangeAsksFirstAndStayKeepsThePage()
     {
-        var navigation = (BunitNavigationManager)Services.GetRequiredService<NavigationManager>();
+        var navigation = Navigation();
         var dialog = RenderBound();
         var start = navigation.Uri;
 
@@ -137,7 +144,7 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
         dialog.WaitForAssertion(() => dialog.Find(".cms-secret-leave[role=alert]").TextContent.ShouldContain(Text("SecretLeaveQuestion")));
         Button(dialog, "SecretStay").Click();
 
-        await EndedAsync(navigation, 0, NavigationState.Prevented);
+        await navigation.EndedAsync(0, NavigationState.Prevented);
         dialog.WaitForAssertion(() => dialog.FindAll(".cms-secret-leave").ShouldBeEmpty());
         navigation.Uri.ShouldBe(start);
         bound.ShouldBe(Secret);
@@ -146,23 +153,118 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
         dialog.WaitForAssertion(() => dialog.Find(".cms-secret-leave"));
         Button(dialog, "SecretLeave").Click();
 
-        await EndedAsync(navigation, 1, NavigationState.Succeeded);
-        navigation.Uri.ShouldEndWith("/elsewhere");
+        // The record of a navigation is written once the question's handler has returned, so the secret was dropped before.
+        await navigation.EndedAsync(1, NavigationState.Succeeded);
+        navigation.History.First().Uri.ShouldBe("elsewhere");
+        bound.ShouldBeNull();
+    }
+
+    // The question takes focus on Stay, and Stay, which goes with it, gives focus back to the dialog's first control.
+    [Fact]
+    public async Task TheQuestionTakesFocusAndStayGivesItBackToTheDialog()
+    {
+        var navigation = Navigation();
+        var dialog = RenderBound();
+
+        _ = dialog.InvokeAsync(() => navigation.NavigateTo("elsewhere"));
+        dialog.WaitForAssertion(() => Focused().ShouldBe(ElementId(dialog, "SecretStay")));
+        Button(dialog, "SecretStay").Click();
+
+        await navigation.EndedAsync(0, NavigationState.Prevented);
+        dialog.WaitForAssertion(() => Focused().ShouldBe(ElementId(dialog, "SecretShow")));
+    }
+
+    // Escape or a click outside while the question is asked answers Stay: the question goes, once, and the dialog shown again
+    // has focus.
+    [Fact]
+    public async Task EscapeDuringTheQuestionAnswersStay()
+    {
+        var navigation = Navigation();
+        var dialog = RenderBound();
+        _ = dialog.InvokeAsync(() => navigation.NavigateTo("elsewhere"));
+        dialog.WaitForAssertion(() => dialog.Find(".cms-secret-leave"));
+
+        await ClosedByTheBrowserAsync(dialog);
+
+        await navigation.EndedAsync(0, NavigationState.Prevented);
+        dialog.FindAll("[role=alert]").ShouldBeEmpty();
+        bound.ShouldBe(Secret);
+        dialog.WaitForAssertion(() => JSInterop.Invocations.Count(invocation => invocation.Identifier == Show).ShouldBe(2));
+        dialog.WaitForAssertion(() => Focused().ShouldBe(ElementId(dialog, "SecretShow")));
     }
 
     // The caller's own navigation after Done, as to the new key's page, is not asked about.
     [Fact]
     public async Task ANavigationAfterDoneIsNotAskedAbout()
     {
-        var navigation = (BunitNavigationManager)Services.GetRequiredService<NavigationManager>();
+        var navigation = Navigation();
         var dialog = RenderBound();
 
         Button(dialog, "SecretDone").Click();
         await dialog.InvokeAsync(() => navigation.NavigateTo("elsewhere"));
 
-        await EndedAsync(navigation, 0, NavigationState.Succeeded);
-        navigation.Uri.ShouldEndWith("/elsewhere");
+        await navigation.EndedAsync(0, NavigationState.Succeeded);
+        navigation.History.First().Uri.ShouldBe("elsewhere");
         dialog.FindAll(".cms-secret-leave").ShouldBeEmpty();
+    }
+
+    // Done released the first secret only: the next one, shown straight from @bind-Secret:after, is guarded again.
+    [Fact]
+    public async Task ASecretShownStraightAfterDoneIsGuardedToo()
+    {
+        const string next = "fcms_dk_next0123456789abcdefghijklmno";
+        var navigation = Navigation();
+        var dialog = Render<CmsSecretDialog>(parameters => parameters
+            .Add(item => item.Title, "Copy the new key")
+            .Add(item => item.Label, "Secret")
+            .Add(item => item.Secret, bound)
+            .Add(item => item.SecretChanged, value => bound = value ?? next));
+
+        Button(dialog, "SecretDone").Click();
+        dialog.Render(parameters => parameters.Add(item => item.Secret, bound));
+        bound.ShouldBe(next);
+        _ = dialog.InvokeAsync(() => navigation.NavigateTo("elsewhere"));
+
+        dialog.WaitForAssertion(() => dialog.Find(".cms-secret-leave"));
+        dialog.Markup.ShouldNotContain(next);
+        Button(dialog, "SecretStay").Click();
+        await navigation.EndedAsync(0, NavigationState.Prevented);
+    }
+
+    // OnClosed follows Done alone: the dialog also closes when the caller drops the secret itself, as when its page reads
+    // another key, and then the caller is not told the user is done.
+    [Fact]
+    public async Task OnClosedFollowsDoneAlone()
+    {
+        var dialog = RenderBound();
+
+        dialog.Render(parameters => parameters.Add(item => item.Secret, null));
+        await ClosedByTheBrowserAsync(dialog);
+        closed.ShouldBe(0);
+
+        bound = Secret;
+        dialog.Render(parameters => parameters.Add(item => item.Secret, bound));
+        Button(dialog, "SecretDone").Click();
+        dialog.Render(parameters => parameters.Add(item => item.Secret, bound));
+        await ClosedByTheBrowserAsync(dialog);
+        closed.ShouldBe(1);
+    }
+
+    // A dialog removed while it asks, as when its page goes, lets the route change go on and holds no lock afterwards.
+    [Fact]
+    public async Task ADialogRemovedWhileItAsksLetsTheRouteChangeGoOn()
+    {
+        var navigation = Navigation();
+        var dialog = RenderBound();
+        _ = dialog.InvokeAsync(() => navigation.NavigateTo("elsewhere"));
+        dialog.WaitForAssertion(() => dialog.Find(".cms-secret-leave"));
+
+        await DisposeComponentsAsync();
+
+        await navigation.EndedAsync(0, NavigationState.Succeeded);
+        await Renderer.Dispatcher.InvokeAsync(() => navigation.NavigateTo("again"));
+        await navigation.EndedAsync(1, NavigationState.Succeeded);
+        navigation.History.First().Uri.ShouldBe("again");
     }
 
     [Fact]
@@ -172,31 +274,36 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
         Should.Throw<InvalidOperationException>(() => Render<CmsSecretDialog>(p => p.Add(x => x.Title, "New key"))).Message.ShouldContain("Label");
     }
 
-    // A navigation ends after the dialog's last render, when its location-changing handler returns, so the wait is on the
-    // navigation manager's record of it, which holds each navigation once it has ended, and not on a render.
-    private static async Task EndedAsync(BunitNavigationManager navigation, int ended, NavigationState state)
+    // The library closes the browser's dialog on Escape, a click outside or a hide, and says so with this event.
+    private static Task ClosedByTheBrowserAsync(IRenderedComponent<CmsSecretDialog> dialog)
     {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (navigation.History.Count <= ended)
-        {
-            DateTime.UtcNow.ShouldBeLessThan(deadline, $"the navigation did not end {state}");
-            await Task.Delay(20, Xunit.TestContext.Current.CancellationToken);
-        }
-
-        navigation.History.First().State.ShouldBe(state);
+        var host = dialog.Find("fluent-dialog");
+        return host.TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = host.Id, OldState = "open", NewState = "closed" });
     }
+
+    private BunitNavigationManager Navigation() => (BunitNavigationManager)Services.GetRequiredService<NavigationManager>();
 
     private IRenderedComponent<CmsSecretDialog> RenderBound() =>
         Render<CmsSecretDialog>(parameters => parameters
             .Add(item => item.Title, "Copy the new key")
             .Add(item => item.Label, "Secret")
             .Add(item => item.Secret, bound)
-            .Add(item => item.SecretChanged, value => bound = value));
+            .Add(item => item.SecretChanged, value => bound = value)
+            .Add(item => item.OnClosed, () => closed++));
 
     private string Text(string name) => Services.GetRequiredService<ICmsTextSource>().GetText(name)!;
 
     private AngleSharp.Dom.IElement Button(IRenderedComponent<CmsSecretDialog> dialog, string name) =>
         dialog.FindAll("fluent-button").Single(button => button.TextContent.Trim() == Text(name));
+
+    // The element of a button as the page has it now, which a focus call names.
+    private string ElementId(IRenderedComponent<CmsSecretDialog> dialog, string name) =>
+        dialog.FindComponents<FluentButton>().Single(button => button.FindAll("fluent-button") is [var host, ..] && host.TextContent.Trim() == Text(name)).Instance.Element.Id;
+
+    private string? Focused() =>
+        JSInterop.Invocations.Where(invocation => invocation.Identifier == Focus).Select(invocation => invocation.Arguments[0]).LastOrDefault() is ElementReference element
+            ? element.Id
+            : null;
 
     // The string fields of the component that still hold the secret, its parameter included.
     private static string[] Held(object component) =>

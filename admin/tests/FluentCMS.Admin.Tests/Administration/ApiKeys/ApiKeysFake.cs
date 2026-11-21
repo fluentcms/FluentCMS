@@ -19,10 +19,23 @@ internal sealed class ApiKeysFake
     public static readonly Guid Reader = new("0193a1b2-0000-7000-8000-0000000000b1");
     public static readonly Guid KeyId = new("0193a1b2-0000-7000-8000-00000000c001");
 
+    private readonly Lock gate = new();
+    private readonly List<(HttpMethod Method, string Path, string? Body, bool Idempotent)> calls = [];
+
     // Answers a call before the routes below, when it gives one: a refusal of a test.
     public Func<HttpMethod, string, HttpResponseMessage?>? Refuse { get; set; }
 
-    public List<(HttpMethod Method, string Path, string? Body, bool Idempotent)> Calls { get; } = [];
+    // A copy, since the handler adds to the list on the client's thread while a test reads it on its own.
+    public IReadOnlyList<(HttpMethod Method, string Path, string? Body, bool Idempotent)> Calls
+    {
+        get
+        {
+            lock (gate)
+            {
+                return [.. calls];
+            }
+        }
+    }
 
     public JsonObject Key { get; set; } = KeyOf(KeyId, "Shop reader", "fcms_dk_ab12");
 
@@ -59,7 +72,11 @@ internal sealed class ApiKeysFake
             return null;
         }
 
-        Calls.Add((request.Method, path, body, request.Headers.Contains("Idempotency-Key")));
+        lock (gate)
+        {
+            calls.Add((request.Method, path, body, request.Headers.Contains("Idempotency-Key")));
+        }
+
         if (Refuse?.Invoke(request.Method, path) is { } refused)
         {
             return refused;

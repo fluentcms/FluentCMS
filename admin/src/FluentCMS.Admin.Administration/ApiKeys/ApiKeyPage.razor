@@ -109,7 +109,7 @@ else
     </Actions>
 </CmsDialog>
 
-<CmsSecretDialog Title="@L["ApiKeys.Secret.RotatedTitle"]" Label="@L["ApiKeys.Secret.Label"]" @bind-Secret="secret" OnClosed="ReturnFocusAsync">
+<CmsSecretDialog Title="@L["ApiKeys.Secret.RotatedTitle"]" Label="@L["ApiKeys.Secret.Label"]" @bind-Secret="secret" OnClosed="@(() => returnFocus = true)">
     <p>@L["ApiKeys.Secret.Text"]</p>
 </CmsSecretDialog>
 
@@ -145,9 +145,13 @@ else
     private CancellationTokenSource? reading;
     private ElementReference heading;
     private CmsButton? rotateButton;
+    private bool returnFocus;
 
     [Parameter]
     public Guid Id { get; set; }
+
+    // Whether the page shows Rotate, as the markup above decides.
+    private bool CanRotate => state == State.Ready && key is { Revoked: false };
 
     private string ConfirmTitle => L[$"ApiKeys.Confirm.{asked ?? Change.Revoke}Title", key?.Name ?? ""];
 
@@ -168,6 +172,18 @@ else
             read = Id;
             (key, secret, asked, problem, actionError, overlapHours, expireAt) = (null, null, null, null, null, null, null);
             await ReadAsync();
+        }
+    }
+
+    // The Rotate button was disabled while the rotation ran, so the secret's dialog had no control to give focus back to. It
+    // goes back to Rotate, or to the heading when the page no longer shows Rotate, as after a failed read. It moves after the
+    // render that the dialog's close caused, so that its target is in the page and not one that left it.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (returnFocus)
+        {
+            returnFocus = false;
+            await (CanRotate && rotateButton is not null ? rotateButton.FocusAsync() : heading.FocusAsync());
         }
     }
 
@@ -297,20 +313,6 @@ else
         finally
         {
             busy = false;
-        }
-    }
-
-    // The Rotate button was disabled while the rotation ran, so the dialog had no control to give focus back to; it goes back
-    // to Rotate, or to the heading when the key can no longer be rotated.
-    private async Task ReturnFocusAsync()
-    {
-        if (key is { Revoked: false } && rotateButton is not null)
-        {
-            await rotateButton.FocusAsync();
-        }
-        else
-        {
-            await heading.FocusAsync();
         }
     }
 

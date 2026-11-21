@@ -72,7 +72,7 @@
     </CmsStack>
 </form>
 
-<CmsSecretDialog Title="@L["ApiKeys.Secret.CreatedTitle"]" Label="@L["ApiKeys.Secret.Label"]" @bind-Secret="secret" @bind-Secret:after="OpenCreated">
+<CmsSecretDialog Title="@L["ApiKeys.Secret.CreatedTitle"]" Label="@L["ApiKeys.Secret.Label"]" @bind-Secret="secret" OnClosed="OpenCreated">
     <p>@L["ApiKeys.Secret.Text"]</p>
 </CmsSecretDialog>
 
@@ -186,6 +186,7 @@
         Announcer.Announce(text, AnnouncementPoliteness.Assertive);
     }
 
-    // The secret is gone with the dialog; the key's page shows the rest.
+    // The secret is gone with the dialog; the key's page shows the rest. After Done only: Leave, which clears the binding too,
+    // goes where the user was going.
     private void OpenCreated() => Navigation.NavigateTo(ApiKeyRoutes.Key(created));
 }

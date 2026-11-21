@@ -468,6 +468,7 @@ override FluentCMS.Admin.Components.CmsOption.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsOption.ToString() -> string!
 override FluentCMS.Admin.Components.CmsSecretDialog.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
 override FluentCMS.Admin.Components.CmsSecretDialog.OnParametersSet() -> void
+override FluentCMS.Admin.Components.CmsSecretDialog.SetParametersAsync(Microsoft.AspNetCore.Components.ParameterView parameters) -> System.Threading.Tasks.Task!
 override FluentCMS.Admin.Components.CmsSortKey.Equals(object? obj) -> bool
 override FluentCMS.Admin.Components.CmsSortKey.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsSortKey.ToString() -> string!
