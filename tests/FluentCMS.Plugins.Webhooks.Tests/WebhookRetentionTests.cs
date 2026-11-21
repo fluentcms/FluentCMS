@@ -25,7 +25,7 @@ public sealed class WebhookRetentionTests(WebhookFixture hosts) : IClassFixture<
         }
 
         await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<WebhookRetentionJob, WebhookRetentionPayload>(new WebhookRetentionPayload(), cancellationToken: Token);
-        (await RunDueJobsAsync(host)).ShouldBe(1);
+        (await RunDueJobsAsync(host, WebhookRetentionJob.Type)).ShouldBe(1);
 
         (await DeliveriesAsync(host, webhook)).Select(delivery => delivery.CreatedAt).ShouldBe([now - TimeSpan.FromDays(29), now]);
     }

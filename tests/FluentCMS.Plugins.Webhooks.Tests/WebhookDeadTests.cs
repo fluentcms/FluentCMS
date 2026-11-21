@@ -75,6 +75,7 @@ public sealed class WebhookDeadTests(WebhookFixture hosts, DisablingWebhookFixtu
         await using var receiver = await TestReceiver.StartAsync();
         receiver.Status = 500;
         await using var host = Host().WithServices(services => services.PostConfigure<WebhooksOptions>(options => options.DisableAfter = TimeSpan.FromDays(1)));
+        await MaintainedAsync(host);
         using var client = await AdminAsync(host);
         var id = Id(await CreateAsync(client, new { name = "recovers", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
 

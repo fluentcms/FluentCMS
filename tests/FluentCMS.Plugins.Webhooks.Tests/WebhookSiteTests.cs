@@ -43,7 +43,7 @@ public sealed class WebhookSiteTests
         var attempt = new WebhookAttempt(Id(webhook), Guid.CreateVersion7(), Guid.CreateVersion7(), "content.published", 1, Manual: true, "{}");
         await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(attempt, new JobOptions { Site = new SiteId(DefaultSite.Id) }, Token);
         await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<WebhookRetentionJob, WebhookRetentionPayload>(new WebhookRetentionPayload(), cancellationToken: Token);
-        (await RunDueJobsAsync(host)).ShouldBe(2);
+        (await RunDueJobsAsync(host, WebhookDeliveryJob.Type, WebhookRetentionJob.Type)).ShouldBe(2);
         receiver.Requests.ShouldBeEmpty();
         (await DeliveriesAsync(host)).ShouldBeEmpty();
         await using (var scope = host.Services.CreateAsyncScope())
@@ -73,7 +73,7 @@ public sealed class WebhookSiteTests
         }
 
         await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<WebhookQueueJob, WebhookQueuePayload>(new WebhookQueuePayload(), cancellationToken: Token);
-        (await RunDueJobsAsync(host)).ShouldBe(1, "the queue job enqueues no delivery of the site");
+        (await RunDueJobsAsync(host, WebhookQueueJob.Type, WebhookDeliveryJob.Type)).ShouldBe(1, "the queue job enqueues no delivery of the site");
 
         // Back on, the next delivery wakes the stalled head first.
         (await SetAsync(client, enabled: true)).ShouldBe(HttpStatusCode.OK);
