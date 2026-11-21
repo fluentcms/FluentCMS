@@ -94,7 +94,7 @@ public sealed class WebhookRecoveryTests(WebhookFixture hosts) : IClassFixture<W
         receiver.Requests.ShouldHaveSingleItem().Body.ShouldBe(head.RequestBody);
     }
 
-    // When the head's event is newer than the last claim, the queue has stalled once the head is more than 10 minutes old,
+    // When the head's event is newer than the last claim, the queue has stalled once the head is 10 minutes old,
     // not 10 minutes after the claim (#3380).
     [Fact]
     public async Task AQueueWhoseHeadIsNewerThanItsLastClaimStallsTenMinutesAfterTheHead()

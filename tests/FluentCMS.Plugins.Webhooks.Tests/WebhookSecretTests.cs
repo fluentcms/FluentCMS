@@ -166,6 +166,7 @@ public sealed class WebhookSecretTests
     {
         await using var receiver = await TestReceiver.StartAsync();
         await using var host = Host();
+        await MaintainedAsync(host);
         using var client = await AdminAsync(host);
         var url = receiver.Url().ToString();
         var id = Id(await CreateAsync(client, new { name = "rotated", url, events = new List<string> { "content.published" }, secret = Old }));

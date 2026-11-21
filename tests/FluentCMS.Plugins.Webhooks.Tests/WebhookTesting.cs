@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Health;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -19,8 +20,9 @@ using Xunit;
 namespace FluentCMS.Plugins.Webhooks.Tests;
 
 // A host whose job runner has no workers, so that a test runs the outbox and the jobs itself, and the clock moves only
-// when the test moves it. Its maintenance runs at the start and then once a day of that clock, so a move of a day or more
-// can make recurring jobs due behind a test's back; RunDueJobsAsync runs them without counting them.
+// when the test moves it. The clock's timers stay real, so with a maintenance interval of a day the runner's maintenance
+// takes one turn, at the start, which fires the recurring jobs that are due when it reads the clock. A test that moves the
+// clock waits for that turn first (MaintainedAsync), or a late turn fires what the move made due, webhooks.queue among them.
 internal static class WebhookTesting
 {
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
@@ -77,9 +79,8 @@ internal static class WebhookTesting
         return jobs;
     }
 
-    // Runs every due job and counts the deliveries among them, or the jobs of the types given. The host's maintenance fires
-    // the recurring jobs a moved clock made due in the background, at a moment the test does not know, so they run here but
-    // count only when the test names their type (#3409).
+    // Runs every due job and counts the deliveries among them, or the jobs of the types given, so that a recurring job of
+    // core that is due does not change the count (#3409).
     public static async Task<int> RunDueJobsAsync(FluentCmsTestHost host, params string[] types) => (await RunDueAsync(host, types)).Counted;
 
     private static async Task<(int Ran, int Counted)> RunDueAsync(FluentCmsTestHost host, string[] types)
@@ -117,6 +118,19 @@ internal static class WebhookTesting
 
         await host.Services.GetRequiredService<JobExecutor>().RunAsync(job);
         return job.Type;
+    }
+
+    // Completes when the maintenance turn at the start has ended. Its last step measures the queues, which leaves
+    // JobRunnerPulse.OldestPending with an entry for each queue of the options.
+    public static async Task MaintainedAsync(FluentCmsTestHost host)
+    {
+        var pulse = host.Services.GetRequiredService<JobRunnerPulse>();
+        using var patience = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        patience.CancelAfter(Patience);
+        while (pulse.OldestPending.Count == 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), patience.Token);
+        }
     }
 
     // Runs the next due job of the queue, if there is one.

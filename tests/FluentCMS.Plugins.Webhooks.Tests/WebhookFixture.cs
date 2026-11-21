@@ -32,11 +32,16 @@ public class WebhookFixture : IAsyncDisposable
             }
 
             // The move makes recurring jobs due, among them webhooks.queue, which would wake the queues a test leaves stalled.
-            // The host's maintenance fires them in the background, maybe after the pump; firing them here first leaves it
-            // none, so that they all run in this pump (#3409).
+            // The host's maintenance took its only turn before the first test, so nothing else fires them; firing them here
+            // runs them in this pump rather than leaving them due (#3409).
             _host.Time.Advance(TimeSpan.FromDays(2));
             await _host.Services.GetRequiredService<RecurringJobs>().FireDueAsync(Token);
             await PumpAsync(_host);
+        }
+        else
+        {
+            // The maintenance turn at the start must not read the clock after a test has moved it (#3409).
+            await MaintainedAsync(_host);
         }
 
         _used = true;

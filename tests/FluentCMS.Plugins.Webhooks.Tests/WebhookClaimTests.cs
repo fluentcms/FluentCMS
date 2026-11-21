@@ -27,6 +27,7 @@ public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<Webh
         await using var receiver = await TestReceiver.StartAsync();
         var fault = new FailFirstResult();
         await using var host = Host().Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<WebhooksPlugin>>(options => options.AddInterceptors(fault)));
+        await MaintainedAsync(host);
         using var client = await AdminAsync(host);
         await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } });
         var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
@@ -102,6 +103,7 @@ public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<Webh
         await using var receiver = await TestReceiver.StartAsync();
         var claim = new ClaimBefore(before);
         await using var host = Host().Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<WebhooksPlugin>>(options => options.AddInterceptors(claim)));
+        await MaintainedAsync(host);
         using var client = await AdminAsync(host);
         var webhook = Id(await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
         var attempt = new WebhookAttempt(webhook, Guid.CreateVersion7(), Guid.CreateVersion7(), "content.published", 1, Manual: false, """{"id":1}""");
