@@ -81,6 +81,9 @@ internal sealed class FakeAdminContext : IAdminContext, IAdminAccess
 
     public int SiteReads { get; private set; }
 
+    // The site each read was told is gone, null for none.
+    public List<Guid?> Gone { get; } = [];
+
     public Func<MySiteInfo?>? Moves { get; set; }
 
     public event Action? Changed;
@@ -91,9 +94,10 @@ internal sealed class FakeAdminContext : IAdminContext, IAdminAccess
 
     public TypeAccessInfo? ForType(string type) => null;
 
-    public Task ReadSitesAsync()
+    public Task ReadSitesAsync(Guid? gone = null)
     {
         SiteReads++;
+        Gone.Add(gone);
         if (Moves is { } move)
         {
             Site = move();

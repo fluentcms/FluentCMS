@@ -121,6 +121,8 @@ internal sealed class FakeAdminContext : IAdminContext, IAdminAccess
 
     public TypeAccessInfo? ForType(string type) => null;
 
+    public Task ReadSitesAsync(Guid? gone = null) => Task.CompletedTask;
+
     public void Grant(params string[] permissions) => Permissions.UnionWith(permissions);
 
     public void RaiseChanged() => Changed?.Invoke();

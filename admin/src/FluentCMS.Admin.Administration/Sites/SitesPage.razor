@@ -324,7 +324,7 @@ else
         catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.SiteNotFound))
         {
             siteMessage = L["Sites.Page.Gone"];
-            await Context.ReadSitesAsync();
+            await Context.ReadSitesAsync(siteId);
         }
         catch (Exception exception) when (SiteProblems.IsFailure(exception))
         {
@@ -430,7 +430,7 @@ else
         catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.SiteNotFound))
         {
             localesMessage = L["Sites.Page.Gone"];
-            await Context.ReadSitesAsync();
+            await Context.ReadSitesAsync(siteId);
         }
         catch (Exception exception) when (SiteProblems.IsFailure(exception))
         {
@@ -502,7 +502,7 @@ else
         catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.SiteNotFound))
         {
             addMessage = L["Sites.Page.Gone"];
-            await Context.ReadSitesAsync();
+            await Context.ReadSitesAsync(siteId);
         }
         catch (Exception exception) when (SiteProblems.IsFailure(exception))
         {

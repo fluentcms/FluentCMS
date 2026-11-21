@@ -5,6 +5,7 @@
 @attribute [AdminPage("/multi-site/sites/{Id:guid}/hosts", Permission = "sites.manage", InstanceOnly = true)]
 @implements IDisposable
 @inject IManagementApi Api
+@inject IAdminContext Admin
 @inject IStringLocalizer<MultiSiteResources> L
 
 @if (site is null)
@@ -155,9 +156,14 @@ else
         catch (OperationCanceledException) when (current.IsCancellationRequested)
         {
         }
-        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.SiteNotFound))
+        catch (Exception exception) when (MultiSiteProblems.TargetGone(exception))
         {
             (site, state) = (null, State.NotFound);
+        }
+        catch (Exception exception) when (MultiSiteProblems.ShellSiteGone(exception))
+        {
+            (site, state) = (null, State.Failed);
+            await ShellSiteGoneAsync();
         }
         catch (Exception exception) when (MultiSiteProblems.IsFailure(exception))
         {
@@ -192,7 +198,7 @@ else
         }
 
         (busy, hostnameError) = (true, null);
-        var added = false;
+        var (added, shellGone) = (false, false);
         try
         {
             var host = await Api.AddHostAsync(Id, hostname.Trim(), primary, Closing);
@@ -210,9 +216,13 @@ else
         {
             addMessage = L["MultiSite.Hosts.Busy"];
         }
-        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.SiteNotFound))
+        catch (Exception exception) when (MultiSiteProblems.TargetGone(exception))
         {
             addMessage = L["MultiSite.Hosts.SiteGone"];
+        }
+        catch (Exception exception) when (MultiSiteProblems.ShellSiteGone(exception))
+        {
+            (addMessage, shellGone) = (L["MultiSite.ShellSiteGone"], true);
         }
         catch (Exception exception) when (MultiSiteProblems.IsFailure(exception))
         {
@@ -226,6 +236,10 @@ else
         if (added)
         {
             await ReadHostsAsync();
+        }
+        else if (shellGone)
+        {
+            await ShellSiteGoneAsync();
         }
 
         focusAfterRender = addElement;
@@ -246,7 +260,7 @@ else
         }
 
         busy = true;
-        var changed = false;
+        var (changed, shellGone) = (false, false);
         try
         {
             await change(Closing);
@@ -268,9 +282,13 @@ else
         {
             listMessage = L["MultiSite.Hosts.Busy"];
         }
-        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.SiteNotFound))
+        catch (Exception exception) when (MultiSiteProblems.TargetGone(exception))
         {
             listMessage = L["MultiSite.Hosts.SiteGone"];
+        }
+        catch (Exception exception) when (MultiSiteProblems.ShellSiteGone(exception))
+        {
+            (listMessage, shellGone) = (L["MultiSite.ShellSiteGone"], true);
         }
         catch (Exception exception) when (MultiSiteProblems.IsFailure(exception))
         {
@@ -285,10 +303,17 @@ else
         {
             await ReadHostsAsync();
         }
+        else if (shellGone)
+        {
+            await ShellSiteGoneAsync();
+        }
 
         // A host made primary or removed takes its button with it, so focus goes to the result.
         focusAfterRender = listElement;
     }
+
+    // The server refused the site the shell shows (X-Cms-Site), as one deleted in another tab, which the shell then leaves.
+    private Task ShellSiteGoneAsync() => Admin.Site is { } shown ? Admin.ReadSitesAsync(shown.Id) : Task.CompletedTask;
 
     private string? HostnameError(Exception exception) =>
         MultiSiteProblems.Has(exception, MultiSiteProblems.InvalidHostName, "hostname") ? L["MultiSite.Hosts.HostnameInvalid"].Value

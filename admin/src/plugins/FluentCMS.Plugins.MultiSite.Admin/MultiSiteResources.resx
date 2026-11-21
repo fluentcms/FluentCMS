@@ -141,6 +141,9 @@
   <data name="MultiSite.Delete.Failed" xml:space="preserve">
     <value>The site could not be deleted. Try again.</value>
   </data>
+  <data name="MultiSite.ShellSiteGone" xml:space="preserve">
+    <value>The site the admin shows no longer exists, so nothing was changed. The admin leaves it.</value>
+  </data>
   <data name="MultiSite.Hosts.Heading" xml:space="preserve">
     <value>Host names</value>
   </data>

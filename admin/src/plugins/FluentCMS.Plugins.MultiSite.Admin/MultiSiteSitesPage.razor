@@ -177,11 +177,19 @@ else
         catch (OperationCanceledException) when (closing.IsCancellationRequested)
         {
         }
+        catch (Exception exception) when (MultiSiteProblems.ShellSiteGone(exception))
+        {
+            (sites, failed) = (null, true);
+            await ShellSiteGoneAsync();
+        }
         catch (Exception exception) when (MultiSiteProblems.IsFailure(exception))
         {
             (sites, failed) = (null, true);
         }
     }
+
+    // The server refused the site the shell shows (X-Cms-Site), as one deleted in another tab, which the shell then leaves.
+    private Task ShellSiteGoneAsync() => Admin.Site is { } shown ? Admin.ReadSitesAsync(shown.Id) : Task.CompletedTask;
 
     private async Task CreateAsync()
     {
@@ -199,7 +207,7 @@ else
             return;
         }
 
-        var created = false;
+        var (created, shellGone) = (false, false);
         busy = true;
         try
         {
@@ -217,6 +225,10 @@ else
             localeError = MultiSiteProblems.Has(exception, MultiSiteProblems.InvalidLocale, "defaultLocale") ? L["MultiSite.Create.DefaultLocaleInvalid"].Value : null;
             createMessage = L["MultiSite.Create.Refused"];
         }
+        catch (Exception exception) when (MultiSiteProblems.ShellSiteGone(exception))
+        {
+            (createMessage, shellGone) = (L["MultiSite.ShellSiteGone"], true);
+        }
         catch (Exception exception) when (MultiSiteProblems.IsFailure(exception))
         {
             createMessage = L["MultiSite.Create.Failed"];
@@ -231,6 +243,10 @@ else
             Announcer.Announce(createMessage!);
             await ReadAsync();
             await Admin.ReadSitesAsync();
+        }
+        else if (shellGone)
+        {
+            await ShellSiteGoneAsync();
         }
 
         focusAfterRender = createElement;
@@ -257,7 +273,7 @@ else
         }
 
         var current = site.Id == Admin.Site?.Id;
-        var deleted = false;
+        var (deleted, shellGone) = (false, false);
         (busy, dialogError) = (true, null);
         try
         {
@@ -276,9 +292,13 @@ else
         {
             dialogError = L["MultiSite.Delete.DefaultSite", site.Name];
         }
-        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.SiteNotFound))
+        catch (Exception exception) when (MultiSiteProblems.TargetGone(exception))
         {
             (deleting, listMessage, deleted) = (null, L["MultiSite.Delete.Gone", site.Name], true);
+        }
+        catch (Exception exception) when (MultiSiteProblems.ShellSiteGone(exception))
+        {
+            (deleting, listMessage, shellGone) = (null, L["MultiSite.ShellSiteGone"], true);
         }
         catch (Exception exception) when (MultiSiteProblems.IsFailure(exception))
         {
@@ -289,13 +309,20 @@ else
             busy = false;
         }
 
+        if (shellGone)
+        {
+            Announcer.Announce(listMessage!);
+            await ShellSiteGoneAsync();
+            return;
+        }
+
         if (!deleted)
         {
             return;
         }
 
         Announcer.Announce(listMessage!);
-        await Admin.ReadSitesAsync();
+        await Admin.ReadSitesAsync(site.Id);
         if (current && Admin.Site is { } shown && shown.Id != site.Id)
         {
             Announcer.Announce(L["MultiSite.Delete.Moved", shown.Name]);

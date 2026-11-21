@@ -91,8 +91,40 @@ public sealed class MultiSiteSitesPageTests : MultiSiteTestContext
 
         cut.WaitForAssertion(() => cut.FindAll(".multi-site-table tbody tr").Count.ShouldBe(1));
         Server.Requests.ShouldContain(request => request.Method == HttpMethod.Delete && request.Path == $"sites/{Shop:D}");
-        Admin.SiteReads.ShouldBe(1);
+        Admin.Gone.ShouldBe([Shop]);
         Announcer.Messages.ShouldBe(["The site Shop is deleted."]);
+    }
+
+    // The server's not-found of the site the path names is told from its refusal of the site the shell sends.
+    [Fact]
+    public void ADeleteOfASiteThatIsGoneAlreadySaysSoAndTheShellReadsItsSites()
+    {
+        Server.Refuse = request => request.Method == HttpMethod.Delete ? Problem(422, "FCMS2301", "site") : null;
+        var cut = Render<MultiSiteSitesPage>();
+        cut.WaitForAssertion(() => cut.FindAll(".multi-site-table tbody tr").Count.ShouldBe(2));
+
+        Button(cut, "Delete the site Shop").Click();
+        cut.WaitForAssertion(() => HasButton(cut, "Delete the site").ShouldBeTrue());
+        Button(cut, "Delete the site").Click();
+
+        cut.WaitForAssertion(() => Admin.Gone.ShouldBe([Shop]));
+        Announcer.Messages.ShouldBe(["The site Shop no longer exists."]);
+    }
+
+    [Fact]
+    public void ARefusalOfTheSiteTheShellShowsIsNotTakenForTheSiteDeletedAndTheShellLeavesIt()
+    {
+        Server.Refuse = request => request.Method == HttpMethod.Delete ? Problem(422, "FCMS2301", "X-Cms-Site") : null;
+        var cut = Render<MultiSiteSitesPage>();
+        cut.WaitForAssertion(() => cut.FindAll(".multi-site-table tbody tr").Count.ShouldBe(2));
+
+        Button(cut, "Delete the site Shop").Click();
+        cut.WaitForAssertion(() => HasButton(cut, "Delete the site").ShouldBeTrue());
+        Button(cut, "Delete the site").Click();
+
+        cut.WaitForAssertion(() => Admin.Gone.ShouldBe([Main]));
+        Announcer.Messages.ShouldBe(["The site the admin shows no longer exists, so nothing was changed. The admin leaves it."]);
+        Announcer.Messages.ShouldNotContain("The site Shop no longer exists.");
     }
 
     // The question says that the shell moves, and the shell reads its sites before the list is read again.

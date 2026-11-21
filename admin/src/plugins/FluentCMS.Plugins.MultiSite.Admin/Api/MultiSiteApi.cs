@@ -106,6 +106,12 @@ internal static class MultiSiteProblems
 
     public static bool Has(Exception exception, string code, string path) =>
         exception is ApiProblemException { Problem: var problem } && problem.Errors.Any(error => error.Code == code && error.Path == path);
+
+    // The site the path names is gone.
+    public static bool TargetGone(Exception exception) => Has(exception, SiteNotFound, "site");
+
+    // The site the shell sends as X-Cms-Site is gone, which the server's site resolver says before any route answers.
+    public static bool ShellSiteGone(Exception exception) => Has(exception, SiteNotFound, "X-Cms-Site");
 }
 
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]

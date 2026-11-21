@@ -31,7 +31,7 @@ public sealed class ReadSitesTests : AdminTestContext
         Management.AddLocale(MainSite, "fr", 1);
         Management.Requests.Clear();
 
-        await app.InvokeAsync(Context.ReadSitesAsync);
+        await app.InvokeAsync(() => Context.ReadSitesAsync());
 
         Context.Site!.Name.ShouldBe("Main street");
         Context.ContentLocales.ShouldBe(["en", "fr"]);
@@ -52,7 +52,7 @@ public sealed class ReadSitesTests : AdminTestContext
         Management.Sites[0]!["locales"]!.AsArray()[1]!["enabled"] = false;
         Management.MetadataLocales.Clear();
 
-        await app.InvokeAsync(Context.ReadSitesAsync);
+        await app.InvokeAsync(() => Context.ReadSitesAsync());
 
         Context.ContentLocale.ShouldBe("en");
         Context.NamedLocale.ShouldBeNull();
@@ -68,7 +68,7 @@ public sealed class ReadSitesTests : AdminTestContext
         Management.Sites[0]!["defaultLocale"] = "fr";
         Management.Requests.Clear();
 
-        await app.InvokeAsync(Context.ReadSitesAsync);
+        await app.InvokeAsync(() => Context.ReadSitesAsync());
 
         Context.ContentLocale.ShouldBe("fr");
         Management.Requests.ShouldContain(("me/access", MainSite.ToString("D")));
@@ -86,7 +86,7 @@ public sealed class ReadSitesTests : AdminTestContext
         Management.Sites.RemoveAt(1);
         Management.Requests.Clear();
 
-        await app.InvokeAsync(Context.ReadSitesAsync);
+        await app.InvokeAsync(() => Context.ReadSitesAsync());
 
         Context.Site!.Id.ShouldBe(MainSite);
         Context.Status.ShouldBe(ShellStatus.Ready);
@@ -96,6 +96,116 @@ public sealed class ReadSitesTests : AdminTestContext
         Management.Requests.ShouldNotContain(request => request.Site == Shop.ToString("D"));
     }
 
+    // A site the caller deleted is the one the shell shows, and the read of the sites fails: every read of that site would be
+    // refused, so the shell fails without it in the switcher, and Try again takes the default site.
+    [Fact]
+    public async Task WhenTheSiteShownIsGoneAndTheReadFailsTheShellFailsAndItsRetryMovesToTheDefaultSite()
+    {
+        var third = new Guid("0193a1b2-0000-7000-8000-00000000a003");
+        Management.AddSite(Shop, "Shop", "shop");
+        Management.AddSite(third, "Third", "third");
+        await Storage.SetAsync(TabStorageKeys.Site, Shop.ToString("D"));
+        var app = Load();
+        Management.Sites.RemoveAt(1);
+        Management.Answer = (method, path) => path == "me/sites" ? new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) : null;
+
+        await app.InvokeAsync(() => Context.ReadSitesAsync(Shop));
+
+        Context.Status.ShouldBe(ShellStatus.Failed);
+        Context.Sites.Select(site => site.Id).ShouldBe([MainSite, third]);
+        app.WaitForAssertion(() => app.Find("main h1").TextContent.ShouldBe("The admin could not load"));
+
+        Management.Answer = null;
+        Management.Requests.Clear();
+        app.Find("main fluent-button").Click();
+
+        app.WaitForAssertion(() => Context.Status.ShouldBe(ShellStatus.Ready));
+        Context.Site!.Id.ShouldBe(MainSite);
+        Management.Requests.ShouldContain(("me/sites", null));
+        Management.Requests.ShouldNotContain(request => request.Site == Shop.ToString("D"));
+    }
+
+    [Fact]
+    public async Task AFailedReadAboutAnotherSiteThanTheOneShownChangesNothing()
+    {
+        Management.AddSite(Shop, "Shop", "shop");
+        var app = Load();
+        Management.Answer = (method, path) => path == "me/sites" ? new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) : null;
+
+        await app.InvokeAsync(() => Context.ReadSitesAsync(Shop));
+
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Context.Site!.Id.ShouldBe(MainSite);
+        Context.Sites.Select(site => site.Id).ShouldBe([MainSite]);
+    }
+
+    // The schema of the default locale is read without a locale, so the read before would otherwise be kept.
+    [Fact]
+    public async Task ANewDefaultLocaleReadsTheSchemaOfTheSiteAgain()
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        var app = Load();
+        Management.Sites[0]!["defaultLocale"] = "fr";
+        Management.MetadataLocales.Clear();
+
+        await app.InvokeAsync(() => Context.ReadSitesAsync());
+
+        Management.MetadataLocales.ShouldContain(("schema", null));
+    }
+
+    // The access of each enabled locale is read once per site; a locale enabled since is read too.
+    [Fact]
+    public async Task ALocaleEnabledSinceIsAmongTheLocalesWithContent()
+    {
+        Management.SetTypes(MainSite, Type("article"));
+        Management.AddLocale(MainSite, "fr", 1);
+        var app = Load();
+        (await app.InvokeAsync(Context.LocalesWithContentAsync)).ShouldBe(["fr"]);
+        Management.AddLocale(MainSite, "de", 2);
+
+        await app.InvokeAsync(() => Context.ReadSitesAsync());
+
+        (await app.InvokeAsync(Context.LocalesWithContentAsync)).ShouldBe(["fr", "de"]);
+    }
+
+    [Fact]
+    public async Task AReadThatASwitchOvertookChangesNothing()
+    {
+        Management.AddSite(Shop, "Shop", "shop");
+        var app = Load();
+        var hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Management.HoldPath = path => path.EndsWith("/me/sites", StringComparison.Ordinal) ? hold.Task : null;
+        Management.Sites[0]!["name"] = "Main street";
+        Management.Sites.RemoveAt(1);
+
+        var reading = app.InvokeAsync(() => Context.ReadSitesAsync());
+        await app.InvokeAsync(() => Context.SwitchSiteAsync(Shop));
+        hold.SetResult();
+        await reading;
+
+        Context.Site!.Id.ShouldBe(Shop);
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Context.Sites.Select(site => site.Name).ShouldBe(["Main", "Shop"]);
+    }
+
+    [Fact]
+    public async Task AReadThatAChangeOfLocaleOvertookChangesNothing()
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        var app = Load();
+        var hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Management.HoldPath = path => path.EndsWith("/me/sites", StringComparison.Ordinal) ? hold.Task : null;
+        Management.Sites[0]!["locales"]!.AsArray()[1]!["enabled"] = false;
+
+        var reading = app.InvokeAsync(() => Context.ReadSitesAsync());
+        await app.InvokeAsync(() => Context.UseLocaleAsync("fr"));
+        hold.SetResult();
+        await reading;
+
+        Context.ContentLocale.ShouldBe("fr");
+        Context.ContentLocales.ShouldBe(["en", "fr"]);
+    }
+
     [Fact]
     public async Task AReadThatFailsChangesNothing()
     {
@@ -103,7 +213,7 @@ public sealed class ReadSitesTests : AdminTestContext
         Management.Sites[0]!["name"] = "Main street";
         Management.Answer = (method, path) => path == "me/sites" ? new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) : null;
 
-        await app.InvokeAsync(Context.ReadSitesAsync);
+        await app.InvokeAsync(() => Context.ReadSitesAsync());
 
         Context.Site!.Name.ShouldBe("Main");
         Context.Status.ShouldBe(ShellStatus.Ready);

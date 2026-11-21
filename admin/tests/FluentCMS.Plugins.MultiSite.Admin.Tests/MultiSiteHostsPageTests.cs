@@ -48,6 +48,34 @@ public sealed class MultiSiteHostsPageTests : MultiSiteTestContext
     }
 
     [Fact]
+    public void AHostNameAnotherSiteHasShowsTheReasonByTheField()
+    {
+        Server.Refuse = request => request.Method == HttpMethod.Post ? Problem(422, "FCMS1663", "hostname") : null;
+        var cut = Render<MultiSiteHostsPage>(parameters => parameters.Add(page => page.Id, Shop));
+        cut.WaitForAssertion(() => cut.Find("h1").TextContent.ShouldBe("Host names of Shop"));
+
+        Field(cut, "Host name").Input("main.example.com");
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("This site or another one has this host name already."));
+        Field(cut, "Host name").GetAttribute("aria-invalid").ShouldBe("true");
+        cut.Find(".cms-card .multi-site-message").TextContent.ShouldBe("The host name was not added.");
+    }
+
+    // The site the shell sends is gone: the page does not say that the site of its address is, and the shell leaves its own.
+    [Fact]
+    public void ARefusalOfTheSiteTheShellShowsIsNotTakenForTheSiteOfThePage()
+    {
+        Server.Refuse = request => Problem(422, "FCMS2301", "X-Cms-Site");
+
+        var cut = Render<MultiSiteHostsPage>(parameters => parameters.Add(page => page.Id, Shop));
+
+        cut.WaitForAssertion(() => Admin.Gone.ShouldBe([Main]));
+        cut.Find("h1").TextContent.ShouldBe("Host names");
+        cut.Find("[role=alert]").TextContent.ShouldContain("The host names could not be read.");
+    }
+
+    [Fact]
     public void ASiteThatDoesNotExistSaysSo()
     {
         var cut = Render<MultiSiteHostsPage>(parameters => parameters.Add(page => page.Id, Guid.NewGuid()));
