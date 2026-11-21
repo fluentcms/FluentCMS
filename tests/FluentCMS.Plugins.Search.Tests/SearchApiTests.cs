@@ -39,8 +39,9 @@ public sealed class SearchApiTests
         (await IdsAsync(management, $"{Management}?q=alpha&status=published")).ShouldBe([article.Id]);
     }
 
-    // A key whose role is limited to the title matches on no other field, a word of a hidden field that a stale row still
-    // holds included, and a key that may read every field finds the words of the readable ones only.
+    // A key whose role is limited to the title and to a hidden field matches on no other field, and not on the hidden one
+    // either, though its role names it and a stale row still holds a word of it; a key that may read every field finds the
+    // words of the readable ones only.
     [Fact]
     public async Task AKeyWithAFieldLimitedRoleCannotMatchOnAHiddenOrUnreadableFieldOverHttp()
     {
@@ -50,7 +51,7 @@ public sealed class SearchApiTests
         await articles.PublishAsync(article.Id, cancellationToken: Token);
         await search.PumpAsync();
         await search.AddRowAsync(new SearchEntry { DocumentId = article.Id, Locale = "en", State = SearchStates.Published, Type = "article", SiteId = DefaultSite.Id, Field = "secret", Text = "classified", UpdatedAt = DateTimeOffset.UnixEpoch });
-        using var limited = await search.ReaderClientAsync(new PermissionConstraints { Fields = ["title"] });
+        using var limited = await search.ReaderClientAsync(new PermissionConstraints { Fields = ["title", "secret"] });
         using var unlimited = await search.ClientAsync(ApiKeyClass.Delivery);
 
         (await IdsAsync(limited, $"{Delivery}?q=quarterly")).ShouldBe([article.Id]);

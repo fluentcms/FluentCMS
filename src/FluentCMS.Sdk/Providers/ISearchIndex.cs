@@ -3,7 +3,8 @@ namespace FluentCMS.Providers;
 /// <summary>
 /// Finds the entries that match a search text, for <see cref="Content.ContentQuery.Search"/>. Core has no index of its
 /// own: until the search plugin or the host fills this slot, a query with a search is refused. The index decides how it
-/// keeps up with content and which fields it reads, such as those marked <see cref="Schema.SearchableAttribute"/>.
+/// keeps up with content, but it matches only the fields marked <see cref="Schema.SearchableAttribute"/> that are not
+/// hidden, whatever rows it holds.
 /// </summary>
 public interface ISearchIndex
 {
