@@ -14,6 +14,7 @@ using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Telemetry;
+using FluentCMS.Hooks;
 using FluentCMS.Jobs;
 using FluentCMS.Localization;
 using FluentCMS.Publishing;
@@ -472,9 +473,16 @@ internal sealed partial class ContentService(
         return new WriteScope(operation, type, operation.Site, resolved, target, permissions, new FieldAccess(permissions, schema));
     }
 
-    // A flow joins only the write it started, so work it left running after that write cannot join a later one.
+    // A flow joins only the write it started, so work it left running after that write cannot join a later one. Once a hook
+    // of the scope has timed out it may still be running on the scope's context and may call back in here, joining whatever
+    // write runs then, so no write runs in the scope after it.
     private async Task<T> OneAtATimeAsync<T>(Func<Task<T>> write)
     {
+        if (hooks.TimedOut)
+        {
+            throw new HookRejectedException(ContentErrorCodes.HookTimedOut, "A hook of this scope did not end within its time and may still be running, so no further write runs in this scope.");
+        }
+
         if (Volatile.Read(ref _write) is { } running && ReferenceEquals(_writeOfFlow.Value, running))
         {
             return await write();
@@ -536,6 +544,13 @@ internal sealed partial class ContentService(
                 // victim runs again a few times, each after a jittered pause, which lets one of them commit (#2959).
                 tracked.Restore();
                 await PauseAfterDeadlockAsync(++deadlocks, cancellationToken);
+            }
+            catch (HookRejectedException rejected) when (rejected.Code == ContentErrorCodes.HookTimedOut)
+            {
+                // The hook that ran too long may still be running and may yet save on this context: what the write left
+                // tracked goes, so that such a save cannot write the half of an entry the rollback took back.
+                tracked.Restore();
+                throw;
             }
         }
     }

@@ -101,6 +101,23 @@ public sealed class BulkTests : IDisposable
         }
     }
 
+    // The round trips sent before the first delete's hook ran: the selection and the checks of the first item.
+    private sealed class FirstDelete(RoundTrips trips)
+    {
+        public int? Seen { get; set; }
+
+        public void Record() => Seen ??= trips.Count;
+    }
+
+    private sealed class RecordFirstDelete(FirstDelete first) : IBeforeDeleteHook<ContentDocument>
+    {
+        public ValueTask BeforeDeleteAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            first.Record();
+            return ValueTask.CompletedTask;
+        }
+    }
+
     // The single check refuses every delete, as it would for a row the selection query let through by mistake.
     private sealed class RefuseDeletes(AuthorizationEvaluator inner) : IAuthorizationEvaluator
     {
@@ -535,6 +552,92 @@ public sealed class BulkTests : IDisposable
         var result = await BulkAsync(_database, ann, new BulkRequest { Operation = BulkOperation.Delete, Filter = Every, Cap = 1 });
 
         result.Items.ShouldHaveSingleItem().Id.ShouldBe(mine);
+    }
+
+    // #3283: the selection checks a page of entries in a fixed number of queries, so three entries and sixty cost the same.
+    [Fact]
+    public async Task SelectingByFilterChecksAccessInAsManyQueriesForSixtyEntriesAsForThree()
+    {
+        var trips = new RoundTrips();
+        var first = new FirstDelete(trips);
+        using var database = new ServiceDatabase(cms => cms.Services
+            .AddSingleton(first)
+            .AddScoped<IBeforeDeleteHook<ContentDocument>, RecordFirstDelete>()
+            .ConfigureDbContext<CmsDbContext>(options => options.AddInterceptors(trips)));
+        var ann = WithRole(
+            database.Database.AddRoleForTest(
+                "OwnDeleter",
+                ("content.article.create", null),
+                ("content.article.read", null),
+                ("content.article.delete", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule })),
+            Guid.CreateVersion7());
+
+        async Task<int> SelectionAsync(int count)
+        {
+            for (var index = 0; index < count; index++)
+            {
+                await database.CreateAsync(ann, Titled($"Mine {count}-{index}"));
+                await database.CreateAsync(Editor, Titled($"Theirs {count}-{index}"));
+            }
+
+            first.Seen = null;
+            var result = await trips.CountAsync(() => BulkAsync(database, ann, new BulkRequest { Operation = BulkOperation.Delete, Filter = Every, Cap = 100 }));
+            result.Items.Count.ShouldBe(count);
+            result.Items.ShouldAllBe(item => item.Status == BulkItemStatus.Succeeded);
+            return first.Seen.ShouldNotBeNull();
+        }
+
+        var few = await SelectionAsync(3);
+        var many = await SelectionAsync(60);
+
+        many.ShouldBe(few, string.Join('\n', trips.Sent));
+    }
+
+    // #3283: what the selection keeps is what the single check lets through, entry by entry, for a row rule and for grants
+    // limited to fields and to a locale.
+    [Fact]
+    public async Task TheSelectionKeepsWhatTheSingleCheckLetsThroughForNarrowGrants()
+    {
+        var ann = WithRole(OwnEditor(), Guid.CreateVersion7());
+        var fields = WithRole(_database.Database.AddRoleForTest(
+            "SubtitleEditor",
+            ("content.article.read", null),
+            ("content.article.update", new PermissionConstraints { Fields = ["subtitle"] })));
+        var english = WithRole(_database.Database.AddRoleForTest(
+            "EnglishEditor",
+            ("content.article.read", null),
+            ("content.article.update", new PermissionConstraints { Locales = ["en"] })));
+        for (var index = 0; index < 4; index++)
+        {
+            await ArticleAsync($"Mine {index}", ann);
+            await ArticleAsync($"Theirs {index}");
+        }
+
+        var ids = _database.Read(context => context.Documents.Where(document => document.Type == "article").Select(document => document.DocumentId).Distinct().ToList());
+        foreach (var principal in new[] { ann, fields, english })
+        {
+            var selected = (await BulkAsync(_database, principal, new BulkRequest { Operation = BulkOperation.Update, Filter = Every, Cap = 50, Patch = new() { ["subtitle"] = "Bulk" } }))
+                .Items.Select(item => item.Id!.Value).ToHashSet();
+
+            var single = await _database.AsAsync(principal, async services =>
+            {
+                var evaluator = services.GetRequiredService<IAuthorizationEvaluator>();
+                var operation = services.GetRequiredService<IOperationContextAccessor>().Current!;
+                var type = services.GetRequiredService<SchemaModel>().FindContentType("article")!;
+                HashSet<Guid> allowed = [];
+                foreach (var id in ids)
+                {
+                    if (await evaluator.CanAccessEntryAsync(operation, type, ContentOperation.Update, id, new AccessTarget(SiteA, "en"), QueryStatus.Draft, Token))
+                    {
+                        allowed.Add(id);
+                    }
+                }
+
+                return allowed;
+            });
+
+            selected.ShouldBe(single, ignoreOrder: true);
+        }
     }
 
     [Fact]

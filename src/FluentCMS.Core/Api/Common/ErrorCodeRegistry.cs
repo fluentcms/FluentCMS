@@ -160,6 +160,7 @@ public static class ErrorCodeRegistry
         Invalid(ContentErrorCodes.ScheduleNotInFuture, "Schedule not in the future"),
         Invalid(ContentErrorCodes.NonexistentLocalTime, "Local time does not exist"),
         new(ContentErrorCodes.ScheduledDraftChanged, StatusCodes.Status409Conflict, "Draft changed since it was scheduled"),
+        new(ContentErrorCodes.HookTimedOut, StatusCodes.Status503ServiceUnavailable, "Hook timed out"),
 
         // 25xx jobs
         Startup(JobErrorCodes.UnknownJobType, "Unknown job type"),

@@ -233,6 +233,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddSingleton<EntryCanonicalizer>();
         services.TryAddSingleton<EntryComposer>();
         services.TryAddSingleton<ResponseRichText>();
+        services.AddFluentCmsOptions(ContentWriteOptions.Section, HostErrorCodes.InvalidOption, new ContentWriteOptions(), content => content.Validate());
         services.AddScoped<HookPipeline>();
         services.AddScoped<ValidationPipeline>();
         services.AddScoped<EntryStore>();

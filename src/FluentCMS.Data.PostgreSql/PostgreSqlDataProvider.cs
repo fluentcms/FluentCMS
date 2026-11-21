@@ -1,8 +1,10 @@
+using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 
 namespace FluentCMS.Data.PostgreSql;
@@ -47,6 +49,20 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
 
     // Npgsql's migrations lock is a lock of the history table, which ends with the transaction that took it.
     public Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+
+    // FOR KEY SHARE does not block another writer's, and FOR UPDATE waits for every one; a lock that waited for a deletion
+    // finds no row.
+    public async Task<bool> LockSiteAsync(DbContext context, Guid site, bool exclusive, CancellationToken cancellationToken)
+    {
+        var rows = exclusive
+            ? await context.Database.SqlQuery<int>($"""SELECT 1 AS "Value" FROM cms_site WHERE id = {site} FOR UPDATE""").ToListAsync(cancellationToken)
+            : await context.Database.SqlQuery<int>($"""SELECT 1 AS "Value" FROM cms_site WHERE id = {site} FOR KEY SHARE""").ToListAsync(cancellationToken);
+        return rows.Count > 0;
+    }
+
+    // REPEATABLE READ is PostgreSQL's snapshot isolation: every read sees the snapshot of the first, and no writer waits for it.
+    public async Task<IDbContextTransaction?> BeginSnapshotAsync(DbContext context, CancellationToken cancellationToken) =>
+        await context.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
 
     public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)
     {

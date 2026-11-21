@@ -44,23 +44,20 @@ internal sealed class SiteResolver(CmsDbContext context, IEnumerable<ISiteHostRe
             }
         }
 
-        if (cache.TryGet<Guid>(SiteCache.DefaultKey, out var cached))
-        {
-            return new SiteId(cached);
-        }
-
-        var generation = cache.Generation;
-        var defaultSite = await context.Set<Site>().AsNoTracking()
-            .Where(site => site.IsDefault)
-            .Select(site => (Guid?)site.Id)
-            .FirstOrDefaultAsync(cancellationToken);
+        var defaultSite = await cache.GetOrLoadAsync(
+            SiteCache.DefaultKey,
+            token => context.Set<Site>().AsNoTracking()
+                .Where(site => site.IsDefault)
+                .Select(site => (Guid?)site.Id)
+                .FirstOrDefaultAsync(token),
+            found => found is not null,
+            cancellationToken);
 
         if (defaultSite is not { } id)
         {
             throw new InvalidOperationException("The database has no default site.");
         }
 
-        cache.Set(SiteCache.DefaultKey, id, generation);
         return new SiteId(id);
     }
 
@@ -73,23 +70,20 @@ internal sealed class SiteResolver(CmsDbContext context, IEnumerable<ISiteHostRe
 
         var slug = value.ToLowerInvariant();
         var key = SiteCache.SlugKey(slug);
-        if (cache.TryGet<Guid>(key, out var cached))
-        {
-            return new SiteId(cached);
-        }
-
-        var generation = cache.Generation;
-        var bySlug = await context.Set<Site>().AsNoTracking()
-            .Where(site => site.Slug == slug)
-            .Select(site => (Guid?)site.Id)
-            .FirstOrDefaultAsync(cancellationToken);
+        var bySlug = await cache.GetOrLoadAsync(
+            key,
+            token => context.Set<Site>().AsNoTracking()
+                .Where(site => site.Slug == slug)
+                .Select(site => (Guid?)site.Id)
+                .FirstOrDefaultAsync(token),
+            found => found is not null,
+            cancellationToken);
 
         if (bySlug is not { } found)
         {
             throw NotFound(source, $"There is no site '{value}'.");
         }
 
-        cache.Set(key, found, generation);
         return new SiteId(found);
     }
 
@@ -111,12 +105,8 @@ internal sealed class SiteResolver(CmsDbContext context, IEnumerable<ISiteHostRe
         }
 
         var generation = cache.Generation;
-        var exists = await context.Set<Site>().AsNoTracking().AnyAsync(item => item.Id == id, cancellationToken);
-        if (exists)
-        {
-            cache.Set(key, true, generation);
-        }
-        else if (keepAbsence)
+        var exists = await cache.GetOrLoadAsync(key, token => context.Set<Site>().AsNoTracking().AnyAsync(item => item.Id == id, token), found => found, cancellationToken);
+        if (!exists && keepAbsence)
         {
             cache.SetGone(id, generation);
         }
