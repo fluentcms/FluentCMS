@@ -137,6 +137,12 @@
 
     protected override void OnParametersSet()
     {
+        // While the router waits for the next page, this page gets that address's query, which is not its state.
+        if (!AtOwnRoute())
+        {
+            return;
+        }
+
         var next = MediaBrowseState.Parse(FolderQuery, ViewQuery, SearchQuery, TypeQuery, TagQuery, PageQuery);
         if (next.Folder != state.Folder || next.Query != state.Query)
         {
@@ -144,6 +150,13 @@
         }
 
         state = next;
+    }
+
+    private bool AtOwnRoute()
+    {
+        var route = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var end = route.IndexOfAny(['?', '#']);
+        return string.Equals((end < 0 ? route : route[..end]).TrimEnd('/'), "media", StringComparison.OrdinalIgnoreCase);
     }
 
     private void Go(MediaBrowseState next) => Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(next.ToAddress()));
