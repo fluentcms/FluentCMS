@@ -81,4 +81,17 @@
     </ItemGroup>
   </Target>
 
+  <!-- Core's administration pages are in FluentCMS.Admin.Administration, which the shell loads on the first visit of one of
+       their routes, so an app that references it without listing it as BlazorWebAssemblyLazyLoad stops the build, as for a
+       half: it would be in the first download, and the shell's load of it would fail. -->
+  <Target Name="FluentCmsCheckAdministrationIsLazy" AfterTargets="ResolveReferences" Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
+    <ItemGroup>
+      <_FluentCmsAdministrationReference Include="@(ReferencePath->'%(Filename)')" Condition="'%(ReferencePath.Filename)' == 'FluentCMS.Admin.Administration'" />
+      <_FluentCmsAdministrationEager Include="@(_FluentCmsAdministrationReference)" Exclude="@(BlazorWebAssemblyLazyLoad->'%(Filename)')" />
+    </ItemGroup>
+
+    <Error Condition="'@(_FluentCmsAdministrationEager)' != ''"
+      Text="FluentCMS.Admin.Administration is referenced but not loaded lazily: add &lt;BlazorWebAssemblyLazyLoad Include=&quot;FluentCMS.Admin.Administration.wasm&quot; /&gt; to the app." />
+  </Target>
+
 </Project>

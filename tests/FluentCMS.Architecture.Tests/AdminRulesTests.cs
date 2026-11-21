@@ -21,8 +21,11 @@ public class AdminRulesTests
     private const string AdminRichText = "FluentCMS.Admin.RichText";
     private const string AdminApp = "FluentCMS.Admin.App";
 
-    // The repository's own half, which every list of halves holds.
-    private const string MediaHalf = HalvesFolder + "FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj";
+    // Core's administration pages, which the app loads lazily: a part of the shell, and no half.
+    private const string AdminAdministration = "FluentCMS.Admin.Administration";
+
+    // The repository's own halves, which every list of halves holds.
+    private static readonly string[] RepositoryHalves = ["AiAssist", "Mcp", "Media", "MultiSite", "Search", "Webhooks"];
     private const string AdminHosting = "FluentCMS.Admin.Hosting";
     private const string Core = "FluentCMS.Core";
     private const string Client = "FluentCMS.Client";
@@ -31,7 +34,7 @@ public class AdminRulesTests
     private const string TemplateHalf = "templates/fluentcms-plugin/src/FluentCms-Plugin1.Admin/FluentCms-Plugin1.Admin.csproj";
 
     // The packages of admin/src/ itself; any other project there, or elsewhere, may be a half.
-    private static readonly string[] AdminPackages = [Admin, AdminAbstractions, AdminComponents, AdminRichText, AdminApp, AdminHosting];
+    private static readonly string[] AdminPackages = [Admin, AdminAbstractions, AdminComponents, AdminAdministration, AdminRichText, AdminApp, AdminHosting];
 
     // A development-only FluentCMS package is left out of the rules only when it is one of these, which run in the compiler.
     private static readonly string[] CompilerPackages = ["FluentCMS.Analyzers", "FluentCMS.Generators"];
@@ -219,6 +222,7 @@ public class AdminRulesTests
                 "FluentCMS.Plugins.Reviews.Admin references Microsoft.FluentUI.AspNetCore.Components.Emoji",
                 "Ratings.Admin references Microsoft.FluentUI.AspNetCore.Components",
                 "FluentCMS.Admin references Microsoft.FluentUI.AspNetCore.Components.Icons",
+                "FluentCMS.Admin.Administration references Microsoft.FluentUI.AspNetCore.Components.Icons",
                 "FluentCMS.Admin.App references Microsoft.FluentUI.AspNetCore.Components.Icons",
             ],
             ignoreOrder: true);
@@ -267,7 +271,7 @@ public class AdminRulesTests
 
         Halves([.. ProjectFile.RepositoryProjects, byFolder, byName, byNameInAdmin, byReference, byReferenceInAdmin, server])
             .Select(half => half.Location)
-            .ShouldBe([TemplateHalf, MediaHalf, byFolder.Location, byName.Location, byNameInAdmin.Location, byReference.Location, byReferenceInAdmin.Location], ignoreOrder: true);
+            .ShouldBe([TemplateHalf, .. RepositoryHalves.Select(HalfProject), byFolder.Location, byName.Location, byNameInAdmin.Location, byReference.Location, byReferenceInAdmin.Location], ignoreOrder: true);
 
         // Placed directly under admin/src/, a half that uses the shell and the library still breaks the rules.
         var careless = ProjectFile.FromXml(byNameInAdmin.Location, """
@@ -323,7 +327,7 @@ public class AdminRulesTests
             """);
 
         AdminProjectsReachingCore(With(careless)).ShouldBe(
-            [AdminHosting, Admin, AdminAbstractions, AdminApp, AdminComponents, AdminRichText, "FluentCMS.Plugins.Media.Admin", "FluentCms-Plugin1.Admin"],
+            [AdminHosting, Admin, AdminAbstractions, AdminAdministration, AdminApp, AdminComponents, AdminRichText, .. RepositoryHalves.Select(HalfName), "FluentCms-Plugin1.Admin"],
             ignoreOrder: true);
 
         // That no assembly of the browser references the hosting package is checked by the first rule, which does not count
@@ -359,6 +363,21 @@ public class AdminRulesTests
         }
     }
 
+    // Spec 2.6: the administration pages are a part of the shell that loads lazily, so the shell does not reference their
+    // assembly, which would put it in the first download, and the app that references it lists it as lazy, as each half.
+    [Fact]
+    public void TheAdministrationPagesAndTheHalvesAreLazyInTheApp()
+    {
+        var app = ProjectFile.Load(AdminFolder + $"{AdminApp}/{AdminApp}.csproj");
+        string[] lazy = [AdminAdministration, AdminRichText, .. RepositoryHalves.Select(HalfName)];
+
+        app.ProjectReferences.ShouldBe([Admin, .. lazy], ignoreOrder: true);
+        LazyAssemblies(AdminFolder + $"{AdminApp}/{AdminApp}.csproj").ShouldBe([.. lazy.Select(name => name + ".wasm")], ignoreOrder: true);
+
+        Reachable(ProjectFile.RepositoryProjects.Single(project => project.Name == Admin), ProjectFile.RepositoryProjects).ShouldNotContain(AdminAdministration);
+        ProjectFile.Load(AdminFolder + $"{AdminAdministration}/{AdminAdministration}.csproj").ProjectReferences.ShouldBe([Admin]);
+    }
+
     // An admin project or half under admin/src/ that the test project does not reference would escape the scans of the
     // assemblies. A half of a template or a sample, built from packages, is held to the project rules only.
     [Fact]
@@ -386,6 +405,13 @@ public class AdminRulesTests
             .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'))
             .ShouldBeEmpty();
     }
+
+    private static string HalfName(string plugin) => $"FluentCMS.Plugins.{plugin}.Admin";
+
+    private static string HalfProject(string plugin) => $"{HalvesFolder}{HalfName(plugin)}/{HalfName(plugin)}.csproj";
+
+    private static List<string> LazyAssemblies(string location) =>
+        [.. System.Xml.Linq.XDocument.Load(Path.Combine(ProjectFile.FindRepositoryRoot(), location)).Descendants("BlazorWebAssemblyLazyLoad").Select(item => (string)item.Attribute("Include")!)];
 
     private static IEnumerable<string> BrowserAssemblies() =>
         BrowserProjects(ProjectFile.RepositoryProjects).Select(project => Path.Combine(AppContext.BaseDirectory, project.Name + ".dll")).Where(File.Exists);

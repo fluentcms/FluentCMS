@@ -117,6 +117,8 @@ internal sealed class FakeAdminContext : IAdminContext, IAdminAccess
 
     public bool Allows(string permission) => Permissions.Contains(permission);
 
+    public bool AllowsForInstance(string permission) => false;
+
     public TypeAccessInfo? ForType(string type) => null;
 
     public void Grant(params string[] permissions) => Permissions.UnionWith(permissions);

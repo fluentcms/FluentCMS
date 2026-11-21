@@ -303,6 +303,7 @@ public sealed class AdminPluginManifestTests
             $"list cell 'careless' of {Types}CarelessMenuItem: the class does not derive from ListCellBase",
             $"page '/system/careless' of {Types}CarelessPage: the component has no @page of that route, so the router cannot find it",
             $"page '/system/careless/other' of {Types}CarelessPage: the component has no @page of that route, so the router cannot find it",
+            $"page '/system/careless/other' of {Types}CarelessPage: InstanceOnly needs a Permission for the user to hold for the instance, and without one the shell shows the page to no one",
             $"menu item 'Careless.Pages' of {Types}CarelessPage: the component has several pages, so the item must name its Route",
             $"settings page 'careless' of {Types}CarelessPage: the class does not derive from IComponent",
             $"widget 'Careless.Widget' of {Types}CarelessPage: the class does not derive from IComponent",

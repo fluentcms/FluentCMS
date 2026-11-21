@@ -1,0 +1,326 @@
+@* The frame of a list page of records (spec 4.15): a search, server paging, and the loading, empty, no-match and problem
+   states of the content lists. The search and the page are in the query string, q= and page= as theirs are, so a reload and
+   Back keep them; so are the page's own filters, which it names in Filters, draws itself and sets with SetFilter. The page
+   gives the read and the columns, and calls ReloadAsync after it changed a record. The server decides what the user may
+   read: a 403 of the list is shown as the answer. *@
+@typeparam TItem where TItem : notnull
+@implements IDisposable
+@using FluentCMS.Admin.Content
+@inject NavigationManager Navigation
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<CommonResources> L
+
+@if (Searchable)
+{
+    <form role="search" class="record-list-search" @onsubmit="SubmitSearch">
+        <CmsTextInput Type="CmsTextInputType.Search"
+                      Label="@(SearchLabel ?? L["Common.List.Search"])"
+                      Value="@searchText"
+                      ValueChanged="@(text => searchText = text)"
+                      MaxLength="@ListFilters.MaxSearchLength" />
+        <CmsButton Icon="CmsIconName.Search" OnClick="SubmitSearch">@L["Common.List.SearchSubmit"]</CmsButton>
+    </form>
+}
+
+@if (problem is { } failed)
+{
+    <div class="record-list-problem" role="alert">
+        <p><strong>@Title(failed)</strong></p>
+        @if (failed.Problem?.Detail is { Length: > 0 } detail)
+        {
+            <p>@detail</p>
+        }
+        @if (failed.Problem?.TraceId is { Length: > 0 } trace)
+        {
+            <p>@L["Common.List.TraceId", trace]</p>
+        }
+        @* A refusal answers the same again; anything else, a page past the server's last one too, may not. *@
+        <div class="record-list-actions">
+            @if (failed.Problem is not { Status: 403 or 404 })
+            {
+                <CmsButton OnClick="ReloadAsync">@L["Common.List.TryAgain"]</CmsButton>
+            }
+            @if (shown.Page > 1)
+            {
+                <a href="@Address(shown.Search, 1)">@L["Common.List.FirstPage"]</a>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <CmsDataGrid TItem="TItem"
+                 Label="@Label"
+                 Items="@items"
+                 OnRowActivated="@OnRowActivated"
+                 RowLabel="@RowLabel"
+                 Loading="@loading"
+                 TotalItems="@total"
+                 RowOffset="@((long)(shown.Page - 1) * PageSize)">
+        <EmptyContent>@NothingText(shown)</EmptyContent>
+        <ChildContent>@Columns</ChildContent>
+    </CmsDataGrid>
+
+    <nav class="record-list-pager" aria-label="@L["Common.List.Paging"]">
+        <span>@(total == 1 ? L["Common.List.TotalOne"] : L["Common.List.Total", Number(total)])</span>
+        <CmsButton @ref="previousButton" Disabled="@(shown.Page <= 1)" OnClick="@(() => GoToPage(shown.Page - 1))">@L["Common.List.Previous"]</CmsButton>
+        <span>@L["Common.List.PageOf", Number(shown.Page), Number(Pages)]</span>
+        <CmsButton @ref="nextButton" Disabled="@(shown.Page >= Pages)" OnClick="@(() => GoToPage(shown.Page + 1))">@L["Common.List.Next"]</CmsButton>
+    </nav>
+}
+
+@code {
+    private string? path;
+    private RecordQuery shown = new(null, 1, 0);
+    private bool read;
+    private string? searchText;
+    private IReadOnlyList<TItem> items = [];
+    private long total;
+    private bool loading = true;
+    private Failure? problem;
+    private CancellationTokenSource? reading;
+    private CmsButton? previousButton;
+    private CmsButton? nextButton;
+
+    // The button that gets focus after the next render, since the one that had it became disabled.
+    private Func<CmsButton?>? focusAfterRender;
+
+    // The accessible name of the grid, such as the page's heading.
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    // Reads a page of records; what it throws of the API client's failures is shown as the problem state.
+    [Parameter, EditorRequired]
+    public Func<RecordQuery, CancellationToken, Task<RecordPage<TItem>>> Read { get; set; } = null!;
+
+    // The CmsDataGridColumn of each column.
+    [Parameter, EditorRequired]
+    public RenderFragment Columns { get; set; } = null!;
+
+    [Parameter]
+    public bool Searchable { get; set; } = true;
+
+    // The names of the query parameters that hold the page's own filters, such as status and queue. The list reads their
+    // values into the query, reads again when one changes, and SetFilter writes one.
+    [Parameter]
+    public IReadOnlyList<string> Filters { get; set; } = [];
+
+    [Parameter]
+    public string? SearchLabel { get; set; }
+
+    [Parameter]
+    public string? EmptyText { get; set; }
+
+    [Parameter]
+    public string? NoMatchText { get; set; }
+
+    [Parameter]
+    public int PageSize { get; set; } = ListView.DefaultPageSize;
+
+    [Parameter]
+    public Func<TItem, string?>? RowLabel { get; set; }
+
+    [Parameter]
+    public EventCallback<TItem> OnRowActivated { get; set; }
+
+    // A failed read: the problem the API answered, or none when it did not answer.
+    private sealed record Failure(ApiProblem? Problem);
+
+    private long Pages => PagesOf(total);
+
+    private long PagesOf(long records) => Math.Max(1, (records + PageSize - 1) / PageSize);
+
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+
+    // A page that shows the list at two addresses, as /x/{Id}, is one instance for both, so the list reads afresh when the
+    // page renders it at another path: its rows, page and filters are those of the address before.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Filters.FirstOrDefault(name => name is "q" or "page") is { } taken)
+        {
+            throw new ArgumentException($"'{taken}' is the list's own query parameter, for the search or the page, and not a filter's.", nameof(Filters));
+        }
+
+        var current = PathOf(Navigation.Uri);
+        if (current != path)
+        {
+            path = current;
+            await ReadAddressAsync(again: true);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender?.Invoke() is { } button)
+        {
+            focusAfterRender = null;
+            await button.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+        reading?.Cancel();
+        reading?.Dispose();
+    }
+
+    // Sets one of the page's filters in the address, or takes it out with no value, which shows the first page of what it
+    // finds.
+    public void SetFilter(string name, string? value)
+    {
+        if (!Filters.Contains(name, StringComparer.Ordinal))
+        {
+            throw new ArgumentException($"'{name}' is not one of the list's Filters.", nameof(name));
+        }
+
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(new Dictionary<string, object?> { [name] = string.IsNullOrEmpty(value) ? null : value, ["page"] = null }));
+    }
+
+    // Reads the page the address names again, as after the page changed a record.
+    public async Task ReloadAsync()
+    {
+        await ReadAddressAsync(again: true);
+        StateHasChanged();
+    }
+
+    // A change of the query string of this path reads again. The address of another path is another page's, or this page's
+    // at another address, which the next render of the list reads.
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (PathOf(e.Location) == path)
+        {
+            _ = InvokeAsync(async () =>
+            {
+                await ReadAddressAsync();
+                StateHasChanged();
+            });
+        }
+    }
+
+    // A read that a later one overtook is dropped; the same read twice is made once.
+    private async Task ReadAddressAsync(bool again = false)
+    {
+        var query = new Uri(Navigation.Uri).Query;
+        var asked = new RecordQuery(Searchable ? ListFilters.ParseSearch(ListFilters.SearchOf(query)) : null, ListView.ParsePage(ValueOf(query, "page")), PageSize)
+        {
+            Filters = Filters.Select(name => (Name: name, Value: ValueOf(query, name))).Where(filter => filter.Value is { Length: > 0 })
+                .ToDictionary(filter => filter.Name, filter => filter.Value!, StringComparer.Ordinal),
+        };
+        if (read && asked == shown && !again)
+        {
+            return;
+        }
+
+        var searched = read && asked with { Page = shown.Page } != shown;
+        (shown, read, searchText) = (asked, true, asked.Search);
+        reading?.Cancel();
+        reading?.Dispose();
+        var current = reading = new CancellationTokenSource();
+        (loading, problem) = (true, null);
+        StateHasChanged();
+        try
+        {
+            var page = await Read(asked, current.Token);
+            if (Overtaken(current))
+            {
+                return;
+            }
+
+            if (page.Items.Count == 0 && page.Total > 0 && asked.Page > PagesOf(page.Total))
+            {
+                // A page past the end, as after records were deleted: the last page instead, with the list still loading
+                // until that page is read.
+                Navigation.NavigateTo(Address(asked.Search, PagesOf(page.Total)), replace: true);
+                return;
+            }
+
+            (items, total) = (page.Items, page.Total);
+            if (searched)
+            {
+                Announce(asked);
+            }
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (ApiProblemException failure)
+        {
+            if (Overtaken(current))
+            {
+                return;
+            }
+
+            (items, total, problem) = ([], 0, new Failure(failure.Problem));
+        }
+        catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            if (Overtaken(current))
+            {
+                return;
+            }
+
+            (items, total, problem) = ([], 0, new Failure(null));
+        }
+
+        loading = false;
+    }
+
+    // A read that a later one replaced, or that ends after the list is gone: neither its rows nor its failure are shown.
+    private bool Overtaken(CancellationTokenSource read) => read.IsCancellationRequested || read != reading;
+
+    private string NothingText(RecordQuery asked) =>
+        asked.Search is null && asked.Filters.Count == 0 ? EmptyText ?? L["Common.List.Empty"]
+            : NoMatchText ?? L[Filters.Count > 0 ? "Common.List.NoMatchFilters" : "Common.List.NoMatch"];
+
+    // A change of the search or of a filter is announced with the number it finds (WCAG 4.1.3); the first read of a list
+    // and a change of the page are not.
+    private void Announce(RecordQuery asked) => Announcer.Announce(total switch
+    {
+        0 => NothingText(asked),
+        1 => L["Common.List.FoundOne"],
+        _ => L["Common.List.Found", Number(total)],
+    });
+
+    // A new search shows its first page.
+    private void SubmitSearch() => Navigation.NavigateTo(Address(ListFilters.ParseSearch(searchText), 1));
+
+    private void GoToPage(long number)
+    {
+        if (number <= 1)
+        {
+            focusAfterRender = () => nextButton;
+        }
+        else if (number >= Pages)
+        {
+            focusAfterRender = () => previousButton;
+        }
+
+        Navigation.NavigateTo(Address(shown.Search, number));
+    }
+
+    private string Address(string? search, long page) =>
+        Navigation.GetUriWithQueryParameters(new Dictionary<string, object?> { ["q"] = search, ["page"] = page <= 1 ? null : page });
+
+    // The title is the server's own for a problem with a code. One without, as a proxy's or a bare status, has only the
+    // reason phrase of its status, in no language of the admin, so the list's own text shows.
+    private string Title(Failure failure) => failure.Problem switch
+    {
+        { Status: 403 } => L["Common.List.Forbidden"],
+        { Code.Length: > 0, Title: { Length: > 0 } title } => title,
+        _ => L["Common.List.Failed"],
+    };
+
+    private static string PathOf(string uri) => new Uri(uri).AbsolutePath;
+
+    // The last value the query string gives a parameter, as the content lists read theirs.
+    private static string? ValueOf(string query, string name) =>
+        query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(pair => pair.Split('=', 2))
+            .LastOrDefault(pair => pair is [var key, _] && Unescape(key) == name) is [_, var value] ? Unescape(value) : null;
+
+    private static string Unescape(string text) => Uri.UnescapeDataString(text.Replace('+', ' '));
+
+    private static string Number(long value) => value.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+}

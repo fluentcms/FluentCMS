@@ -1,0 +1,6 @@
+@* The first page of the half (spec 5.7), which shows its heading until its issue writes it. *@
+@page "/search"
+@attribute [AdminPage("/search", Permission = "search.manage")]
+@inject IStringLocalizer<SearchResources> L
+
+<h1 tabindex="-1">@L["Search.Page.Heading"]</h1>

@@ -1,0 +1,21 @@
+{
+  "manifestVersion": 1,
+  "name": "ai",
+  "version": "1.0.0",
+  "adminRange": "[1.0.0,2.0.0)",
+  "assembly": "FluentCMS.Plugins.AiAssist.Admin",
+  "pages": [
+    { "type": "FluentCMS.Plugins.AiAssist.Admin.AiUsagePage", "route": "/ai/usage", "permission": "ai.usage.read" }
+  ],
+  "menuItems": [
+    {
+      "type": "FluentCMS.Plugins.AiAssist.Admin.AiUsagePage",
+      "label": "Ai.Usage.Menu",
+      "labels": { "en": "AI usage" },
+      "route": "/ai/usage",
+      "section": "administration",
+      "order": 90,
+      "permission": "ai.usage.read"
+    }
+  ]
+}

@@ -47,7 +47,9 @@ internal static class ShellNavigation
         ];
 
         var entries = menu.Entries
-            .Where(entry => (entry.Plugin is null || context.PluginEnabled(entry.Plugin)) && (entry.Permission is null || context.Allows(entry.Permission)))
+            .Where(entry => entry.Area is { } area
+                ? context.Allows(area)
+                : (entry.Plugin is null || context.PluginEnabled(entry.Plugin)) && context.Allows(entry.Permission, entry.Item?.InstanceOnly == true))
             .OrderBy(entry => entry.Order)
             .ThenBy(entry => entry.Item?.LabelFor(CultureInfo.CurrentUICulture), StringComparer.CurrentCulture)
             .ToList();

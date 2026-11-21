@@ -1,0 +1,7 @@
+@* The first page of the half (spec 5.3), which shows its heading until its issue writes it. *@
+@page "/webhooks"
+@attribute [AdminPage("/webhooks", Permission = "webhooks.manage")]
+@attribute [AdminMenuItem("Webhooks.Menu", Section = AdminSection.Settings, Order = 30)]
+@inject IStringLocalizer<WebhooksResources> L
+
+<h1 tabindex="-1">@L["Webhooks.Page.Heading"]</h1>

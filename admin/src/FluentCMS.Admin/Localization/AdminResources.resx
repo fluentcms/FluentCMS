@@ -2141,4 +2141,31 @@
   <data name="Content.Preview.Showing" xml:space="preserve">
     <value>Showing {0}</value>
   </data>
+  <data name="Administration.Menu.Users" xml:space="preserve">
+    <value>Users</value>
+  </data>
+  <data name="Administration.Menu.Roles" xml:space="preserve">
+    <value>Roles</value>
+  </data>
+  <data name="Administration.Menu.ApiKeys" xml:space="preserve">
+    <value>API keys</value>
+  </data>
+  <data name="Administration.Menu.Members" xml:space="preserve">
+    <value>Members</value>
+  </data>
+  <data name="Administration.Menu.Plugins" xml:space="preserve">
+    <value>Plugins</value>
+  </data>
+  <data name="Administration.Menu.Jobs" xml:space="preserve">
+    <value>Jobs</value>
+  </data>
+  <data name="Administration.Menu.Diagnostics" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+  <data name="Administration.Menu.Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Administration.Menu.Sites" xml:space="preserve">
+    <value>Sites and locales</value>
+  </data>
 </root>

@@ -1,0 +1,31 @@
+.record-list-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--cms-space-s);
+    max-inline-size: 40rem;
+    margin-block-end: var(--cms-space-m);
+}
+
+.record-list-search ::deep > :first-child {
+    flex: 1;
+    min-inline-size: 12rem;
+}
+
+.record-list-actions,
+.record-list-pager {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cms-space-s);
+}
+
+.record-list-pager {
+    margin-block-start: var(--cms-space-m);
+}
+
+.record-list-problem {
+    padding: var(--cms-space-m);
+    border-inline-start: 3px solid var(--cms-color-error);
+    background: var(--cms-color-surface);
+}

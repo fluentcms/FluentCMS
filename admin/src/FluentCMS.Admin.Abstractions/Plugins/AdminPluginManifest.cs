@@ -95,6 +95,9 @@ public sealed record AdminManifestPage
 
     /// <summary>The permission a user needs to see the page, if it needs one.</summary>
     public string? Permission { get; init; }
+
+    /// <summary>Whether the user needs the permission for the instance; see <see cref="AdminPageAttribute.InstanceOnly"/>.</summary>
+    public bool InstanceOnly { get; init; }
 }
 
 /// <summary>A menu item of an admin half, from <see cref="AdminMenuItemAttribute"/>.</summary>
@@ -149,6 +152,9 @@ public sealed record AdminManifestMenuItem
 
     /// <summary>The permission of the page the item links to, if it needs one.</summary>
     public string? Permission { get; init; }
+
+    /// <summary>Whether the page the item links to needs the permission for the instance.</summary>
+    public bool InstanceOnly { get; init; }
 }
 
 /// <summary>A settings page of an admin half, from <see cref="SettingsPageAttribute"/>.</summary>

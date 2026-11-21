@@ -192,7 +192,12 @@ public static class AdminPluginManifestCheck
                     problems.Add($"page '{page.Route}' of {name}: the route is not {root} or below it");
                 }
 
-                pages.Add(new AdminManifestPage { Type = name, Route = page.Route, Permission = page.Permission });
+                if (page.InstanceOnly && page.Permission is null)
+                {
+                    problems.Add($"page '{page.Route}' of {name}: InstanceOnly needs a Permission for the user to hold for the instance, and without one the shell shows the page to no one");
+                }
+
+                pages.Add(new AdminManifestPage { Type = name, Route = page.Route, Permission = page.Permission, InstanceOnly = page.InstanceOnly });
             }
 
             // The shell gates a page by its [AdminPage], so a route without one would show in a site where the plugin is
@@ -230,6 +235,7 @@ public static class AdminPluginManifestCheck
                         Icon = item.Icon,
                         Order = item.Order,
                         Permission = page.Permission,
+                        InstanceOnly = page.InstanceOnly,
                     });
                 }
             }
@@ -387,14 +393,15 @@ public static class AdminPluginManifestCheck
     // Every contribution of a manifest in one shape: its kind, its class, the member that names it, and its other members.
     private static List<Item> Items(AdminPluginManifest manifest) =>
     [
-        .. Present(manifest.Pages).Select(page => new Item("page", page.Type, "route", page.Route, [("permission", page.Permission)])),
+        .. Present(manifest.Pages).Select(page => new Item("page", page.Type, "route", page.Route, [("permission", page.Permission), ("instanceOnly", Flag(page.InstanceOnly))])),
         .. Present(manifest.MenuItems).Select(item => new Item("menu item", item.Type, "label", item.Label,
         [
             ("route", item.Route), ("section", ManifestNames.Of(item.Section)), ("icon", item.Icon), ("order", Text(item.Order)), ("permission", item.Permission),
+            ("instanceOnly", Flag(item.InstanceOnly)),
         ])),
         .. Present(manifest.SettingsPages).Select(page => new Item("settings page", page.Type, "area", page.Area, [])),
         .. Present(manifest.FieldEditors).Select(editor => new Item("field editor", editor.Type, "fieldType", editor.FieldType, [])),
-        .. Present(manifest.ListCells).Select(cell => new Item("list cell", cell.Type, "fieldType", cell.FieldType, [("populate", cell.Populate ? "true" : null)])),
+        .. Present(manifest.ListCells).Select(cell => new Item("list cell", cell.Type, "fieldType", cell.FieldType, [("populate", Flag(cell.Populate))])),
         .. Present(manifest.EntryActions).Select(action => new Item("entry action", action.Type, "name", action.Name,
             [("contentTypes", Text(action.ContentTypes)), ("permission", action.Permission)])),
         .. Present(manifest.BulkActions).Select(action => new Item("bulk action", action.Type, "name", action.Name,
@@ -457,6 +464,8 @@ public static class AdminPluginManifestCheck
     private static string Quote(string? value) => value is null ? "not set" : $"'{value}'";
 
     private static string Text(IReadOnlyList<string> values) => string.Join(", ", values.Order(StringComparer.Ordinal));
+
+    private static string? Flag(bool value) => value ? "true" : null;
 
     private static string Text(int value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 

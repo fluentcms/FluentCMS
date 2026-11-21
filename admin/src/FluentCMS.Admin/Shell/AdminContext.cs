@@ -39,6 +39,9 @@ internal sealed class AdminContext(
     private Task _localeReads = Task.CompletedTask;
     private Task<IReadOnlyDictionary<string, MyAccessInfo>>? _localeAccess;
 
+    // The content locale AccessInfo was read in, null for the site's default.
+    private string? _accessLocale;
+
     public event Action? Changed;
 
     public ShellStatus Status { get; private set; } = ShellStatus.Loading;
@@ -61,6 +64,15 @@ internal sealed class AdminContext(
     public IAdminAccess Access => this;
 
     public MyAccessInfo? AccessInfo { get; private set; }
+
+    // Whether AccessInfo is that of the content locale: not after a change of the locale until its access is read, nor while
+    // a site is read, so what the user may do in the locale is not known meanwhile, and a gate holds what it decides.
+    public bool AccessCurrent => AccessFor(null);
+
+    // Whether AccessInfo is that of the content locale an address names, as UseLocaleAsync chooses it, or with null of the
+    // content locale: an address that names another locale is read with its access only once UseLocaleAsync has read it.
+    public bool AccessFor(string? locale) =>
+        AccessInfo is not null && string.Equals(_accessLocale, locale is null ? site.ContentLocale : Chosen(locale), StringComparison.Ordinal);
 
     // Null when the user may not read the schema of the site; SchemaRefused says so.
     public SchemaDescription? Schema { get; private set; }
@@ -119,12 +131,7 @@ internal sealed class AdminContext(
             return _localeReads;
         }
 
-        var chosen = ContentLocales.FirstOrDefault(code => string.Equals(code, locale, StringComparison.OrdinalIgnoreCase));
-        if (string.Equals(chosen, current.DefaultLocale, StringComparison.OrdinalIgnoreCase))
-        {
-            chosen = null;
-        }
-
+        var chosen = Chosen(locale);
         if (string.Equals(chosen, site.ContentLocale, StringComparison.Ordinal))
         {
             return _localeReads;
@@ -133,6 +140,14 @@ internal sealed class AdminContext(
         var generation = ++_generation;
         site.ContentLocale = chosen;
         return _localeReads = RunAsync(generation, () => SiteReadsAsync(generation));
+    }
+
+    // The content locale an address that names a locale is in: one of the site's enabled locales, null for its default, and
+    // the default for a locale the site does not have enabled.
+    private string? Chosen(string locale)
+    {
+        var chosen = ContentLocales.FirstOrDefault(code => string.Equals(code, locale, StringComparison.OrdinalIgnoreCase));
+        return string.Equals(chosen, Site?.DefaultLocale, StringComparison.OrdinalIgnoreCase) ? null : chosen;
     }
 
     // The locales of the site in which the user may read the type: a grant may be limited to locales, and a read of every
@@ -172,6 +187,34 @@ internal sealed class AdminContext(
     }
 
     public bool Allows(string permission) => AccessInfo is { } access && Holds(access, permission);
+
+    public bool AllowsForInstance(string permission) => AccessInfo is { } access && access.InstancePermissions.Contains(permission, StringComparer.Ordinal);
+
+    // Whether the user may open an area of core's administration pages: it holds the area's permission, for the instance
+    // when the area is instance-only. A permission with a star, as the settings menu's, is held with any name in its place.
+    public bool Allows(AdministrationArea area)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+        if (AccessInfo is not { } access)
+        {
+            return false;
+        }
+
+        var held = area.InstanceOnly ? access.InstancePermissions : [.. access.Permissions, .. access.InstancePermissions];
+        var star = area.Permission.IndexOf('*', StringComparison.Ordinal);
+        if (star < 0)
+        {
+            return held.Contains(area.Permission, StringComparer.Ordinal);
+        }
+
+        var (start, end) = (area.Permission[..star], area.Permission[(star + 1)..]);
+        return held.Any(name => name.Length > start.Length + end.Length && name.StartsWith(start, StringComparison.Ordinal) && name.EndsWith(end, StringComparison.Ordinal));
+    }
+
+    // Whether the user holds the permission of a page of an admin half, for the instance when the page is instance-only.
+    // A page that names none is open to everyone, but an instance-only one, which has nothing to hold for the instance.
+    public bool Allows(string? permission, bool instanceOnly) =>
+        permission is null ? !instanceOnly : instanceOnly ? AllowsForInstance(permission) : Allows(permission);
 
     public TypeAccessInfo? ForType(string type) => AccessInfo is { } access && access.Types.TryGetValue(type, out var found) ? found : null;
 
@@ -250,7 +293,8 @@ internal sealed class AdminContext(
 
     private async Task SiteReadsAsync(int generation)
     {
-        var access = await client.GetMyAccessAsync(site.Site, site.Locale, CancellationToken.None);
+        var locale = site.ContentLocale;
+        var access = await client.GetMyAccessAsync(site.Site, locale, CancellationToken.None);
         var plugins = metadata.GetPluginsAsync(CancellationToken.None);
         SchemaDescription? schema = null;
         var refused = !Holds(access, SchemaRead);
@@ -272,7 +316,7 @@ internal sealed class AdminContext(
             return;
         }
 
-        (AccessInfo, Schema, SchemaRefused, Plugins) = (access, schema, refused, installed);
+        (AccessInfo, _accessLocale, Schema, SchemaRefused, Plugins) = (access, locale, schema, refused, installed);
         Status = ShellStatus.Ready;
     }
 

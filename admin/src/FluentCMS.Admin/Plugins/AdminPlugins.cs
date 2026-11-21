@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using FluentCMS.Admin.Actions;
+using FluentCMS.Admin.Content;
 using FluentCMS.Admin.Fields;
 using FluentCMS.Admin.Lists;
 using FluentCMS.Admin.Shell;
@@ -21,7 +22,7 @@ internal enum PluginPageGate
     // The half's plugin is disabled in the site, or the half has no page of the route.
     NotFound,
 
-    // The user lacks the page's permission.
+    // The user lacks the page's permission, or holds it in a site only for a page that needs it for the instance.
     NoAccess,
 }
 
@@ -34,15 +35,20 @@ internal sealed record PluginWidget(AdminPluginManifest Half, AdminManifestWidge
 // The admin halves of the app as the shell uses them (spec 2.6): each contribution counts only while its plugin is enabled
 // in the site and the user holds its permission, and a half is loaded with its assembly on the first use of one of them,
 // never in a site where its plugin is disabled. Loading runs the half's Configure once, into a provider of the half that
-// falls back to the admin's services. A load that fails is tried again on the next use.
+// falls back to the admin's services. A load that fails is tried again on the next use. The router asks it about core's
+// administration pages too, which load the same way, behind the gate of their area (spec 4.15).
 internal sealed class AdminPlugins(
     AdminPluginCatalog catalog,
     AdminContext context,
+    AdministrationAssembly administration,
     IAdminAssemblyLoader loader,
     IServiceProvider services,
     AdminServiceDescriptors descriptors,
     ILogger<AdminPlugins> logger) : IAdminPluginServices
 {
+    // Any base does: only the query string of a route is read for its locale.
+    private static readonly Uri RouteBase = new("https://admin.invalid/");
+
     private const string KeptWhole = "An admin half is loaded lazily and kept whole by the app's partial trimming, which trims only the assemblies that opt in (spec 2.6).";
 
     // Keyed by the plugin's name, which GET /plugins gives in lower-case kebab case and is compared as it is.
@@ -56,7 +62,8 @@ internal sealed class AdminPlugins(
 
     public AdminPluginCatalog Catalog => catalog;
 
-    // The loaded halves' assemblies, which the router searches for pages besides the admin's own.
+    // The assemblies of the loaded halves and of the administration pages, once loaded, which the router searches for pages
+    // besides the admin's own.
     public List<Assembly> Assemblies { get; } = [];
 
     public bool IsAvailable(AdminPluginManifest half) => context.PluginEnabled(half.Name);
@@ -108,27 +115,44 @@ internal sealed class AdminPlugins(
     public async Task<Type> ComponentAsync(AdminPluginManifest half, string typeName, CancellationToken cancellationToken) =>
         (await LoadAsync(half, cancellationToken)).Type(typeName);
 
-    // The gate of a page the router found: a page of a loaded half by its own assembly, so that a half's route outside its
-    // segment is gated too, and a page of the admin by the route, which answers for the halves not loaded yet.
-    public PluginPageGate Gate(RouteData routeData, string route)
+    // The gate of a page the router found, from the route data the router renders it with, and never from the address: the
+    // router may render the page of the address before while the address is already the next one, and the page of the
+    // address before that address's OnNavigateAsync has run. A page of the administration assembly is gated by its area,
+    // the one area all its routes are in, so that a page outside every area, or across two, has no page. A page of a loaded
+    // half is gated by the manifest's pages of its class whose routes the route data agrees with (PageRoutes), so that a
+    // route of the class that the manifest does not declare has no page, and a route data that two of them agree with
+    // requires what each requires. A page of the admin's own is not gated here.
+    public PluginPageGate Gate(RouteData routeData)
     {
         ArgumentNullException.ThrowIfNull(routeData);
-        if (_loaded.Values.FirstOrDefault(loaded => loaded.Assembly == routeData.PageType.Assembly) is not { } owner)
+        if (routeData.PageType.Assembly == administration.Loaded)
         {
-            return Gate(route);
+            return AdministrationAreas.OfPage(routeData.PageType) is not { } area ? PluginPageGate.NotFound
+                : context.Allows(area) ? PluginPageGate.Allowed : PluginPageGate.NoAccess;
         }
 
-        var pages = owner.Manifest.Pages.Where(page => page.Type == routeData.PageType.FullName);
-        if (!IsAvailable(owner.Manifest) || AdminPluginRoutes.Match(pages, route) is not { } matched)
+        if (_loaded.Values.FirstOrDefault(loaded => loaded.Assembly == routeData.PageType.Assembly) is not { } owner)
+        {
+            return PluginPageGate.None;
+        }
+
+        var declared = owner.Manifest.Pages.Where(page => page.Type == routeData.PageType.FullName).ToList();
+        var matched = PageRoutes.Of(routeData).Select(template => declared.FirstOrDefault(page => page.Route == template)).ToList();
+        if (!IsAvailable(owner.Manifest) || matched.Count == 0 || matched.Contains(null))
         {
             return PluginPageGate.NotFound;
         }
 
-        return matched.Permission is null || context.Allows(matched.Permission) ? PluginPageGate.Allowed : PluginPageGate.NoAccess;
+        return matched.All(page => context.Allows(page!.Permission, page.InstanceOnly)) ? PluginPageGate.Allowed : PluginPageGate.NoAccess;
     }
 
     public PluginPageGate Gate(string route)
     {
+        if (AdministrationAreas.OfRoute(route) is { } area)
+        {
+            return context.Allows(area) ? PluginPageGate.Allowed : PluginPageGate.NoAccess;
+        }
+
         if (catalog.HalfOfRoute(route) is not { } half)
         {
             return PluginPageGate.None;
@@ -139,15 +163,50 @@ internal sealed class AdminPlugins(
             return PluginPageGate.NotFound;
         }
 
-        return page.Permission is null || context.Allows(page.Permission) ? PluginPageGate.Allowed : PluginPageGate.NoAccess;
+        return context.Allows(page.Permission, page.InstanceOnly) ? PluginPageGate.Allowed : PluginPageGate.NoAccess;
     }
 
-    // The router's OnNavigateAsync: a page of a half loads the half, once the shell knows the site, if the user may see it.
-    // A navigation tries a failed half again.
+    // Whether the last load of what shows the route failed: the half of the route, or the administration assembly.
+    public bool LoadFailed(string route) =>
+        AdministrationAreas.OfRoute(route) is not null ? administration.Failed : catalog.HalfOfRoute(route) is { } half && LoadFailed(half);
+
+    // The router's OnNavigateAsync: a page of a half loads the half, and a page of an area of administration its assembly,
+    // once the shell knows the site, if the user may see it. A navigation tries a failed load again. What the user sees is
+    // decided by the gate of the page the router renders, which does not trust that a route is rendered only once this ends.
     public async Task NavigateAsync(string route, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(route);
         _failed.Clear();
+        administration.TryAgain();
         _navigated = null;
+        if (AdministrationAreas.OfRoute(route) is not null)
+        {
+            if (administration.Loaded is null)
+            {
+                await context.StartAsync();
+            }
+
+            if (!await UseLocaleOfAsync(route, cancellationToken))
+            {
+                return;
+            }
+
+            var allowed = Gate(route);
+            _navigated = (route, allowed);
+            if (allowed == PluginPageGate.Allowed && administration.Loaded is null)
+            {
+                await administration.TryLoadAsync(cancellationToken);
+            }
+
+            // Also the assembly of a load that ended after the navigation that started it was overtaken.
+            if (administration.Loaded is { } assembly && !Assemblies.Contains(assembly))
+            {
+                Assemblies.Add(assembly);
+            }
+
+            return;
+        }
+
         if (catalog.HalfOfRoute(route) is not { } half)
         {
             return;
@@ -158,12 +217,37 @@ internal sealed class AdminPlugins(
             await context.StartAsync();
         }
 
+        if (!await UseLocaleOfAsync(route, cancellationToken))
+        {
+            return;
+        }
+
         var gate = Gate(route);
         _navigated = (route, gate);
         if (gate == PluginPageGate.Allowed && !IsLoaded(half))
         {
             await TryLoadAsync(half, cancellationToken);
         }
+    }
+
+    // The server narrows the access by the content locale, so the gate of a route that names another locale waits for the
+    // access of that locale before it decides whether to load what the route needs. The router may still render the route's
+    // page meanwhile, as when a navigation it cancelled ends; the route view then holds the page before, since the access
+    // the shell holds is not that of the locale the address names. A content page sets its locale itself before it reads.
+    // False for a navigation the router cancelled, as by a later one, which then does nothing more: its wait may end after
+    // the later navigation's, whose gate and load are the ones that count.
+    private async Task<bool> UseLocaleOfAsync(string route, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await context.UseLocaleAsync(ContentRoutes.LocaleOf(new Uri(RouteBase, route))).WaitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        return !cancellationToken.IsCancellationRequested;
     }
 
     // Whether a half's route that the last navigation answered as not found or no access is allowed now, as when the shell's
