@@ -6,6 +6,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.Tests.Providers;
+using FluentCMS.Publishing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -136,8 +137,9 @@ public sealed class UniqueRaceTests : IDisposable
         var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "Hello" }));
         await _database.UpdateAsync(Editor, id, new() { ["title"] = "Bonjour" }, 0, locale: "fr");
         string[] locales = ["en", "fr"];
+        int[] versions = [2, 1];
 
-        var outcomes = await RaceAsync(index => _database.PatchAsync(Editor, id, new() { ["views"] = 10 + index }, 1, locale: locales[index]), writers: 2);
+        var outcomes = await RaceAsync(index => _database.PatchAsync(Editor, id, new() { ["views"] = 10 + index }, versions[index], locale: locales[index]), writers: 2);
 
         ShouldHaveOneWinner(outcomes, outcome => outcome.ShouldBeOfType<VersionConflictException>());
         var winner = outcomes.FindIndex(outcome => outcome is null);
@@ -145,7 +147,30 @@ public sealed class UniqueRaceTests : IDisposable
         {
             var entry = (await _database.GetAsync(Editor, id, locale: locale)).ShouldNotBeNull();
             entry["views"].ShouldBe(10L + winner);
-            entry["version"].ShouldBe(2);
+            entry["version"].ShouldBe(locale == "en" ? 3 : 2);
+        }
+    }
+
+    // #3265: a publish of fr against a shared change in en. Whichever commits first, a publish that went through published
+    // the shared value it read, never one that came in under it, and one that lost answers 412.
+    [Fact]
+    public async Task APublishThatRacesASharedChangeInAnotherLocalePublishesOnlyWhatItRead()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "Hello", ["views"] = 1 }));
+        await _database.UpdateAsync(Editor, id, new() { ["title"] = "Bonjour" }, 0, locale: "fr");
+
+        var outcomes = await RaceAsync(index => index == 0 ? _database.PublishAsync(Editor, id, "fr", expected: 1) : _database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 2), writers: 2);
+
+        outcomes[1].ShouldBeNull(outcomes[1] is { } failed ? Describe(failed) : null);
+        if (outcomes[0] is null)
+        {
+            _database.PublishedRow("cms_article", id)!["views"].ShouldBe(1L);
+            _database.Document(id, "fr").Status.ShouldBe(EntryStatus.Modified);
+        }
+        else
+        {
+            outcomes[0].ShouldBeOfType<VersionConflictException>(Describe(outcomes[0]!));
+            _database.Document(id, "fr").PublishedVersion.ShouldBeNull();
         }
     }
 

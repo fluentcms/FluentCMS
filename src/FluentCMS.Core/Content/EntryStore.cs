@@ -272,6 +272,22 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
         return affected == 1;
     }
 
+    // Another locale's swap when the shared fields move under it: its version, not its status, which the recompute decides.
+    public async Task<bool> AdvanceDraftVersionAsync(Guid id, string locale, int expected, DateTimeOffset at, Guid by, CancellationToken cancellationToken)
+    {
+        var next = expected + 1;
+        var affected = await context.Documents
+            .Where(document => document.DocumentId == id && document.Locale == locale && document.DraftVersion == expected)
+            .ExecuteUpdateAsync(
+                set => set
+                    .SetProperty(document => document.DraftVersion, next)
+                    .SetProperty(document => document.UpdatedAt, at)
+                    .SetProperty(document => document.UpdatedBy, by),
+                cancellationToken);
+
+        return affected == 1;
+    }
+
     public Task SetTrashedAsync(Guid id, DateTimeOffset? at, Guid? by, CancellationToken cancellationToken) =>
         context.Documents.IgnoreQueryFilters()
             .Where(document => document.DocumentId == id)

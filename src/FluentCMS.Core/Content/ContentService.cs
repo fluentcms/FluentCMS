@@ -767,33 +767,20 @@ internal sealed partial class ContentService(
                     status = SameFields(type, fields, published) ? EntryStatus.Published : EntryStatus.Modified;
                 }
 
-                if (sharedChanged && !await AdvanceOtherLocalesAsync(write, documents, document, cancellationToken))
-                {
-                    throw await ConflictAsync(write, id, expectedVersion, document.DraftVersion, cancellationToken);
-                }
-
+                // Adding a locale writes the shared row as this write read it, so it moves the other locales as a change would.
+                var movesShared = sharedChanged || addsLocale;
+                var advanced = await AdvanceVersionsAsync(write, id, addsLocale ? null : document, expectedVersion, status, movesShared ? documents : [], cancellationToken);
                 if (addsLocale)
                 {
                     document.DraftVersion = next;
-                }
-                else if (await store.AdvanceVersionAsync(id, document.Locale, expectedVersion, status, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken))
-                {
-                    document.DraftVersion = next;
-                    document.Status = status;
-                    document.UpdatedAt = write.Operation.Timestamp;
-                    document.UpdatedBy = write.Operation.AuditPrincipal.Id;
-                }
-                else
-                {
-                    throw await ConflictAsync(write, id, expectedVersion, await store.DraftVersionAsync(id, document.Locale, cancellationToken), cancellationToken);
                 }
 
                 // The write changes a row of its own type, which a row rule on a relation to that type may read.
                 known.Readable.Forget(type);
                 known.References = await store.WriteDraftAsync(type, document, isNewDocument: addsLocale, rows, working, fields, write.Operation, cancellationToken);
-                if (sharedChanged)
+                if (movesShared)
                 {
-                    await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken, advanced: true);
+                    await RecomputeOtherLocalesAsync(write, document, cancellationToken, advanced, sharedChanged ? null : AddedMessage(document));
                 }
 
                 var skipped = await SkipStalePublishesAsync(write, sharedChanged ? documents : [document], document, cancellationToken);
@@ -1218,6 +1205,8 @@ internal sealed partial class ContentService(
     }
 
     private static List<string> LocalesOf(List<Document> documents) => [.. documents.Select(document => document.Locale).Order(StringComparer.Ordinal)];
+
+    private static string AddedMessage(Document document) => string.Create(CultureInfo.InvariantCulture, $"Added the locale {document.Locale}.");
 
     private async Task<VersionConflictException> ConflictAsync(WriteScope write, Guid id, int expected, int current, CancellationToken cancellationToken) =>
         new(expected, current, await ReadDraftOrNullAsync(write, id, write.Locale, LocaleFallback.None, cancellationToken));

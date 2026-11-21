@@ -232,11 +232,12 @@ public sealed class PublishingTransitionTests : IDisposable
         await _database.PublishAsync(Editor, id);
         await _database.PublishAsync(Editor, id, "fr");
 
-        await _database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 1);
+        await _database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 2);
         _database.Document(id).Status.ShouldBe(EntryStatus.Modified);
         _database.Document(id, "fr").Status.ShouldBe(EntryStatus.Modified);
 
-        // The save decides the status of fr, the recompute that of en. The shared edit in en advanced fr to version 2 (#3265).
+        // The save decides the status of fr, the recompute that of en. Adding fr advanced en to version 2, and the shared
+        // edit in en advanced fr to version 2 (#3265).
         (await _database.PatchAsync(Editor, id, new() { ["views"] = 1 }, 2, locale: "fr"))["status"].ShouldBe(EntryStatus.Published);
         _database.Document(id).Status.ShouldBe(EntryStatus.Published);
         _database.Document(id, "fr").Status.ShouldBe(EntryStatus.Published);
@@ -245,7 +246,7 @@ public sealed class PublishingTransitionTests : IDisposable
         var french = await _database.DiscardAsync(Editor, id, "fr");
 
         english["status"].ShouldBe(EntryStatus.Published);
-        english["version"].ShouldBe(3);
+        english["version"].ShouldBe(4);
         french["status"].ShouldBe(EntryStatus.Published);
         french["version"].ShouldBe(3);
         _database.PublishedRow("cms_article", id)!["views"].ShouldBe(1L);
@@ -417,7 +418,7 @@ public sealed class PublishingTransitionTests : IDisposable
         await _database.PublishAsync(Editor, id);
         await _database.PublishAsync(Editor, id, "fr");
 
-        await _database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 1);
+        await _database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 2);
         _database.Document(id, "fr").Status.ShouldBe(EntryStatus.Modified);
 
         await _database.PublishAsync(Editor, id);
@@ -433,7 +434,7 @@ public sealed class PublishingTransitionTests : IDisposable
         await _database.PatchAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
         await _database.PublishAsync(Editor, id);
         await _database.PublishAsync(Editor, id, "fr");
-        await _database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 1);
+        await _database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 2);
         _database.Document(id, "fr").Status.ShouldBe(EntryStatus.Modified);
 
         await _database.DiscardAsync(Editor, id);
@@ -599,8 +600,9 @@ public sealed class PublishingTransitionTests : IDisposable
     public async Task TheDefaultCapIsFiftyPerLocale()
     {
         var id = IdOf(await _database.CreateAsync(Editor, Titled("v1")));
+        // Adding fr gave en its version 2.
         await _database.PatchAsync(Editor, id, Titled("fr"), 0, locale: "fr");
-        for (var number = 2; number <= 52; number++)
+        for (var number = 3; number <= 52; number++)
         {
             await _database.PatchAsync(Editor, id, Titled($"v{number}"), number - 1);
         }

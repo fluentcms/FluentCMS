@@ -5,6 +5,7 @@ using FluentCMS.Core.Localization;
 using FluentCMS.Core.Storage;
 using FluentCMS.Data.Tests.Authorization;
 using FluentCMS.Data.Tests.Providers;
+using FluentCMS.Providers;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -237,6 +238,77 @@ public sealed class ContentServiceReadTests : IDisposable
         page.Items.Select(item => item["id"]).ShouldBe([abroad, local]);
         ((ContentDocument)page.Items[0]["locales"]!).Keys.ShouldBe(["fr"]);
         ((ContentDocument)page.Items[1]["locales"]!).Keys.ShouldBe(["en"]);
+    }
+
+    private sealed class Hits
+    {
+        public List<Guid> Ids { get; } = [];
+
+        public List<SearchRequest> Requests { get; } = [];
+    }
+
+    private sealed class FakeSearch(Hits hits) : ISearchIndex
+    {
+        public bool MatchesByField => true;
+
+        public Task<IReadOnlyList<Guid>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default)
+        {
+            hits.Requests.Add(request);
+            return Task.FromResult<IReadOnlyList<Guid>>(hits.Ids);
+        }
+    }
+
+    // The index knows no row rule. A hit on an English row the rule hides finds nothing, though the entry's French row could
+    // be read: with a search, an entry's anchor is its row in the locale searched, under that locale's rule, alone.
+    [Fact]
+    public async Task AListOfEveryLocaleWithASearchAnchorsInTheSearchedLocaleAlone()
+    {
+        var hits = new Hits();
+        using var database = new ServiceDatabase(cms =>
+        {
+            cms.Authorization.AddRowRule<Regional>("region", ctx => article => article.Region == ctx.Principal.Claim("region"));
+            cms.Services.AddSingleton(hits);
+            cms.Providers.Use<ISearchIndex, FakeSearch>();
+        });
+        var abroad = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Merger abroad", ["region"] = "us" }));
+        await database.UpdateAsync(Editor, abroad, Titled("Fusion"), 0, locale: "fr");
+        var local = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Merger here", ["region"] = "eu" }));
+        hits.Ids.AddRange([abroad, local]);
+        var role = database.Database.AddRoleForTest(
+            "Regional",
+            ("content.article.read", new PermissionConstraints { Locales = ["en"], RowRule = "region" }),
+            ("content.article.read", new PermissionConstraints { Locales = ["fr"] }));
+        var regional = AuthorizationDatabase.User([role], [TokenScopes.Management], claims: new() { ["region"] = "eu" });
+
+        var page = await database.QueryAsync(regional, new ContentQuery { Status = QueryStatus.Draft, Locale = "all", Search = "merger" });
+
+        page.Total.ShouldBe(1);
+        page.Items.ShouldHaveSingleItem()["id"].ShouldBe(local);
+        hits.Requests[0].Locale.ShouldBe("en");
+    }
+
+    // A filter or a sort of a list of every locale is asked of rows in each locale it reads, so a field the caller may read in
+    // one of them and not another is refused, naming that locale.
+    [Fact]
+    public async Task AListOfEveryLocaleRefusesAFieldTheCallerMayNotReadInOneOfItsLocales()
+    {
+        await _database.CreateAsync(Editor, new() { ["title"] = "Hello", ["views"] = 1 });
+        var role = _database.Database.AddRoleForTest(
+            "Translator",
+            ("content.article.read", new PermissionConstraints { Locales = ["en"] }),
+            ("content.article.read", new PermissionConstraints { Locales = ["fr"], Fields = ["title"] }));
+        var all = new ContentQuery { Status = QueryStatus.Draft, Locale = "all" };
+
+        var filtered = await Should.ThrowAsync<ValidationException>(() => _database.QueryAsync(WithRole(role), all with { Filter = new FieldFilter("views", FilterOperator.Equal, 1) }));
+        var sorted = await Should.ThrowAsync<ValidationException>(() => _database.QueryAsync(WithRole(role), all with { Sort = [new SortField("views")] }));
+
+        var filter = filtered.Errors.ShouldHaveSingleItem();
+        (filter.Path, filter.Code).ShouldBe(("views", QueryErrorCodes.UnknownField));
+        filter.Message.ShouldContain("'fr'");
+        var sort = sorted.Errors.ShouldHaveSingleItem();
+        (sort.Path, sort.Code).ShouldBe(("sort", QueryErrorCodes.NotSortable));
+        sort.Message.ShouldContain("'fr'");
+        (await _database.QueryAsync(WithRole(role), all with { Filter = new FieldFilter("title", FilterOperator.Equal, "Hello"), Sort = [new SortField("title")] })).Total.ShouldBe(1);
     }
 
     [FluentCMS.Schema.Collection("article")]

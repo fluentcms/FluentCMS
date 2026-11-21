@@ -162,7 +162,6 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
         return byEntry;
     }
 
-    // The filter names the ids, and counts against MaxFilterNodes, so a long list is read in batches that stay under it.
     // The locales a list of every locale anchors an entry in: the site's default, then the others in the site's order.
     public async Task<IReadOnlyList<string>> AnchorLocalesAsync(SiteId site, CancellationToken cancellationToken)
     {
@@ -170,6 +169,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
         return [locales.Default, .. locales.Codes.Where(code => !string.Equals(code, locales.Default, StringComparison.OrdinalIgnoreCase))];
     }
 
+    // The filter names the ids, and counts against MaxFilterNodes, so a long list is read in batches that stay under it.
     private async Task<IReadOnlyList<ContentDocument>> ReadAsync(string typeName, ContentQuery query, string locale, IReadOnlyList<Guid> ids, List<string> select, PopulateBudget budget, CancellationToken cancellationToken)
     {
         var batchSize = Math.Max(1, Math.Min(options.MaxPageSize, options.MaxFilterNodes - 1));

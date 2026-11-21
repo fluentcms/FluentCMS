@@ -676,7 +676,7 @@ public sealed class ContentServiceWriteTests : IDisposable
         ((ContentDocument)((ContentDocument)french["seo"]!)["image"]!)["id"].ShouldBe(media);
 
         // Changing one locale's relation leaves the other's.
-        await _database.PatchAsync(Editor, id, new() { ["sponsor"] = null, ["tags"] = new[] { tag1 } }, 1);
+        await _database.PatchAsync(Editor, id, new() { ["sponsor"] = null, ["tags"] = new[] { tag1 } }, 2);
         (await _database.GetAsync(Editor, id, locale: "fr"))!["sponsor"].ShouldNotBeNull();
         (await _database.GetAsync(Editor, id))!["sponsor"].ShouldBeNull();
         _database.References(id).Where(row => row.Field == "tags").ShouldHaveSingleItem().TargetId.ShouldBe(tag1);
@@ -719,7 +719,7 @@ public sealed class ContentServiceWriteTests : IDisposable
         french["locale"].ShouldBe("fr");
         french["views"].ShouldBe(3L);
         _database.Read(context => context.Documents.AsNoTracking().Single(document => document.DocumentId == id && document.Locale == "fr").CreatedBy).ShouldBe(owner);
-        _database.Versions(id).Select(version => (version.Locale, version.Number)).ShouldBe([("en", 1), ("fr", 1)]);
+        _database.Versions(id).Select(version => (version.Locale, version.Number)).ShouldBe([("en", 1), ("en", 2), ("fr", 1)]);
 
         await Should.ThrowAsync<EntryNotFoundException>(() => _database.UpdateAsync(AuthorRole(), id, Titled("Hallo"), 0, locale: "fr-CA"));
     }
@@ -750,11 +750,11 @@ public sealed class ContentServiceWriteTests : IDisposable
         await _database.PublishAsync(Editor, id);
         await _database.PublishAsync(Editor, id, "fr");
 
-        await _database.PatchAsync(Editor, id, new() { ["subtitle"] = "Sub" }, 1);
+        await _database.PatchAsync(Editor, id, new() { ["subtitle"] = "Sub" }, 2);
         StatusOf(id, "fr").ShouldBe(EntryStatus.Published);
         StatusOf(id, "en").ShouldBe(EntryStatus.Modified);
 
-        await _database.PatchAsync(Editor, id, new() { ["views"] = 4 }, 2);
+        await _database.PatchAsync(Editor, id, new() { ["views"] = 4 }, 3);
         StatusOf(id, "fr").ShouldBe(EntryStatus.Modified);
 
         // Adding a locale that changes a shared field counts too.
@@ -773,9 +773,9 @@ public sealed class ContentServiceWriteTests : IDisposable
         await _database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
 
         await _database.PatchAsync(Editor, id, new() { ["title"] = "Bonjour !" }, 1, locale: "fr");
-        _database.Versions(id).Count(version => version.Locale == "en").ShouldBe(1);
+        _database.Versions(id).Count(version => version.Locale == "en").ShouldBe(2);
 
-        await _database.PatchAsync(Editor, id, new() { ["views"] = 4 }, 1);
+        await _database.PatchAsync(Editor, id, new() { ["views"] = 4 }, 2);
         var french = _database.Versions(id).Where(version => version.Locale == "fr").ToList();
         french.Select(version => version.Number).ShouldBe([1, 2, 3]);
         french[^1].Message.ShouldBe("Shared fields changed in en.");
@@ -791,7 +791,7 @@ public sealed class ContentServiceWriteTests : IDisposable
         _database.Read(context => context.Rows("cms_article").Count(row => EF.Property<Guid>(row, StorageNames.DocumentId) == id && EF.Property<short>(row, StorageNames.State) == ContentState.Published)).ShouldBe(0);
 
         await _database.PatchAsync(Editor, id, new() { ["views"] = 3 }, 3, locale: "fr");
-        (await _database.GetAsync(Editor, id))!["version"].ShouldBe(3);
+        (await _database.GetAsync(Editor, id))!["version"].ShouldBe(4);
     }
 
     [Fact]
@@ -800,10 +800,10 @@ public sealed class ContentServiceWriteTests : IDisposable
         var id = IdOf(await _database.CreateAsync(Editor, Titled("Hello")));
         await _database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
 
-        await _database.PatchAsync(Editor, id, Titled("Hello again"), 1);
+        await _database.PatchAsync(Editor, id, Titled("Hello again"), 2);
         await _database.PatchAsync(Editor, id, Titled("Bonjour encore"), 1, locale: "fr");
 
-        _database.Versions(id).Select(version => (version.Locale, version.Number)).ShouldBe([("en", 1), ("en", 2), ("fr", 1), ("fr", 2)]);
+        _database.Versions(id).Select(version => (version.Locale, version.Number)).ShouldBe([("en", 1), ("en", 2), ("en", 3), ("fr", 1), ("fr", 2)]);
     }
 
     // Discarding a draft puts the published shared fields back under every locale, which is a change to them too.
@@ -813,9 +813,9 @@ public sealed class ContentServiceWriteTests : IDisposable
         var id = IdOf(await _database.CreateAsync(Editor, Titled("Hello")));
         await _database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
         await _database.PublishAsync(Editor, id);
-        await _database.PatchAsync(Editor, id, new() { ["views"] = 8 }, 1);
+        await _database.PatchAsync(Editor, id, new() { ["views"] = 8 }, 2);
 
-        await _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().DiscardDraftAsync("article", id, new LocaleWriteOptions { ExpectedVersion = 2 }, Token));
+        await _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().DiscardDraftAsync("article", id, new LocaleWriteOptions { ExpectedVersion = 3 }, Token));
 
         _database.Versions(id).Where(version => version.Locale == "fr").Select(version => version.Number).ShouldBe([1, 2, 3]);
         await Should.ThrowAsync<VersionConflictException>(() => _database.PatchAsync(Editor, id, new() { ["views"] = 1 }, 2, locale: "fr"));

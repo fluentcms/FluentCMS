@@ -61,7 +61,8 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     // A list of every locale (#3277): each entry once, matched, sorted and paged by its anchor, its row in the first of the
     // locales, in the order given, that has one the principal may read. The page answers ids alone, since the caller reads
     // each locale's rows itself; the query is compiled whole all the same, so what is not valid in it is refused here. A
-    // search still runs in the first locale the principal may read.
+    // search runs in the first locale the principal may read, and the index knows no row rule, so with one an entry's anchor
+    // is its row in that locale alone, under that locale's rule: a hit on a row the rule hides finds nothing.
     public async Task<ContentQueryResult> ExecuteEveryLocaleAsync(string typeName, ContentQuery query, IReadOnlyList<string> locales, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
@@ -80,10 +81,17 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             }
         }
 
+        if (query.Search is not null && anchors.Count > 1)
+        {
+            anchors.RemoveRange(1, anchors.Count - 1);
+        }
+
         // A type that is not localized has one row an entry, and with no locale to read, the query refuses as it would.
-        var compiled = anchors.Count == 0
-            ? Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query)
-            : Compile(anchors[0].Access, typeName, query with { Locale = anchors[0].Locale }, anchors: anchors);
+        var (first, asked, anchored) = anchors.Count == 0
+            ? (await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), query, null)
+            : (anchors[0].Access, query with { Locale = anchors[0].Locale }, anchors);
+        Compile(first, typeName, asked, anchors: anchored);
+        var compiled = Compile(first, typeName, asked with { Select = ["id"], Populate = [] }, anchors: anchored);
         return await TimedAsync(compiled, async () =>
         {
             await SearchAsync(compiled, cancellationToken);
@@ -278,7 +286,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         Expression noEarlier = Expression.Constant(true);
         for (var index = 0; index < anchors.Count; index++)
         {
-            var inLocale = scope.InLocale(anchors[index].Locale, anchors[index].Access);
+            var inLocale = index == 0 ? scope : scope.InLocale(anchors[index].Locale, anchors[index].Access);
             Expression here = Expression.AndAlso(Expression.Equal(rowLocale, QueryExpressions.Bind(anchors[index].Locale)), noEarlier);
             if (new FilterCompiler(inLocale).Where(type, filter, row) is { } where)
             {

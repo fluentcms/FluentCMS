@@ -52,8 +52,11 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
     public QueryPaths Paths { get; } = new(schema, access, management);
 
     // The same read of another locale, as the principal reads that one, with the errors and the populate count of this one.
+    // What it refuses names that locale, unless this read refused the same already.
     public QueryScope InLocale(string other, IContentQueryAccess otherAccess) =>
-        new(context, schema, dialect, otherAccess, options, state, other, site, reachesTrash, management) { _tally = _tally, Links = Links, Budget = Budget };
+        new(context, schema, dialect, otherAccess, options, state, other, site, reachesTrash, management) { _tally = _tally, Links = Links, Budget = Budget, _namesLocale = true };
+
+    private bool _namesLocale;
 
     public IQueryable<QueryRow> Rows(SchemaType type, bool trashedRoot = false) => Rows(type, QueryRows.Of(context, type, state, locale), trashedRoot);
 
@@ -91,6 +94,16 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
 
     public void Report(string path, string code, string message)
     {
+        if (_namesLocale)
+        {
+            if (_tally.Errors.Any(error => error.Path == path && error.Code == code))
+            {
+                return;
+            }
+
+            message = $"{message} This holds in the locale '{locale}', which a list of every locale reads too.";
+        }
+
         ValidationError error = new(path, code, message);
         if (!_tally.Errors.Contains(error))
         {
