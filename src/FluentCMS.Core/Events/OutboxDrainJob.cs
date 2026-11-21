@@ -62,8 +62,13 @@ internal sealed class OutboxPruneJob(SystemDbContext context, OutboxOptions opti
     }
 
     // The failed rows that ran out of attempts before a time; a row left for a missing handler or a disabled plugin did not.
+    // ix_cms_outbox_failed_available_at serves it.
     internal static Expression<Func<OutboxMessage, bool>> FailedBefore(DateTimeOffset before, int maxAttempts) =>
         row => row.Status == OutboxStatus.Failed && row.AvailableAt < before && row.Attempts >= maxAttempts;
+
+    // The failed rows of one handler, which its purge removes; ix_cms_outbox_failed_handler serves it.
+    internal static Expression<Func<OutboxMessage, bool>> FailedOf(string handler) =>
+        row => row.Status == OutboxStatus.Failed && row.Handler == handler;
 
     // The ids of one batch of the prune, taken without an order.
     internal static IQueryable<Guid> Batch(SystemDbContext context, Expression<Func<OutboxMessage, bool>> matches, int batchSize) =>
