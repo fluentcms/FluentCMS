@@ -21,6 +21,8 @@ public sealed class HostingStartTests : IAsyncDisposable
 {
     private const string AdminClientId = "fluentcms-admin";
 
+    private const string OtherClientId = "website";
+
     private readonly DirectoryInfo _directory = Directory.CreateTempSubdirectory("fluentcms-admin-hosting-start-");
 
     private WebApplication? _app;
@@ -60,6 +62,61 @@ public sealed class HostingStartTests : IAsyncDisposable
         await StartAsync(Settings(enabled: false));
 
         (await AdminClientAsync()).ShouldBe(client);
+    }
+
+    // An admin of the operator's own, served under the id and the display name of the package's client, which the options list.
+    [Fact]
+    public async Task AListedAdminClientWithTheRegistrationsDisplayNameIsKeptWhileTheAdminIsOff()
+    {
+        var own = Settings(enabled: false);
+        own[$"FluentCms:Clients:Applications:{AdminClientId}:DisplayName"] = "FluentCMS admin";
+        own[$"FluentCms:Clients:Applications:{AdminClientId}:RedirectUris:0"] = "https://admin.example.com/authentication/login-callback";
+        own[$"FluentCms:Clients:Applications:{AdminClientId}:Scopes:0"] = "openid";
+        await StartAsync(own);
+        var client = (await AdminClientAsync()).ShouldNotBeNull();
+
+        await StartAsync(own);
+
+        (await AdminClientAsync()).ShouldBe(client);
+    }
+
+    // A client registered some other way than from the options is not the package's, whatever its name.
+    [Fact]
+    public async Task AnAdminClientNotFromTheOptionsIsKeptWhenTheAdminIsOff()
+    {
+        await StartAsync(Settings(enabled: false));
+        await using (var scope = _app!.Services.CreateAsyncScope())
+        {
+            var descriptor = new OpenIddictApplicationDescriptor
+            {
+                ClientId = AdminClientId,
+                DisplayName = "FluentCMS admin",
+                ClientType = OpenIddictConstants.ClientTypes.Public,
+            };
+            descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Token);
+            await scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>().CreateAsync(descriptor, AdminHost.Token);
+        }
+
+        var client = (await AdminClientAsync()).ShouldNotBeNull();
+
+        await StartAsync(Settings(enabled: false));
+
+        (await AdminClientAsync()).ShouldBe(client);
+    }
+
+    // With another client listed the host deletes the admin's itself, and keeps the one listed.
+    [Fact]
+    public async Task TurningTheAdminOffBesideAnotherClientDeletesOnlyTheAdminsClient()
+    {
+        var on = WithAnotherClient(Settings(enabled: true));
+        await StartAsync(on);
+        (await AdminClientAsync()).ShouldNotBeNull();
+        var other = (await ClientAsync(OtherClientId)).ShouldNotBeNull();
+
+        await StartAsync(WithAnotherClient(Settings(enabled: false)));
+
+        (await AdminClientAsync()).ShouldBeNull();
+        (await ClientAsync(OtherClientId)).ShouldBe(other);
     }
 
     [Theory]
@@ -138,12 +195,21 @@ public sealed class HostingStartTests : IAsyncDisposable
         _ => throw new ShouldAssertException($"Not a configuration refusal: {exception}"),
     };
 
-    // The id of the admin client's row, or null when there is none.
-    private async Task<string?> AdminClientAsync()
+    private static Dictionary<string, string?> WithAnotherClient(Dictionary<string, string?> settings)
+    {
+        settings[$"FluentCms:Clients:Applications:{OtherClientId}:RedirectUris:0"] = "https://app.example.com/callback";
+        settings[$"FluentCms:Clients:Applications:{OtherClientId}:Scopes:0"] = "openid";
+        return settings;
+    }
+
+    private Task<string?> AdminClientAsync() => ClientAsync(AdminClientId);
+
+    // The id of the client's row, or null when there is none.
+    private async Task<string?> ClientAsync(string clientId)
     {
         await using var scope = _app!.Services.CreateAsyncScope();
         var applications = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
-        return await applications.FindByClientIdAsync(AdminClientId, AdminHost.Token) is { } application
+        return await applications.FindByClientIdAsync(clientId, AdminHost.Token) is { } application
             ? await applications.GetIdAsync(application, AdminHost.Token)
             : null;
     }

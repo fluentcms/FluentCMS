@@ -1,5 +1,6 @@
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Oidc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,10 +11,11 @@ namespace FluentCMS.Admin.Hosting;
 // While the admin is off, deletes the client that AdminClientRegistration wrote while it was on, with its sessions and tokens.
 // The host deletes a client of the options that they no longer list, but keeps them all when the options list none, in case
 // the configuration failed to load; the admin's client goes then too, since turning the admin on writes it again whole and
-// costs its users a sign-in only. A client of that id that the options list, or that is not the one the registration writes,
-// such as one an operator configured under another display name, is left as it is. After the migrations, which run in the
-// Starting phase.
-internal sealed class AdminClientRemoval(
+// costs its users a sign-in only. While the options list any client this leaves the row to the host, so that the two never
+// delete the same one. An unlisted client of the options under that id with the registration's display name is taken for its
+// own; one registered some other way, or under another display name, is left as it is. After the migrations, which run in
+// the Starting phase.
+internal sealed partial class AdminClientRemoval(
     AdminOptions admin,
     ClientOptions clients,
     IServiceScopeFactory scopes,
@@ -21,7 +23,7 @@ internal sealed class AdminClientRemoval(
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        if (admin.Enabled || clients.Applications.ContainsKey(clients.AdminClientId))
+        if (admin.Enabled || clients.Applications.Count > 0)
         {
             return;
         }
@@ -42,7 +44,15 @@ internal sealed class AdminClientRemoval(
         }
         catch (OpenIddictExceptions.ConcurrencyException)
         {
-            // Another instance that started at the same time deleted it first.
+            // Changed or gone since it was read: deleted by another instance, or updated by one with the admin on. It is left
+            // for the next start.
+            return;
+        }
+        catch (DbUpdateException exception)
+        {
+            // A consent or a token arrived during the delete, as from an instance with the admin still on in a rolling
+            // deploy, which its foreign key refuses.
+            DeleteRefused(logger, exception, clients.AdminClientId);
             return;
         }
 
@@ -50,4 +60,7 @@ internal sealed class AdminClientRemoval(
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    [LoggerMessage(EventId = 40, EventName = "AdminClientDeleteRefused", Level = LogLevel.Warning, Message = "Could not delete the OAuth client {ClientId} of the admin, which is off: the database refused the delete, as it does when a consent or a token arrives while the client is deleted. The client is left for the next start.")]
+    private static partial void DeleteRefused(ILogger logger, Exception exception, string clientId);
 }
