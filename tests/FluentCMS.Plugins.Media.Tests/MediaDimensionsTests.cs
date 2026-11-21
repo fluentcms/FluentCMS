@@ -10,6 +10,7 @@ using FluentCMS.Jobs;
 using FluentCMS.Media;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -157,23 +158,83 @@ public sealed class MediaDimensionsTests(MediaHost media) : IClassFixture<MediaH
         (await StateAsync()).ShouldBe(MediaDimensionsJob.Done);
     }
 
-    // The storage fails: the run fails, so that the runner tries the batch again, and the cursor stays where it was.
+    // The storage fails: the run fails, so that the runner tries the batch again, and the cursor stays where it was; on the
+    // last attempt the image is logged and skipped, so that a file that can never be read does not stop the check.
     [Fact]
-    public async Task AFailureOfTheStorageFailsTheRunAndTheCursorStays()
+    public async Task AFailureOfTheStorageFailsTheRunAndTheLastAttemptSkipsTheImage()
     {
         await StartedAsync();
         using var admin = await media.AdminAsync();
         var asset = await UploadAsync(admin, TurnedJpeg(400, 100), "unreachable.jpg");
         await StoreAsync(asset.Id, 400, 100);
         await StateAsync("");
-        var key = (await RowsAsync(asset.Id)).Single().StorageKey;
+        var storage = new UnreachableStorage(media.Services.GetRequiredService<IFileStorage>(), (await RowsAsync(asset.Id)).Single().StorageKey);
+        var logs = new CapturedLogs();
 
-        await Should.ThrowAsync<IOException>(() => ExecuteAsync(storage: new UnreachableStorage(media.Services.GetRequiredService<IFileStorage>(), key)));
+        await Should.ThrowAsync<IOException>(() => ExecuteAsync(storage: storage));
+        var cursor = await StateAsync();
+        await ExecuteAsync(storage: storage, logs: logs, attempt: 3);
+
+        cursor.ShouldBe("");
+        (await StateAsync()).ShouldBe(MediaDimensionsJob.Done);
+        (await RowsAsync(asset.Id)).Single().Width.ShouldBe(400);
+        logs.Lines.ShouldContain(line => line.Contains(" 9276: ", StringComparison.Ordinal) && line.Contains(asset.Id.ToString("D"), StringComparison.Ordinal) && line.Contains("out of reach", StringComparison.Ordinal));
+    }
+
+    // The processor reads a file of the local disk itself, so a read error it meets is one of the storage: the run fails
+    // rather than take the file for bytes the processor does not take.
+    [Fact]
+    public async Task ADiskErrorUnderTheProcessorFailsTheRun()
+    {
+        await StartedAsync();
+        using var admin = await media.AdminAsync();
+        var asset = await UploadAsync(admin, TurnedJpeg(400, 100), "disk.jpg");
+        await StoreAsync(asset.Id, 400, 100);
+        await StateAsync("");
+        var processor = new WatchedProcessor(media.Services.GetRequiredService<IImageProcessor>()) { Identifying = () => throw new IOException("The disk failed.") };
+
+        await Should.ThrowAsync<IOException>(() => ExecuteAsync(processor));
 
         (await StateAsync()).ShouldBe("");
         (await RowsAsync(asset.Id)).Single().Width.ShouldBe(400);
-        await ExecuteAsync();
-        (await RowsAsync(asset.Id)).Single().Width.ShouldBe(100);
+    }
+
+    // An attempt before wrote a size and failed before it evicted: the retry, which finds the size right, evicts the copies
+    // of the whole batch.
+    [Fact]
+    public async Task ARetryEvictsTheCopiesOfTheBatch()
+    {
+        await StartedAsync();
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var asset = await UploadAsync(admin, TurnedJpeg(400, 100), "evicted.jpg");
+        await StoreAsync(asset.Id, 400, 100);
+        await StateAsync("");
+        (await DeliveredAsync(anonymous, asset.Id)).ShouldBe((400, 100));
+        await StoreAsync(asset.Id, 100, 400);
+        var cached = await DeliveredAsync(anonymous, asset.Id);
+
+        await ExecuteAsync(attempt: 2);
+
+        cached.ShouldBe((400, 100));
+        (await DeliveredAsync(anonymous, asset.Id)).ShouldBe((100, 400));
+    }
+
+    // The insert of the claim fails and no row is there: a failure of the database, which the start tries again, and no
+    // claim of another instance.
+    [Fact]
+    public async Task AClaimWhoseInsertFailsWithNoRowThrows()
+    {
+        var refusing = new RefusingClaim();
+        await using var host = new MediaHost();
+        host.Host.Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(refusing)));
+        await host.Services.GetServices<IHostedService>().OfType<MediaStartup>().Single().ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        await using var scope = host.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+        await database.Set<SigningKey>().Where(row => row.Id == MediaDimensionsJob.StateId).ExecuteDeleteAsync(Token);
+        refusing.Armed = true;
+
+        await Should.ThrowAsync<DbUpdateException>(() => MediaDimensionsJob.ClaimAsync(database, host.Host.Time, Token));
     }
 
     // A replace saved between the read of the image and the write of its size keeps the size of its new file.
@@ -248,7 +309,7 @@ public sealed class MediaDimensionsTests(MediaHost media) : IClassFixture<MediaH
     }
 
     // One run of the check over the rest of the library, with the processor, storage and logs given.
-    private async Task ExecuteAsync(IImageProcessor? processor = null, IFileStorage? storage = null, CapturedLogs? logs = null)
+    private async Task ExecuteAsync(IImageProcessor? processor = null, IFileStorage? storage = null, CapturedLogs? logs = null, int attempt = 1)
     {
         await using var scope = media.Services.CreateAsyncScope();
         var services = scope.ServiceProvider;
@@ -262,7 +323,7 @@ public sealed class MediaDimensionsTests(MediaHost media) : IClassFixture<MediaH
             media.Host.Time,
             factory.CreateLogger<MediaDimensionsJob>());
         var operation = new OperationContext(Principal.System, Origin.Job, new SiteId(DefaultSite.Id), "", null, Guid.NewGuid().ToString("N"), media.Host.Time.GetUtcNow());
-        await job.ExecuteAsync(new MediaDimensionsPayload(10_000), new JobContext(Guid.NewGuid(), MediaDimensionsJob.Type, JobRunnerOptions.DefaultQueue, 1, 1, operation, Token));
+        await job.ExecuteAsync(new MediaDimensionsPayload(10_000), new JobContext(Guid.NewGuid(), MediaDimensionsJob.Type, JobRunnerOptions.DefaultQueue, attempt, 3, operation, Token));
     }
 
     private async Task<int> PendingAsync()
@@ -320,6 +381,17 @@ public sealed class MediaDimensionsTests(MediaHost media) : IClassFixture<MediaH
 
         public Task AddRecurringAsync<TJob, TPayload>(string name, string cron, TPayload payload, string? queue, CancellationToken cancellationToken = default)
             where TJob : class, IJob<TPayload> => inner.AddRecurringAsync<TJob, TPayload>(name, cron, payload, queue, cancellationToken);
+    }
+
+    // A save that adds the row of the check fails as a database out of reach does, once armed.
+    private sealed class RefusingClaim : SaveChangesInterceptor
+    {
+        public bool Armed { get; set; }
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default) =>
+            Armed && eventData.Context!.ChangeTracker.Entries<SigningKey>().Any(entry => entry.State == EntityState.Added && entry.Entity.Id == MediaDimensionsJob.StateId)
+                ? throw new DbUpdateException("The database is out of reach.")
+                : base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
     // The local disk, which fails every read of one key as an unreachable storage does.

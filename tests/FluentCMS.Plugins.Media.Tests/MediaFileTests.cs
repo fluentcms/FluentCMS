@@ -140,6 +140,15 @@ public sealed class MediaFileTests
     [InlineData("""<animate attributeName="fill" values="red;url(https://evil.example/p.svg#p)" dur="1s"/>""")]
     [InlineData("""<g xml:base="https://evil.example/"><use href="#kept"/></g>""")]
     [InlineData("""<use href="&#xA0;#evil.example"/>""")]
+    [InlineData("""<rect width="1" height="1" fill='url(\"#evil.example\")'/>""")]
+    [InlineData("""<rect width="1" height="1" fill="url(\'#evil.example\')"/>""")]
+    [InlineData("""<rect width="1" height="1" fill="url(\22#evil.example\22)"/>""")]
+    [InlineData("""<rect width="1" height="1" style='fill: url(\"#evil.example\")'/>""")]
+    [InlineData("""<style>rect { fill: url(\"#evil.example\") }</style>""")]
+    [InlineData("""<animate attributeName="fill" values='red;url(\"#evil.example\")' dur="1s"/>""")]
+    [InlineData("""<animate attributeName="fill" from='url(\"#evil.example\")' dur="1s"/>""")]
+    [InlineData("""<animate attributeName="fill" to='url(\"#evil.example\")' dur="1s"/>""")]
+    [InlineData("""<animate attributeName="fill" by='url(\"#evil.example\")' dur="1s"/>""")]
     [InlineData("""<?xml-stylesheet href="https://evil.example/x.css"?><rect width="1" height="1"/>""")]
     public void SanitisingLeavesNoReferenceOutOfTheDocument(string body)
     {

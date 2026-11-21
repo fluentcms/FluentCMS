@@ -14,7 +14,8 @@ namespace FluentCMS.Plugins.Media;
 // it is a #fragment of name characters, as written. A value read as CSS, the style attribute, a <style> element and every
 // other attribute kept, goes when it holds a url() to anything but a #fragment, @import, expression(, image(, image-set(
 // or src(, in the value with its CSS comments kept or with them taken out, after CSS escapes are undone; the two forms
-// cover a comment that a string hides and a string that a comment hides. An animation of a link or a handler goes.
+// cover a comment that a string hides and a string that a comment hides; a value with a backslash and a url( goes too. An
+// animation of a link or a handler goes.
 internal static partial class SvgDocument
 {
     public static readonly XNamespace SvgNamespace = "http://www.w3.org/2000/svg";
@@ -193,7 +194,14 @@ internal static partial class SvgDocument
         return name.Namespace == XNamespace.None && Attributes.Contains(name.LocalName) && !IsActiveCss(attribute.Value);
     }
 
-    private static bool IsActiveCss(string css) => HoldsActiveCss(Compact(css, keepComments: true)) || HoldsActiveCss(Compact(css, keepComments: false));
+    // An escape near url( can change what a browser reads its argument as, as \" does, which ends no string in an unquoted
+    // url, so a value with a backslash and a url( goes whatever the url( holds.
+    private static bool IsActiveCss(string css)
+    {
+        var kept = Compact(css, keepComments: true);
+        return HoldsActiveCss(kept) || HoldsActiveCss(Compact(css, keepComments: false))
+            || (css.Contains('\\', StringComparison.Ordinal) && kept.Contains("url(", StringComparison.Ordinal));
+    }
 
     private static bool HoldsActiveCss(ReadOnlySpan<char> compact)
     {

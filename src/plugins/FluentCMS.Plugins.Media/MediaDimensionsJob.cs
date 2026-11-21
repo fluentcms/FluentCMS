@@ -12,7 +12,8 @@ internal sealed record MediaDimensionsPayload(int BatchSize = 100);
 // orientation. Only types that carry one are read: JPEG, WebP and AVIF, of those the processor reads. One chain of runs
 // goes over the library once per database. Where it stands is a row of its own in cms_media_signing_key (StateId, beside
 // the signing key's row 1, which is the only row the signing reads): its key is the id of the last image read, empty
-// before the first, or "done", and its created_at the time a start last claimed it. A start of the host claims the check
+// before the first, or "done", and its created_at the time a start claimed it or a run last moved it on, so that a chain
+// that goes on keeps its claim. A start of the host claims the check
 // only when the row is missing, or names no end and was claimed longer ago than Lease, as after a chain whose run failed
 // for good, and then enqueues the first run (MediaDimensionsStart), so that instances that start together start one chain.
 // A run reads the next BatchSize images that are not deleted, in the order of their ids, writes the width and height that
@@ -22,9 +23,11 @@ internal sealed record MediaDimensionsPayload(int BatchSize = 100);
 // no webhook hears of it; the copies of the Delivery API that name a corrected asset are evicted. A JPEG is identified from
 // the first PrefixLength bytes of its file, where its EXIF and frame header are, and from the whole file only when those
 // are not enough; WebP and AVIF can put their orientation after the image, so the whole file is read. An image whose file
-// is missing, or whose bytes the processor does not take, keeps its size and is logged; a failure of the storage fails
-// the run, which the runner tries again from the same place. One replaced since the run read it keeps the size of its new
-// file.
+// is missing, or whose bytes the processor does not take, keeps its size and is logged; a failure of the storage, or of the
+// disk under the processor, fails the run, which the runner tries again from the same place, and on the last attempt the
+// image is logged and skipped, so that one file that can never be read, such as an archived object, does not stop the
+// check. A retry evicts the Delivery copies of the whole batch, which an attempt before may have corrected without
+// evicting. One replaced since the run read it keeps the size of its new file.
 internal sealed class MediaDimensionsJob(
     PluginDbContext<MediaPlugin> database,
     MediaStorage storages,
@@ -111,11 +114,24 @@ internal sealed class MediaDimensionsJob(
             .Take(payload.BatchSize)
             .ToListAsync(cancellationToken);
 
+        var retry = context.Attempt > 1;
+        var last = context.Attempt >= context.MaxAttempts;
         List<string> corrected = [];
         foreach (var image in batch)
         {
-            if (await ReadAsync(image.Id, image.StorageProvider, image.StorageKey, types.GetValueOrDefault(image.MimeType), cancellationToken) is not { } shown
-                || (shown.Width == image.Width && shown.Height == image.Height))
+            (int Width, int Height)? read;
+            try
+            {
+                read = await ReadAsync(image.Id, image.StorageProvider, image.StorageKey, types.GetValueOrDefault(image.MimeType), cancellationToken);
+            }
+            // A storage's own timeout is a failure of that file; only the job's token stops the run.
+            catch (Exception exception) when (last && !cancellationToken.IsCancellationRequested)
+            {
+                MediaLog.DimensionsNotRead(logger, image.Id, image.StorageProvider, image.StorageKey, exception);
+                continue;
+            }
+
+            if (read is not { } shown || (shown.Width == image.Width && shown.Height == image.Height))
             {
                 continue;
             }
@@ -129,9 +145,10 @@ internal sealed class MediaDimensionsJob(
             }
         }
 
-        if (corrected.Count > 0)
+        string[] evicted = retry ? [.. batch.Select(image => MediaCache.Asset(image.Id))] : [.. corrected];
+        if (evicted.Length > 0)
         {
-            await cache.EvictAsync([.. corrected], cancellationToken);
+            await cache.EvictAsync(evicted, cancellationToken);
         }
 
         MediaLog.DimensionsChecked(logger, batch.Count, corrected.Count);
@@ -206,14 +223,15 @@ internal sealed class MediaDimensionsJob(
         return size;
     }
 
-    // Bytes the processor does not take answer null, with what it threw, if anything.
+    // Bytes the processor does not take answer null, with what it threw, if anything. A failure to read the file, which on
+    // the local disk the processor reads itself, is one of the storage and goes through.
     private async Task<((int Width, int Height)? Size, Exception? Failure)> IdentifyAsync(Stream image, CancellationToken cancellationToken)
     {
         try
         {
             return (await processor.IdentifyAsync(image, cancellationToken) is { Width: > 0, Height: > 0 } size ? (size.Width, size.Height) : null, null);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (exception is not (OperationCanceledException or IOException or UnauthorizedAccessException))
         {
             return (null, exception);
         }
