@@ -411,29 +411,40 @@ public sealed class ContentServiceHookTests
         database.Footprint().ShouldBe(before);
     }
 
-    // A hook that blocks its thread before it first awaits is held to the timeout too.
+    // A hook that blocks its thread before it first awaits is held to the timeout too. It blocks until the test lets it go,
+    // so the write can end only by the timeout, however loaded the machine is.
     [Fact]
     public async Task AHookThatBlocksBeforeItsFirstAwaitIsTimedOut()
     {
+        using var gate = new ManualResetEventSlim();
         using var database = new ServiceDatabase(cms => cms.Services
             .Configure<ContentWriteOptions>(options => options.HookTimeout = TimeSpan.FromMilliseconds(200))
-            .AddScoped<IBeforeCreateHook<ContentDocument>, SleepingHook>());
+            .AddSingleton(gate)
+            .AddScoped<IBeforeCreateHook<ContentDocument>, BlockingHook>());
         var before = database.Footprint();
 
-        var refused = await Should.ThrowAsync<HookRejectedException>(() => database.CreateAsync(Editor, Titled("Sleep")));
+        try
+        {
+            var creating = Task.Run(() => database.CreateAsync(Editor, Titled("Block")), Token);
+            var refused = await Should.ThrowAsync<HookRejectedException>(() => creating.WaitAsync(TimeSpan.FromSeconds(30), Token));
 
-        refused.Code.ShouldBe("FCMS2410");
-        refused.Message.ShouldContain(typeof(SleepingHook).FullName!);
-        database.Footprint().ShouldBe(before);
+            refused.Code.ShouldBe("FCMS2410");
+            refused.Message.ShouldContain(typeof(BlockingHook).FullName!);
+            database.Footprint().ShouldBe(before);
+        }
+        finally
+        {
+            gate.Set();
+        }
     }
 
-    private sealed class SleepingHook : IBeforeCreateHook<ContentDocument>
+    private sealed class BlockingHook(ManualResetEventSlim gate) : IBeforeCreateHook<ContentDocument>
     {
         public ValueTask BeforeCreateAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
         {
-            if (Equals(context.Entry["title"], "Sleep"))
+            if (Equals(context.Entry["title"], "Block"))
             {
-                Thread.Sleep(TimeSpan.FromSeconds(2));
+                gate.Wait(TimeSpan.FromSeconds(60), CancellationToken.None);
             }
 
             return ValueTask.CompletedTask;
