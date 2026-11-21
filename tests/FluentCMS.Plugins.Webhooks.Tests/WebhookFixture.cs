@@ -1,3 +1,4 @@
+using FluentCMS.Core.Jobs;
 using FluentCMS.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,7 +31,11 @@ public class WebhookFixture : IAsyncDisposable
                 await scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>().Set<Webhook>().ExecuteDeleteAsync(Token);
             }
 
+            // The move makes recurring jobs due, among them webhooks.queue, which would wake the queues a test leaves stalled.
+            // The host's maintenance fires them in the background, maybe after the pump; firing them here first leaves it
+            // none, so that they all run in this pump (#3409).
             _host.Time.Advance(TimeSpan.FromDays(2));
+            await _host.Services.GetRequiredService<RecurringJobs>().FireDueAsync(Token);
             await PumpAsync(_host);
         }
 
