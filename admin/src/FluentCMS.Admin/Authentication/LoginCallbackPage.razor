@@ -1,21 +1,27 @@
 @* The redirect URI of the admin's client: {admin base}/authentication/login-callback (spec 2.4). It redeems the code of the
    sign-in this tab started and returns to the route the user was on, replacing itself in the history, so that the code is
-   neither kept nor sent again. Only the code, the state and the error are read from the query, never a place to go. *@
+   neither kept nor sent again. Only the code, the state and the error are read from the query, never a place to go.
+   It acts and shows something only at its own address: the router draws it again at the route it returned to while it
+   waits for that route's OnNavigateAsync, as for the lazy administration assembly, and a second completion there would
+   find no state and fail. *@
 @page "/authentication/login-callback"
 @using FluentCMS.Admin.Authentication
 @inject IAdminSession Session
 @inject NavigationManager Navigation
 @inject IStringLocalizer<AdminResources> L
 
-@if (failure is { } reason)
+@if (AtCallback)
 {
-    <h1 tabindex="-1">@L["Authentication.Callback.FailedHeading"]</h1>
-    <p>@L[$"Authentication.Callback.{reason}"]</p>
-    <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="SignInAgainAsync">@L["Authentication.Callback.SignInAgain"]</CmsButton>
-}
-else
-{
-    <h1 tabindex="-1">@L["Authentication.Callback.Completing"]</h1>
+    @if (failure is { } reason)
+    {
+        <h1 tabindex="-1">@L["Authentication.Callback.FailedHeading"]</h1>
+        <p>@L[$"Authentication.Callback.{reason}"]</p>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="SignInAgainAsync">@L["Authentication.Callback.SignInAgain"]</CmsButton>
+    }
+    else
+    {
+        <h1 tabindex="-1">@L["Authentication.Callback.Completing"]</h1>
+    }
 }
 
 @code {
@@ -30,8 +36,23 @@ else
     [SupplyParameterFromQuery(Name = "error")]
     public string? Error { get; set; }
 
+    private bool AtCallback
+    {
+        get
+        {
+            var route = Navigation.ToBaseRelativePath(Navigation.Uri);
+            var end = route.IndexOfAny(['?', '#']);
+            return string.Equals(end < 0 ? route : route[..end], AdminSession.CallbackRoute, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
+        if (!AtCallback)
+        {
+            return;
+        }
+
         var completion = await Session.CompleteSignInAsync(Code, State, Error, CancellationToken.None);
         if (completion.ReturnRoute is { } route)
         {

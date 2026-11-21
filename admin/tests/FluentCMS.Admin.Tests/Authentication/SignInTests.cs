@@ -153,6 +153,23 @@ public sealed class SignInTests : IAsyncDisposable
         _authority.Requests.ShouldNotContain(request => request.Path == "/connect/token");
     }
 
+    // As the router draws it again at the route it returned to while that route's OnNavigateAsync waits (#3504).
+    [Fact]
+    public void TheCallbackPageDrawnAtAnotherAddressNeitherCompletesASignInNorShowsAnything()
+    {
+        NewTab().StartSignIn(Route);
+        _authority.Nonce = Pending().Nonce;
+        var tab = NewTab();
+        tab.Navigation.NavigateTo("http://localhost/users");
+
+        var page = tab.Render<LoginCallbackPage>();
+
+        page.Markup.Trim().ShouldBeEmpty();
+        _authority.Requests.ShouldNotContain(request => request.Path == "/connect/token");
+        _storage[AdminSession.SignInKey].ShouldNotBeNull();
+        tab.Session.User.ShouldBeNull();
+    }
+
     [Fact]
     public void ACodeIsRedeemedOnceAndItsCallbackIsNotAcceptedAgain()
     {
