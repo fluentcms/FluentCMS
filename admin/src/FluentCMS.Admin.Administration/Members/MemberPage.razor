@@ -260,8 +260,17 @@ else
         }
     }
 
-    // The member as the server answered it, with the name's input showing what it holds.
-    private void Show(MemberRecord shown) => (member, displayName) = (shown, shown.DisplayName);
+    // The member as the server answered it. The name's input takes its name when the member is first shown and when the
+    // save of the name answered; any other answer keeps what the user typed and has not saved.
+    private void Show(MemberRecord shown, bool takeName = false)
+    {
+        if (takeName || member is null)
+        {
+            displayName = shown.DisplayName;
+        }
+
+        member = shown;
+    }
 
     private void Ask(Question question)
     {
@@ -287,11 +296,11 @@ else
     {
         displayNameError = null;
         var name = displayName?.Trim() ?? "";
-        await ChangeAsync((id, token) => Api.RenameMemberAsync(id, name, token), name.Length == 0 ? L["Members.Detail.NameCleared"] : L["Members.Detail.Renamed"]);
+        await ChangeAsync((id, token) => Api.RenameMemberAsync(id, name, token), name.Length == 0 ? L["Members.Detail.NameCleared"] : L["Members.Detail.Renamed"], renames: true);
     }
 
     // A change of the account card, whose answer is the member as it now stands.
-    private async Task ChangeAsync(Func<Guid, CancellationToken, Task<MemberRecord>> change, string done, bool endsSessions = false)
+    private async Task ChangeAsync(Func<Guid, CancellationToken, Task<MemberRecord>> change, string done, bool endsSessions = false, bool renames = false)
     {
         if (busy)
         {
@@ -301,7 +310,7 @@ else
         (busy, asking) = (true, null);
         try
         {
-            Show(await change(Id, Closing));
+            Show(await change(Id, Closing), takeName: renames);
             accountMessage = done;
             if (endsSessions)
             {
@@ -337,7 +346,7 @@ else
         focusAfterRender = () => accountElement;
     }
 
-    // The member's sessions end with it, and the list is where it was found.
+    // The member's sessions end with it, and the list is shown as it was when the member was opened from it.
     private async Task DeleteAsync()
     {
         if (busy || member is not { } deleted)
@@ -350,11 +359,16 @@ else
         {
             await Api.DeleteMemberAsync(Id, Closing);
             Announcer.Announce(L["Members.Detail.Deleted", MemberTexts.Named(deleted, L)]);
-            Navigation.NavigateTo("members");
+            Navigation.NavigateTo(MembersPage.ListAddress(Navigation.HistoryEntryState));
             return;
         }
         catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.MemberNotFound))
         {
+            await ReadAsync();
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.MemberChanged))
+        {
+            accountMessage = L["Members.Detail.Changed"];
             await ReadAsync();
         }
         catch (OperationCanceledException) when (closing.IsCancellationRequested)

@@ -52,7 +52,7 @@
                     }
                     else
                     {
-                        <CmsButton Disabled="@busy" OnClick="@(() => Edit(group))">
+                        <CmsButton Disabled="@busy" OnClick="@(() => EditAsync(group))">
                             @L["Members.GroupList.Change"]<span class="cms-visually-hidden">@L["Members.GroupList.Which", group.Name]</span>
                         </CmsButton>
                         <CmsButton Disabled="@busy" OnClick="@(() => AskDelete(group))">
@@ -75,12 +75,14 @@
                           Autocomplete="off"
                           Value="@name"
                           ValueChanged="@(value => name = value)"
+                          Disabled="@busy"
                           Help="@L["Members.GroupForm.NameHelp"]"
                           Error="@nameError" />
             <CmsTextInput Label="@L["Members.GroupForm.Description"]"
                           Autocomplete="off"
                           Value="@description"
                           ValueChanged="@(value => description = value)"
+                          Disabled="@busy"
                           Error="@descriptionError" />
             <RoleSelect Label="@L["Members.GroupForm.Role"]"
                         Value="@role"
@@ -163,12 +165,42 @@
         }
     }
 
-    // The form takes the group's values, and focus goes to its first field.
-    private void Edit(MemberGroupRecord group)
+    // The form takes the group as the server has it now, not as the list read it: a save replaces the group, description
+    // included, so a value another change made since the list was read would otherwise be written back. Focus goes to the
+    // form's first field.
+    private async Task EditAsync(MemberGroupRecord group)
     {
-        (editing, deleting, name, description, role, formMessage, listMessage) = (group, null, group.Name, group.Description, group.RoleId, null, null);
+        if (busy)
+        {
+            return;
+        }
+
+        (busy, deleting, formMessage, listMessage) = (true, null, null, null);
         ClearErrors();
-        focusAfterRender = () => nameInput?.FocusAsync() ?? ValueTask.CompletedTask;
+        try
+        {
+            var current = await Api.GetMemberGroupAsync(group.Id, Closing);
+            (editing, name, description, role) = (current, current.Name, current.Description, current.RoleId);
+            focusAfterRender = () => nameInput?.FocusAsync() ?? ValueTask.CompletedTask;
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.GroupNotFound))
+        {
+            listMessage = L["Members.GroupList.AlreadyDeleted", group.Name];
+            await ReadAsync();
+            focusAfterRender = () => listElement.FocusAsync();
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            listMessage = L["Members.GroupList.ReadFailed", group.Name];
+            focusAfterRender = () => listElement.FocusAsync();
+        }
+        finally
+        {
+            busy = false;
+        }
     }
 
     private void CancelEdit()

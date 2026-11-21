@@ -195,6 +195,63 @@ public sealed class MemberPageTests : MembersTestContext
     }
 
     [Fact]
+    public void ADeleteGoesBackToTheListAsItWasOpened()
+    {
+        var app = Load($"members?group={Readers:D}&active=true");
+        app.WaitForAssertion(() => app.FindAll("main table tbody tr").Count.ShouldBe(1));
+        app.Find("main table tbody tr").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+        app.WaitForAssertion(() => Section(app, "Groups").QuerySelector("select").ShouldNotBeNull());
+
+        Button(Section(app, "Account"), "Delete").Click();
+        app.WaitForAssertion(() => Button(Section(app, "Account"), "Delete the member"));
+        Button(Section(app, "Account"), "Delete the member").Click();
+
+        app.WaitForAssertion(() => Navigation.Uri.ShouldEndWith($"/members?group={Readers:D}&active=true"));
+        app.WaitForAssertion(() => app.Find("main table").TextContent.ShouldContain("Nothing matches the search and filters."));
+    }
+
+    [Fact]
+    public void ADeleteOfAMemberChangedMeanwhileSaysSoAndReadsItAgain()
+    {
+        Management.Answer = (method, _) => method == HttpMethod.Delete ? Problem(HttpStatusCode.Conflict, "FCMS3174") : null;
+        var app = Open(Ada);
+        MemberOf(Ada)["displayName"] = "Ada L.";
+
+        Button(Section(app, "Account"), "Delete").Click();
+        app.WaitForAssertion(() => Button(Section(app, "Account"), "Delete the member"));
+        Button(Section(app, "Account"), "Delete the member").Click();
+
+        app.WaitForAssertion(() => Message(app, "Account").ShouldBe("The member changed meanwhile; it is shown as it now stands."));
+        app.WaitForAssertion(() => Heading(app).ShouldBe("Ada L."));
+    }
+
+    // Only the save of the name puts the server's name in the input; another answer keeps what was typed and not saved.
+    [Fact]
+    public void ANameTypedAndNotSavedIsKeptWhenAnotherChangeAnswers()
+    {
+        var app = Open(Ada);
+        Section(app, "Account").QuerySelector("input")!.Input("Ada typed");
+
+        Section(app, "Groups").QuerySelector("select")!.Change(Writers.ToString("D"));
+        Button(Section(app, "Groups"), "Put in the group").Click();
+        app.WaitForAssertion(() => Message(app, "Groups").ShouldBe("The member was put in the group writers."));
+        Button(Section(app, "Account"), "Deactivate").Click();
+        app.WaitForAssertion(() => Button(Section(app, "Account"), "Deactivate the member"));
+        Button(Section(app, "Account"), "Deactivate the member").Click();
+        app.WaitForAssertion(() => Message(app, "Account").ShouldBe("The member was deactivated."));
+        Button(Section(app, "Account"), "Reactivate").Click();
+        app.WaitForAssertion(() => Message(app, "Account").ShouldBe("The member was reactivated."));
+
+        Section(app, "Account").QuerySelector("input")!.GetAttribute("value").ShouldBe("Ada typed");
+        Heading(app).ShouldBe("Ada");
+
+        Section(app, "Account").QuerySelector("form")!.Submit();
+
+        app.WaitForAssertion(() => Heading(app).ShouldBe("Ada typed"));
+        Section(app, "Account").QuerySelector("input")!.GetAttribute("value").ShouldBe("Ada typed");
+    }
+
+    [Fact]
     public void ADeleteThatFailsKeepsTheMemberAndSaysSo()
     {
         Management.Answer = (method, _) => method == HttpMethod.Delete ? new HttpResponseMessage(HttpStatusCode.InternalServerError) : null;

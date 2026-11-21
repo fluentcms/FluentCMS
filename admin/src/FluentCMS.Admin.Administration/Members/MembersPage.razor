@@ -210,7 +210,14 @@
 
     private static string Route(MemberRecord member) => $"members/{member.Id:D}";
 
-    private void Open(MemberRecord member) => Navigation.NavigateTo(Route(member));
+    // The member's page keeps the list's address, its search, filters and page, in the history entry, to go back to it once
+    // the member is deleted.
+    private void Open(MemberRecord member) =>
+        Navigation.NavigateTo(Route(member), new NavigationOptions { HistoryEntryState = Navigation.ToBaseRelativePath(Navigation.Uri) });
+
+    // The address of the list a member's page was opened from, or the list itself when it was opened otherwise.
+    internal static string ListAddress(string? opened) =>
+        opened is { } address && (address == "members" || address.StartsWith("members?", StringComparison.Ordinal)) ? address : "members";
 
     private string State(MemberRecord member) => string.Join(", ", MemberTexts.States(member, L, Formats, Time.GetUtcNow()));
 

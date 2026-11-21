@@ -157,6 +157,9 @@ internal static class MembersApi
         return (await api.SendAsync(new ApiRequest(HttpMethod.Get, "member-groups"), MembersJsonContext.Default.ItemListMemberGroupRecord, cancellationToken)).Value.Items;
     }
 
+    public static Task<MemberGroupRecord> GetMemberGroupAsync(this IManagementApi api, Guid id, CancellationToken cancellationToken) =>
+        api.GroupAsync(new ApiRequest(HttpMethod.Get, $"member-groups/{id:D}"), cancellationToken);
+
     public static Task<MemberGroupRecord> CreateMemberGroupAsync(this IManagementApi api, string name, string? description, Guid role, CancellationToken cancellationToken) =>
         api.GroupAsync(new ApiRequest(HttpMethod.Post, "member-groups") { Body = GroupBody(name, description, role) }, cancellationToken);
 

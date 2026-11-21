@@ -119,6 +119,59 @@ public sealed class MemberGroupsPageTests : MembersTestContext
         app.WaitForAssertion(() => Items(Section(app, "Groups")).ShouldContain("authors Role: Reader 0 members in the group authors"));
     }
 
+    // A save replaces the group, so a change of its name alone sends the description it has.
+    [Fact]
+    public void AChangeOfTheNameAloneKeepsTheDescription()
+    {
+        GroupOf(Readers)["description"] = "People who read";
+        var app = Open();
+
+        Button(Section(app, "Groups"), "Change the group readers").Click();
+        app.WaitForAssertion(() => Form(app).QuerySelector("h2")!.TextContent.ShouldBe("Change the group readers"));
+        Form(app).QuerySelectorAll("input")[0].Input("everyone");
+        Form(app).QuerySelector("form")!.Submit();
+
+        app.WaitForAssertion(() => Message(app, "New group").ShouldBe("The group everyone was saved."));
+        JsonNode.Parse(BodyOf(HttpMethod.Put, $"member-groups/{Readers:D}")!)!.ToJsonString()
+            .ShouldBe($$"""{"name":"everyone","description":"People who read","roleId":"{{Reader:D}}"}""");
+    }
+
+    // The form is filled from the group as the server has it when Change is pressed, not from the list read before, so a
+    // description another change wrote since is not written back over.
+    [Fact]
+    public void AChangeStartsFromTheGroupAsTheServerHasItNow()
+    {
+        var app = Open();
+        GroupOf(Readers)["description"] = "Changed elsewhere";
+
+        Button(Section(app, "Groups"), "Change the group readers").Click();
+
+        app.WaitForAssertion(() => Form(app).QuerySelectorAll("input")[1].GetAttribute("value").ShouldBe("Changed elsewhere"));
+        Management.Calls.ShouldContain(call => call.Method == HttpMethod.Get && call.Path == $"member-groups/{Readers:D}");
+        Form(app).QuerySelector("form")!.Submit();
+
+        app.WaitForAssertion(() => Message(app, "New group").ShouldBe("The group readers was saved."));
+        JsonNode.Parse(BodyOf(HttpMethod.Put, $"member-groups/{Readers:D}")!)!["description"]!.GetValue<string>().ShouldBe("Changed elsewhere");
+    }
+
+    [Fact]
+    public void TheFormCannotBeTypedInWhileItsSaveRuns()
+    {
+        var app = Open();
+        var saving = new TaskCompletionSource();
+        Fill(app, "vip", null, Author);
+        Management.HoldPath = path => path.EndsWith("/member-groups", StringComparison.Ordinal) ? saving.Task : null;
+
+        Form(app).QuerySelector("form")!.Submit();
+
+        app.WaitForAssertion(() => Form(app).QuerySelectorAll("input").Select(input => input.HasAttribute("disabled")).ShouldBe([true, true]));
+        Form(app).QuerySelector("select")!.HasAttribute("disabled").ShouldBeTrue();
+        saving.SetResult();
+
+        app.WaitForAssertion(() => Message(app, "New group").ShouldBe("The group vip was created."));
+        Form(app).QuerySelectorAll("input").Select(input => input.HasAttribute("disabled")).ShouldBe([false, false]);
+    }
+
     [Fact]
     public void AChangeIsCancelledAndTheFormIsNewAgain()
     {

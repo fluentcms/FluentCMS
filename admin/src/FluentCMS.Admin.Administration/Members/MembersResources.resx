@@ -432,6 +432,9 @@
   <data name="Members.GroupList.AlreadyDeleted" xml:space="preserve">
     <value>The group {0} had been deleted already.</value>
   </data>
+  <data name="Members.GroupList.ReadFailed" xml:space="preserve">
+    <value>The group {0} could not be read to change it. Try again.</value>
+  </data>
   <data name="Members.GroupList.DeleteFailed" xml:space="preserve">
     <value>The group could not be deleted. Try again.</value>
   </data>

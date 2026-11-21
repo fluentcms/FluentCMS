@@ -34,6 +34,7 @@ public sealed class MembersContractTests
         Check(members.ItemListMemberLoginRecord, "members/{id}/logins", "get");
         Check(members.ItemListMemberGroupRecord, "member-groups", "get");
         Check(members.MemberGroupRecord, "member-groups", "post", "201");
+        Check(members.MemberGroupRecord, "member-groups/{id}", "get");
         Check(members.MemberGroupRecord, "member-groups/{id}", "put");
 
         gaps.ShouldBeEmpty();

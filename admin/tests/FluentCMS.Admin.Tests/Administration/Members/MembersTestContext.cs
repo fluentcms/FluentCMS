@@ -154,6 +154,11 @@ public abstract class MembersTestContext : AdministrationTestContext
                 return Problem(HttpStatusCode.NotFound, "FCMS3168", "groupId");
             }
 
+            if (method == HttpMethod.Get)
+            {
+                return Json(group.DeepClone());
+            }
+
             if (method == HttpMethod.Delete)
             {
                 Groups.Remove(group);
