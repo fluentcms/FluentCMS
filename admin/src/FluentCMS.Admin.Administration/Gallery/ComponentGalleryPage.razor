@@ -1,8 +1,9 @@
 @* Every component of the wrapped set, in the theme chosen here and the direction of the interface (the A0 exit criterion). It
-   ships with the admin; the shell's menu does not list it. *@
+   ships with the admin; the shell's menu does not list it. Any signed-in user may open it, and it loads with this assembly
+   on its first visit, so that it is not part of the first download (#3354). *@
 @page "/system/components"
 @using System.Globalization
-@inject IStringLocalizer<AdminResources> L
+@inject IStringLocalizer<GalleryResources> L
 @inject ICmsToastService Toasts
 @inject ShellTheme Theme
 @inject InterfaceCulture Culture

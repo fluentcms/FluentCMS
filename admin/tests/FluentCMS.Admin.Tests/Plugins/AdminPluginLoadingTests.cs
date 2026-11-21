@@ -316,7 +316,7 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         await Should.ThrowAsync<InvalidOperationException>(services.FindAsync<IMediaPicker>(Token).AsTask());
         loader.Loads.ShouldBe(1);
 
-        Navigation.NavigateTo("system/components");
+        Navigation.NavigateTo("system/plugins");
 
         (await services.FindAsync<IMediaPicker>(Token)).ShouldBeOfType<SampleMediaPicker>();
         loader.Loads.ShouldBe(2);
