@@ -73,6 +73,7 @@ internal sealed class ApiKeyService(
     RoleService roles,
     ApiKeyOptions options,
     ApiKeyRefusals refusals,
+    ApiKeyPrincipals principals,
     TimeProvider time)
 {
     // last_used_at says whether a key is still in use, which needs minutes, not every request.
@@ -171,7 +172,7 @@ internal sealed class ApiKeyService(
         await changes.RunAsync(
             async () =>
             {
-                await RequireKeyRoleNowAsync(request.RoleId, sites, types, cancellationToken);
+                await RequireNowAsync(request.RoleId, sites, types, cancellationToken);
                 context.Add(key);
                 await context.SaveChangesAsync(cancellationToken);
                 await changes.RaiseAsync(new ApiKeyCreatedEvent(key.Id, key.Name, ApiKeyFormat.Scope(key.Class)), cancellationToken);
@@ -479,18 +480,25 @@ internal sealed class ApiKeyService(
     private async Task<ApiKey> ControlledAsync(Guid id, CancellationToken cancellationToken)
     {
         var key = await StoredAsync(id, cancellationToken);
-        await RequireKeyRoleNowAsync(key.RoleId, ApiKeyClaims.SitesOf(key), ApiKeyClaims.TypesOf(key), cancellationToken);
+        await RequireNowAsync(key.RoleId, ApiKeyClaims.SitesOf(key), ApiKeyClaims.TypesOf(key), cancellationToken);
         return key;
     }
 
-    // The role ceiling, checked in the transaction of the change with the caller's grants read again there, not as the
-    // request resolved them before it: grants cut in between do not let the change through (#3391).
-    private async Task RequireKeyRoleNowAsync(Guid roleId, IReadOnlyCollection<Guid>? sites, IReadOnlyCollection<string>? types, CancellationToken cancellationToken)
+    // apikeys.manage where the key reaches and the role ceiling, checked again in the transaction of the change with the
+    // caller's grants read there, not as the request resolved them before it, so that grants cut in between refuse the change
+    // (#3391). A calling key is read again as well, since the request holds the row it authenticated.
+    private async Task RequireNowAsync(Guid roleId, IReadOnlyCollection<Guid>? sites, IReadOnlyCollection<string>? types, CancellationToken cancellationToken)
     {
         var operation = accessor.Current;
+        if (operation?.Principal is { Kind: PrincipalKind.ApiKey } caller && await principals.ActiveAsync(caller.Id, cancellationToken) is null)
+        {
+            throw new ManagementAccessDeniedException("The key that made this request was revoked or has expired.");
+        }
+
         accessor.Current = operation is null ? null : operation with { };
         try
         {
+            await RequireManageAsync(sites, cancellationToken);
             await roles.RequireKeyRoleAsync(roleId, sites, types, cancellationToken);
         }
         finally
