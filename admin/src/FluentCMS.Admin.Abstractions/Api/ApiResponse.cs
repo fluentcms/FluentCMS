@@ -25,6 +25,9 @@ public class ApiResponse
 
     /// <summary>The <c>Location</c> of the answer, such as that of a 201 to a create, or <see langword="null"/> when it has none.</summary>
     public Uri? Location { get; init; }
+
+    /// <summary>The <c>Date</c> of the answer, the server's clock, or <see langword="null"/> when the browser does not expose it.</summary>
+    public DateTimeOffset? Date { get; init; }
 }
 
 /// <summary>A successful answer of the Management API with the record it holds.</summary>

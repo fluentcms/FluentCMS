@@ -5,6 +5,7 @@ using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Storage;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +20,11 @@ namespace FluentCMS.Data.Tests.Identity;
 // standing of the credential that sent it.
 public sealed class KeyAndInvitationCeilingTests : IDisposable
 {
-    private readonly IdentityFixture _fixture = new();
+    private readonly Window _window = new();
+    private readonly IdentityFixture _fixture;
+
+    public KeyAndInvitationCeilingTests() =>
+        _fixture = new IdentityFixture(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(_window)));
 
     public void Dispose() => _fixture.Dispose();
 
@@ -247,13 +252,131 @@ public sealed class KeyAndInvitationCeilingTests : IDisposable
             [CmsClaimTypes.Roles] = BuiltInRoles.SuperAdmin.ToString("D"),
         });
         var token = await InviteAsync(account, BuiltInRoles.Editor);
+        await _fixture.WithAsync(services => services.GetRequiredService<InvitationService>().InviteAsync("carl@example.com", [BuiltInRoles.SuperAdmin], AcceptUrl, Token));
+        (await ListedAsync()).ShouldBe(["bob@example.com", "carl@example.com"], ignoreOrder: true);
 
         SetClientRoles(client, BuiltInRoles.AuthorName);
 
+        // The system's own invitation is not checked again, so it stays listed (#3391).
+        (await ListedAsync()).ShouldBe(["carl@example.com"]);
         (await AcceptAsync(token)).Errors.ShouldHaveSingleItem().Code.ShouldBe(IdentityErrorCodes.InvalidInvitation);
 
         SetClientRoles(client, BuiltInRoles.SuperAdminName);
+        (await ListedAsync()).ShouldBe(["bob@example.com", "carl@example.com"], ignoreOrder: true);
         IdentityFixture.Succeeded(await AcceptAsync(token));
+    }
+
+    private async Task<List<string>> ListedAsync() =>
+        [.. (await _fixture.WithAsync(services => services.GetRequiredService<InvitationService>().ListPendingAsync(Token))).Select(invitation => invitation.Email)];
+
+    // The list leaves out what accept would refuse for its sender, and writes nothing to it (#3391).
+    [Fact]
+    public async Task ThePendingListLeavesOutInvitationsWhoseSenderNoLongerStands()
+    {
+        var people = await RoleAsync("People", CorePermissions.UsersManage);
+        var readers = await RoleAsync("Readers", "content.article.read");
+        var writers = await RoleAsync("Writers", "content.article.update");
+        var demoted = await _fixture.CreateUserAsync("demoted", Password, people.Id, readers.Id);
+        var standing = await _fixture.CreateUserAsync("standing", Password, people.Id, readers.Id, writers.Id);
+        var key = await CreateKeyAsync(BuiltInRoles.SuperAdmin);
+
+        var bob = await InviteAsync(PrincipalOf(demoted), readers.Id);
+        var carl = await InviteToAsync(KeyPrincipal(key.Key.Id), "carl@example.com", BuiltInRoles.Editor);
+        await InviteToAsync(PrincipalOf(standing), "dave@example.com", readers.Id);
+        await InviteToAsync(PrincipalOf(standing), "erin@example.com", readers.Id);
+        var fay = await InviteToAsync(PrincipalOf(standing), "fay@example.com", writers.Id);
+
+        await _fixture.UsersAsync(async users => (await users.RemoveFromRoleAsync((await users.FindByIdAsync(demoted.Id.ToString("D")))!, people.Id)).Succeeded);
+        await _fixture.UsersAsync(async users => (await users.RemoveFromRoleAsync((await users.FindByIdAsync(standing.Id.ToString("D")))!, writers.Id)).Succeeded);
+        await _fixture.WithAsync(async services =>
+        {
+            await services.GetRequiredService<ApiKeyService>().ExpireAsync(key.Key.Id, _fixture.Clock.GetUtcNow().AddHours(1), Token);
+            return true;
+        });
+        _fixture.Clock.Advance(TimeSpan.FromHours(2));
+
+        var listed = await _fixture.WithAsync(services => services.GetRequiredService<InvitationService>().ListPendingAsync(Token));
+
+        listed.Select(invitation => invitation.Email).ShouldBe(["dave@example.com", "erin@example.com"], ignoreOrder: true);
+        _fixture.Invitations().ShouldAllBe(row => row.RevokedAt == null && row.AcceptedAt == null);
+        (await AcceptAsync(bob)).Errors.ShouldHaveSingleItem().Code.ShouldBe(IdentityErrorCodes.InvalidInvitation);
+        (await _fixture.WithAsync(services => services.GetRequiredService<InvitationService>().AcceptAsync(carl, "carl", Password, Token)))
+            .Errors.ShouldHaveSingleItem().Code.ShouldBe(IdentityErrorCodes.InvalidInvitation);
+        (await _fixture.WithAsync(services => services.GetRequiredService<InvitationService>().AcceptAsync(fay, "fay", Password, Token)))
+            .Errors.ShouldHaveSingleItem().Code.ShouldBe(IdentityErrorCodes.InvalidInvitation);
+    }
+
+    // apikeys.manage and the ceiling of a key change are checked again in its transaction, with the caller's grants read
+    // there: a caller who loses either after the checks before it is refused (#3391).
+    [Fact]
+    public async Task AKeyChangeIsRefusedWhenTheCallersGrantsAreCutBeforeItsTransaction()
+    {
+        var keys = await RoleAsync("Keys", CorePermissions.ApiKeysManage);
+        var readers = await RoleAsync("Readers", "content.article.read");
+        var user = await _fixture.CreateUserAsync("keys", Password, keys.Id, readers.Id);
+        var caller = PrincipalOf(user);
+        var key = await CreateKeyAsync(readers.Id);
+        Func<ApiKeyService, Task>[] changes =
+        [
+            service => service.CreateAsync(new ApiKeyRequest("Another", ApiKeyClass.Management, readers.Id), Token),
+            service => service.RotateAsync(key.Key.Id, cancellationToken: Token),
+            service => service.RevokeAsync(key.Key.Id, Token),
+            service => service.ExpireAsync(key.Key.Id, cancellationToken: Token),
+            service => service.SetAllowedAddressesAsync(key.Key.Id, ["10.0.0.0/8"], Token),
+        ];
+
+        foreach (var cut in new[] { readers.Id, keys.Id })
+        {
+            foreach (var change in changes)
+            {
+                _window.Arm(() => _fixture.UsersAsync(async users => (await users.RemoveFromRoleAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, cut)).Succeeded));
+
+                await Should.ThrowAsync<ManagementAccessDeniedException>(() => KeysAsync(caller, async service =>
+                {
+                    await change(service);
+                    return true;
+                }));
+
+                _window.Armed.ShouldBeFalse();
+                await _fixture.UsersAsync(async users => (await users.AddToRoleAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, cut)).Succeeded);
+            }
+        }
+
+        var row = _fixture.Read(context => context.Set<ApiKey>().AsNoTracking().Single(stored => stored.Id == key.Key.Id));
+        row.KeyHash.ShouldBe(ApiKeyFormat.Hash(key.Secret));
+        row.RevokedAt.ShouldBeNull();
+        row.ExpiresAt.ShouldBeNull();
+        row.AllowedAddresses.ShouldBeNull();
+        _fixture.Read(context => context.Set<ApiKey>().Count()).ShouldBe(1);
+    }
+
+    // A request holds the row of the key it authenticated; a change it makes reads that key again in its transaction, so a
+    // calling key revoked by another request in between is refused (#3391).
+    [Fact]
+    public async Task AKeyChangeIsRefusedWhenTheCallingKeyIsRevokedBeforeItsTransaction()
+    {
+        var manager = await RoleAsync("Key manager", CorePermissions.ApiKeysManage, "content.article.read");
+        var readers = await RoleAsync("Readers", "content.article.read");
+        var calling = await CreateKeyAsync(manager.Id);
+        var key = await CreateKeyAsync(readers.Id);
+        var verified = _fixture.Read(context => context.Set<ApiKey>().AsNoTracking().Single(stored => stored.Id == calling.Key.Id));
+
+        Task<CreatedApiKey> RotateAsVerifiedAsync() => _fixture.Database.AsAsync(ApiKeyClaims.PrincipalOf(verified), services =>
+        {
+            var http = new DefaultHttpContext { RequestServices = services };
+            ApiKeyAuthentication.Verify(http, verified);
+            services.GetRequiredService<IHttpContextAccessor>().HttpContext = http;
+            return services.GetRequiredService<ApiKeyService>().RotateAsync(key.Key.Id, cancellationToken: Token);
+        });
+
+        _window.Arm(() => Task.FromResult(_fixture.Read(context => context.Set<ApiKey>()
+            .Where(stored => stored.Id == calling.Key.Id)
+            .ExecuteUpdate(setters => setters.SetProperty(stored => stored.RevokedAt, _fixture.Clock.GetUtcNow())))));
+
+        await Should.ThrowAsync<ManagementAccessDeniedException>(RotateAsVerifiedAsync);
+
+        _window.Armed.ShouldBeFalse();
+        _fixture.Read(context => context.Set<ApiKey>().AsNoTracking().Single(stored => stored.Id == key.Key.Id)).KeyHash.ShouldBe(ApiKeyFormat.Hash(key.Secret));
     }
 
     private void SetClientRoles(Guid client, string role, bool add = false) =>
@@ -269,4 +392,29 @@ public sealed class KeyAndInvitationCeilingTests : IDisposable
             return context.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>().Where(row => row.Id == client)
                 .ExecuteUpdate(setters => setters.SetProperty(row => row.Properties, properties));
         });
+
+    // Runs code once as the next transaction of the system tables is about to open, which is after the checks a change makes
+    // before its transaction, as another request that commits then would.
+    private sealed class Window : Microsoft.EntityFrameworkCore.Diagnostics.DbTransactionInterceptor
+    {
+        private Func<Task>? _work;
+
+        public bool Armed => Volatile.Read(ref _work) is not null;
+
+        public void Arm(Func<Task> work) => Volatile.Write(ref _work, work);
+
+        public override async ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<System.Data.Common.DbTransaction>> TransactionStartingAsync(
+            System.Data.Common.DbConnection connection,
+            Microsoft.EntityFrameworkCore.Diagnostics.TransactionStartingEventData eventData,
+            Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<System.Data.Common.DbTransaction> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (Interlocked.Exchange(ref _work, null) is { } work)
+            {
+                await work();
+            }
+
+            return await base.TransactionStartingAsync(connection, eventData, result, cancellationToken);
+        }
+    }
 }

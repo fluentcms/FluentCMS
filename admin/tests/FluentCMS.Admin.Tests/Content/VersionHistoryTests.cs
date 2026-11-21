@@ -311,7 +311,7 @@ public sealed class VersionHistoryTests : AdminTestContext
 
     private static IRenderedComponent<CmsDrawer> OpenHistory(IRenderedComponent<AdminApp> app)
     {
-        app.Find(".content-form-history fluent-button").Click();
+        app.FindAll(".content-form-history fluent-button").Single(button => button.TextContent.Trim() == "Version history").Click();
         app.WaitForAssertion(() => Panel(app).Instance.Open.ShouldBeTrue());
         return Panel(app);
     }
