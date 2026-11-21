@@ -11,7 +11,7 @@
    of another and is added by its first save, and a second locale can be shown read-only beside each field. In a side panel
    (A-15) it creates and saves without leaving the page: it raises OnSaved instead of moving to the entry's route, and its
    heading is the panel's. Its version history (A-28) is a side panel, whose restore the form runs as a status action, and
-   its preview (A-29) a pane beside it or above it. *@
+   its preview (A-29) a pane beside it or below it. *@
 @implements IUnsavedForm
 @implements IAsyncDisposable
 @using System.Net
@@ -32,7 +32,7 @@
 @inject AdminConfiguration Configuration
 @inject IStringLocalizer<AdminResources> L
 
-<div class="content-form-layout" data-preview="@(PreviewShown ? (previewWidth == ContentPreview.Full ? "full" : "beside") : null)">
+<div class="content-form-layout" data-preview="@(PreviewShown ? (previewWidth == ContentPreview.Full ? "full" : "beside") : null)" data-width="@(PreviewShown ? previewWidth : null)">
     <div class="content-form">
         @if (InPanel)
         {
@@ -103,10 +103,10 @@
                 {
                     <div class="content-form-history">
                         <CmsButton OnClick="@(() => historyOpen = true)">@L["Content.Versions.Open"]</CmsButton>
-                        @if (MayPreview && previewAnswer?.Url is not null)
+                        @if (MayPreview)
                         {
                             <CmsButton @ref="previewButton" Icon="CmsIconName.Open" Expanded="@PreviewShown" Controls="@(PreviewShown ? ContentPreview.PaneId : null)"
-                                       OnClick="@(() => previewOpen = !previewOpen)">@L[previewOpen ? "Content.Preview.Close" : "Content.Preview.Open"]</CmsButton>
+                                       OnClick="TogglePreview">@L["Content.Preview.Open"]</CmsButton>
                         }
                     </div>
                 }
@@ -247,8 +247,7 @@
     </div>
     @if (PreviewShown)
     {
-        <ContentPreview Type="@type!.Name" EntryId="@entryId!.Value" Site="@read!.Site" Locale="@read.Locale" TokenLocale="@PreviewLocale" Version="@read.Entry!.Version" Status="@read.Entry.Status"
-                        FirstUrl="@previewAnswer!.Url" FirstPublishedUrl="@previewAnswer.PublishedUrl" FirstExpiresAt="@previewAnswer.ExpiresAt"
+        <ContentPreview @ref="preview" Type="@type!.Name" EntryId="@entryId!.Value" Site="@read!.Site" Locale="@read.Locale" TokenLocale="@PreviewLocale" Version="@read.Entry!.Version" Status="@read.Entry.Status"
                         Width="@previewWidth" WidthChanged="@(value => previewWidth = value)" OnClose="ClosePreview" />
     }
 </div>
@@ -403,12 +402,14 @@
     // The version a restore makes the draft from, while it runs.
     private int restoring;
     private EntrySchedule? schedule;
-    // The answer of a token minted as the form read the entry, which says whether the type has a preview page (A-29).
-    private PreviewTokenAnswer? previewAnswer;
     private bool previewOpen;
+    // The entry the pane was opened for: it stays open through a switch of locale and closes when the form loads another entry.
+    private Guid? previewEntry;
     private CmsButton? previewButton;
-    // The pane's own Close goes with the pane, so focus goes back to the form's toggle.
+    private ContentPreview? preview;
+    // The pane's own Close goes with the pane, so focus goes back to the form's toggle; the toggle's open moves it to the pane.
     private bool focusPreviewButton;
+    private bool focusPreview;
     private string previewWidth = ContentPreview.Phone;
 
     // The name of the content type, as the route has it.
@@ -488,11 +489,12 @@
     // hold drafts, so the server reads them only for a caller who may read the type's drafts.
     private bool MayShowHistory => !InPanel && entryId is not null && read?.Entry is not null && type is not null && access?.Drafts == true;
 
-    // The preview of a saved locale, from the page's form only, while config.json lists a preview origin. The token reads
-    // the draft, so it is minted only for a caller who may read the type's drafts.
-    private bool MayPreview => MayShowHistory && Configuration.PreviewEnabled;
+    // The preview of a saved locale, from the page's form only, while config.json lists a preview origin and the schema does
+    // not say the type has no preview page (#3432; a server that does not say it gets the button, and the pane tells). The
+    // token reads the draft, so it is minted only for a caller who may read the type's drafts, and only by the open pane.
+    private bool MayPreview => MayShowHistory && Configuration.PreviewEnabled && type!.Previewable != false;
 
-    private bool PreviewShown => previewOpen && MayPreview && previewAnswer?.Url is not null;
+    private bool PreviewShown => previewOpen && MayPreview;
 
     private string? PreviewLocale => type?.Localized == true ? ContentCode : null;
 
@@ -561,6 +563,12 @@
         {
             focusPreviewButton = false;
             await previewButton.FocusAsync();
+        }
+
+        if (focusPreview && preview is not null)
+        {
+            focusPreview = false;
+            await preview.FocusAsync();
         }
 
         if (focusPanelHeading && state != FormState.Loading)
@@ -637,7 +645,7 @@
         (type, access, tabs, tabbed, read, entryId, activeTab) = (null, null, [], [], null, null, null);
         (restored, done, saveFailure, pendingCreate, publishTried) = (false, null, null, null, false);
         (warnings, confirming) = ([], null);
-        (conflict, conflictOpen, comparing, historyOpen, previewAnswer) = (null, false, false, false, null);
+        (conflict, conflictOpen, comparing, historyOpen) = (null, false, false, false);
         (locales, compare, compareFailed, compareChoice, copying, copyAsked, readableLocales) = (null, null, null, null, false, null, []);
         ClearErrors();
         try
@@ -685,6 +693,7 @@
             }
 
             (type, access, tabs, read, entryId) = (found, Access.ForType(found.Name), ContentFormLayout.Build(found), entry, id);
+            previewOpen &= id is not null && id == previewEntry;
             (locales, readableLocales) = (everyLocale, readableNow);
             tabbed = [.. tabs.Where(tab => tab.Name is not null)];
             (site, locale) = entry is not null ? (entry.Site, entry.Locale) : (CurrentSite.Site, Locale ?? ContentLocaleSource.Locale);
@@ -698,7 +707,6 @@
             if (current == generation)
             {
                 state = FormState.Ready;
-                _ = ProbePreviewAsync(current);
             }
         }
         catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.NotFound && current == generation)
@@ -896,29 +904,7 @@
 
     private void ClosePreview() => (previewOpen, focusPreviewButton) = (false, true);
 
-    // The backend tells whether a type has a preview template only in a token's answer, so the form mints one as it reads a
-    // saved locale; the pane uses it while it lasts. A failed mint leaves the form without the preview button.
-    private async Task ProbePreviewAsync(int current)
-    {
-        if (!MayPreview || entryId is not { } id || read is not { } basedOn)
-        {
-            return;
-        }
-
-        try
-        {
-            var answer = await Client.MintPreviewTokenAsync(Type, id, basedOn.Site, basedOn.Locale, PreviewLocale, CancellationToken.None);
-            if (current == generation && !disposed)
-            {
-                previewAnswer = answer;
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch (Exception exception) when (IsFailure(exception))
-        {
-            // No preview.
-        }
-    }
+    private void TogglePreview() => (previewOpen, focusPreview, previewEntry) = (!previewOpen, !previewOpen, entryId);
 
     private Task ReloadAsync()
     {
@@ -1083,11 +1069,6 @@
                 NavigateAway(ContentRoutes.InLocale(RouteOf(saved), locale), replace: true);
             }
 
-            if (previewAnswer is null)
-            {
-                _ = ProbePreviewAsync(current);
-            }
-
             await OnSaved.InvokeAsync(saved.Entry);
         }
         catch (ApiProblemException exception) when (current == generation)
@@ -1234,15 +1215,6 @@
                 fields = answer.Entry!.Fields.DeepClone().AsObject();
                 await DropChangesAsync();
             }
-
-            // The published page of the locale may have come or gone, so the answer the pane opens with is minted again; an open
-            // pane mints again itself and keeps its button meanwhile.
-            if (!PreviewShown)
-            {
-                previewAnswer = null;
-            }
-
-            _ = ProbePreviewAsync(current);
 
             warnings = found;
             done = action switch
