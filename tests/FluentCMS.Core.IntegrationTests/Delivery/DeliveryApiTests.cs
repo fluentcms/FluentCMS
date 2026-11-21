@@ -31,7 +31,8 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
         var entry = Item(body, Welcome);
         entry["status"]!.GetValue<string>().ShouldBe("published");
         entry["locale"]!.GetValue<string>().ShouldBe("en");
-        entry["version"]!.GetValue<int>().ShouldBe(1);
+        // The seeder adds the French welcome article, which advances the English one to version 2 (#3265).
+        entry["version"]!.GetValue<int>().ShouldBe(2);
         entry["author"]!.AsObject().Select(pair => pair.Key).ShouldBe(["id", "type"]);
         entry["sections"]![0]!["type"]!.GetValue<string>().ShouldBe("hero");
         entry.AsObject().ContainsKey("sys").ShouldBeFalse();

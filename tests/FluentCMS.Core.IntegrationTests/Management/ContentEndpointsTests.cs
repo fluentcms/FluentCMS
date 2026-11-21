@@ -227,7 +227,8 @@ public sealed class ContentEndpointsTests(ManagementFixture fixture) : IClassFix
 
         var english = await fixture.GetAsync($"page/{id}/versions");
         english.Status.ShouldBe(HttpStatusCode.OK);
-        english.Json["items"]!.AsArray().Select(item => item!["number"]!.GetValue<int>()).ShouldBe([2, 1]);
+        // Adding fr gave en version 3 (#3265).
+        english.Json["items"]!.AsArray().Select(item => item!["number"]!.GetValue<int>()).ShouldBe([3, 2, 1]);
         english.Json["items"]!.AsArray().ShouldAllBe(item => item!["locale"]!.GetValue<string>() == "en");
         english.Json["items"]![0]!["origin"]!.GetValue<string>().ShouldBe("api");
 
