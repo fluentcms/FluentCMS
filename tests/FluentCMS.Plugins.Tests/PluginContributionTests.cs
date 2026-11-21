@@ -194,6 +194,11 @@ public sealed class PluginContributionTests(PluginContributionFixture fixture) :
     public void TheTableContributionsNeedTheBuilderOfAHost() =>
         Should.Throw<InvalidOperationException>(() => new FakeServiceBuilder().AddModel<SampleModel>()).Message.ShouldContain(nameof(FakeServiceBuilder));
 
+    // A builder written before the resumable overload builds as before, and refuses it when it is called.
+    [Fact]
+    public void ABuilderWithoutTheResumableOverloadRefusesIt() =>
+        Should.Throw<NotSupportedException>(() => ((IPluginServiceBuilder)new FakeServiceBuilder()).AddJob<SampleNoteJob, SampleNotePayload>(SampleNoteJob.Type, TimeSpan.FromMinutes(1), resumable: true));
+
     [Fact]
     public async Task TheManagementEndpointIsServedUnderTheManagementApiAndThePathBase()
     {

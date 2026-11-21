@@ -84,6 +84,21 @@ public interface IPluginServiceBuilder
         where TJob : class, IJob<TPayload>;
 
     /// <summary>
+    /// Adds a job that the runner executes, and says whether it is resumable: a job that stops on its token wherever it is,
+    /// such as a delete in batches, and leaves what is left for its next run. A resumable job that ends on its token at its
+    /// attempt timeout has succeeded, so that a long backlog is never dead-lettered for its size.
+    /// </summary>
+    /// <typeparam name="TJob">The job, created per attempt.</typeparam>
+    /// <typeparam name="TPayload">Its payload.</typeparam>
+    /// <param name="type">What the job table stores, so it must outlive renames of the class.</param>
+    /// <param name="attemptTimeout">The limit of one attempt, or null for the runner's.</param>
+    /// <param name="resumable">Whether the job is resumable.</param>
+    /// <returns>This builder.</returns>
+    /// <exception cref="NotSupportedException">The builder does not take this overload.</exception>
+    IPluginServiceBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout, bool resumable)
+        where TJob : class, IJob<TPayload> => throw new NotSupportedException("This plugin service builder does not register resumable jobs.");
+
+    /// <summary>
     /// Adds a job queue with workers on every instance, so that the plugin's jobs, enqueued with <see cref="JobOptions.Queue"/>,
     /// hold up no other job. A worker count that the host sets for the queue, in code or under <c>FluentCms:Jobs:Queues</c>,
     /// wins over the plugin's.

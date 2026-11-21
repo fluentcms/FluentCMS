@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
+using FluentCMS.Content;
 using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.DependencyInjection;
@@ -9,8 +10,14 @@ using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
+using FluentCMS.Core.Sites;
 using FluentCMS.Core.Telemetry;
 using FluentCMS.Jobs;
+using FluentCMS.Plugins;
+using FluentCMS.Plugins.AiAssist;
+using FluentCMS.Plugins.Webhooks;
+using FluentCMS.Providers;
+using FluentCMS.Sites;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -47,6 +54,43 @@ internal sealed class UntimedJob(JobProbe probe) : IJob<ProbePayload>
     {
         probe.Runs.Enqueue(new JobRun(payload, context, null));
         return probe.Behavior(payload, context);
+    }
+}
+
+internal sealed class ResumablePluginJob(JobProbe probe) : IJob<ProbePayload>
+{
+    public const string Type = "resumable-plugin.prune";
+
+    public Task ExecuteAsync(ProbePayload payload, JobContext context)
+    {
+        probe.Runs.Enqueue(new JobRun(payload, context, null));
+        return probe.Behavior(payload, context);
+    }
+}
+
+// A plugin cannot see IResumableJob, so it says so when it registers the job.
+[FluentCmsPlugin("resumable-plugin", SdkRange = "[1.0.0,2.0.0)")]
+public sealed class ResumablePlugin : IPlugin
+{
+    public void ConfigureServices(IPluginServiceBuilder plugin) =>
+        plugin.AddJob<ResumablePluginJob, ProbePayload>(ResumablePluginJob.Type, TimeSpan.FromSeconds(10), resumable: true);
+
+    public void Configure(IPluginAppBuilder app)
+    {
+    }
+}
+
+// Ignores its token, as a sender that hangs does.
+internal sealed class HangingEmailSender : IEmailSender
+{
+    public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public TaskCompletionSource Gate { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
+    {
+        Entered.TrySetResult();
+        return Gate.Task;
     }
 }
 
@@ -489,8 +533,8 @@ public sealed class JobTimeoutTests : IDisposable
         await running;
     }
 
-    // The built-in jobs that run without a limit, each for a reason: a mail send and the outbox drain have limits of their
-    // own, and a scheduled publish is one entry. Any other job a host registers by default must set an attempt timeout.
+    // The outbox drain alone runs without a limit: it cuts off each delivery itself, and runs for as long as rows are due. Any
+    // other job a host registers by default must set an attempt timeout (#3408).
     [Fact]
     public void EveryBuiltInJobButTheseHasAnAttemptTimeout()
     {
@@ -499,8 +543,80 @@ public sealed class JobTimeoutTests : IDisposable
             .Select(registration => registration.Type)
             .Order(StringComparer.Ordinal);
 
-        string[] expected = [ScheduledPublishJob.Type, ScheduledUnpublishJob.Type, OutboxDrainJob.Type, MemberMailJob.Type, PasswordResetMailJob.Type];
-        untimed.ShouldBe(expected.Order(StringComparer.Ordinal));
+        untimed.ShouldBe([OutboxDrainJob.Type]);
+    }
+
+    // The mail jobs had no limit, so a sender that hung held a worker of the mail queue for good (#3408).
+    [Fact]
+    public async Task ABuiltInJobThatIgnoresItsTokenIsAbandonedAtItsTimeoutAndFreesItsWorker()
+    {
+        var sender = new HangingEmailSender();
+        var instance = _fixture.NewInstance(cms: cms => cms.Services.AddSingleton<IEmailSender>(sender));
+        using (var scope = instance.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            using var system = SystemOperation.Begin(services.GetRequiredService<IOperationContextAccessor>(), _fixture.Clock, Origin.Seed, new SiteId(DefaultSite.Id));
+            (await services.GetRequiredService<CmsUserManager>().CreateAsync(new CmsUser { UserName = "hung", Email = "hung@example.com" })).Succeeded.ShouldBeTrue();
+            await services.GetRequiredService<PasswordResetService>().RequestAsync("hung@example.com", new Uri("https://cms.example/reset"), Token);
+        }
+
+        var id = _fixture.Jobs().Single(job => job.Type == PasswordResetMailJob.Type).Id;
+        var executor = instance.GetRequiredService<JobExecutor>();
+        var running = Task.Run(() => executor.RunNextAsync(AccountMail.Queue, "A", Token), Token);
+        await sender.Entered.Task.WaitAsync(Token);
+
+        _fixture.Clock.Advance(AccountMail.AttemptTimeout + JobExecutor.AbandonGrace - TimeSpan.FromTicks(1));
+        _fixture.Job(id).Status.ShouldBe(JobStatus.Running, "the grace has not passed yet");
+
+        _fixture.Clock.Advance(TimeSpan.FromTicks(1));
+        (await running).ShouldBeTrue("the worker is free while the send still hangs");
+
+        var job = _fixture.Job(id);
+        job.Status.ShouldBe(JobStatus.Pending);
+        job.LastError.ShouldNotBeNull().ShouldStartWith("FCMS2508");
+        executor.Abandoned.ShouldBe(1);
+
+        sender.Gate.SetResult();
+        await Eventually.HoldsAsync(() => executor.Abandoned == 0);
+    }
+
+    [Fact]
+    public async Task APluginJobRegisteredResumableStoppedAtItsLimitHasSucceeded()
+    {
+        var instance = _fixture.NewInstance(cms: cms => cms.AddPlugin<ResumablePlugin>());
+        var executor = instance.GetRequiredService<JobExecutor>();
+        RunUntilCancelled();
+        var id = await instance.GetRequiredService<IJobScheduler>().EnqueueAsync<ResumablePluginJob, ProbePayload>(new ProbePayload("plugin"), new JobOptions { MaxAttempts = 1 }, Token);
+
+        var running = StartAsync(executor);
+        await WaitForRunsAsync(1);
+        _fixture.Clock.Advance(Limit);
+        await running;
+
+        var job = _fixture.Job(id);
+        job.Status.ShouldBe(JobStatus.Succeeded, "what is left waits for the next run");
+        job.LastError.ShouldBeNull();
+        _fixture.Events.DeadLettered.ShouldBeEmpty();
+        _fixture.Logs.Count(nameof(JobLog.StoppedAtLimit)).ShouldBe(1);
+    }
+
+    [Fact]
+    public void TheRetentionJobsOfTheWebhooksAndAiAssistPluginsAreResumable()
+    {
+        var instance = _fixture.NewInstance(cms: cms =>
+        {
+            cms.AddPlugin<WebhooksPlugin>();
+            cms.AddPlugin<AiAssistPlugin>();
+        });
+        var registry = instance.GetRequiredService<JobRegistry>();
+
+        // The AI Assist plugin's job is internal to it, so its stored type is named here.
+        foreach (var type in new[] { WebhookRetentionJob.Type, "ai.usage-retention" })
+        {
+            var registration = registry.Find(type).ShouldNotBeNull(type);
+            registration.Resumable.ShouldBeTrue(type);
+            registration.AttemptTimeout.ShouldNotBeNull(type);
+        }
     }
 
     [Theory]
