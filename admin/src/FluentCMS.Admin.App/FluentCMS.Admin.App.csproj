@@ -26,7 +26,7 @@
 
   <!-- The licence and the third-party notices (THIRD-PARTY-NOTICES.md) travel with every copy of the compiled code: the wwwroot
        of the publish, which the hosting package and the image serve, and any archive made from it. They are static files next to
-       the app, and the app does not fetch them, so the first download does not count them. -->
+       the app. The app does not fetch them, and the size check, an upper bound, counts them. -->
   <ItemGroup>
     <Content Include="../../../LICENSE" Link="wwwroot/LICENSE" />
     <Content Include="../../../THIRD-PARTY-NOTICES.md" Link="wwwroot/THIRD-PARTY-NOTICES.md" />

@@ -175,8 +175,8 @@ jobs:
             docker compose cp "cms:/app/$file" "$RUNNER_TEMP/$file"
             [ -s "$RUNNER_TEMP/$file" ] || { echo "::error::/app/$file is missing or empty in the image"; exit 1; }
           done
-          grep -q "^# MIT License" "$RUNNER_TEMP/LICENSE"
-          grep -q "Project Nayuki" "$RUNNER_TEMP/THIRD-PARTY-NOTICES.md"
+          grep -q "^# MIT License" "$RUNNER_TEMP/LICENSE" || { echo "::error::/app/LICENSE does not hold the MIT licence"; exit 1; }
+          grep -q "Project Nayuki" "$RUNNER_TEMP/THIRD-PARTY-NOTICES.md" || { echo "::error::/app/THIRD-PARTY-NOTICES.md does not hold the notice of Project Nayuki"; exit 1; }
 
       - name: Make the administrator and a management key with the CLI
         run: |

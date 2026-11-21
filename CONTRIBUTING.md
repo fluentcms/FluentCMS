@@ -76,7 +76,7 @@ Workflows pin every action to a full commit SHA, with its version tag in a trail
 
 ## Third-party code
 
-Code taken in from another work, whole or in part, gets its notice in `THIRD-PARTY-NOTICES.md` at the root: the source and its commit, where the code is used and the licence kept verbatim, and the file that holds the code says so in a comment. That file and `LICENSE` travel with every copy of the compiled code, so keep the two names: the `FluentCMS.Admin` package packs the notices, the image holds both in `/app`, and the published admin holds both as static files next to the app, copied by `admin/src/FluentCMS.Admin.App/FluentCMS.Admin.App.csproj`. A new place that ships compiled code, such as an archive of the admin, copies both files too.
+Code taken in from another work, whole or in part, gets its notice in `THIRD-PARTY-NOTICES.md` at the root: the source and its commit, where the code is used and the licence kept verbatim, and the file that holds the code says so in a comment. That file travels with every copy of the compiled code, so keep the name, and add `<None Include="../../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="" Visible="false" />` to the project of a package that ships the code, as `FluentCMS.Admin` (the QR code encoder) and `FluentCMS.Admin.RichText` (the editor's bundle) do. A package declares MIT by `PackageLicenseExpression` and does not carry `LICENSE`. The image holds `LICENSE` and the notices in `/app`, and the published admin holds both as static files next to the app, copied by `admin/src/FluentCMS.Admin.App/FluentCMS.Admin.App.csproj`; a new place that ships compiled code, such as an archive of the admin, copies both files too.
 
 ## Pull requests
 
