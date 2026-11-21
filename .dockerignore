@@ -5,6 +5,8 @@
 !Directory.Build.props
 !Directory.Packages.props
 !docs/resources/icon.png
+!LICENSE
+!THIRD-PARTY-NOTICES.md
 !src/
 !samples/Blog/
 !admin/src/
