@@ -48,6 +48,19 @@ public sealed class RolesPageTests : RolesTestContext
         Writes.ShouldBeEmpty();
     }
 
+    // A site switch on the route keeps the page, which narrows the roles again with the grants of the new site.
+    [Fact]
+    public void ASiteSwitchShowsTheRolesOfTheNewSite()
+    {
+        Grant(Shop, ["roles.manage"]);
+        var app = Open("roles", inSite: ["roles.manage"], forInstance: []);
+        app.WaitForAssertion(() => Rows(app).ShouldBe(["Reviewers|Main|Made by an administrator", "Public|Main|Public, read without signing in"]));
+
+        app.Find(".site-switcher select").Change(Shop.ToString("D"));
+
+        app.WaitForAssertion(() => Rows(app).ShouldBe(["Shop editors|Shop|Made by an administrator"]));
+    }
+
     [Fact]
     public void TheSearchFindsRolesByName()
     {

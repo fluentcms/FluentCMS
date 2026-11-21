@@ -2,7 +2,8 @@
    replaces every grant (PUT), so each grant goes back with its constraints as read. A role has no ETag: a save that met
    another's change is refused with FCMS3045, and the page reads the role again and puts back on it what the user changed.
    The page edits a role the caller manages only, as the list shows them; the server stays the authority, and its refusals
-   are shown on the role by their code. *@
+   are shown on the role by their code. A site switch on this route leaves the page in place, so the page reads the role
+   again in the new site, where what the caller manages and holds differs. *@
 @page "/roles/new"
 @page "/roles/{Id:guid}"
 @implements IDisposable
@@ -138,6 +139,10 @@ else
     private Func<ElementReference>? focusAfterRender;
     private CancellationTokenSource? reading;
 
+    // The site and the access the page last read with.
+    private Guid? readInSite;
+    private MyAccessInfo? readWith;
+
     // Null for a new role.
     [Parameter]
     public Guid? Id { get; set; }
@@ -170,16 +175,51 @@ else
     private IReadOnlyList<CmsOption> SiteOptions =>
         [new(EverySite, L["Roles.Editor.EverySite"]), .. Context.Sites.Select(site => new CmsOption(site.Id.ToString("D"), site.Name))];
 
+    protected override void OnInitialized()
+    {
+        (readInSite, readWith) = (Context.Site?.Id, Context.AccessInfo);
+        Context.Changed += OnContextChanged;
+    }
+
     protected override async Task OnParametersSetAsync()
     {
         // The page is one instance for every role and for a new one, so another address reads afresh.
         if (!shown || shownId != Id)
         {
             (shown, shownId) = (true, Id);
-            (read, draft, nameError, descriptionError, message, detail, asking) = (null, null, null, null, null, null, false);
-            siteChoice = Context.Site?.Id.ToString("D") ?? EverySite;
-            await ReadAsync();
+            await ReadAgainAsync();
         }
+    }
+
+    // What the user typed is the role's in the site it was read in, so another site starts again from the role as it is.
+    private Task ReadAgainAsync()
+    {
+        (read, draft, nameError, descriptionError, message, detail, asking) = (null, null, null, null, null, null, false);
+        siteChoice = Context.Site?.Id.ToString("D") ?? EverySite;
+        return ReadAsync();
+    }
+
+    // Another site reads the role and the catalogue's plugins again; another access, as of another content locale, changes
+    // the marks only.
+    private void OnContextChanged()
+    {
+        if (Context.Status != ShellStatus.Ready || Context.AccessInfo is not { } access || ReferenceEquals(access, readWith))
+        {
+            return;
+        }
+
+        var siteChanged = Context.Site?.Id != readInSite;
+        (readInSite, readWith) = (Context.Site?.Id, access);
+        _ = InvokeAsync(async () =>
+        {
+            if (siteChanged)
+            {
+                catalogue = null;
+                await ReadAgainAsync();
+            }
+
+            StateHasChanged();
+        });
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -193,6 +233,7 @@ else
 
     public void Dispose()
     {
+        Context.Changed -= OnContextChanged;
         reading?.Cancel();
         reading?.Dispose();
     }

@@ -48,6 +48,56 @@ public sealed class RolePageTests : RolesTestContext
         app.WaitForAssertion(() => Options(Field(app, "Permission or pattern")).ShouldBe(["Choose a permission", "media.read: Read media. (plugin media)"]));
     }
 
+    // EffectiveAccess's conditional operations are those of row rules and locales; a grant limited to fields shows as the
+    // fields the access lists.
+    [Fact]
+    public void TheGrantsOfATypeTheCallerHoldsForSomeFieldsOnlyAreMarked()
+    {
+        Permissions.Add(Permission("content.article.update", "Edit article entries.", "content"));
+        Management.SetTypes(MainSite, Type("article", fields: [Shell.FakeManagementServer.Field("title"), Shell.FakeManagementServer.Field("body")]));
+        Management.Access[MainSite]["types"]!["article"]!["updatableFields"] = new JsonArray("title");
+        var app = Open("roles/new");
+        app.WaitForAssertion(() => Field(app, "Kind of permission"));
+
+        Field(app, "Kind of permission").Change(GrantCatalogue.Content);
+
+        app.WaitForAssertion(() => Options(Field(app, "Permission or pattern")).ShouldContain("content.article.update: Edit article entries. (not among your permissions)"));
+        Options(Field(app, "Permission or pattern")).ShouldContain("content.*.update: Matches 1 permission of the catalogue. (not among your permissions)");
+        Options(Field(app, "Permission or pattern")).ShouldContain("content.article.read: Read article entries. (not among your permissions)");
+    }
+
+    [Fact]
+    public void TheSecondFactorIsTurnedOnAndReadBack()
+    {
+        var app = Open($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => Field(app, "Name"));
+
+        app.Find("main fluent-checkbox").Change(true);
+        Save(app);
+
+        app.WaitForAssertion(() => Alert(app).ShouldBe("The role was saved."));
+        LastWrite(HttpMethod.Put)["requireTwoFactor"]!.GetValue<bool>().ShouldBeTrue();
+        Navigation.NavigateTo("roles");
+        app.WaitForAssertion(() => Heading(app).ShouldBe("Roles"));
+        Navigation.NavigateTo($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => app.Find("main fluent-checkbox").GetAttribute("checked").ShouldNotBeNull());
+        RoleOf(Reviewers)["requireTwoFactor"]!.GetValue<bool>().ShouldBeTrue();
+    }
+
+    // A site switch on the route keeps the page, which reads the role again in the new site.
+    [Fact]
+    public void ASiteSwitchToASiteWhereTheCallerDoesNotManageTheRoleTakesItsFormAway()
+    {
+        Grant(Shop, ["roles.manage"]);
+        var app = Open($"roles/{Reviewers:D}", inSite: ["roles.manage"], forInstance: []);
+        app.WaitForAssertion(() => Field(app, "Name"));
+
+        app.Find(".site-switcher select").Change(Shop.ToString("D"));
+
+        app.WaitForAssertion(() => Heading(app).ShouldBe("Role not managed here"));
+        app.FindAll("main form").ShouldBeEmpty();
+    }
+
     [Fact]
     public void AnAdministratorMakesARoleWithGrantsOfCoreOfAContentTypeAndOfAPluginChangesItAndDeletesIt()
     {

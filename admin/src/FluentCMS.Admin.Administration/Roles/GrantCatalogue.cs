@@ -116,6 +116,7 @@ public sealed class GrantCatalogue
             return inShellSite && ContentParts(entry.Name) is var (type, operation)
                 && access.Types.TryGetValue(type, out var may)
                 && !may.Conditional.Contains(operation, StringComparer.Ordinal)
+                && !LimitedToFields(type, may)
                 && operation switch
                 {
                     "read" => true,
@@ -130,6 +131,21 @@ public sealed class GrantCatalogue
 
         return access.InstancePermissions.Contains(entry.Name, StringComparer.Ordinal)
             || (inShellSite && access.Permissions.Contains(entry.Name, StringComparer.Ordinal));
+    }
+
+    // Whether the caller's grants of the type are limited to some of its fields: it creates or changes some of the fields of
+    // the schema only. Conditional names row rules and locales only, so this is read from the fields the access lists. Any
+    // grant of such a type goes beyond what the caller holds when it is not limited as narrowly, and a type the schema does
+    // not show counts as limited.
+    private bool LimitedToFields(string type, TypeAccessInfo may)
+    {
+        if (_context.Schema?.Types.FirstOrDefault(item => item.Name == type) is not { } described)
+        {
+            return true;
+        }
+
+        var fields = described.Fields.Select(field => field.Name).ToHashSet(StringComparer.Ordinal);
+        return (may.Create && !fields.IsSubsetOf(may.CreatableFields)) || (may.Update && !fields.IsSubsetOf(may.UpdatableFields));
     }
 
     // content.{type}.{operation}, or null for any other name.
