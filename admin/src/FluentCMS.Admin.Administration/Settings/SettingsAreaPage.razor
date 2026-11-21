@@ -1,0 +1,9 @@
+@* The settings of an area in the site (spec 4.16). *@
+@page "/settings/{Area}"
+
+<SettingsArea Area="@Area" />
+
+@code {
+    [Parameter]
+    public string Area { get; set; } = string.Empty;
+}

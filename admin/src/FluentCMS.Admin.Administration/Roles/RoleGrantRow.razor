@@ -1,0 +1,70 @@
+@* One grant of the role: the permission or pattern it names with what the catalogue says of it, the plugin behind a plugin's
+   permission (row 8.14), a mark when the caller's access does not show it holds it, its constraints, and its removal. *@
+@inject IStringLocalizer<RolesResources> L
+
+<div data-grant="@Grant.Permission">
+    <p>
+        <strong>@Grant.Permission</strong>
+        @if (Catalogue.Entry(Grant.Permission) is { } entry)
+        {
+            <span>@entry.Description</span>
+            @if (Catalogue.PluginOf(Grant.Permission) is { } plugin)
+            {
+                <span>@L["Roles.Grants.OfPlugin", plugin]</span>
+            }
+        }
+        else if (Grant.Permission == GrantCatalogue.Everything)
+        {
+            <span>@L["Roles.Grants.EverythingDescribed"]</span>
+        }
+        else if (Catalogue.Matches(Grant.Permission).Count is var count and > 0)
+        {
+            <span>@(count == 1 ? L["Roles.Grants.MatchesOne"] : L["Roles.Grants.Matches", count])</span>
+        }
+        else
+        {
+            <span>@L["Roles.Grants.NotInCatalogue"]</span>
+        }
+    </p>
+    @if (!Catalogue.Holds(Grant.Permission, RoleSite))
+    {
+        <p><strong>@L["Roles.Grants.NotHeld"]</strong></p>
+    }
+    @if (Grant.Refused)
+    {
+        <p role="alert">@L["Roles.Grants.Refused"]</p>
+    }
+    <GrantConstraints Value="@Grant.Constraints" ValueChanged="@OnConstraintsChanged" RoleSite="@RoleSite" ReadOnly="@ReadOnly" />
+    @if (!ReadOnly)
+    {
+        <CmsButton OnClick="@(() => OnRemove.InvokeAsync(Grant))">
+            @L["Roles.Grants.Remove"]<span class="cms-visually-hidden">@L["Roles.Grants.RemoveWhich", Grant.Permission]</span>
+        </CmsButton>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public GrantDraft Grant { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public GrantCatalogue Catalogue { get; set; } = null!;
+
+    [Parameter]
+    public Guid? RoleSite { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public EventCallback<GrantDraft> OnRemove { get; set; }
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private Task OnConstraintsChanged(JsonObject? constraints)
+    {
+        Grant.Constraints = constraints;
+        return OnChanged.InvokeAsync();
+    }
+}

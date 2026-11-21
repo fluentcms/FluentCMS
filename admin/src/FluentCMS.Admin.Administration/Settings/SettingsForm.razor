@@ -1,0 +1,459 @@
+@* The generated settings page of an area, for the site or for the instance defaults (spec 4.16): a form from the JSON schema
+   of the read, with the field editors of 4.6. A secret is never read, so it shows as set or not set and holds only what the
+   user types, which a save sends and then forgets; a secret the user did not type is left out of the request, since naming
+   it would replace it. Nothing of the form goes to the draft store or to browser storage. Save and reset name the version
+   read; a save over a change made elsewhere opens the conflict, as the content form does. *@
+@implements IDisposable
+@using System.Diagnostics.CodeAnalysis
+@using System.Net
+@inject IManagementApi Api
+@inject ICurrentSite CurrentSite
+@inject FieldEditorRegistry Editors
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<SettingsResources> L
+
+@if (read is null && failure is null)
+{
+    <p role="status">@L["Settings.Form.Loading"]</p>
+}
+else if (read is null)
+{
+    <div class="settings-problem" role="alert">
+        <p>@ProblemText(failure!, L["Settings.Form.ReadFailed"])</p>
+        <CmsButton OnClick="ReadAsync">@L["Settings.Form.TryAgain"]</CmsButton>
+    </div>
+}
+else
+{
+    <p class="settings-source" data-source="@read.Source">@SourceText(read)</p>
+
+    @if (formErrors.Count > 0)
+    {
+        <div class="settings-problem" role="alert">
+            <ul>
+                @foreach (var error in formErrors)
+                {
+                    <li>@(error.Message ?? L["Settings.Form.SaveFailed"])</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="settings-fields">
+        @foreach (var property in properties)
+        {
+            <div @key="property.Field.Name" class="settings-field">
+                @if (property.Secret)
+                {
+                    <CmsTextInput Type="CmsTextInputType.Password"
+                                  Label="@FieldEditorBase.LabelOf(property.Field)"
+                                  Help="@SecretHelp(property.Field)"
+                                  Error="@ErrorText(property.Field.Name)"
+                                  ReadOnly="@busy"
+                                  Autocomplete="new-password"
+                                  MaxLength="@property.Field.Validation.MaxLength"
+                                  Value="@typed.GetValueOrDefault(property.Field.Name)"
+                                  ValueChanged="@(text => TypeSecret(property.Field.Name, text))" />
+                }
+                else
+                {
+                    @Editor(property.Field)
+                }
+            </div>
+        }
+    </div>
+
+    <div class="settings-actions">
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(busy || !Changed)" OnClick="SaveAsync">@L["Settings.Form.Save"]</CmsButton>
+        @if (read.Version > 0)
+        {
+            <CmsButton Disabled="@busy" OnClick="@(() => confirmingReset = true)">@(Scope.Defaults ? L["Settings.Reset.Defaults"] : L["Settings.Reset.Site"])</CmsButton>
+        }
+    </div>
+}
+
+<p class="settings-message" tabindex="-1" @ref="messageElement">@message</p>
+
+<CmsDialog Title="@L["Settings.Reset.Title"]" Open="@confirmingReset" OpenChanged="@(open => confirmingReset = open)">
+    <ChildContent>
+        <p>@(Scope.Defaults ? L["Settings.Reset.DefaultsText"] : L["Settings.Reset.SiteText"])</p>
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="ResetAsync">@L["Settings.Reset.Confirm"]</CmsButton>
+        <CmsButton OnClick="@(() => confirmingReset = false)">@L["Settings.Reset.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+<CmsDialog Title="@L["Settings.Conflict.Title"]" Open="@(conflict is not null)" OpenChanged="@(open => { if (!open) { conflict = null; } })">
+    <ChildContent>
+        @if (conflict is { } open)
+        {
+            <p>@L["Settings.Conflict.Text"]</p>
+            @if (open.Rows.Count > 0)
+            {
+                <table class="settings-conflict">
+                    <thead>
+                        <tr>
+                            <th scope="col">@L["Settings.Conflict.Field"]</th>
+                            <th scope="col">@L["Settings.Conflict.Mine"]</th>
+                            <th scope="col">@L["Settings.Conflict.Theirs"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in open.Rows)
+                        {
+                            <tr @key="row.Name">
+                                <th scope="row">@FieldEditorBase.LabelOf(row)</th>
+                                <td>@ValueText(values[row.Name])</td>
+                                <td>@ValueText(open.Theirs.Value[row.Name])</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            @if (typed.Count > 0)
+            {
+                <p>@L["Settings.Conflict.Secrets"]</p>
+            }
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="KeepMineAsync">@L["Settings.Conflict.KeepMine"]</CmsButton>
+        <CmsButton Disabled="@busy" OnClick="TakeTheirs">@L["Settings.Conflict.TakeTheirs"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    private readonly CancellationTokenSource cancellation = new();
+
+    // The secrets the user typed, by key, until a save sends them or the user takes theirs or resets.
+    private readonly Dictionary<string, string> typed = new(StringComparer.Ordinal);
+
+    private SettingsRead? read;
+    private IReadOnlyList<SettingsProperty> properties = [];
+    private JsonObject values = [];
+    private Dictionary<string, List<ApiProblemError>> fieldErrors = new(StringComparer.Ordinal);
+    private List<ApiProblemError> formErrors = [];
+    private ApiProblem? failure;
+    private string? message;
+    private bool busy;
+    private bool confirmingReset;
+    private bool focusMessage;
+    private Conflict? conflict;
+    private ElementReference messageElement;
+
+    [Parameter, EditorRequired]
+    public string Area { get; set; } = string.Empty;
+
+    // The instance defaults of the area, or the site's values.
+    [Parameter]
+    public bool Defaults { get; set; }
+
+    // Taken once, with the site of the session when the form first reads: every read and write of the form names it.
+    private SettingsScope Scope { get; set; } = null!;
+
+    // The area read again over a save, with the fields the user changed whose value the newer one does not have.
+    private sealed record Conflict(SettingsRead Theirs, IReadOnlyList<SchemaFieldDescription> Rows);
+
+    private bool Changed => typed.Count > 0 || (read is not null && !JsonNode.DeepEquals(values, read.Value));
+
+    protected override Task OnInitializedAsync()
+    {
+        Scope = new SettingsScope(Area, Defaults, CurrentSite.Site);
+        return ReadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusMessage)
+        {
+            focusMessage = false;
+            await messageElement.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        cancellation.Cancel();
+        cancellation.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        failure = null;
+        try
+        {
+            Show(await Api.GetSettingsAsync(Scope, cancellation.Token));
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (Failed(exception) is { } problem)
+        {
+            failure = problem;
+        }
+    }
+
+    // The document as read, with nothing typed and no error.
+    private void Show(SettingsRead current)
+    {
+        read = current;
+        properties = SettingsFields.Of(current.Schema);
+        values = current.Value.DeepClone().AsObject();
+        typed.Clear();
+        ClearErrors();
+    }
+
+    private void Change(string name, JsonNode? value)
+    {
+        values[name] = value?.Parent is null ? value : value.DeepClone();
+        fieldErrors.Remove(name);
+    }
+
+    private void TypeSecret(string name, string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            typed.Remove(name);
+        }
+        else
+        {
+            typed[name] = text;
+        }
+
+        fieldErrors.Remove(name);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (read is not { } before || busy || !Changed)
+        {
+            return;
+        }
+
+        busy = true;
+        message = null;
+        try
+        {
+            // A read never holds a secret; one it held anyway is not sent back, so only what the user typed is named.
+            var document = values.DeepClone().AsObject();
+            foreach (var property in properties.Where(property => property.Secret))
+            {
+                document.Remove(property.Field.Name);
+            }
+
+            foreach (var (name, secret) in typed)
+            {
+                document[name] = secret;
+            }
+
+            Show(await Api.PutSettingsAsync(Scope, document, before.Version, cancellation.Token));
+            Say(L["Settings.Form.Saved"]);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        catch (ApiProblemException exception) when (exception.Problem.Status == (int)HttpStatusCode.PreconditionFailed)
+        {
+            await OpenConflictAsync(before);
+        }
+        catch (ApiProblemException exception) when (exception.Problem.Errors.Count > 0)
+        {
+            ShowErrors(exception.Problem);
+        }
+        catch (Exception exception) when (Failed(exception) is { } problem)
+        {
+            Say(ProblemText(problem, L["Settings.Form.SaveFailed"]), assertive: true);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    // The newer document is read for the dialog, which offers to keep the user's changes over it or to take it.
+    private async Task OpenConflictAsync(SettingsRead before)
+    {
+        Announcer.Announce(L["Settings.Conflict.Title"], AnnouncementPoliteness.Assertive);
+        try
+        {
+            var theirs = await Api.GetSettingsAsync(Scope, cancellation.Token);
+            var changed = properties.Where(property => !property.Secret && !JsonNode.DeepEquals(values[property.Field.Name], before.Value[property.Field.Name]));
+            conflict = new Conflict(theirs, [.. changed.Where(property => !JsonNode.DeepEquals(values[property.Field.Name], theirs.Value[property.Field.Name])).Select(property => property.Field)]);
+        }
+        catch (Exception exception) when (Failed(exception) is { } problem)
+        {
+            Say(ProblemText(problem, L["Settings.Form.SaveFailed"]), assertive: true);
+        }
+    }
+
+    // The newer document with the values the user changed, and the secrets the user typed, saved over its version.
+    private async Task KeepMineAsync()
+    {
+        if (conflict is not { } open || read is not { } before)
+        {
+            return;
+        }
+
+        var merged = open.Theirs.Value.DeepClone().AsObject();
+        foreach (var property in properties.Where(property => !property.Secret && !JsonNode.DeepEquals(values[property.Field.Name], before.Value[property.Field.Name])))
+        {
+            merged[property.Field.Name] = values[property.Field.Name]?.DeepClone();
+        }
+
+        var secrets = new Dictionary<string, string>(typed, StringComparer.Ordinal);
+        Show(open.Theirs);
+        values = merged;
+        foreach (var (name, secret) in secrets)
+        {
+            typed[name] = secret;
+        }
+
+        conflict = null;
+        await SaveAsync();
+    }
+
+    private void TakeTheirs()
+    {
+        if (conflict is { } open)
+        {
+            Show(open.Theirs);
+            conflict = null;
+            Say(L["Settings.Conflict.TookTheirs"]);
+        }
+    }
+
+    private async Task ResetAsync()
+    {
+        if (read is not { } before || busy)
+        {
+            return;
+        }
+
+        busy = true;
+        confirmingReset = false;
+        message = null;
+        try
+        {
+            await Api.ResetSettingsAsync(Scope, before.Version, cancellation.Token);
+            Show(await Api.GetSettingsAsync(Scope, cancellation.Token));
+            Say(L["Settings.Reset.Done"]);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        catch (ApiProblemException exception) when (exception.Problem.Status == (int)HttpStatusCode.PreconditionFailed)
+        {
+            await ReadAsync();
+            Say(L["Settings.Reset.Conflict"], assertive: true);
+        }
+        catch (Exception exception) when (Failed(exception) is { } problem)
+        {
+            Say(ProblemText(problem, L["Settings.Reset.Failed"]), assertive: true);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    // An error is put on the property its path starts with, such as limits for limits.port, and one in no property above
+    // the form.
+    private void ShowErrors(ApiProblem problem)
+    {
+        ClearErrors();
+        var names = properties.Select(property => property.Field.Name).ToHashSet(StringComparer.Ordinal);
+        foreach (var error in problem.Errors)
+        {
+            var name = error.Path is { } path ? path.Split('.', '[')[0] : null;
+            if (name is not null && names.Contains(name))
+            {
+                (fieldErrors.TryGetValue(name, out var list) ? list : fieldErrors[name] = []).Add(error);
+            }
+            else
+            {
+                formErrors.Add(error);
+            }
+        }
+
+        Say(L["Settings.Form.NotSaved"], assertive: true);
+    }
+
+    private void ClearErrors()
+    {
+        fieldErrors = new(StringComparer.Ordinal);
+        formErrors = [];
+    }
+
+    private void Say(string text, bool assertive = false)
+    {
+        message = text;
+        focusMessage = true;
+        Announcer.Announce(text, assertive ? AnnouncementPoliteness.Assertive : AnnouncementPoliteness.Polite);
+    }
+
+    private string? ErrorText(string name) =>
+        fieldErrors.TryGetValue(name, out var errors) ? string.Join(" ", errors.Select(error => error.Message).Where(text => !string.IsNullOrWhiteSpace(text)).Distinct()) : null;
+
+    // The source of the area as a whole, as the read gives it.
+    private string SourceText(SettingsRead current) => (Scope.Defaults, current.Source) switch
+    {
+        (false, SettingsCalls.SourceSite) => L["Settings.Source.Site"],
+        (false, SettingsCalls.SourceDefault) => L["Settings.Source.Default"],
+        (false, SettingsCalls.SourceCode) => L["Settings.Source.Code"],
+        (true, SettingsCalls.SourceDefault) => L["Settings.Source.Instance"],
+        (true, SettingsCalls.SourceCode) => L["Settings.Source.InstanceCode"],
+        _ => L["Settings.Source.Other", current.Source],
+    };
+
+    // Whether a secret holds a value and whether the site inherits it, as the read gives both. A value the key ring cannot
+    // read is in neither list (#3379), so a secret that is not set says that it may be one.
+    private string SecretHelp(SchemaFieldDescription field)
+    {
+        var set = read!.SecretsSet.Contains(field.Name, StringComparer.Ordinal);
+        var inherited = read.SecretsInherited.Contains(field.Name, StringComparer.Ordinal);
+        string state = (set, inherited) switch
+        {
+            (true, true) => L["Settings.Secret.SetInherited"],
+            (true, false) => L["Settings.Secret.Set"],
+            (false, true) => L["Settings.Secret.NotSetInherited"],
+            (false, false) => L["Settings.Secret.NotSet"],
+        };
+        return string.Join(" ", new[] { state, set ? null : L["Settings.Secret.Unreadable"].Value, field.Display?.Help }.OfType<string>());
+    }
+
+    private string ValueText(JsonNode? value) => value switch
+    {
+        null => L["Settings.Conflict.NoValue"],
+        JsonValue text when text.TryGetValue<string>(out var words) => words.Length == 0 ? L["Settings.Conflict.NoValue"] : words,
+        _ => value.ToJsonString(),
+    };
+
+    // The title of a problem with a code is the server's; one without, as a proxy's, has the text of the form.
+    private static string ProblemText(ApiProblem problem, string fallback) =>
+        problem is { Code.Length: > 0, Title: { Length: > 0 } title } ? title : fallback;
+
+    private static ApiProblem? Failed(Exception exception) => exception switch
+    {
+        ApiProblemException problem => problem.Problem,
+        HttpRequestException or TaskCanceledException or JsonException => new ApiProblem(),
+        _ => null,
+    };
+
+    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    private Type EditorOf(SchemaFieldDescription field) => Editors.Find(field.Type)?.Editor ?? typeof(JsonFieldEditor);
+
+    private RenderFragment Editor(SchemaFieldDescription field) => builder =>
+    {
+        builder.OpenComponent(0, EditorOf(field));
+        builder.AddComponentParameter(1, nameof(FieldEditorBase.Field), field);
+        builder.AddComponentParameter(2, nameof(FieldEditorBase.Value), values[field.Name]);
+        builder.AddComponentParameter(3, nameof(FieldEditorBase.ValueChanged), EventCallback.Factory.Create<JsonNode?>(this, value => Change(field.Name, value)));
+        builder.AddComponentParameter(4, nameof(FieldEditorBase.Errors), fieldErrors.TryGetValue(field.Name, out var errors) ? errors : (IReadOnlyList<ApiProblemError>)[]);
+        builder.AddComponentParameter(5, nameof(FieldEditorBase.ReadOnly), busy);
+        builder.AddComponentParameter(6, nameof(FieldEditorBase.Required), field.Validation.Required);
+        builder.AddComponentParameter(7, nameof(FieldEditorBase.TextDirection), FieldEditorBase.LeftToRight);
+        builder.AddComponentParameter(8, nameof(FieldEditorBase.Document), new System.Collections.ObjectModel.ReadOnlyDictionary<string, JsonNode?>(values));
+        builder.CloseComponent();
+    };
+}

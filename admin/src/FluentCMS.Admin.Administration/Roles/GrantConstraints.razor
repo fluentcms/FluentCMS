@@ -1,0 +1,62 @@
+@* What narrows one grant: sites, locales, fields, a row rule and the resources of a plugin (spec 4.15). Shown here as read;
+   the editor of them takes this component's place with the same parameters (A-52, #3430), and the row already puts what it
+   raises through ValueChanged into the grant that a save sends. Whatever the object holds is sent back as it was read,
+   members this view does not name among them. *@
+@inject AdminContext Context
+@inject IStringLocalizer<RolesResources> L
+
+@if (Value is { Count: > 0 } constraints)
+{
+    <p>@L["Roles.Constraints.Label"]</p>
+    <dl>
+        @if (Strings(constraints, "sites") is { } sites)
+        {
+            <dt>@L["Roles.Constraints.Sites"]</dt>
+            <dd>@string.Join(", ", sites.Select(SiteName))</dd>
+        }
+        @if (Strings(constraints, "locales") is { } locales)
+        {
+            <dt>@L["Roles.Constraints.Locales"]</dt>
+            <dd>@string.Join(", ", locales)</dd>
+        }
+        @if (Strings(constraints, "fields") is { } fields)
+        {
+            <dt>@L["Roles.Constraints.Fields"]</dt>
+            <dd>@string.Join(", ", fields)</dd>
+        }
+        @if (constraints["rowRule"] is JsonValue rule && rule.TryGetValue<string>(out var ruleName))
+        {
+            <dt>@L["Roles.Constraints.RowRule"]</dt>
+            <dd>@ruleName</dd>
+        }
+        @if (Strings(constraints, "resources") is { } resources)
+        {
+            <dt>@L["Roles.Constraints.Resources"]</dt>
+            <dd>@string.Join(", ", resources)</dd>
+        }
+    </dl>
+}
+
+@code {
+    // The grant's constraints as the server answered them, or null for none.
+    [Parameter]
+    public JsonObject? Value { get; set; }
+
+    // Raised with the grant's new constraints; the read-only view raises nothing.
+    [Parameter]
+    public EventCallback<JsonObject?> ValueChanged { get; set; }
+
+    // The site of the role, null for a role of every site: a role of a site grants only in that site.
+    [Parameter]
+    public Guid? RoleSite { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    private static IReadOnlyList<string>? Strings(JsonObject constraints, string name) =>
+        constraints[name] is JsonArray items ? [.. items.Select(item => item?.ToString() ?? string.Empty)] : null;
+
+    // The site's name as GET /me/sites gives it, or its id for a site the caller has no role in.
+    private string SiteName(string id) =>
+        Guid.TryParse(id, out var site) && Context.Sites.FirstOrDefault(item => item.Id == site) is { } found ? found.Name : id;
+}

@@ -1,0 +1,153 @@
+@* The page of one settings area, for the site or for the instance defaults (spec 4.16). GET /settings says what the caller
+   may manage of the area, so the page of a scope the caller may not manage says so, and the switch between the site's
+   values and the defaults shows only to a caller who may manage both. An area read from the defaults only offers them
+   alone. A page that the half of the area's plugin declares replaces the generated one while the half shows in the site.
+   Every read is made again in the site the user switches to. *@
+@implements IDisposable
+@inject IManagementApi Api
+@inject AdminPlugins Plugins
+@inject AdminContext Context
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SettingsResources> L
+
+<h1 tabindex="-1">@Label</h1>
+<PageCrumb Text="@(Defaults ? L["Settings.Area.DefaultsCrumb", Label].Value : Label)" />
+
+@if (info is null && failure is null && !missing)
+{
+    <p role="status">@L["Settings.Area.Loading"]</p>
+}
+else if (failure is not null)
+{
+    <div class="settings-problem" role="alert">
+        <p>@(failure is { Code.Length: > 0, Title: { Length: > 0 } title } ? title : L["Settings.Area.ReadFailed"])</p>
+        <CmsButton OnClick="ReadAsync">@L["Settings.Area.TryAgain"]</CmsButton>
+    </div>
+}
+else if (info is { Defaults: true } && !Defaults && SettingsCalls.IsDefaultsOnly(Area))
+{
+    <p role="status">@L["Settings.Area.Loading"]</p>
+}
+else if (info is null || !Allowed(info))
+{
+    <p>@L["Settings.Area.Missing"]</p>
+    <p><a href="settings">@L["Settings.Area.Back"]</a></p>
+}
+else if (HalfPage(info) is { } half)
+{
+    <SettingsHalfPage @key="half" Half="half.Half" Page="half.Page" />
+}
+else
+{
+    if (info.Site && info.Defaults && !SettingsCalls.IsDefaultsOnly(Area))
+    {
+        <nav class="settings-scopes" aria-label="@L["Settings.Area.Scopes"]">
+            <a href="@Address(defaults: false)" aria-current="@(Defaults ? null : "page")">@L["Settings.Area.Site"]</a>
+            <a href="@Address(defaults: true)" aria-current="@(Defaults ? "page" : null)">@L["Settings.Area.Defaults"]</a>
+        </nav>
+    }
+    else if (Defaults)
+    {
+        <p>@L["Settings.Area.DefaultsOnly"]</p>
+    }
+
+    <SettingsForm @key="@($"{read}/{Area}/{Defaults}")" Area="@Area" Defaults="@Defaults" />
+}
+
+@code {
+    private readonly CancellationTokenSource cancellation = new();
+
+    private SettingsAreaInfo? info;
+    private ApiProblem? failure;
+    private bool missing;
+
+    // What the area was last read for: the site, the area and the scope.
+    private string? read;
+
+    [Parameter, EditorRequired]
+    public string Area { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool Defaults { get; set; }
+
+    private string Label => SettingsLabels.Area(Area, L);
+
+    private sealed record DeclaredPage(AdminPluginManifest Half, AdminManifestSettingsPage Page);
+
+    protected override void OnInitialized() => Context.Changed += OnContextChanged;
+
+    protected override Task OnParametersSetAsync() => ReadAsync();
+
+    public void Dispose()
+    {
+        Context.Changed -= OnContextChanged;
+        cancellation.Cancel();
+        cancellation.Dispose();
+    }
+
+    private string Key => $"{Context.Site?.Id}/{Area}/{Defaults}";
+
+    private void OnContextChanged() => _ = InvokeAsync(async () =>
+    {
+        if (Context.Status == ShellStatus.Ready && read is not null && read != Key)
+        {
+            await ReadAsync();
+            StateHasChanged();
+        }
+    });
+
+    private async Task ReadAsync()
+    {
+        if (read == Key && failure is null)
+        {
+            return;
+        }
+
+        var key = read = Key;
+        var area = Area;
+        (info, failure, missing) = (null, null, false);
+        SettingsAreaInfo? found = null;
+        ApiProblem? problem = null;
+        try
+        {
+            found = (await Api.GetSettingsAreasAsync(cancellation.Token)).FirstOrDefault(item => string.Equals(item.Area, area, StringComparison.Ordinal));
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (ApiProblemException exception)
+        {
+            problem = exception.Problem;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            problem = new ApiProblem();
+        }
+
+        // A read that a later one replaced, as after a site switch or another area, is dropped.
+        if (key != read)
+        {
+            return;
+        }
+
+        (info, failure, missing) = (found, problem, problem is null && found is null);
+
+        // The site's values of an area read from the defaults only would change nothing, so its address shows the defaults.
+        if (info is { Defaults: true } && !Defaults && SettingsCalls.IsDefaultsOnly(Area))
+        {
+            Navigation.NavigateTo(Address(defaults: true), replace: true);
+        }
+    }
+
+    private bool Allowed(SettingsAreaInfo area) => Defaults ? area.Defaults : area.Site && !SettingsCalls.IsDefaultsOnly(Area);
+
+    // The page of the area's plugin's own half, while the half shows in the site to a caller who holds the area's permission.
+    private DeclaredPage? HalfPage(SettingsAreaInfo area) =>
+        area.Plugin is not { } plugin ? null
+            : Plugins.Catalog.Halves.Where(half => string.Equals(half.Name, plugin, StringComparison.Ordinal) && Plugins.Shows(half, $"settings.{Area}.manage"))
+                .SelectMany(half => half.SettingsPages.Where(page => string.Equals(page.Area, Area, StringComparison.Ordinal)).Select(page => new DeclaredPage(half, page)))
+                .FirstOrDefault();
+
+    private string Address(bool defaults) => $"settings/{Uri.EscapeDataString(Area)}" + (defaults ? "/defaults" : "");
+}
