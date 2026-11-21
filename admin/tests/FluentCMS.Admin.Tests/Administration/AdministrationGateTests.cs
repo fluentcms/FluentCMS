@@ -559,6 +559,37 @@ public sealed class AdministrationGateTests : AdministrationTestContext
             .ShouldBeEmpty();
     }
 
+    // A page's area is the one area all its routes are in: a page across two areas, or partly outside every area, has none
+    // and is shown nowhere.
+    [Fact]
+    public void ThePageOfOneAreaHasItsAreaAndAPageAcrossTwoOrOutsideOneHasNone()
+    {
+        AdministrationAreas.OfPage(typeof(InTwoAreas)).ShouldBeNull();
+        AdministrationAreas.OfPage(typeof(OutsideAndInside)).ShouldBeNull();
+        AdministrationAreas.OfPage(typeof(WithParameters))!.Route.ShouldBe("users");
+        AdministrationAreas.OfPage(typeof(LeadingParameter)).ShouldBeNull();
+        AdministrationAreas.OfPage(typeof(AdministrationGateTests)).ShouldBeNull();
+        typeof(UsersPage).Assembly.GetTypes().Where(type => type.IsDefined(typeof(RouteAttribute), inherit: false))
+            .Where(type => AdministrationAreas.OfPage(type) is null).ShouldBeEmpty();
+    }
+
+    // The routes of a page that the route data the router gives it agrees with, from its route values alone.
+    [Theory]
+    [InlineData(null, null, new[] { "/users/new" })]
+    [InlineData("0193a1b2-0000-7000-8000-00000000a001", null, new string[0])]
+    [InlineData("0193a1b2-0000-7000-8000-00000000a001", "editor", new[] { "/users/{Id:guid}/roles/{Role}" })]
+    [InlineData(null, "editor", new string[0])]
+    public void TheRoutesOfAPageAreThoseItsRouteValuesAgreeWith(string? id, string? role, string[] routes) =>
+        PageRoutes.Of(new RouteData(typeof(WithParameters), new Dictionary<string, object?> { ["Id"] = id is null ? null : Guid.Parse(id), ["Role"] = role }))
+            .ShouldBe(routes);
+
+    [Theory]
+    [InlineData(null, new[] { "/users/files/{*Path}", "/users/files", "/users/{Section?}" })]
+    [InlineData("a/b", new[] { "/users/files/{*Path}" })]
+    public void AnOptionalOrCatchAllParameterMayBeAbsent(string? path, string[] routes) =>
+        PageRoutes.Of(new RouteData(typeof(WithOptionalParameters), new Dictionary<string, object?> { ["Path"] = path, ["Section"] = null }))
+            .ShouldBe(routes, ignoreOrder: true);
+
     [Theory]
     [InlineData("users", "users")]
     [InlineData("Users/0193a1b2-0000-7000-8000-00000000a001?tab=roles", "users")]
@@ -654,6 +685,26 @@ public sealed class AdministrationGateTests : AdministrationTestContext
 
     private static string[] Trail(IRenderedComponent<AdminApp> app) =>
         [.. app.Find("main .cms-breadcrumb").QuerySelectorAll("li").Select(item => item.TextContent.Trim())];
+
+    [Route("/roles/probe")]
+    [Route("/users/probe")]
+    private sealed class InTwoAreas : ComponentBase;
+
+    [Route("/elsewhere")]
+    [Route("/users/{Id:guid}")]
+    private sealed class OutsideAndInside : ComponentBase;
+
+    [Route("/users/{Id:guid}/roles/{Role}")]
+    [Route("/users/new")]
+    private sealed class WithParameters : ComponentBase;
+
+    [Route("/{Area}/probe")]
+    private sealed class LeadingParameter : ComponentBase;
+
+    [Route("/users/files/{*Path}")]
+    [Route("/users/files")]
+    [Route("/users/{Section?}")]
+    private sealed class WithOptionalParameters : ComponentBase;
 
     // Whether the page of the route shows: the area's, or the sample half's card.
     private static bool Shows(IRenderedComponent<AdminApp> app, string route) =>

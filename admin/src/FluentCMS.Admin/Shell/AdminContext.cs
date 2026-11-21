@@ -67,7 +67,12 @@ internal sealed class AdminContext(
 
     // Whether AccessInfo is that of the content locale: not after a change of the locale until its access is read, nor while
     // a site is read, so what the user may do in the locale is not known meanwhile, and a gate holds what it decides.
-    public bool AccessCurrent => AccessInfo is not null && string.Equals(_accessLocale, site.ContentLocale, StringComparison.Ordinal);
+    public bool AccessCurrent => AccessFor(null);
+
+    // Whether AccessInfo is that of the content locale an address names, as UseLocaleAsync chooses it, or with null of the
+    // content locale: an address that names another locale is read with its access only once UseLocaleAsync has read it.
+    public bool AccessFor(string? locale) =>
+        AccessInfo is not null && string.Equals(_accessLocale, locale is null ? site.ContentLocale : Chosen(locale), StringComparison.Ordinal);
 
     // Null when the user may not read the schema of the site; SchemaRefused says so.
     public SchemaDescription? Schema { get; private set; }
@@ -126,12 +131,7 @@ internal sealed class AdminContext(
             return _localeReads;
         }
 
-        var chosen = ContentLocales.FirstOrDefault(code => string.Equals(code, locale, StringComparison.OrdinalIgnoreCase));
-        if (string.Equals(chosen, current.DefaultLocale, StringComparison.OrdinalIgnoreCase))
-        {
-            chosen = null;
-        }
-
+        var chosen = Chosen(locale);
         if (string.Equals(chosen, site.ContentLocale, StringComparison.Ordinal))
         {
             return _localeReads;
@@ -140,6 +140,14 @@ internal sealed class AdminContext(
         var generation = ++_generation;
         site.ContentLocale = chosen;
         return _localeReads = RunAsync(generation, () => SiteReadsAsync(generation));
+    }
+
+    // The content locale an address that names a locale is in: one of the site's enabled locales, null for its default, and
+    // the default for a locale the site does not have enabled.
+    private string? Chosen(string locale)
+    {
+        var chosen = ContentLocales.FirstOrDefault(code => string.Equals(code, locale, StringComparison.OrdinalIgnoreCase));
+        return string.Equals(chosen, Site?.DefaultLocale, StringComparison.OrdinalIgnoreCase) ? null : chosen;
     }
 
     // The locales of the site in which the user may read the type: a grant may be limited to locales, and a read of every

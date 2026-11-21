@@ -115,12 +115,14 @@ internal sealed class AdminPlugins(
     public async Task<Type> ComponentAsync(AdminPluginManifest half, string typeName, CancellationToken cancellationToken) =>
         (await LoadAsync(half, cancellationToken)).Type(typeName);
 
-    // The gate of a page the router found, by the page itself: a page of the administration assembly by the area of its own
-    // routes, so that one outside every area has no page, and a page of a loaded half by its own assembly and the manifest's
-    // pages of its class, so that a half's route outside its segment is gated too, and a route the class has not is no page.
-    // A page of the admin's own is not gated here. The router may render a page while the address is another page's, so the
-    // address picks among the pages of the class only, and an administration page does not read it at all.
-    public PluginPageGate Gate(RouteData routeData, string route)
+    // The gate of a page the router found, from the route data the router renders it with, and never from the address: the
+    // router may render the page of the address before while the address is already the next one, and the page of the
+    // address before that address's OnNavigateAsync has run. A page of the administration assembly is gated by its area,
+    // the one area all its routes are in, so that a page outside every area, or across two, has no page. A page of a loaded
+    // half is gated by the manifest's pages of its class whose routes the route data agrees with (PageRoutes), so that a
+    // route of the class that the manifest does not declare has no page, and a route data that two of them agree with
+    // requires what each requires. A page of the admin's own is not gated here.
+    public PluginPageGate Gate(RouteData routeData)
     {
         ArgumentNullException.ThrowIfNull(routeData);
         if (routeData.PageType.Assembly == administration.Loaded)
@@ -134,13 +136,14 @@ internal sealed class AdminPlugins(
             return PluginPageGate.None;
         }
 
-        var pages = owner.Manifest.Pages.Where(page => page.Type == routeData.PageType.FullName);
-        if (!IsAvailable(owner.Manifest) || AdminPluginRoutes.Match(pages, route) is not { } matched)
+        var declared = owner.Manifest.Pages.Where(page => page.Type == routeData.PageType.FullName).ToList();
+        var matched = PageRoutes.Of(routeData).Select(template => declared.FirstOrDefault(page => page.Route == template)).ToList();
+        if (!IsAvailable(owner.Manifest) || matched.Count == 0 || matched.Contains(null))
         {
             return PluginPageGate.NotFound;
         }
 
-        return context.Allows(matched.Permission, matched.InstanceOnly) ? PluginPageGate.Allowed : PluginPageGate.NoAccess;
+        return matched.All(page => context.Allows(page!.Permission, page.InstanceOnly)) ? PluginPageGate.Allowed : PluginPageGate.NoAccess;
     }
 
     public PluginPageGate Gate(string route)
@@ -228,10 +231,11 @@ internal sealed class AdminPlugins(
     }
 
     // The server narrows the access by the content locale, so the gate of a route that names another locale waits for the
-    // access of that locale, and the router keeps the page before meanwhile: the page of the route would otherwise be shown,
-    // and read, with what the locale before allowed. A content page sets its locale itself before it reads. False for a
-    // navigation the router cancelled, as by a later one, which then does nothing more: its wait may end after the later
-    // navigation's, whose gate and load are the ones that count.
+    // access of that locale before it decides whether to load what the route needs. The router may still render the route's
+    // page meanwhile, as when a navigation it cancelled ends; the route view then holds the page before, since the access
+    // the shell holds is not that of the locale the address names. A content page sets its locale itself before it reads.
+    // False for a navigation the router cancelled, as by a later one, which then does nothing more: its wait may end after
+    // the later navigation's, whose gate and load are the ones that count.
     private async Task<bool> UseLocaleOfAsync(string route, CancellationToken cancellationToken)
     {
         try

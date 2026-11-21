@@ -1,13 +1,16 @@
 @* The page the router found, or the not-found page in its place for a page of an admin half or of an area of administration
    that the site or the user may not see. Both are drawn by one RouteView, so that a change of the gate replaces the page and
    keeps the layout, with its header, its site switcher and the focus on the switcher; the sidebar, which the layout draws
-   only while the shell is ready, is drawn again after a site switch. The gate asks about the page itself and the access,
-   never about the address alone: the router does not render only the page of the address once its OnNavigateAsync has
-   ended. It renders the page of the address before again whenever an ancestor renders, as SignInGate does on every change
-   of the address, and the page of the address when a navigation it cancelled ends, before the OnNavigateAsync of the
-   address has run. While the access the shell holds is not that of its content locale, as after a change of the locale,
-   what the gate decides is held: the page drawn before stays, or the no-access state when there is none. After a site
-   switch, a half loaded in the site before still has its routes, and the switch navigates to the route again.
+   only while the shell is ready, is drawn again after a site switch. The gate reads the route data the router hands this,
+   never the address: the router does not render only the page of the address once its OnNavigateAsync has ended. It
+   renders the page of the address before again whenever an ancestor renders, as SignInGate does on every change of the
+   address, and the page of the address when a navigation it cancelled ends, before the OnNavigateAsync of the address has
+   run. While the access the shell holds is not that of the content locale the address names, as after a change of the
+   locale or before the address's navigation has read it, what the gate decides is held: the page drawn before stays, or
+   the no-access state when there is none. While the shell is not ready, as during a site switch or after a failed read,
+   the layout shows no page, and the no-access state is recorded, so that no page the access allowed before comes back
+   when the layout shows its page again. After a site switch, a half loaded in the site before still has its routes, and
+   the switch navigates to the route again.
    NotFoundPage tells a page the user lacks the permission of. A page the renderer cannot create shows an error in the
    layout instead, as no error boundary catches that. *@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "NotFoundPage is kept by the DynamicDependency of AdminApp's constructor.")]
@@ -45,11 +48,22 @@ else
     public void Dispose() => Context.Changed -= OnContextChanged;
 
     // The page to draw and its gate's answer: the router's page, unless the gate reads an access that is not that of the
-    // shell's content locale, which it then holds: the page drawn before stays, or the no-access state when there is none.
+    // content locale the address names, which it then holds: the page drawn before stays, or the no-access state when there
+    // is none. While the shell is not ready, no gated page is allowed.
     private (RouteData Page, PluginPageGate Gate) Next()
     {
-        var gate = Plugins.Gate(RouteData, Navigation.ToBaseRelativePath(Navigation.Uri));
-        if (gate == PluginPageGate.None || Context.AccessCurrent)
+        var gate = Plugins.Gate(RouteData);
+        if (gate == PluginPageGate.None)
+        {
+            return (RouteData, gate);
+        }
+
+        if (Context.Status != ShellStatus.Ready)
+        {
+            return (RouteData, PluginPageGate.NoAccess);
+        }
+
+        if (Context.AccessFor(ContentRoutes.LocaleOf(new Uri(Navigation.Uri))))
         {
             return (RouteData, gate);
         }

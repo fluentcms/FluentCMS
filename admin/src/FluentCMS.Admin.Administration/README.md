@@ -18,7 +18,7 @@ This preview holds each page with its heading only, the read of the roles with a
 
 Each area is a folder of its own: `Users/`, `Roles/`, `ApiKeys/`, `Members/`, `Sites/`, `Settings/`, `Plugins/`, `Jobs/` and `Diagnostics/`. Everything of an area stays in its folder, so that two areas share no file:
 
-- its pages, each at the area's route or below it, such as `/users/{Id:guid}`: the shell gates a page by the area of its own routes, and a page outside every area is not shown. The `h1` of the area's first page is `{Area}.Page.Heading` of its resources, which the end-to-end tests know the page by; a page below it names the last item of its breadcrumbs by placing `<PageCrumb Text="..." />` with what it read;
+- its pages, each at the area's route or below it, such as `/users/{Id:guid}`: the shell gates a page by the one area all its routes are in, and a page outside every area, or across two, is not shown. The `h1` of the area's first page is `{Area}.Page.Heading` of its resources, which the end-to-end tests know the page by; a page below it names the last item of its breadcrumbs by placing `<PageCrumb Text="..." />` with what it read;
 - its typed calls over `IManagementApi`, its records and their source-generated `JsonSerializerContext`;
 - its resource file, `{Area}Resources.resx`, read through `IStringLocalizer<{Area}Resources>`, with keys `{Area}.{View}.{Text}`;
 - a `_Imports.razor` of its own for the namespaces only it needs.
