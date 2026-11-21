@@ -96,7 +96,14 @@ public sealed class SearchHost : IAsyncDisposable
     public Task<TestActor> RuledReaderAsync() => ReaderAsync(new PermissionConstraints { RowRule = PopularRule });
 
     // A reader through a Delivery key whose grants read articles, each with its constraints.
-    public async Task<TestActor> ReaderAsync(params PermissionConstraints[] grants)
+    public async Task<TestActor> ReaderAsync(params PermissionConstraints[] grants) =>
+        Host.As(await Host.CreateApiKeyAsync(ApiKeyClass.Delivery, await ReaderRoleAsync(grants), cancellationToken: Token));
+
+    // A client of the Delivery API, for a key whose role grants reading articles, each grant with its constraints.
+    public async Task<HttpClient> ReaderClientAsync(params PermissionConstraints[] grants) =>
+        await ClientAsync(ApiKeyClass.Delivery, await ReaderRoleAsync(grants));
+
+    private async Task<string> ReaderRoleAsync(PermissionConstraints[] grants)
     {
         var role = new Role { Id = Guid.CreateVersion7(), Name = $"reader-{Guid.NewGuid():N}" };
         await using (var scope = Services.CreateAsyncScope())
@@ -111,7 +118,7 @@ public sealed class SearchHost : IAsyncDisposable
             await context.SaveChangesAsync(Token);
         }
 
-        return Host.As(await Host.CreateApiKeyAsync(ApiKeyClass.Delivery, role.Name, cancellationToken: Token));
+        return role.Name;
     }
 
     public async Task SetEnabledAsync(Guid site, bool enabled)
