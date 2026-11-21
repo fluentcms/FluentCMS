@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Events;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -146,12 +147,18 @@ public sealed class MemberLogoutModel : MemberPageModel
     {
         var signIn = Service<MemberSignInManager>();
         var cookie = await HttpContext.AuthenticateAsync(MemberAuthentication.CookieScheme);
+        var memberId = cookie.Succeeded ? signIn.UserManager.GetUserId(cookie.Principal) : null;
         if (cookie.Succeeded)
         {
-            await Service<UserSessions>().EndAsync(signIn.UserManager.GetUserId(cookie.Principal), CmsSignInManager.ServerSession(cookie.Properties), CancellationToken.None);
+            await Service<UserSessions>().EndAsync(memberId, CmsSignInManager.ServerSession(cookie.Properties), CancellationToken.None);
         }
 
         await signIn.SignOutAsync();
+        if (cookie.Succeeded)
+        {
+            await Service<SessionEvents>().SignInEndedAsync(HttpContext, members: true, memberId, cookie.Principal, SessionEndReasons.SignedOut);
+        }
+
         return RedirectToPage();
     }
 }

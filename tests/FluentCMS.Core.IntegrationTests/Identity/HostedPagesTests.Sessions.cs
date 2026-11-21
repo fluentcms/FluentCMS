@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using FluentCMS.Content;
 using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Identity;
 using FluentCMS.Events;
@@ -126,6 +127,82 @@ public sealed partial class HostedPagesTests
         }
 
         other.HasCookie(SignInCookie).ShouldBeFalse();
+    }
+
+    // A host that sets its own events on a provider, as Events or as EventsType, keeps the check of the remote sign-out and
+    // the sid and iss that the sign-in keeps; the host's events run after FluentCMS's (#3225). The end is an activity row of
+    // the system (#3207).
+    [Fact]
+    public async Task AHostsOwnEventsKeepTheCheckOfTheRemoteSignOut()
+    {
+        using var idp = new FakeOidcProvider();
+        foreach (var asType in new[] { false, true })
+        {
+            var events = new HostEvents();
+            await using var host = SsoHost(idp).WithServices(services =>
+            {
+                services.AddSingleton(events);
+                services.Configure<OpenIdConnectOptions>(Corp, options =>
+                {
+                    if (asType)
+                    {
+                        options.EventsType = typeof(HostEvents);
+                    }
+                    else
+                    {
+                        options.Events = events;
+                    }
+                });
+            });
+
+            var ann = FakeIdentity.Of(UniqueAddress("ann")) with { Sid = "idp-session-" + Guid.NewGuid().ToString("N") };
+            using var browser = await ProviderSignInAsync(host, idp, ann, Corp);
+            events.TokensValidated.ShouldBe(1);
+            var iss = Uri.EscapeDataString(idp.Issuer);
+
+            foreach (var forged in new[] { $"/account/sso/{Corp}/signout", $"/account/sso/{Corp}/signout?sid=made-up&iss={iss}" })
+            {
+                using var response = await browser.GetAsync(forged);
+                response.StatusCode.ShouldBe(HttpStatusCode.OK, forged);
+                browser.HasCookie(SignInCookie).ShouldBeTrue(forged);
+            }
+
+            using (var signedOut = await browser.GetAsync($"/account/sso/{Corp}/signout?sid={ann.Sid}&iss={iss}"))
+            {
+                signedOut.StatusCode.ShouldBe(HttpStatusCode.OK);
+            }
+
+            browser.HasCookie(SignInCookie).ShouldBeFalse();
+            events.RemoteSignOuts.ShouldBe(3);
+
+            var user = await LinkedUserAsync(host, Corp, ann.Subject);
+            var ended = (await ActivityAsync(host, "user.sessions_ended", count: 1, of: row => row.TargetId == user.Id.ToString("D"))).ShouldHaveSingleItem();
+            ended.ActorType.ShouldBe(PrincipalKind.System);
+            Details(ended)["reason"].ShouldBe(SessionEndReasons.RemoteSignOut);
+            ended.Details!.ShouldNotContain(ann.Sid!);
+        }
+    }
+
+    private sealed class HostEvents : OpenIdConnectEvents
+    {
+        private int _tokensValidated;
+        private int _remoteSignOuts;
+
+        public int TokensValidated => Volatile.Read(ref _tokensValidated);
+
+        public int RemoteSignOuts => Volatile.Read(ref _remoteSignOuts);
+
+        public override Task TokenValidated(TokenValidatedContext context)
+        {
+            Interlocked.Increment(ref _tokensValidated);
+            return base.TokenValidated(context);
+        }
+
+        public override Task RemoteSignOut(RemoteSignOutContext context)
+        {
+            Interlocked.Increment(ref _remoteSignOuts);
+            return base.RemoteSignOut(context);
+        }
     }
 
     [Fact]

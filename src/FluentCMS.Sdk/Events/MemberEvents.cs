@@ -99,3 +99,13 @@ public static class MemberLoginMethods
     /// <summary>The email address and the password, sent to the token endpoint with the direct login grant.</summary>
     public const string DirectLogin = "direct_login";
 }
+
+/// <summary>
+/// Sessions of a member ended: one session by its id, or together the sessions of a sign-in or every session of the member.
+/// The actor of its source is the one who ended them: the member, an administrator, or the system. It never carries a token.
+/// </summary>
+/// <param name="MemberId">The id of the member.</param>
+/// <param name="Email">Its email address.</param>
+/// <param name="Reason">Why they ended: one of <see cref="SessionEndReasons"/>.</param>
+/// <param name="SessionId">The session ended by its id, or <see langword="null"/> when sessions ended together.</param>
+public sealed record MemberSessionsEndedEvent(Guid MemberId, string Email, string Reason, Guid? SessionId) : CmsEvent;
