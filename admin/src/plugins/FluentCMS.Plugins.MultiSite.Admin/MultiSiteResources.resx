@@ -18,4 +18,223 @@
   <data name="MultiSite.Sites.Menu" xml:space="preserve">
     <value>All sites</value>
   </data>
+  <data name="MultiSite.Sites.Loading" xml:space="preserve">
+    <value>Loading the sites…</value>
+  </data>
+  <data name="MultiSite.Sites.Failed" xml:space="preserve">
+    <value>The sites could not be read.</value>
+  </data>
+  <data name="MultiSite.Sites.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="MultiSite.Sites.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="MultiSite.Sites.Slug" xml:space="preserve">
+    <value>Slug</value>
+  </data>
+  <data name="MultiSite.Sites.DefaultLocale" xml:space="preserve">
+    <value>Default locale</value>
+  </data>
+  <data name="MultiSite.Sites.Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="MultiSite.Sites.Default" xml:space="preserve">
+    <value>(default site)</value>
+  </data>
+  <data name="MultiSite.Sites.Current" xml:space="preserve">
+    <value>(the site you are in)</value>
+  </data>
+  <data name="MultiSite.Sites.Hosts" xml:space="preserve">
+    <value>Host names</value>
+  </data>
+  <data name="MultiSite.Sites.OfWhich" xml:space="preserve">
+    <value> of {0}</value>
+  </data>
+  <data name="MultiSite.Sites.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="MultiSite.Sites.Which" xml:space="preserve">
+    <value> the site {0}</value>
+  </data>
+  <data name="MultiSite.Create.Heading" xml:space="preserve">
+    <value>Create a site</value>
+  </data>
+  <data name="MultiSite.Create.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="MultiSite.Create.Slug" xml:space="preserve">
+    <value>Slug</value>
+  </data>
+  <data name="MultiSite.Create.SlugHelp" xml:space="preserve">
+    <value>Lower case letters and digits joined by hyphens, such as "shop", which no other site has.</value>
+  </data>
+  <data name="MultiSite.Create.DefaultLocale" xml:space="preserve">
+    <value>Default locale</value>
+  </data>
+  <data name="MultiSite.Create.DefaultLocaleHelp" xml:space="preserve">
+    <value>A language tag, such as "en" or "pt-BR". More locales are added on the site's own page.</value>
+  </data>
+  <data name="MultiSite.Create.Create" xml:space="preserve">
+    <value>Create the site</value>
+  </data>
+  <data name="MultiSite.Create.NameRequired" xml:space="preserve">
+    <value>A site needs a name.</value>
+  </data>
+  <data name="MultiSite.Create.SlugRequired" xml:space="preserve">
+    <value>A site needs a slug.</value>
+  </data>
+  <data name="MultiSite.Create.DefaultLocaleRequired" xml:space="preserve">
+    <value>A site needs a default locale.</value>
+  </data>
+  <data name="MultiSite.Create.NameInvalid" xml:space="preserve">
+    <value>A name has 1 to 128 characters.</value>
+  </data>
+  <data name="MultiSite.Create.SlugInvalid" xml:space="preserve">
+    <value>A slug is lower case letters and digits joined by hyphens, up to 64 characters, that no other site has.</value>
+  </data>
+  <data name="MultiSite.Create.DefaultLocaleInvalid" xml:space="preserve">
+    <value>This is not a well-formed language tag.</value>
+  </data>
+  <data name="MultiSite.Create.Created" xml:space="preserve">
+    <value>The site {0} is created.</value>
+  </data>
+  <data name="MultiSite.Create.Refused" xml:space="preserve">
+    <value>The site was not created.</value>
+  </data>
+  <data name="MultiSite.Create.Failed" xml:space="preserve">
+    <value>The site could not be created. Try again.</value>
+  </data>
+  <data name="MultiSite.Delete.Title" xml:space="preserve">
+    <value>Delete the site?</value>
+  </data>
+  <data name="MultiSite.Delete.Text" xml:space="preserve">
+    <value>Delete the site {0} ({1})? Its locales, roles, settings and host names go with it, and this cannot be undone. A site that still has content is kept.</value>
+  </data>
+  <data name="MultiSite.Delete.Current" xml:space="preserve">
+    <value>You are working in this site. Once it is deleted, the admin moves to the default site.</value>
+  </data>
+  <data name="MultiSite.Delete.Confirm" xml:space="preserve">
+    <value>Delete the site</value>
+  </data>
+  <data name="MultiSite.Delete.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="MultiSite.Delete.Kept" xml:space="preserve">
+    <value>Nothing was deleted.</value>
+  </data>
+  <data name="MultiSite.Delete.Deleted" xml:space="preserve">
+    <value>The site {0} is deleted.</value>
+  </data>
+  <data name="MultiSite.Delete.Moved" xml:space="preserve">
+    <value>The admin now shows the site {0}.</value>
+  </data>
+  <data name="MultiSite.Delete.Gone" xml:space="preserve">
+    <value>The site {0} no longer exists.</value>
+  </data>
+  <data name="MultiSite.Delete.HasContent" xml:space="preserve">
+    <value>The site {0} still has content, so it is kept. Delete its entries first.</value>
+  </data>
+  <data name="MultiSite.Delete.DefaultSite" xml:space="preserve">
+    <value>{0} is the default site, which is not deleted.</value>
+  </data>
+  <data name="MultiSite.Delete.Failed" xml:space="preserve">
+    <value>The site could not be deleted. Try again.</value>
+  </data>
+  <data name="MultiSite.Hosts.Heading" xml:space="preserve">
+    <value>Host names</value>
+  </data>
+  <data name="MultiSite.Hosts.HeadingOf" xml:space="preserve">
+    <value>Host names of {0}</value>
+  </data>
+  <data name="MultiSite.Hosts.NotFound" xml:space="preserve">
+    <value>The site was not found</value>
+  </data>
+  <data name="MultiSite.Hosts.Loading" xml:space="preserve">
+    <value>Loading the host names…</value>
+  </data>
+  <data name="MultiSite.Hosts.Failed" xml:space="preserve">
+    <value>The host names could not be read.</value>
+  </data>
+  <data name="MultiSite.Hosts.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="MultiSite.Hosts.BackToSites" xml:space="preserve">
+    <value>All sites</value>
+  </data>
+  <data name="MultiSite.Hosts.None" xml:space="preserve">
+    <value>The site has no host name, so it is read only where a request names it.</value>
+  </data>
+  <data name="MultiSite.Hosts.Primary" xml:space="preserve">
+    <value>(primary)</value>
+  </data>
+  <data name="MultiSite.Hosts.MakePrimary" xml:space="preserve">
+    <value>Make primary</value>
+  </data>
+  <data name="MultiSite.Hosts.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="MultiSite.Hosts.Which" xml:space="preserve">
+    <value> {0}</value>
+  </data>
+  <data name="MultiSite.Hosts.AddHeading" xml:space="preserve">
+    <value>Add a host name</value>
+  </data>
+  <data name="MultiSite.Hosts.Hostname" xml:space="preserve">
+    <value>Host name</value>
+  </data>
+  <data name="MultiSite.Hosts.HostnameHelp" xml:space="preserve">
+    <value>Such as "www.example.com": no scheme, port, path or wildcard.</value>
+  </data>
+  <data name="MultiSite.Hosts.AddPrimary" xml:space="preserve">
+    <value>Make it the primary host</value>
+  </data>
+  <data name="MultiSite.Hosts.Add" xml:space="preserve">
+    <value>Add the host name</value>
+  </data>
+  <data name="MultiSite.Hosts.HostnameRequired" xml:space="preserve">
+    <value>A host name is needed.</value>
+  </data>
+  <data name="MultiSite.Hosts.HostnameInvalid" xml:space="preserve">
+    <value>A host name is labels of letters, digits and hyphens joined by dots, and not an IP address.</value>
+  </data>
+  <data name="MultiSite.Hosts.HostnameWildcard" xml:space="preserve">
+    <value>A host name has no wildcard; add each name the site answers to.</value>
+  </data>
+  <data name="MultiSite.Hosts.HostnamePort" xml:space="preserve">
+    <value>A host name has no port; a site answers on every port of its host names.</value>
+  </data>
+  <data name="MultiSite.Hosts.HostnameTaken" xml:space="preserve">
+    <value>This site or another one has this host name already.</value>
+  </data>
+  <data name="MultiSite.Hosts.Added" xml:space="preserve">
+    <value>{0} is added.</value>
+  </data>
+  <data name="MultiSite.Hosts.Refused" xml:space="preserve">
+    <value>The host name was not added.</value>
+  </data>
+  <data name="MultiSite.Hosts.AddFailed" xml:space="preserve">
+    <value>The host name could not be added. Try again.</value>
+  </data>
+  <data name="MultiSite.Hosts.MadePrimary" xml:space="preserve">
+    <value>{0} is now the primary host.</value>
+  </data>
+  <data name="MultiSite.Hosts.Removed" xml:space="preserve">
+    <value>{0} is removed.</value>
+  </data>
+  <data name="MultiSite.Hosts.PrimaryLast" xml:space="preserve">
+    <value>{0} is the primary host, which is removed last. Make another host primary first.</value>
+  </data>
+  <data name="MultiSite.Hosts.Gone" xml:space="preserve">
+    <value>The site no longer has the host name {0}.</value>
+  </data>
+  <data name="MultiSite.Hosts.Busy" xml:space="preserve">
+    <value>Another change of the host names is under way, so nothing was changed. Try again.</value>
+  </data>
+  <data name="MultiSite.Hosts.SiteGone" xml:space="preserve">
+    <value>The site no longer exists.</value>
+  </data>
+  <data name="MultiSite.Hosts.ChangeFailed" xml:space="preserve">
+    <value>The host name could not be changed. Try again.</value>
+  </data>
 </root>

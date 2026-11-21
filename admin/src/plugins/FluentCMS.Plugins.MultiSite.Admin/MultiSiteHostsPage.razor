@@ -1,0 +1,299 @@
+@* The host names of a site (spec 5.6), for a caller who holds sites.manage for the instance, the primary host first: a host
+   name is added, made primary in place of the one that was, and removed. The first host of a site is its primary host, and
+   the primary host is removed last, which the server holds to. *@
+@page "/multi-site/sites/{Id:guid}/hosts"
+@attribute [AdminPage("/multi-site/sites/{Id:guid}/hosts", Permission = "sites.manage", InstanceOnly = true)]
+@implements IDisposable
+@inject IManagementApi Api
+@inject IStringLocalizer<MultiSiteResources> L
+
+@if (site is null)
+{
+    <h1 tabindex="-1">@(state == State.NotFound ? L["MultiSite.Hosts.NotFound"] : L["MultiSite.Hosts.Heading"])</h1>
+    @if (state == State.Loading)
+    {
+        <p role="status">@L["MultiSite.Hosts.Loading"]</p>
+    }
+    else if (state == State.Failed)
+    {
+        <p role="alert">@L["MultiSite.Hosts.Failed"] <CmsButton OnClick="ReadAsync">@L["MultiSite.Hosts.TryAgain"]</CmsButton></p>
+    }
+}
+else
+{
+    <h1 tabindex="-1">@L["MultiSite.Hosts.HeadingOf", site.Name]</h1>
+}
+<p><a href="multi-site/sites">@L["MultiSite.Hosts.BackToSites"]</a></p>
+
+@if (site is not null)
+{
+    @if (hosts.Count == 0)
+    {
+        <p>@L["MultiSite.Hosts.None"]</p>
+    }
+    else
+    {
+        <ul class="multi-site-hosts">
+            @foreach (var host in hosts)
+            {
+                <li @key="host.Hostname">
+                    <span>@host.Hostname</span>
+                    @if (host.IsPrimary)
+                    {
+                        <span class="multi-site-mark">@L["MultiSite.Hosts.Primary"]</span>
+                    }
+                    else
+                    {
+                        <CmsButton Disabled="@busy" OnClick="@(() => MakePrimaryAsync(host))">
+                            @L["MultiSite.Hosts.MakePrimary"]<span class="cms-visually-hidden">@L["MultiSite.Hosts.Which", host.Hostname]</span>
+                        </CmsButton>
+                    }
+                    @if (!host.IsPrimary || hosts.Count == 1)
+                    {
+                        <CmsButton Disabled="@busy" OnClick="@(() => RemoveAsync(host))">
+                            @L["MultiSite.Hosts.Remove"]<span class="cms-visually-hidden">@L["MultiSite.Hosts.Which", host.Hostname]</span>
+                        </CmsButton>
+                    }
+                </li>
+            }
+        </ul>
+    }
+    <p class="multi-site-message" tabindex="-1" @ref="listElement">@listMessage</p>
+
+    <CmsCard Title="@L["MultiSite.Hosts.AddHeading"]">
+        <form @onsubmit="AddAsync">
+            <CmsStack>
+                <CmsTextInput Label="@L["MultiSite.Hosts.Hostname"]"
+                              Help="@L["MultiSite.Hosts.HostnameHelp"]"
+                              Required="true"
+                              MaxLength="253"
+                              Autocomplete="off"
+                              Value="@hostname"
+                              ValueChanged="@(value => hostname = value)"
+                              Error="@hostnameError" />
+                <CmsCheckbox Label="@L["MultiSite.Hosts.AddPrimary"]" Value="@primary" ValueChanged="@(value => primary = value)" />
+                <div>
+                    <CmsButton Submit="true" Appearance="CmsButtonAppearance.Primary" Disabled="@busy">@L["MultiSite.Hosts.Add"]</CmsButton>
+                </div>
+            </CmsStack>
+        </form>
+        <p class="multi-site-message" tabindex="-1" @ref="addElement">@addMessage</p>
+    </CmsCard>
+}
+
+@code {
+    private SiteSummary? site;
+    private Guid? shownId;
+    private IReadOnlyList<SiteHost> hosts = [];
+    private State state = State.Loading;
+    private bool busy;
+    private string? listMessage;
+    private string? hostname;
+    private bool primary;
+    private string? hostnameError;
+    private string? addMessage;
+    private ElementReference listElement;
+    private ElementReference addElement;
+    private ElementReference? focusAfterRender;
+    private CancellationTokenSource? reading;
+    private readonly CancellationTokenSource closing = new();
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private enum State
+    {
+        Loading,
+        Ready,
+        NotFound,
+        Failed,
+    }
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    // The page is one instance for every id, so another id reads its site afresh.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (shownId != Id)
+        {
+            shownId = Id;
+            (site, hosts, listMessage, addMessage, hostname, hostnameError, primary) = (null, [], null, null, null, null, false);
+            await ReadAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender is { } element)
+        {
+            focusAfterRender = null;
+            await element.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+        var current = reading = CancellationTokenSource.CreateLinkedTokenSource(Closing);
+        state = State.Loading;
+        try
+        {
+            var read = Api.GetSiteAsync(Id, current.Token);
+            var readHosts = Api.GetHostsAsync(Id, current.Token);
+            await Task.WhenAll(read, readHosts);
+            (site, hosts, state) = (await read, await readHosts, State.Ready);
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.SiteNotFound))
+        {
+            (site, state) = (null, State.NotFound);
+        }
+        catch (Exception exception) when (MultiSiteProblems.IsFailure(exception))
+        {
+            (site, state) = (null, State.Failed);
+        }
+    }
+
+    private async Task<bool> ReadHostsAsync()
+    {
+        try
+        {
+            hosts = await Api.GetHostsAsync(Id, Closing);
+            return true;
+        }
+        catch (Exception exception) when (MultiSiteProblems.IsFailure(exception))
+        {
+            return false;
+        }
+    }
+
+    private async Task AddAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(hostname))
+        {
+            hostnameError = L["MultiSite.Hosts.HostnameRequired"];
+            return;
+        }
+
+        (busy, hostnameError) = (true, null);
+        var added = false;
+        try
+        {
+            var host = await Api.AddHostAsync(Id, hostname.Trim(), primary, Closing);
+            (addMessage, hostname, primary, added) = (L["MultiSite.Hosts.Added", host.Hostname], null, false, true);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (HostnameError(exception) is { } error)
+        {
+            (hostnameError, addMessage) = (error, L["MultiSite.Hosts.Refused"]);
+        }
+        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.HostNamesBusy))
+        {
+            addMessage = L["MultiSite.Hosts.Busy"];
+        }
+        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.SiteNotFound))
+        {
+            addMessage = L["MultiSite.Hosts.SiteGone"];
+        }
+        catch (Exception exception) when (MultiSiteProblems.IsFailure(exception))
+        {
+            addMessage = L["MultiSite.Hosts.AddFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (added)
+        {
+            await ReadHostsAsync();
+        }
+
+        focusAfterRender = addElement;
+    }
+
+    private Task MakePrimaryAsync(SiteHost host) =>
+        ChangeAsync(token => Api.MakePrimaryAsync(Id, host.Hostname, token), L["MultiSite.Hosts.MadePrimary", host.Hostname], host.Hostname);
+
+    private Task RemoveAsync(SiteHost host) =>
+        ChangeAsync(token => Api.RemoveHostAsync(Id, host.Hostname, token), L["MultiSite.Hosts.Removed", host.Hostname], host.Hostname);
+
+    // A change of a host of the list, after which the list is read again; a host that is gone is read away.
+    private async Task ChangeAsync(Func<CancellationToken, Task> change, string done, string name)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        var changed = false;
+        try
+        {
+            await change(Closing);
+            (listMessage, changed) = (done, true);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.PrimaryHostNeeded))
+        {
+            (listMessage, changed) = (L["MultiSite.Hosts.PrimaryLast", name], true);
+        }
+        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.HostNotFound))
+        {
+            (listMessage, changed) = (L["MultiSite.Hosts.Gone", name], true);
+        }
+        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.HostNamesBusy))
+        {
+            listMessage = L["MultiSite.Hosts.Busy"];
+        }
+        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.SiteNotFound))
+        {
+            listMessage = L["MultiSite.Hosts.SiteGone"];
+        }
+        catch (Exception exception) when (MultiSiteProblems.IsFailure(exception))
+        {
+            listMessage = L["MultiSite.Hosts.ChangeFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (changed)
+        {
+            await ReadHostsAsync();
+        }
+
+        // A host made primary or removed takes its button with it, so focus goes to the result.
+        focusAfterRender = listElement;
+    }
+
+    private string? HostnameError(Exception exception) =>
+        MultiSiteProblems.Has(exception, MultiSiteProblems.InvalidHostName, "hostname") ? L["MultiSite.Hosts.HostnameInvalid"].Value
+        : MultiSiteProblems.Has(exception, MultiSiteProblems.WildcardHostName, "hostname") ? L["MultiSite.Hosts.HostnameWildcard"].Value
+        : MultiSiteProblems.Has(exception, MultiSiteProblems.HostNameWithPort, "hostname") ? L["MultiSite.Hosts.HostnamePort"].Value
+        : MultiSiteProblems.Has(exception, MultiSiteProblems.HostNameTaken, "hostname") ? L["MultiSite.Hosts.HostnameTaken"].Value
+        : null;
+}

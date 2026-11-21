@@ -22,4 +22,12 @@ public interface IAdminContext
 
     /// <summary>Raised when the user switches site, or the context has been read again.</summary>
     event Action? Changed;
+
+    /// <summary>
+    /// Reads the user's sites again, from <c>GET /me/sites</c>, after a change of a site or of its locales, so that the site
+    /// switcher and the locale switcher follow without a reload. When the site the shell shows is gone, as after it was
+    /// deleted, the shell moves to the default site, or the first, as a switch does. A read that fails changes nothing.
+    /// </summary>
+    /// <returns>A task that completes once the sites are read, and the access of the site the shell shows when it changed.</returns>
+    Task ReadSitesAsync() => Task.CompletedTask;
 }
