@@ -135,7 +135,18 @@ A migration that only adds tables, columns or indexes runs in one transaction, s
 
 One gap remains. Two processes that both read that no row is there before either takes the lock leave the second one waiting inside EF. That wait logs no warning and has no bound, and if the first is killed, the second waits as it did before this check.
 
-PostgreSQL and SQL Server hold their lock with the session or transaction that took it, so a process that stops releases it. On SQL Server, a process that waits for another's migrations longer than the command timeout (30 seconds by default) fails with `Execution Timeout Expired`, which does not name the lock. It succeeds when run again once the other is done ([#3192](https://github.com/fluentcms/FluentCMS/issues/3192)).
+### The migrations lock on SQL Server and PostgreSQL
+
+On SQL Server and PostgreSQL the lock ends with the database session that holds it, so a process that stops releases it and nothing is left behind. A start with `MigrateOnStartup` or a `fluentcms migrate` that finds the lock held waits while another process applies migrations, such as a second init container or a host started beside a `fluentcms migrate`. The wait has the bounds it has on SQLite, and the command timeout does not end it ([#3192](https://github.com/fluentcms/FluentCMS/issues/3192)). After 30 seconds it logs a warning once (event id 9305) that names the stream and the lock. After 15 minutes it fails with a `TimeoutException` that names the lock and says that another process is applying migrations, and nothing of that stream is applied. A start stops there, and `fluentcms migrate` exits with 1 and `FCMS3302`:
+
+```text
+FCMS3302: 'fluentcms migrate' failed: TimeoutException: EF Core's migrations lock, the application lock __EFMigrationsLock that another session holds, was not released within 15 minutes, so the system stream was not migrated; another process is applying migrations: ...
+```
+
+- On SQL Server the lock is EF's application lock `__EFMigrationsLock`, which each stream takes before it applies its migrations. Its holder is the session in `sys.dm_tran_locks` whose `resource_type` is `APPLICATION` and whose `resource_description` names `__EFMigrationsLock`.
+- On PostgreSQL it is FluentCMS's lock of the whole run, an advisory lock of the session keyed by `hashtext(current_database() || ':fluentcms:migrations')`, which a run takes before it reads what is pending. The error calls it the migrations lock of FluentCMS. Its holder is the session in `pg_locks` whose `locktype` is `advisory`.
+
+A run that waited applies only what the other left pending. After the error, run again once the other process has finished; the lock needs no clearing. A migration that runs longer than 15 minutes makes the processes that wait for it fail, so apply such a migration from one `fluentcms migrate` before the hosts start.
 
 ## Startup validation
 
