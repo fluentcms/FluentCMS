@@ -163,6 +163,21 @@ public sealed class ManagementApiTests
         thrown.Problem.Errors.ShouldHaveSingleItem().Path.ShouldBe("name");
     }
 
+    // As the server writes every problem but a validation one: no errors member.
+    [Fact]
+    public async Task AProblemWithoutAnErrorsMemberHasNoErrors()
+    {
+        using var harness = new ApiHarness();
+        harness.Server.Problem(HttpStatusCode.Forbidden, """
+            {"type":"urn:fluentcms:error:FCMS3103","title":"Forbidden","status":403,"detail":"The caller may not do this.","code":"FCMS3103","traceId":"0HNQ"}
+            """);
+
+        var thrown = await Should.ThrowAsync<ApiProblemException>(() => harness.Client.GetMeAsync(Token));
+
+        thrown.Problem.Code.ShouldBe("FCMS3103");
+        thrown.Problem.Errors.ShouldNotBeNull().ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task A412CarriesTheEntryAsItIsNow()
     {
