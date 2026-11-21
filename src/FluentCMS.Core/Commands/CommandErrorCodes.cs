@@ -14,6 +14,7 @@ internal static class CommandErrorCodes
     public const string UnknownMigration = "FCMS3305";
     public const string ScriptNotSupported = "FCMS3306";
     public const string OutputNotWritten = "FCMS3307";
+    public const string SecretsNotReprotected = "FCMS3308";
     public const string SchemaInvalid = "FCMS3320";
     public const string SchemaFileUnreadable = "FCMS3321";
     public const string SchemaDrift = "FCMS3322";

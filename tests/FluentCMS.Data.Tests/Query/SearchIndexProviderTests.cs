@@ -29,16 +29,23 @@ public sealed class SearchIndexProviderTests : IDisposable
             .Localized()
             .Field("title", "text", field => field.Required().Localizable().Searchable())
             .Field("body", "richText", field => field.Localizable().Searchable())
-            .Field("notes", "text"))
+            .Field("notes", "text")
+            .Field("internal", "text", field => field.Searchable().Hidden()))
         .AddCollection("tag", type => type.Scope(ContentScope.Global).Field("name", "text", field => field.Searchable()))
         .Build();
 
     private readonly TestDatabase _database = TestDatabase.Create();
     private readonly IHost _host;
 
+    // A limit of three matches, so that a test can reach it.
     public SearchIndexProviderTests()
     {
-        _host = _database.CreateHost(Schema, "Production", GeneratedMigrations.CompileFirst(Schema), configure: cms => cms.AddPlugin<SearchPlugin>());
+        _host = _database.CreateHost(
+            Schema,
+            "Production",
+            GeneratedMigrations.CompileFirst(Schema),
+            settings: new() { ["FluentCms:Query:MaxSearchResults"] = "3" },
+            configure: cms => cms.AddPlugin<SearchPlugin>());
     }
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -155,6 +162,130 @@ public sealed class SearchIndexProviderTests : IDisposable
         (await FindAsync("quarterly")).ShouldBe([article]);
     }
 
+    // A field that was searchable and is hidden now, whose rows stay until the entry is written again: they match for no
+    // caller, whether the request names the field or not.
+    [Fact]
+    public async Task TheRowsOfASearchableFieldThatIsNowHiddenNeverMatch()
+    {
+        await MigrateAsync();
+        var article = await CreateAsync("Quarterly report", "Merger talks", publish: true);
+        await DrainAsync();
+        await AddStaleRowsAsync(article, "internal");
+
+        (await FindAsync("stale")).ShouldBeEmpty();
+        (await MatchAsync("stale", fields: null)).ShouldBeEmpty();
+        (await MatchAsync("stale", ["internal"])).ShouldBeEmpty();
+        (await MatchAsync("stale", ["title", "internal"])).ShouldBeEmpty();
+        (await FindAsync("quarterly")).ShouldBe([article]);
+    }
+
+    // The rows of a field that is not searchable any more are deleted by the next rebuild, and by the next write of the entry.
+    [Fact]
+    public async Task ARebuildAndTheNextWriteOfAnEntryDeleteTheRowsOfAFieldNoLongerSearchable()
+    {
+        await MigrateAsync();
+        var article = await CreateAsync("Quarterly report", "Merger talks", publish: true);
+        await DrainAsync();
+        var fields = (await RowsAsync()).Select(row => row.Field).ToList();
+        fields.Count.ShouldBe(4);
+
+        await AddStaleRowsAsync(article, "notes", "internal");
+        (await RowsAsync()).Count.ShouldBe(8);
+        await RebuildAsync();
+        (await RowsAsync()).Select(row => row.Field).ShouldBe(fields, ignoreOrder: true);
+
+        await AddStaleRowsAsync(article, "notes", "internal");
+        (await RowsAsync()).Count.ShouldBe(8);
+        await ChangeTitleAsync(article, "Annual report");
+        await DrainAsync();
+        (await RowsAsync()).Select(row => row.Field).ShouldBe(fields, ignoreOrder: true);
+        (await FindAsync("annual", QueryStatus.Draft)).ShouldBe([article]);
+    }
+
+    // More matches than the limit: the most recently indexed are listed and counted, and the list says it was cut (#3302).
+    [Fact]
+    public async Task AListWithMoreMatchesThanTheLimitSaysItsSearchWasCut()
+    {
+        await MigrateAsync();
+        for (var index = 0; index < 4; index++)
+        {
+            await CreateAsync("Common words", $"Entry {index}", publish: true);
+        }
+
+        await CreateAsync("Rare words", "Alone", publish: true);
+        await DrainAsync();
+
+        var cut = await PageAsync("common");
+        var whole = await PageAsync("rare");
+
+        cut.Items.Count.ShouldBe(3);
+        cut.Total.ShouldBe(3);
+        cut.SearchTruncated.ShouldBeTrue();
+        whole.Items.ShouldHaveSingleItem();
+        whole.SearchTruncated.ShouldBeFalse();
+    }
+
+    // Rows that differ from a match of the query in one of site, locale, type or state alone, all newer than the matches,
+    // take no place in the limit and do not make the list say it was cut, so they tell the caller nothing (#3302).
+    [Fact]
+    public async Task OnlyTheRowsOfTheTypeLocaleSiteAndStateOfTheQueryTakePlacesInTheLimit()
+    {
+        await MigrateAsync();
+        var first = await CreateAsync("Common words", "One", publish: true);
+        var second = await CreateAsync("Common words", "Two", publish: true);
+        await CreateAsync("Common words", "Draft only", publish: false);
+        await CreateAsync("Common words", "Another draft", publish: false);
+        await DrainAsync();
+
+        var later = DateTimeOffset.UtcNow.AddDays(1);
+        SearchEntry Row(string type, string locale, int state, Guid? site) =>
+            new() { DocumentId = Guid.CreateVersion7(), Locale = locale, State = state, Type = type, SiteId = site, Field = "title", Text = "common words", UpdatedAt = later };
+        await using (var scope = _host.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<SearchPlugin>>();
+            database.AddRange(
+                Row("article", "en", SearchStates.Published, Guid.CreateVersion7()),
+                Row("article", "en", SearchStates.Published, Guid.CreateVersion7()),
+                Row("article", "fr", SearchStates.Published, DefaultSite.Id),
+                Row("article", "fr", SearchStates.Published, DefaultSite.Id),
+                Row("tag", "en", SearchStates.Published, DefaultSite.Id),
+                Row("tag", "en", SearchStates.Published, DefaultSite.Id));
+            await database.SaveChangesAsync(Token);
+        }
+
+        var published = await PageAsync("common");
+        var drafts = await PageAsync("common", QueryStatus.Draft);
+
+        published.Items.Select(item => (Guid)item["id"]!).ShouldBe([first, second], ignoreOrder: true);
+        published.SearchTruncated.ShouldBeFalse();
+        drafts.Items.Count.ShouldBe(3);
+        drafts.SearchTruncated.ShouldBeTrue();
+    }
+
+    // A read of the trash asks the index for drafts, which are not those of the trash, so their count says nothing there.
+    [Fact]
+    public async Task AReadOfTheTrashNeverSaysItsSearchWasCut()
+    {
+        await MigrateAsync();
+        for (var index = 0; index < 4; index++)
+        {
+            await CreateAsync("Common words", $"Entry {index}", publish: false);
+        }
+
+        var trashed = await CreateAsync("Common words", "Trashed", publish: false);
+        await AsSystemAsync(async content =>
+        {
+            await content.DeleteAsync("article", trashed, Token);
+            return true;
+        });
+        await DrainAsync();
+
+        (await PageAsync("common", QueryStatus.Draft)).SearchTruncated.ShouldBeTrue();
+        var trash = await AsSystemAsync(async content => await content.QueryTrashAsync("article", new ContentQuery { Search = "common", Locale = "en" }, Token));
+        trash.Items.ShouldBeEmpty();
+        trash.SearchTruncated.ShouldBeFalse();
+    }
+
     [Fact]
     public async Task TheRebuildWritesTheIndexAgainAndASecondRunChangesNothing()
     {
@@ -194,11 +325,37 @@ public sealed class SearchIndexProviderTests : IDisposable
         return id;
     });
 
+    private async Task ChangeTitleAsync(Guid id, string title) => await AsSystemAsync(async content =>
+    {
+        var current = await content.GetAsync("article", id, new GetOptions { Status = QueryStatus.Draft, Locale = "en" }, Token);
+        await content.PatchAsync("article", id, new ContentDocument { ["title"] = title }, (int)current!["version"]!, Token);
+        return true;
+    });
+
+    // A row of the entry in each state for each field, as an index of before the field stopped being searched holds it.
+    private async Task AddStaleRowsAsync(Guid article, params string[] fields)
+    {
+        await using var scope = _host.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<SearchPlugin>>();
+        foreach (var field in fields)
+        {
+            foreach (var state in new[] { SearchStates.Draft, SearchStates.Published })
+            {
+                database.Add(new SearchEntry { DocumentId = article, Locale = "en", State = state, Type = "article", SiteId = DefaultSite.Id, Field = field, Text = "stale", UpdatedAt = DateTimeOffset.UnixEpoch });
+            }
+        }
+
+        await database.SaveChangesAsync(Token);
+    }
+
     private async Task<List<Guid>> FindAsync(string text, QueryStatus status = QueryStatus.Published) => await AsSystemAsync(async content =>
     {
         var page = await content.QueryAsync("article", new ContentQuery { Search = text, Status = status, Locale = "en" }, Token);
         return page.Items.Select(item => (Guid)item["id"]!).ToList();
     });
+
+    private async Task<PagedResult<ContentDocument>> PageAsync(string text, QueryStatus status = QueryStatus.Published) => await AsSystemAsync(async content =>
+        await content.QueryAsync("article", new ContentQuery { Search = text, Status = status, Locale = "en", Page = new PageRequest { WithTotal = true } }, Token));
 
     private async Task<Guid> RoleAsync(PermissionConstraints? constraints)
     {

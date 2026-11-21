@@ -30,6 +30,9 @@ public sealed record SchemaTypeDescription
     /// <summary>The name of the text field whose value labels an entry, or <see langword="null"/> if the type names none.</summary>
     public string? TitleField { get; init; }
 
+    /// <summary>Whether the site has a preview template for the type that the caller may use (#3432); <see langword="null"/> while the server does not say.</summary>
+    public bool? Previewable { get; init; }
+
     /// <summary>The fields, in the order they were declared.</summary>
     public required IReadOnlyList<SchemaFieldDescription> Fields { get; init; }
 

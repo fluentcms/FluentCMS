@@ -60,6 +60,9 @@ internal sealed class McpContentTools(
     public const string DiscardDraft = "discard_draft";
     public const string Delete = "delete";
 
+    private const string CutSearch =
+        "An answer whose search q reached the most matches the search index gives has searchTruncated true: entries may be missing from it and from its total, and a narrower search may bring the matches under the limit.";
+
     private static readonly string[] Verbs = [List, Get, Search, CreateDraft, UpdateDraft, DiscardDraft, Delete];
 
     private static readonly McpToolAnnotations Reads = new() { ReadOnly = true, Idempotent = true };
@@ -177,7 +180,7 @@ internal sealed class McpContentTools(
         tools.Add(Tool(name, Get, $"Reads one {named} entry by its id.", McpToolSchemas.Get(type, may.Drafts), Reads, $"Get {name}"));
         if (search)
         {
-            tools.Add(Tool(name, Search, $"Searches the {name} entries by text, with the filters, sorting and paging of {Name(name, List)}.", schemas.List(type, may.Drafts, search: true), Reads, $"Search {name}"));
+            tools.Add(Tool(name, Search, $"Searches the {name} entries by text, with the filters, sorting and paging of {Name(name, List)}. {CutSearch}", schemas.List(type, may.Drafts, search: true), Reads, $"Search {name}"));
         }
 
         if (may.Create)
@@ -262,7 +265,7 @@ internal sealed class McpContentTools(
         {
             tools.Add(new McpToolDescriptor(
                 Query,
-                "Lists the entries of any content type the caller may read, with the filters, sorting and paging of the REST APIs. It reaches the types that have no tools of their own. An answer that would be too long ends early with truncated true and the nextCursor to go on from.",
+                $"Lists the entries of any content type the caller may read, with the filters, sorting and paging of the REST APIs. It reaches the types that have no tools of their own. An answer that would be too long ends early with truncated true and the nextCursor to go on from.{(described.Search ? " " + CutSearch : "")}",
                 schemas.Query([.. exposed.Select(type => type.Name)], described.Search))
             {
                 Title = "Query",

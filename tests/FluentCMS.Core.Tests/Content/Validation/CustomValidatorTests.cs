@@ -87,6 +87,24 @@ public class CustomValidatorTests
         services.AddSingleton<IEntryValidator<Article>, ArticleValidator>();
     };
 
+    // So that a validator that reads for many fields can read once for all of them.
+    [Fact]
+    public async Task EveryFieldValidatorOfARunSeesTheFieldsOfTheRunAtEveryDepth()
+    {
+        var seen = new Seen();
+        var again = new Seen();
+        var values = new Dictionary<string, object?> { ["title"] = "Hello", ["sections"] = new BlockList([new QuoteBlock { Text = "a" }, new QuoteBlock { Text = "b" }]) };
+
+        await ValidationFixtures.ValidateAsync(ValidationFixtures.Blog, "article", values, ValidationMode.Publish, register: Register(seen));
+        await ValidationFixtures.ValidateAsync(ValidationFixtures.Blog, "article", values, ValidationMode.Publish, register: Register(again));
+
+        var fields = seen.Fields.Select(item => item.Context.Fields).Distinct(ReferenceEqualityComparer.Instance).ShouldHaveSingleItem().ShouldBeAssignableTo<IReadOnlyList<ValidatedField>>()!;
+        fields.Select(field => (field.Path, field.Value)).ShouldContain(("sections[1].text", (object?)"b"));
+        seen.Fields.Select(item => item.Path).Distinct().ShouldBe(fields.Select(field => field.Path), ignoreOrder: true);
+        again.Fields[0].Context.Fields.ShouldNotBeSameAs(fields);
+        new ValidationContext(ValidationFixtures.Article, values, ValidationFixtures.Operation, ValidationMode.Publish).Fields.ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task AFieldValidatorReceivesTheFullContext()
     {

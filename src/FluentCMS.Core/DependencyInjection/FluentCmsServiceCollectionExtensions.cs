@@ -226,6 +226,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton<SettingsProtection>();
         services.AddSingleton<FluentCMS.Diagnostics.IInsecureDefaultSource, SecretSettingsReport>();
         services.AddScoped<SettingsService>();
+        services.AddScoped<SecretSettingsReprotection>();
         services.TryAddScoped(typeof(ISettings<>), typeof(Settings<>));
 
         services.AddFluentCmsOptions(RichTextOptions.Section, HostErrorCodes.InvalidOption, new RichTextOptions(), richText => richText.Validate());

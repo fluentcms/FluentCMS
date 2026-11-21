@@ -14,7 +14,7 @@ The instance's options are in `FluentCms:Media`:
 | `RequireSignedUrls` | `true` | `false` serves unsigned transform URLs, for a setup where every client is trusted. The startup report lists `media-unsigned-urls` in Production. |
 | `SigningKey` | none | The base64 of at least 32 bytes that signs transform URLs. Left out, the plugin generates one key (see below). |
 | `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image and of the original file and the thumbnail of a public asset. |
-| `DeletedRetention` | `30.00:00:00` | How long a deleted asset keeps its file and its row before the daily cleanup purges them. |
+| `DeletedRetention` | `30.00:00:00` | How long a deleted asset keeps its file and its row before the daily cleanup purges them, as far as no other asset names the file (see the delete below). |
 | `MaxConcurrentDecodes` | `4` | How many images the instance decodes at once to make variants, thumbnails and copies, from 1 to 256. A decode at the default `maxSourcePixels` may take about 200 MB; requests beyond the limit wait. |
 
 ## One library or one per site
@@ -179,7 +179,7 @@ The URLs are signed and carry `v` from the asset's checksum, so a replace gives 
 
 `GET /api/management/v1/media/{id}/usage` lists the entries whose fields, blocks or rich text refer to the asset, as `{ "items": [{ "type", "entryId", "status", "locale", "field" }] }`, without the entries, locales and fields the caller cannot read. Entries in the trash are left out.
 
-`DELETE /api/management/v1/media/{id}` refuses an asset that entries refer to (`FCMS1594`, 409). `?force=true` deletes it anyway and removes the references, so the fields that held it read as empty. A deleted asset keeps its file until `DeletedRetention` has passed, when the daily cleanup purges the file and the row.
+`DELETE /api/management/v1/media/{id}` refuses an asset that entries refer to (`FCMS1594`, 409). `?force=true` deletes it anyway and removes the references, so the fields that held it read as empty. A deleted asset keeps its file until `DeletedRetention` has passed, when the daily cleanup purges the row and, when the instance wrote the file, the file and the variant files. An asset whose key a line of an import named, which a storage shared with another instance can hold, goes with its rows only, and its file stays. A file or variant file that another asset of the library names stays, with the deleted asset's row, until no other asset names it, so the last asset to go deletes it. The deletion of a site removes its assets in the same way.
 
 `POST /api/management/v1/media/{id}/replace` with a `multipart/form-data` body of one file replaces the file of an asset (`media.update`). The file passes the checks of an upload. The id, the metadata and the references stay, the variants of the old file are removed, and `media.replaced` is raised. The old file and the variant files are deleted when the instance wrote the old file, unless another asset of the library names one of their keys; for a key that a line of an import named, which a storage shared with another instance can hold, they stay and only the variant rows go.
 

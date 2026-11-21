@@ -6,6 +6,7 @@ using FluentCMS.Data.SqlServer;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Shouldly;
@@ -125,6 +126,27 @@ public sealed class ContentMigrationGeneratorTests : IDisposable
         migration.MigrationCode.ShouldContain("name: \"cms_article\"");
         migration.MigrationCode.ShouldContain("type: \"uniqueidentifier\"");
         migration.MigrationCode.ShouldNotContain("cms_document");
+    }
+
+    // A snapshot from before the C collation, as a host's content migrations of 1.0.0-preview.1 have it.
+    [Fact]
+    public void ThePostgreSqlMigrationAfterAnOlderSnapshotGivesTheTextColumnsTheCCollation()
+    {
+        var provider = new PostgreSqlDataProvider("Host=localhost;Database=never_opened");
+        var first = GeneratedMigrations.Scaffold(ArticleSchemas.Titled, "Initial", provider: provider);
+        first.SnapshotCode.ShouldContain(".UseCollation(\"C\")");
+        var older = GeneratedMigrations.Compile(first.MigrationCode, first.MetadataCode, first.SnapshotCode.Replace(".UseCollation(\"C\")", string.Empty, StringComparison.Ordinal));
+
+        var second = GeneratedMigrations.Scaffold(ArticleSchemas.Titled, "CodePointText", older, provider);
+        var migration = (Migration)Activator.CreateInstance(GeneratedMigrations.Compile(second.MigrationCode).GetTypes().Single(type => type.IsSubclassOf(typeof(Migration))))!;
+
+        var alter = migration.UpOperations.OfType<AlterColumnOperation>().ShouldHaveSingleItem();
+        (alter.Table, alter.Name, alter.Collation, alter.OldColumn.Collation).ShouldBe(("cms_article", "title", "C", null));
+        migration.UpOperations.ShouldAllBe(operation => operation is AlterColumnOperation);
+
+        using var context = ContentMigrations.CreateContext(provider, ArticleSchemas.Titled, older);
+        context.GetService<IMigrationsSqlGenerator>().Generate(migration.UpOperations).ShouldHaveSingleItem().CommandText
+            .ShouldContain("ALTER TABLE cms_article ALTER COLUMN title TYPE text COLLATE \"C\";");
     }
 
     // A widened column renamed is renamed and then altered, except on SQLite, whose text has no length.

@@ -4,7 +4,8 @@ using Microsoft.JSInterop;
 namespace FluentCMS.Admin.Interop;
 
 // The allow-listed user of IJSRuntime for the preview frame (spec 4.12): the messages its window posts, handed on as the
-// origin and the JSON they came with, and the admin's messages to it, which the browser delivers only to the origin named.
+// origin and the JSON they came with, each load of the frame, and the admin's messages to it, which the browser delivers
+// only to the origin named.
 internal sealed class PreviewInterop(IJSRuntime js) : IAsyncDisposable
 {
     public const string ModulePath = "./_content/FluentCMS.Admin/preview.js";
@@ -12,11 +13,12 @@ internal sealed class PreviewInterop(IJSRuntime js) : IAsyncDisposable
     private Task<IJSObjectReference>? module;
 
     // Until the handle is disposed. A message from another window than that of the pane's frame is never handed on.
-    public async ValueTask<IAsyncDisposable> ListenAsync(ElementReference pane, Func<string, string, Task> receive)
+    public async ValueTask<IAsyncDisposable> ListenAsync(ElementReference pane, Func<string, string, Task> receive, Func<Task> loaded)
     {
         ArgumentNullException.ThrowIfNull(receive);
+        ArgumentNullException.ThrowIfNull(loaded);
         var preview = await Module();
-        var target = DotNetObjectReference.Create(new MessageTarget(receive));
+        var target = DotNetObjectReference.Create(new MessageTarget(receive, loaded));
         try
         {
             return new Listener(await preview.InvokeAsync<IJSObjectReference>("listen", pane, target), target);
@@ -44,10 +46,14 @@ internal sealed class PreviewInterop(IJSRuntime js) : IAsyncDisposable
 
     private Task<IJSObjectReference> Module() => module ??= js.InvokeAsync<IJSObjectReference>("import", ModulePath).AsTask();
 
-    internal sealed class MessageTarget(Func<string, string, Task> receive)
+    internal sealed class MessageTarget(Func<string, string, Task> receive, Func<Task> loaded)
     {
         [JSInvokable]
         public Task ReceiveAsync(string origin, string message) => receive(origin, message);
+
+        // The frame loaded a page, the admin's or one the page navigated to.
+        [JSInvokable]
+        public Task LoadedAsync() => loaded();
     }
 
     private sealed class Listener(IJSObjectReference listener, DotNetObjectReference<MessageTarget> target) : IAsyncDisposable
