@@ -41,11 +41,12 @@ public class AdminRulesTests
 
     // Spec 3.1: the types that may use JavaScript interop, the document module, the tab's sessionStorage of the sign-in,
     // localStorage for the theme's one key and for the column names of the lists, the drop and paste of the media library,
-    // in the media half (A-21), the rich text editor's bundle (A-24), and the messages of the preview frame (A-29). The
-    // component library's script is loaded by the library's own types, so no type of FluentCMS.Admin.Components is listed. The
-    // clipboard module joins the list by name, in FluentCMS.Admin or FluentCMS.Admin.RichText, with the issue that writes it.
+    // in the media half (A-21), the rich text editor's bundle (A-24), the messages of the preview frame (A-29), and the
+    // clipboard that the secret shown once writes to (A-33), in the wrapped set since the halves that show a secret reach no
+    // other admin package. The component library's script is loaded by the library's own types, which are not the set's.
     private static readonly string[] InteropTypes =
     [
+        "FluentCMS.Admin.Components.CmsClipboard",
         "FluentCMS.Admin.Interop.ColumnStorageInterop",
         "FluentCMS.Admin.Interop.DocumentInterop",
         "FluentCMS.Admin.Interop.PreviewInterop",
@@ -353,13 +354,13 @@ public class AdminRulesTests
     }
 
     [Fact]
-    public void EachAllowListedInteropTypeIsInTheShellTheRichTextEditorOrTheMediaHalf()
+    public void EachAllowListedInteropTypeIsInTheShellTheWrappedSetTheRichTextEditorOrTheMediaHalf()
     {
         foreach (var name in InteropTypes)
         {
             var type = browser.Value.Types.SingleOrDefault(type => type.FullName == name);
             type.ShouldNotBeNull($"{name} is on the interop list but is not a type of the admin.");
-            type.Assembly.Name.Split(',')[0].ShouldBeOneOf(Admin, AdminRichText, MediaHalfAssembly);
+            type.Assembly.Name.Split(',')[0].ShouldBeOneOf(Admin, AdminComponents, AdminRichText, MediaHalfAssembly);
         }
     }
 

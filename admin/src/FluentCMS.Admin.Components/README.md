@@ -13,4 +13,14 @@ An app registers the services with `builder.Services.AddCmsComponents()`, wraps 
 
 The texts the set shows itself, such as the announcement of a grid's sort, come from its resources in the current UI culture. A host that localizes through its own `IStringLocalizer` registers an `ICmsTextSource` in place of the default one. It is asked for the names of the set's resources and for every key of the library under the set; for a name the resources do not hold it must return `null`, not the name as `IStringLocalizer` does, so that the library's own text is shown.
 
+A secret that a page shows once, such as a new API key, a webhook's signing secret or a registered client's, goes in `CmsSecretDialog`. It is a modal dialog, open while `Secret` is not null. It shows the set's text that the secret is shown only now, the page's `ChildContent`, and the secret under `Label`, hidden until the user presses Show. Copy writes it to the clipboard and says whether the browser allowed it. Done is the only way to close it: Escape does not, since a secret closed by mistake cannot be read again. Done raises `SecretChanged` with null, so bind it and keep the secret in that one field only:
+
+```razor
+<CmsSecretDialog Title="Copy the new key" Label="Secret" @bind-Secret="secret" @bind-Secret:after="OnDone">
+    <p>A client sends it in the X-Api-Key header.</p>
+</CmsSecretDialog>
+```
+
+The dialog keeps no copy of its own and writes the secret to no storage, log or address. It gives the secret to the clipboard only when the user asks, through the browser's `navigator.clipboard.writeText`.
+
 The theme tokens are CSS custom properties prefixed `--cms-` on `.cms-root`, with a light and a dark theme that follow `prefers-color-scheme` until `CmsThemeRoot.Mode` says otherwise. The accent is `--fluentcms-brand-accent` when the document sets it. The stylesheet uses logical properties only, so `dir="rtl"` on the document or a container mirrors the layout.

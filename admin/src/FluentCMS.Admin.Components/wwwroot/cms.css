@@ -287,6 +287,31 @@ fluent-field .cms-field-message {
     font-weight: 600;
 }
 
+.cms-secret {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-xs);
+}
+
+.cms-secret-label {
+    font-weight: 600;
+}
+
+.cms-secret-value {
+    padding: var(--cms-space-s);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+    background: var(--cms-color-surface);
+    overflow-wrap: anywhere;
+}
+
+.cms-secret-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cms-space-s);
+    margin-block-start: var(--cms-space-s);
+}
+
 .cms-drop-zone {
     position: relative;
     display: flex;
