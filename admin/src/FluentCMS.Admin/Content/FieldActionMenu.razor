@@ -1,0 +1,271 @@
+@* The actions of the admin halves on one field of a form (spec 5.1): a button that shows and hides them, which loads their
+   halves the first time it opens and keeps those whose AppliesToAsync answers true. An action is confirmed when it asks, then
+   runs with the field as the draft holds it; a result that fits the field's type goes into the draft through OnResult, as an
+   unsaved change. The form makes a new menu for each entry and locale it loads, so a result that comes after the draft
+   changed is dropped with the menu it was asked from. Escape closes the list, from the button or from inside it, and the
+   loading, a failed load and no action are each announced once, as the list's region is new. *@
+@using FluentCMS.Admin.Actions
+@using Microsoft.Extensions.Logging
+@implements IDisposable
+@inject AdminPlugins Plugins
+@inject IAnnouncer Announcer
+@inject ILogger<FieldActionMenu> Logger
+@inject IStringLocalizer<AdminResources> L
+
+<div class="field-actions" @onkeydown="KeyDown">
+    <CmsButton @ref="toggle" Appearance="CmsButtonAppearance.Subtle" Icon="CmsIconName.More" Expanded="@open" Controls="@ListId" OnClick="ToggleAsync">
+        @L["Content.FieldActions.Menu"]<span class="cms-visually-hidden">@L["Content.FieldActions.Of", FieldLabel]</span>
+    </CmsButton>
+    @if (open)
+    {
+        <div id="@ListId" class="field-actions-list" role="group" aria-label="@L["Content.FieldActions.Label", FieldLabel]">
+            @if (failed)
+            {
+                <p>@L["Content.FieldActions.LoadFailed"]</p>
+            }
+            else if (items is null)
+            {
+                <p>@L["Content.FieldActions.Loading"]</p>
+            }
+            else if (items.Count == 0)
+            {
+                <p>@L["Content.FieldActions.None"]</p>
+            }
+            else
+            {
+                @foreach (var item in items)
+                {
+                    <CmsButton @key="item.Key" Icon="@(CmsIconNames.TryFind(item.Action.Icon, out var icon) ? icon : null)" OnClick="@(() => AskAsync(item))">@item.Action.Label</CmsButton>
+                }
+            }
+            @if (problem is not null)
+            {
+                <p class="field-actions-problem">@problem</p>
+            }
+        </div>
+    }
+</div>
+@if (items is { Count: > 0 })
+{
+    <CmsDialog Title="@(asked?.Action.Label ?? L["Content.FieldActions.Menu"])" Open="@(asked is not null)" OpenChanged="@(isOpen => { if (!isOpen) asked = null; })">
+        <ChildContent>
+            <p>@askedText</p>
+        </ChildContent>
+        <Actions>
+            @if (asked is { } item)
+            {
+                <CmsButton OnClick="@(() => asked = null)">@L["Content.FieldActions.Cancel"]</CmsButton>
+                <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => RunAsync(item))">@item.Action.Label</CmsButton>
+            }
+        </Actions>
+    </CmsDialog>
+}
+
+@code {
+    private readonly string ListId = ElementIds.Next("field-actions");
+    private readonly CancellationTokenSource running = new();
+    private CancellationToken token;
+    private CmsButton? toggle;
+    private bool open;
+    private bool failed;
+    private bool busy;
+    private bool focusToggle;
+    private bool announcedLoading;
+    private string? problem;
+    private IReadOnlyList<MenuItem>? items;
+    private MenuItem? asked;
+    private string? askedText;
+
+    private sealed record MenuItem(string Key, PluginFieldAction Declared, FieldActionBase Action);
+
+    // The field's actions, which the form gives only for a field the user may change.
+    [Parameter, EditorRequired]
+    public IReadOnlyList<(AdminPluginManifest Half, AdminManifestFieldAction Declared)> Actions { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public string FieldLabel { get; set; } = "";
+
+    // The field as the form's draft holds it when an action asks or runs.
+    [Parameter, EditorRequired]
+    public Func<FieldActionContext> Context { get; set; } = null!;
+
+    // Raised with the value an action puts into the draft.
+    [Parameter]
+    public EventCallback<JsonNode?> OnResult { get; set; }
+
+    // Taken once, so that a call after the menu went reads a cancelled token and not a disposed source.
+    protected override void OnInitialized() => token = running.Token;
+
+    public void Dispose()
+    {
+        running.Cancel();
+        running.Dispose();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusToggle && toggle is not null)
+        {
+            focusToggle = false;
+            await toggle.FocusAsync();
+        }
+    }
+
+    // Each time it opens, the actions that apply to the field as it is now; the halves load the first time.
+    private async Task ToggleAsync()
+    {
+        open = !open;
+        problem = null;
+        if (!open)
+        {
+            return;
+        }
+
+        (items, failed) = (null, false);
+        if (!announcedLoading)
+        {
+            announcedLoading = true;
+            Announcer.Announce(L["Content.FieldActions.Loading"]);
+        }
+
+        StateHasChanged();
+        List<MenuItem> made = [];
+        var notMade = 0;
+        foreach (var declared in Actions.Select(action => new PluginFieldAction(action.Half, action.Declared)))
+        {
+            FieldActionBase action;
+            try
+            {
+                action = await Plugins.FieldActionAsync(declared, token);
+            }
+            catch (Exception exception) when (Stopped(exception))
+            {
+                return;
+            }
+#pragma warning disable CA1031 // A half that does not load or an action that cannot be made leaves the others.
+            catch (Exception exception)
+#pragma warning restore CA1031
+            {
+                PluginLog.FieldActionNotCreated(Logger, declared.Half.Name, declared.Declared.Type, exception);
+                notMade++;
+                continue;
+            }
+
+            if (await AppliesAsync(declared, action))
+            {
+                made.Add(new MenuItem($"{declared.Half.Name}/{declared.Declared.Name}", declared, action));
+            }
+        }
+
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        (items, failed) = (made, made.Count == 0 && notMade > 0);
+        if (failed || made.Count == 0)
+        {
+            Announcer.Announce(L[failed ? "Content.FieldActions.LoadFailed" : "Content.FieldActions.None"]);
+        }
+    }
+
+    private async Task<bool> AppliesAsync(PluginFieldAction declared, FieldActionBase action)
+    {
+        try
+        {
+            return await action.AppliesToAsync(Context(), token);
+        }
+#pragma warning disable CA1031 // An action whose check throws is not offered.
+        catch (Exception exception)
+#pragma warning restore CA1031
+        {
+            if (!Stopped(exception))
+            {
+                PluginLog.FieldActionFailed(Logger, declared.Half.Name, declared.Declared.Type, exception);
+            }
+
+            return false;
+        }
+    }
+
+    private void KeyDown(KeyboardEventArgs key)
+    {
+        if (key.Key == "Escape" && open)
+        {
+            (open, focusToggle) = (false, true);
+        }
+    }
+
+    private async Task AskAsync(MenuItem item)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        problem = null;
+        if (item.Action.ConfirmationText(Context()) is { Length: > 0 } text)
+        {
+            (asked, askedText) = (item, text);
+            return;
+        }
+
+        await RunAsync(item);
+    }
+
+    // One action at a time; a click meanwhile is ignored, as the form's own actions are. A value of the wrong shape for the
+    // field's type is refused, as the server would refuse its save.
+    private async Task RunAsync(MenuItem item)
+    {
+        asked = null;
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            var context = Context();
+            var result = await item.Action.RunAsync(context, token);
+            if (!result.Replaces || token.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (!FieldValues.Fits(context.Field, result.Value))
+            {
+                PluginLog.FieldActionValueRefused(Logger, item.Declared.Half.Name, item.Declared.Declared.Type, context.Field.Type);
+                Fail(L["Content.FieldActions.WrongValue"]);
+                return;
+            }
+
+            await OnResult.InvokeAsync(result.Value);
+            Announcer.Announce(L["Content.FieldActions.Changed", item.Action.Label, FieldLabel]);
+        }
+        catch (Exception exception) when (Stopped(exception))
+        {
+        }
+#pragma warning disable CA1031 // What a half's action throws is shown beside the field, and the draft stays as it was.
+        catch (Exception exception)
+#pragma warning restore CA1031
+        {
+            PluginLog.FieldActionFailed(Logger, item.Declared.Half.Name, item.Declared.Declared.Type, exception);
+            Fail(exception is ApiProblemException { Problem.Detail: { Length: > 0 } detail } ? detail : L["Content.FieldActions.Failed"]);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void Fail(string text)
+    {
+        problem = text;
+        Announcer.Announce(text);
+    }
+
+    // The menu went, with the form's entry or the form itself.
+    private bool Stopped(Exception exception) =>
+        token.IsCancellationRequested && exception is OperationCanceledException or ObjectDisposedException;
+}

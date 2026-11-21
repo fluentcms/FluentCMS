@@ -214,6 +214,19 @@ public sealed class AdminPluginManifestTests
         ]);
     }
 
+    // The form reads FieldsFrom before the half loads, so the file must say what the attribute says.
+    [Fact]
+    public void ADifferentFieldsFromOfAFieldActionIsNamed()
+    {
+        var file = File with { FieldActions = [File.FieldActions[0] with { FieldsFrom = "reviews/fields#fields" }] };
+
+        AdminPluginManifestCheck.Compare(file, Declared).ShouldBe(
+        [
+            $"field action 'shout' of {Sample}ShoutAction: fieldsFrom is not set in the assembly and 'reviews/fields#fields' in the manifest",
+        ]);
+        AdminPluginManifestJson.Read(AdminPluginManifestJson.Write(file)).FieldActions[0].FieldsFrom.ShouldBe("reviews/fields#fields");
+    }
+
     [Fact]
     public void ADifferentMemberOfTheManifestOrOfAMenuItemOrAWidgetIsNamed()
     {
@@ -297,6 +310,7 @@ public sealed class AdminPluginManifestTests
             $"entry action 'careless' of {Types}CarelessAction: the class does not derive from EntryActionBase",
             $"bulk action 'careless' of {Types}CarelessAction: the class does not derive from BulkActionBase",
             $"field action 'careless' of {Types}CarelessAction: the class does not derive from FieldActionBase",
+            $"field action 'careless' of {Types}CarelessAction: FieldsFrom '../ai/fields#fields' is not a read of the Management API and a member of its answer, such as ai/fields#fields",
             $"service 'System.IDisposable' of {Types}CarelessAction: the class does not implement it",
             $"menu item 'Careless.Menu' of {Types}CarelessMenuItem: the component declares no [AdminPage] for it to link to",
             $"field editor 'careless' of {Types}CarelessMenuItem: the class does not derive from FieldEditorBase",

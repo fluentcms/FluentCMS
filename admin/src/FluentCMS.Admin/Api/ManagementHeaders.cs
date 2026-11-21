@@ -11,6 +11,9 @@ internal static class ManagementHeaders
     public static readonly HttpRequestOptionsKey<bool> AddSessionSite = new("FluentCMS.Admin.AddSessionSite");
     public static readonly HttpRequestOptionsKey<bool> AddSessionLocale = new("FluentCMS.Admin.AddSessionLocale");
 
+    // A request RateLimitHandler sends once and does not tell the user about, since its caller shows a 429 itself.
+    public static readonly HttpRequestOptionsKey<bool> Once = new("FluentCMS.Admin.Once");
+
     // A weak tag a proxy passed on is sent by its value, as the server reads it; a bare version gets its quotes.
     public static string StrongTag(string tag)
     {

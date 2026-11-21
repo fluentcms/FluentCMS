@@ -26,7 +26,7 @@ public sealed class CarelessMenuItem;
 
 [EntryAction("careless")]
 [BulkAction("careless")]
-[FieldAction("careless")]
+[FieldAction("careless", FieldsFrom = "../ai/fields#fields")]
 [AdminService(typeof(IDisposable))]
 public sealed class CarelessAction;
 

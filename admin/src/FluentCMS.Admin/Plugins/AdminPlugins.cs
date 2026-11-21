@@ -29,6 +29,9 @@ internal enum PluginPageGate
 // A bulk action of an admin half, as its manifest declares it.
 internal sealed record PluginBulkAction(AdminPluginManifest Half, AdminManifestAction Declared);
 
+// A field action of an admin half, as its manifest declares it.
+internal sealed record PluginFieldAction(AdminPluginManifest Half, AdminManifestFieldAction Declared);
+
 // A dashboard widget of an admin half, as its manifest declares it, at its position in the manifest's list.
 internal sealed record PluginWidget(AdminPluginManifest Half, AdminManifestWidget Widget, int Position);
 
@@ -107,6 +110,24 @@ internal sealed class AdminPlugins(
         var loaded = await LoadAsync(action.Half, cancellationToken);
         return loaded.Create(action.Declared.Type) as BulkActionBase
             ?? throw new InvalidOperationException($"{action.Declared.Type} does not derive from BulkActionBase.");
+    }
+
+    // The field actions of a field type the user may see, by the plugin's name and then in the order of its manifest; the form
+    // narrows them by their FieldsFrom.
+    public IReadOnlyList<PluginFieldAction> FieldActions(string fieldType) =>
+    [
+        .. catalog.Halves.OrderBy(half => half.Name, StringComparer.Ordinal).SelectMany(half => half.FieldActions
+            .Where(action => Shows(half, action.Permission) && (action.FieldTypes.Count == 0 || action.FieldTypes.Contains(fieldType, StringComparer.Ordinal)))
+            .Select(action => new PluginFieldAction(half, action))),
+    ];
+
+    // A new instance of the action, made by the provider of its half, which loads first. Call it only for what FieldActions answers.
+    public async Task<FieldActionBase> FieldActionAsync(PluginFieldAction action, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        var loaded = await LoadAsync(action.Half, cancellationToken);
+        return loaded.Create(action.Declared.Type) as FieldActionBase
+            ?? throw new InvalidOperationException($"{action.Declared.Type} does not derive from FieldActionBase.");
     }
 
     // The class of a contribution, by the full name its manifest gives, once its half is loaded. Call it only for what Shows
