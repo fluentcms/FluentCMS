@@ -32,6 +32,10 @@ public sealed class GrantDraft
 
     public bool Refused => Refusals.Count > 0;
 
+    // Set when the last save refused a constraint of the grant: the editor of its limits stays open until the next save, as
+    // the user clears the refusals there.
+    public bool LimitsRefused { get; set; }
+
     public string Identity => IdentityOf(Permission, Constraints);
 
     // The grant as the server tells grants apart once it has stored them: the known members in a fixed order, each list
@@ -136,9 +140,11 @@ internal sealed class RoleDraft
             RequireTwoFactor = mine.RequireTwoFactor != read.RequireTwoFactor ? mine.RequireTwoFactor : current.RequireTwoFactor,
         };
 
-        // The grants read, less those the user kept or changed, are those the user took away.
+        // The grants read, less those the user kept or changed, are those the user took away. A grant that remembers the grant
+        // it was read as claims that one first; then a grant added again as it was read, as after a removal undone, is that
+        // grant kept, so that the other change's version of it stands.
         var takenAway = Counted(read.Grants.Select(GrantDraft.From));
-        var added = new List<GrantDraft>();
+        var unclaimed = new List<GrantDraft>();
         var changed = new List<GrantDraft>();
         foreach (var grant in mine.Grants)
         {
@@ -152,6 +158,19 @@ internal sealed class RoleDraft
             }
             else
             {
+                unclaimed.Add(grant);
+            }
+        }
+
+        var added = new List<GrantDraft>();
+        foreach (var grant in unclaimed)
+        {
+            if (takenAway.GetValueOrDefault(grant.Identity) > 0)
+            {
+                takenAway[grant.Identity]--;
+            }
+            else
+            {
                 added.Add(grant);
             }
         }
@@ -159,7 +178,7 @@ internal sealed class RoleDraft
         var theirs = current.Grants.Select(GrantDraft.From).ToList();
         var left = Counted(theirs);
         var replacing = new Dictionary<string, Queue<GrantDraft>>(StringComparer.Ordinal);
-        var dropped = new List<string>();
+        var refused = new List<GrantDraft>();
         foreach (var grant in changed)
         {
             var origin = grant.Origin!;
@@ -173,9 +192,9 @@ internal sealed class RoleDraft
 
                 queue.Enqueue(grant);
             }
-            else if (theirs.All(kept => kept.Identity != grant.Identity))
+            else
             {
-                dropped.Add(grant.Permission);
+                refused.Add(grant);
             }
         }
 
@@ -204,7 +223,11 @@ internal sealed class RoleDraft
             }
         }
 
-        return (rebased, [.. dropped.Distinct(StringComparer.Ordinal)]);
+        // A change the merge left out is named, unless the role has the grant as the user changed it all the same.
+        return (rebased, [.. refused
+            .Where(grant => rebased.Grants.All(kept => kept.Identity != grant.Identity))
+            .Select(grant => grant.Permission)
+            .Distinct(StringComparer.Ordinal)]);
     }
 
     private static bool Same(string? left, string? right) =>

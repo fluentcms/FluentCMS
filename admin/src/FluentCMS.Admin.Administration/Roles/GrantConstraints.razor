@@ -45,7 +45,7 @@
 
 @if (!ReadOnly)
 {
-    <details open="@ConstraintsRefused">
+    <details open="@Open">
         <summary>@L["Roles.Constraints.Edit"]<span id="@($"{messageId}-grant")" class="cms-visually-hidden">@L["Roles.Constraints.EditWhich", Permission]</span></summary>
         <p>@L["Roles.Constraints.Help"]</p>
         @if (Refusals.Contains(Whole))
@@ -124,9 +124,11 @@
     [Parameter]
     public IReadOnlyList<string> Refusals { get; set; } = [];
 
-    private string? Type => GrantCatalogue.ContentTypeOf(Permission);
+    // Opens the editor, as after a refusal of a constraint, which the user may clear without it closing.
+    [Parameter]
+    public bool Open { get; set; }
 
-    private bool ConstraintsRefused => Refusals.Any(path => path == Whole || path.StartsWith(Whole + ".", StringComparison.Ordinal));
+    private string? Type => GrantCatalogue.ContentTypeOf(Permission);
 
     // A limit to sites narrows a role of every site only, to sites where the caller manages roles; a role of a site grants
     // in its own site alone.

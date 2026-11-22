@@ -51,6 +51,7 @@ else
                               Required="true"
                               MaxLength="@NameLength"
                               ReadOnly="@(read?.BuiltIn == true)"
+                              Disabled="@busy"
                               Help="@(read?.BuiltIn == true ? L["Roles.Editor.BuiltInName"].Value : null)"
                               Error="@nameError" />
                 <CmsTextArea Label="@L["Roles.Editor.Description"]"
@@ -58,6 +59,7 @@ else
                              ValueChanged="@(value => draft.Description = value)"
                              MaxLength="@DescriptionLength"
                              ReadOnly="@Fixed"
+                             Disabled="@busy"
                              Error="@descriptionError" />
                 @if (read is null && RoleScope.ForInstance(Context))
                 {
@@ -65,6 +67,7 @@ else
                                Options="@SiteOptions"
                                Value="@siteChoice"
                                ValueChanged="@(value => siteChoice = value ?? EverySite)"
+                               Disabled="@busy"
                                Help="@L["Roles.Editor.SiteHelp"]" />
                 }
                 else
@@ -76,7 +79,8 @@ else
                 }
                 <CmsCheckbox Label="@L["Roles.Editor.RequireTwoFactor"]"
                              Value="@draft.RequireTwoFactor"
-                             ValueChanged="@(value => draft.RequireTwoFactor = value)" />
+                             ValueChanged="@(value => draft.RequireTwoFactor = value)"
+                             Disabled="@busy" />
                 @if (Fixed)
                 {
                     <p>@L["Roles.Editor.SuperAdminNote"]</p>
@@ -323,7 +327,12 @@ else
         }
 
         (nameError, descriptionError, message, detail) = (null, null, null, null);
-        draft.Grants.ForEach(grant => grant.Refusals = []);
+        foreach (var grant in draft.Grants)
+        {
+            grant.Refusals = [];
+            grant.LimitsRefused = false;
+        }
+
         if (string.IsNullOrWhiteSpace(draft.Name))
         {
             nameError = L["Roles.Editor.NameRequired"];
@@ -364,6 +373,7 @@ else
             foreach (var refused in RoleProblems.RefusedGrants(exception).Where(refusal => refusal.Index < sent.Count).GroupBy(refusal => refusal.Index))
             {
                 sent[refused.Key].Refusals = [.. refused.Select(refusal => refusal.Path)];
+                sent[refused.Key].LimitsRefused = refused.Any(refusal => refusal.Path == "constraints" || refusal.Path.StartsWith("constraints.", StringComparison.Ordinal));
             }
 
             Say(nameError is null && descriptionError is null ? L["Roles.Editor.GrantsRefused"] : L["Roles.Editor.NotSaved"]);

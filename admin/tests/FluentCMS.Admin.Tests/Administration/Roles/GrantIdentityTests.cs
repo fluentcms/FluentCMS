@@ -133,6 +133,67 @@ public sealed class GrantIdentityTests
         dropped.ShouldBeEmpty();
     }
 
+    // A removal undone adds the grant again as it was read: it is that grant kept, so the other change's narrowing of it stands.
+    [Fact]
+    public void AGrantRemovedAndAddedAgainKeepsTheOtherChangesNarrowing()
+    {
+        var read = Read(Grant("content.article.update", null));
+        var mine = RoleDraft.From(read);
+        mine.Grants.RemoveAt(1);
+        mine.Grants.Add(new GrantDraft("content.article.update", null));
+        var narrowed = new JsonObject { ["sites"] = new JsonArray("0193a1b2-0000-7000-8000-00000000a001") };
+
+        var (rebased, dropped) = RoleDraft.Rebase(read, mine, Read(Grant("content.article.update", narrowed)));
+
+        rebased.Grants.Select(grant => grant.Identity).ShouldBe([GrantDraft.IdentityOf("schema.read", null), GrantDraft.IdentityOf("content.article.update", narrowed)]);
+        dropped.ShouldBeEmpty();
+    }
+
+    // And when the other change took that grant away, it stays away.
+    [Fact]
+    public void AGrantRemovedAndAddedAgainStaysAwayWhenTheOtherChangeTookItAway()
+    {
+        var read = Read(Grant("content.article.update", null));
+        var mine = RoleDraft.From(read);
+        mine.Grants.RemoveAt(1);
+        mine.Grants.Add(new GrantDraft("content.article.update", null));
+
+        RoleDraft.Rebase(read, mine, Read()).Draft.Grants.Select(grant => grant.Permission).ShouldBe(["schema.read"]);
+    }
+
+    // A limited grant removed, its permission added again and narrowed back to the same limits is the grant read.
+    [Fact]
+    public void AGrantRemovedAndNarrowedBackToTheSameLimitsKeepsTheOtherChange()
+    {
+        var read = Read(Grant("content.article.update", new JsonObject { ["locales"] = new JsonArray("fr") }));
+        var mine = RoleDraft.From(read);
+        mine.Grants.RemoveAt(1);
+        mine.Grants.Add(new GrantDraft("content.article.update", new JsonObject { ["locales"] = new JsonArray("FR") }));
+        var theirs = new JsonObject { ["locales"] = new JsonArray("fr"), ["fields"] = new JsonArray("title") };
+
+        var (rebased, dropped) = RoleDraft.Rebase(read, mine, Read(Grant("content.article.update", theirs)));
+
+        rebased.Grants.Select(grant => grant.Identity).ShouldBe([GrantDraft.IdentityOf("schema.read", null), GrantDraft.IdentityOf("content.article.update", theirs)]);
+        dropped.ShouldBeEmpty();
+    }
+
+    // The user took B away and changed A into B; the other change took A away. Neither is left, so the change is named.
+    [Fact]
+    public void AChangeTheMergeLeavesOutIsNamedThoughTheServerHadItsIdentity()
+    {
+        var english = new JsonObject { ["locales"] = new JsonArray("en") };
+        var french = new JsonObject { ["locales"] = new JsonArray("fr") };
+        var read = Read(Grant("content.article.update", english), Grant("content.article.update", french));
+        var mine = RoleDraft.From(read);
+        mine.Grants.RemoveAt(2);
+        mine.Grants[1].Constraints = french.DeepClone().AsObject();
+
+        var (rebased, dropped) = RoleDraft.Rebase(read, mine, Read(Grant("content.article.update", french)));
+
+        rebased.Grants.Select(grant => grant.Permission).ShouldBe(["schema.read"]);
+        dropped.ShouldBe(["content.article.update"]);
+    }
+
     [Fact]
     public void ARefusalOfAGrantIsCarriedToThePathBelowIt()
     {

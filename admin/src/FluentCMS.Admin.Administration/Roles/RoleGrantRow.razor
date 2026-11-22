@@ -41,7 +41,8 @@
                       Disabled="@Disabled"
                       Permission="@Grant.Permission"
                       Catalogue="@Catalogue"
-                      Refusals="@Grant.Refusals" />
+                      Refusals="@Grant.Refusals"
+                      Open="@Grant.LimitsRefused" />
     @if (!ReadOnly)
     {
         <CmsButton Disabled="@Disabled" OnClick="@(() => OnRemove.InvokeAsync(Grant))">

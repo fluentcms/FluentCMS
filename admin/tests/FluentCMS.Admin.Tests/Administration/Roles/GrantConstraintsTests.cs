@@ -279,6 +279,28 @@ public sealed class GrantConstraintsTests : RolesTestContext
         Row(app, "content.article.read").QuerySelector("[role=alert]").ShouldBeNull();
     }
 
+    // A refusal opens the editor of the limits, which stays open as the user clears the refusal, until the next save.
+    [Fact]
+    public void TheLimitsARefusalOpenedStayOpenUntilTheNextSave()
+    {
+        var refusals = 1;
+        Refuse = (method, path) => method == HttpMethod.Put && refusals-- > 0 ? Problem(HttpStatusCode.BadRequest, "FCMS2311", "grants[1].constraints.locales") : null;
+        var app = Open($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => Row(app, "content.article.read"));
+        Save(app);
+        app.WaitForAssertion(() => Row(app, "content.article.read").QuerySelector("details")!.HasAttribute("open").ShouldBeTrue());
+
+        Uncheck(app, "content.article.read", "Locales", "fr");
+
+        Group(Row(app, "content.article.read"), "Locales").QuerySelectorAll(".cms-field-message-error").ShouldBeEmpty();
+        Row(app, "content.article.read").QuerySelector("details")!.HasAttribute("open").ShouldBeTrue();
+
+        Save(app);
+
+        app.WaitForAssertion(() => Alert(app).ShouldBe("The role was saved."));
+        Row(app, "content.article.read").QuerySelector("details")!.HasAttribute("open").ShouldBeFalse();
+    }
+
     // Each grant has the same limits, so a screen reader hears which grant a group or the rule belongs to.
     [Fact]
     public void TheLimitsNameTheirGrantToAScreenReader()
@@ -311,6 +333,8 @@ public sealed class GrantConstraintsTests : RolesTestContext
         Boxes(Group(Row(app, "content.article.read"), "Fields")).ShouldAllBe(box => box.HasAttribute("disabled"));
         Button(app, "Remove the grant schema.read").HasAttribute("disabled").ShouldBeTrue();
         Field(app, "Permission or pattern").HasAttribute("disabled").ShouldBeTrue();
+        Field(app, "Name").HasAttribute("disabled").ShouldBeTrue();
+        Field(app, "Description").HasAttribute("disabled").ShouldBeTrue();
 
         held.SetResult();
 
