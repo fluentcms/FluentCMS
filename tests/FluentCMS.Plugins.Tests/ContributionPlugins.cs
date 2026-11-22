@@ -348,7 +348,14 @@ public sealed class LongNameModel : IPluginModelContributor
 
         modelBuilder.Entity<LongNamedNote>(note =>
         {
-            note.ToTable(Name("table", "cms_long_note"), table => table.HasCheckConstraint(Name("check constraint", "ck_cms_long_note_parent"), "parent_id <> id"));
+            note.ToTable(Name("table", "cms_long_note"), table =>
+            {
+                table.HasCheckConstraint(Name("check constraint", "ck_cms_long_note_parent"), "parent_id <> id");
+                if (named == "table column")
+                {
+                    table.Property(item => item.ParentId).HasColumnName(given);
+                }
+            });
             note.HasKey(item => item.Id).HasName(Name("key", "pk_cms_long_note"));
             note.Property(item => item.Id).HasColumnName("id");
             note.Property(item => item.ParentId).HasColumnName(Name("column", "parent_id"));
@@ -356,7 +363,7 @@ public sealed class LongNameModel : IPluginModelContributor
             note.HasIndex(item => item.ParentId).HasDatabaseName(Name("index", "ix_cms_long_note_parent"));
             note.HasIndex(item => new { item.Id, item.ParentId }, Name("named index", "ix_cms_long_note_id_parent"));
 
-            // Named by EF, which cuts the name to the provider's limit.
+            // Named by EF: IX_cms_long_note_parent_id_id, or after the table and the column the test names.
             note.HasIndex(item => new { item.ParentId, item.Id });
         });
     }

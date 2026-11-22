@@ -134,28 +134,49 @@ public sealed class PluginContributionTests(PluginContributionFixture fixture) :
     }
 
     // PostgreSQL keeps the first 63 bytes of a name, so the baseline check would not find a longer one (#3533). Bytes, not
-    // characters: é takes two, so these names have 37 and 36 characters. With a column of 63 bytes, the index on it that
-    // EF names has a longer name, which EF cuts itself, so it is not refused.
+    // characters: é takes two, so the name refused has 37 characters. A name of 63 ASCII characters passes, and so does the
+    // longer one EF derives from it for the index it names, since EF cuts that to 63 characters. A name of 63 bytes with é
+    // passes where EF derives no name from it.
     [Theory]
-    [InlineData("table", "the table")]
-    [InlineData("column", "the column")]
-    [InlineData("key", "the key")]
-    [InlineData("foreign key", "the foreign key")]
-    [InlineData("index", "the index")]
-    [InlineData("named index", "the index")]
-    [InlineData("check constraint", "the check constraint")]
-    public void ANameOfAPluginsModelOverSixtyThreeBytesStopsTheHost(string named, string what)
+    [InlineData("table", "the table", true)]
+    [InlineData("column", "the column", true)]
+    [InlineData("table column", "the column", true)]
+    [InlineData("key", "the key", false)]
+    [InlineData("foreign key", "the foreign key", false)]
+    [InlineData("index", "the index", false)]
+    [InlineData("named index", "the index", false)]
+    [InlineData("check constraint", "the check constraint", false)]
+    public void ANameOfAPluginsModelOverSixtyThreeBytesStopsTheHost(string named, string what, bool derives)
     {
         var tooLong = "cms_long_" + new string('é', 28);
         LongNamePlugin.Naming.Value = (named, tooLong);
         Refused(cms => cms.AddPlugin<LongNamePlugin>(), "FCMS1529", "'long'", $"gives {what} of ", $"'{tooLong}'", "65 bytes", "at most 63");
 
-        LongNamePlugin.Naming.Value = (named, "cms_long_" + new string('é', 27));
-        new ServiceCollection().AddFluentCms(cms =>
+        Accepted(named, "cms_long_" + new string('a', 54));
+        if (!derives)
         {
-            cms.UseSqlite("Data Source=:memory:");
-            cms.AddPlugin<LongNamePlugin>();
-        });
+            Accepted(named, "cms_long_" + new string('é', 27));
+        }
+
+        static void Accepted(string named, string name)
+        {
+            LongNamePlugin.Naming.Value = (named, name);
+            new ServiceCollection().AddFluentCms(cms =>
+            {
+                cms.UseSqlite("Data Source=:memory:");
+                cms.AddPlugin<LongNamePlugin>();
+            });
+        }
+    }
+
+    // EF cuts the names it derives by characters, so the index it names after a column of 63 bytes with é, of 56 characters,
+    // has 83 bytes, which PostgreSQL would cut.
+    [Fact]
+    public void ANameThatEFDerivesOverSixtyThreeBytesStopsTheHost()
+    {
+        var column = "cms_long_" + new string('é', 27);
+        LongNamePlugin.Naming.Value = ("column", column);
+        Refused(cms => cms.AddPlugin<LongNamePlugin>(), "FCMS1529", "gives the index of ", $"'IX_cms_long_note_{column}_id'", "83 bytes");
     }
 
     [Fact]

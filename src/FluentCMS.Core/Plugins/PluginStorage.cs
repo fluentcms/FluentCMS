@@ -42,7 +42,9 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
 
     public string HistoryTable => HistoryTableOf(plugin.Name);
 
-    // Mapped on a model without conventions, which is enough to read the names of the tables and views. A name can still be
+    // Mapped on a model without conventions, which is enough to read the names of the tables and views, and of what the
+    // contributor configures on them; what only the conventions would find, such as a property no call names, is not there
+    // to read. A name can still be
     // another's, since one plugin's prefix can hold another's (cms_ai_ holds cms_ai_assist_) or a system table's, and
     // takenBy names its owner. Returns the names.
     public IReadOnlyList<string> AddModel(IPluginModelContributor contributor, Func<string, string?> takenBy)
@@ -51,6 +53,7 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
 
         var model = new ModelBuilder();
         contributor.Configure(model);
+        model.Model.SetMaxIdentifierLength(StorageNames.MaxIdentifierLength);
         List<string> names = [];
         foreach (var entity in model.Model.GetEntityTypes())
         {
@@ -79,11 +82,12 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
 
     // PostgreSQL keeps the first 63 bytes of a name and drops the rest without a word, so the baseline check, which finds the
     // tables, columns and indexes of the model by name, would not find them. Refused on every provider, so that a plugin that
-    // runs on SQLite does not fail on PostgreSQL later (#3533). Only the names the model gives are held to it: EF cuts the
-    // ones it makes to the provider's limit.
+    // runs on SQLite does not fail on PostgreSQL later (#3533). The names are read as EF gives them on PostgreSQL: the model
+    // has its limit of 63, so a name EF derives, such as IX_..., is cut as EF cuts it there, by characters, and one with
+    // characters of more than a byte can still be too long.
     private void CheckLengths(IPluginModelContributor contributor, IMutableEntityType entity)
     {
-        foreach (var (what, name) in GivenNames(entity))
+        foreach (var (what, name) in NamesOnPostgreSql(entity))
         {
             var bytes = Encoding.UTF8.GetByteCount(name);
             if (bytes > StorageNames.MaxIdentifierLength)
@@ -95,59 +99,58 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
         }
     }
 
-    private static IEnumerable<(string What, string Name)> GivenNames(IMutableEntityType entity)
+    // Each table or view the entity maps to, the fragments of entity splitting and the tables of TPT and TPC included, with
+    // the columns, keys and indexes it has there, so that a column named for one table alone is read too.
+    private static IEnumerable<(string What, string Name)> NamesOnPostgreSql(IMutableEntityType entity)
     {
-        foreach (var (what, name) in new[] { ("the table", entity.GetTableName()), ("the view", entity.GetViewName()) })
+        List<StoreObjectIdentifier> stores = [];
+        foreach (var type in new[] { StoreObjectType.Table, StoreObjectType.View })
         {
-            if (name is not null)
+            if (StoreObjectIdentifier.Create(entity, type) is { } store)
             {
-                yield return (what, name);
+                stores.Add(store);
             }
         }
 
-        foreach (var property in Properties(entity))
+        stores.AddRange(entity.GetMappingFragments().Select(fragment => fragment.StoreObject));
+        foreach (var store in stores.Distinct())
         {
-            if (property[RelationalAnnotationNames.ColumnName] is string column)
+            yield return (store.StoreObjectType == StoreObjectType.View ? "the view" : "the table", store.Name);
+
+            foreach (var column in Properties(entity).Select(property => property.GetColumnName(store)).OfType<string>())
             {
                 yield return ("the column", column);
             }
-        }
 
-        foreach (var key in entity.GetDeclaredKeys())
-        {
-            if (key[RelationalAnnotationNames.Name] is string name)
+            if (store.StoreObjectType != StoreObjectType.Table)
             {
-                yield return ("the key", name);
+                continue;
+            }
+
+            foreach (var key in entity.GetKeys().Select(key => key.GetName(store)).OfType<string>())
+            {
+                yield return ("the key", key);
+            }
+
+            foreach (var index in entity.GetIndexes().Select(index => index.GetDatabaseName(store)).OfType<string>())
+            {
+                yield return ("the index", index);
             }
         }
 
-        foreach (var foreignKey in entity.GetDeclaredForeignKeys())
+        foreach (var foreignKey in entity.GetDeclaredForeignKeys().Select(foreignKey => foreignKey.GetConstraintName()).OfType<string>())
         {
-            if (foreignKey[RelationalAnnotationNames.Name] is string name)
-            {
-                yield return ("the foreign key", name);
-            }
+            yield return ("the foreign key", foreignKey);
         }
 
-        foreach (var index in entity.GetDeclaredIndexes())
+        // The name given, or else the one EF derives from the model's name.
+        foreach (var check in entity.GetDeclaredCheckConstraints().Select(check => check.Name).OfType<string>())
         {
-            if ((index[RelationalAnnotationNames.Name] as string ?? index.Name) is { } name)
-            {
-                yield return ("the index", name);
-            }
+            yield return ("the check constraint", check);
         }
 
-        // A check constraint's name is always the model's.
-        foreach (var check in entity.GetDeclaredCheckConstraints())
-        {
-            if (check.Name is { } name)
-            {
-                yield return ("the check constraint", name);
-            }
-        }
-
-        static IEnumerable<IMutableProperty> Properties(IMutableTypeBase type) =>
-            type.GetDeclaredProperties().Concat(type.GetDeclaredComplexProperties().SelectMany(complex => Properties(complex.ComplexType)));
+        static IEnumerable<IReadOnlyProperty> Properties(IReadOnlyTypeBase type) =>
+            type.GetProperties().Concat(type.GetComplexProperties().SelectMany(complex => Properties(complex.ComplexType)));
     }
 
     public void AddMigrations(Assembly assembly)

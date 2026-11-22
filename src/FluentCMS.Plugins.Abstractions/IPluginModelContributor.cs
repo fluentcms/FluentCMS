@@ -4,9 +4,9 @@ namespace FluentCMS.Plugins;
 
 /// <summary>
 /// Maps the tables of a plugin, added with <see cref="PluginServiceBuilderExtensions.AddModel{TContributor}"/>. Every table
-/// and view it maps is named <c>cms_{plugin}_...</c>, with the hyphens of the plugin's name as underscores, and every name it
-/// gives a table, view, column, key, foreign key, index or check constraint has at most 63 bytes in UTF-8, which is what
-/// PostgreSQL keeps, or the host does not start. The same mapping builds the plugin's <see cref="PluginDbContext{TPlugin}"/>
+/// and view it maps is named <c>cms_{plugin}_...</c>, with the hyphens of the plugin's name as underscores, and the name of
+/// every table, view, column, key, foreign key, index or check constraint it maps, given or as EF derives it on PostgreSQL,
+/// has at most 63 bytes in UTF-8, which is what PostgreSQL keeps, or the host does not start. The same mapping builds the plugin's <see cref="PluginDbContext{TPlugin}"/>
 /// and joins the runtime model of core, where it is left out of the other migration streams.
 /// </summary>
 public interface IPluginModelContributor

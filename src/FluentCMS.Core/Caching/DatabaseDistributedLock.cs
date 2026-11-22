@@ -402,7 +402,8 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
             _stopping.Dispose();
 
             // A callback on Lost that does not return keeps the disposal waiting no longer than the job runner's disposal waits
-            // for its loops (#3544). The source of Lost is then disposed once the callbacks return, not under one still running.
+            // for its loops (#3544). The source of Lost is then kept until the callbacks return, however long that is, and disposed
+            // then, not under one still running.
             try
             {
                 await _owner.WaitAsync(loss, JobRunner.DisposeWait);
