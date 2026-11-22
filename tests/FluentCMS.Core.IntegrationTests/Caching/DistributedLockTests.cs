@@ -217,6 +217,36 @@ public sealed class DistributedLockTests : IAsyncDisposable
         (await RowAsync(host)).Owner.ShouldBe(Crashed);
     }
 
+    // A callback of the lock's caller on Lost that throws is logged with what it threw, once and under an event of its own.
+    // The other callbacks run and the lock is lost all the same. Before, the renewal loop took it for a renewal that failed
+    // and told the loss a second time.
+    [Fact]
+    public async Task ACallbackOnLostThatThrowsIsLoggedAndTheLockIsLostAllTheSame()
+    {
+        await using var host = new FluentCmsTestHost();
+        var logs = new LogCapture();
+        var held = await Lock(host, host.Time, TimeSpan.FromMilliseconds(300), logs).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        held.ShouldNotBeNull();
+        var lost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var told = held.Lost.Register(() => lost.TrySetResult());
+        using var throws = held.Lost.Register(() => throw new InvalidOperationException("A callback of the lock's caller."));
+
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<LockRow>()
+                .Where(row => row.Name == Name)
+                .ExecuteUpdateAsync(row => row.SetProperty(column => column.Owner, Crashed), Token);
+        }
+
+        await lost.Task.WaitAsync(Patience, Token);
+        await held.DisposeAsync();
+
+        // A renewal that waited behind the host's work at startup says so, which is no part of this.
+        var entries = logs.Entries.Where(entry => entry.EventId.Id != LockLog.RenewWaitingId).ToList();
+        entries.Select(entry => entry.EventId.Id).ShouldBe([LockLog.LostId, LockLog.LostCallbackFailedId]);
+        entries[1].Exception.ShouldBeOfType<AggregateException>().InnerExceptions.ShouldHaveSingleItem().ShouldBeOfType<InvalidOperationException>();
+    }
+
     // SQLite has one writer, so a renewal waits for another connection's write transaction, such as the holder's own work,
     // and gives up before it ends: after about 5 seconds here, where a host waits about 35. It then reads the row.
     [Fact]
@@ -540,7 +570,8 @@ public sealed class DistributedLockTests : IAsyncDisposable
     }
 
     // The renewals every third of the lease leave half of it to pass only while they wait, so a commit renews it from then on,
-    // asynchronous or not, and a commit before writes nothing more.
+    // asynchronous or not. A commit before writes nothing more, and neither does one after a commit that renewed, since the
+    // handle then knows the lease it has.
     [Fact]
     public async Task AWriteTransactionOfTheHoldersWorkRenewsTheLeaseAsItCommitsOnceHalfOfItHasPassed()
     {
@@ -556,11 +587,21 @@ public sealed class DistributedLockTests : IAsyncDisposable
 
         clock.Advance(TimeSpan.FromSeconds(2));
         await CommitAsync(_first, renewals);
-        (await RowAsync(_first)).LeaseUntil.ShouldBe(clock.GetUtcNow() + OutOfReach);
+        var renewed = clock.GetUtcNow() + OutOfReach;
+        (await RowAsync(_first)).LeaseUntil.ShouldBe(renewed);
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+        await CommitAsync(_first, renewals);
+        (await RowAsync(_first)).LeaseUntil.ShouldBe(renewed);
 
         clock.Advance(OutOfReach / 2 + TimeSpan.FromSeconds(1));
         Commit(_first, renewals);
-        (await RowAsync(_first)).LeaseUntil.ShouldBe(clock.GetUtcNow() + OutOfReach);
+        renewed = clock.GetUtcNow() + OutOfReach;
+        (await RowAsync(_first)).LeaseUntil.ShouldBe(renewed);
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+        Commit(_first, renewals);
+        (await RowAsync(_first)).LeaseUntil.ShouldBe(renewed);
         held.Lost.IsCancellationRequested.ShouldBeFalse();
     }
 
@@ -616,7 +657,7 @@ public sealed class DistributedLockTests : IAsyncDisposable
     // Another holder took the lock between two transactions of the holder's work. The renewal inside the next commit finds
     // the row another's, and the holder is told when that commit is through, where the loop's next renewal is a third of the
     // lease away. The callbacks on Lost run apart from the commit: one that waits for it sees it through, and one that
-    // throws fails nothing.
+    // throws fails nothing and is logged.
     [Fact]
     public async Task AHolderIsToldWhenARenewalInsideACommitFindsThatAnotherTookTheLock()
     {
@@ -651,7 +692,7 @@ public sealed class DistributedLockTests : IAsyncDisposable
         sawTheCommit.ShouldBeTrue();
         (await WorkAsync(_first)).ShouldBe(1);
         await held.DisposeAsync();
-        logs.Entries.ShouldHaveSingleItem().EventId.Id.ShouldBe(LockLog.LostId);
+        logs.Entries.Select(entry => entry.EventId.Id).ShouldBe([LockLog.LostId, LockLog.LostCallbackFailedId]);
         (await RowAsync(_first)).Owner.ShouldBe(Crashed);
     }
 

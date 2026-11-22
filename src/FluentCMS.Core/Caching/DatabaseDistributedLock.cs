@@ -471,7 +471,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
 
         // Told once, whether the renewal loop or a commit of the host found it first. CancelAsync runs the callbacks that
         // callers registered on Lost on another thread, so a commit, which does not wait for them, is neither failed nor kept
-        // waiting by one. A callback that throws is its caller's, and the lock is lost all the same.
+        // waiting by one. A callback that throws is its caller's: it is logged, and the lock is lost all the same.
         private Task LoseAsync(string reason)
         {
             lock (_gate)
@@ -487,8 +487,9 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
                 {
                     await _lost.CancelAsync();
                 }
-                catch (AggregateException)
+                catch (AggregateException exception)
                 {
+                    LockLog.LostCallbackFailed(_owner.Logger, exception, Name);
                 }
             }
         }
