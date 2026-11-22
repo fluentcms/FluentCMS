@@ -1115,7 +1115,7 @@ public sealed class OutboxFailureTests
         (await DrainAsync(database.Database.Services)).ShouldBe(3);
     }
 
-    // The first owner's lane registers for the stop after the second's handler, so a cancellation in turn would reach it first.
+    // The first owner waits on its handler later than the second's is called, so a cancellation in turn would reach it first.
     // Its settle has a thread of its own; its release, when a failure left it nothing to settle, writes where it was told.
     [Theory]
     [InlineData(EndingWrites.Settle)]

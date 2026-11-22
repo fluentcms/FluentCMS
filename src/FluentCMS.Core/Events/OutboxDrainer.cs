@@ -930,9 +930,9 @@ internal sealed class OutboxDrainer(
     }
 
     // The host's stop as a lane, or the drain itself, sees it: that it came, the end of the half of ReleaseTimeout for what is
-    // written before the release, and the end of it all. Each has its own and is cancelled on a thread of its own, since what
-    // waits on a token goes on, and a provider's callback runs, inside the call that cancels it: so neither holds the host,
-    // another lane or a timer. The sources are not disposed, since that can come before those threads are done.
+    // written before the release, and the end of it all. Each lane has its own, and each token is cancelled on a thread of its
+    // own: what waits on one goes on, and a provider's callback runs, inside the call that cancels it, which would hold the
+    // host, another lane or a timer. The sources are not disposed, since that can come before those threads are done.
     private sealed class Stop : IAsyncDisposable
     {
         private readonly ITimer _settle;
