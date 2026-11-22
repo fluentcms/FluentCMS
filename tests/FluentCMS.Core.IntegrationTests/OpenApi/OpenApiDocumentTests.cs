@@ -560,6 +560,19 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         Response(write, "200")["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["culture", "timeZone", "dateFormat", "numberFormat"]);
     }
 
+    // A locale another one names as a fallback is not removed, and no chain changes with a removal (#3517).
+    [Fact]
+    public void TheRemovalOfALocaleSaysWhatRefusesIt()
+    {
+        var removal = Paths[$"{Management}/sites/{{id}}/locales/{{code}}"]!["delete"]!;
+
+        removal["responses"]!["204"].ShouldNotBeNull();
+        var description = removal["description"]!.GetValue<string>();
+        description.ShouldContain("FCMS3136");
+        description.ShouldContain("FCMS3143");
+        description.ShouldContain("locales.{code}.fallbacks");
+    }
+
     [Fact]
     public void ASettingsReadRefersToTheJsonSchemaOfItsArea()
     {

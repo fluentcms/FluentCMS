@@ -636,7 +636,7 @@ Rows 3.17, 8.7 (settings pages), 7.1, 7.10, 7.13 (settings per site with instanc
 
 - **Settings menu.** The areas the caller may manage in the site and for the instance, each under its plugin or core, from `GET /settings` (#3098). Without #3098 the admin cannot find the areas; A-34 waits for it.
 - **Generated settings page.** From the JSON schema of the area's read: a form of the same field editors as 4.6 for its properties, with a switch between the site's values and the instance defaults (`/defaults`). The source of each value is shown: the site's own, inherited from the defaults or the code default. A secret shows as set or not set (`secretsSet`), and as inherited when it is the defaults' (`secretsInherited`); it is written only when the user types a new one. A reset returns the site to the defaults (#3098). A plugin may replace the generated page of its area (5.1).
-- **Sites and locales.** The site's name and default locale, and its locales with position, enabled flag and fallbacks. Creating and deleting sites and their host names are the multi-site half's (5.6).
+- **Sites and locales.** The site's name and default locale, and its locales with position, enabled flag and fallbacks. A removal is refused for the default locale and for a locale with entries (`FCMS3136`, which can disable it instead), and while other locales name it in their fallbacks (`FCMS3143`, one error for each at `locales.{code}.fallbacks`): the page names those locales, since the server changes no chain on a removal ([#3517]). Creating and deleting sites and their host names are the multi-site half's (5.6).
 
 | Endpoint | Use | Status |
 | --- | --- | --- |
@@ -1174,4 +1174,5 @@ The draft asked sixteen questions, each with a recommendation. All were decided 
 [#3368]: https://github.com/fluentcms/FluentCMS/issues/3368
 [#3432]: https://github.com/fluentcms/FluentCMS/issues/3432
 [#3473]: https://github.com/fluentcms/FluentCMS/issues/3473
+[#3517]: https://github.com/fluentcms/FluentCMS/issues/3517
 [#3369]: https://github.com/fluentcms/FluentCMS/issues/3369

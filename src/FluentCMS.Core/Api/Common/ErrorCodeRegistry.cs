@@ -288,6 +288,7 @@ public static class ErrorCodeRegistry
         new(LocaleErrorCodes.LocaleNotFound, StatusCodes.Status404NotFound, "Locale not found"),
         new(LocaleErrorCodes.LocaleInUse, StatusCodes.Status409Conflict, "Locale in use"),
         new(LocaleErrorCodes.LocaleExists, StatusCodes.Status409Conflict, "Locale exists"),
+        new(LocaleErrorCodes.LocaleIsFallback, StatusCodes.Status409Conflict, "Locale is a fallback"),
         BadQuery(IdempotencyErrorCodes.InvalidKey, "Invalid Idempotency-Key"),
         Invalid(IdempotencyErrorCodes.KeyReused, "Idempotency-Key used for another request"),
         new(IdempotencyErrorCodes.InProgress, StatusCodes.Status409Conflict, "Request with this Idempotency-Key still running"),
