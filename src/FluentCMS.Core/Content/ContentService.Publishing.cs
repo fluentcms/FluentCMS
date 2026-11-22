@@ -12,7 +12,6 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Hooks;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
-using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Core.Content;
 
