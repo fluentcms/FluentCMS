@@ -218,7 +218,7 @@ internal sealed class AdminPlugins(
         if (AdministrationAreas.IsOpen(route))
         {
             // An open page of the assembly needs neither the site nor a permission.
-            await administration.TryLoadAsync(cancellationToken);
+            await WaitingForAsync(administration.TryLoadAsync(cancellationToken));
             AddAdministration();
             return;
         }

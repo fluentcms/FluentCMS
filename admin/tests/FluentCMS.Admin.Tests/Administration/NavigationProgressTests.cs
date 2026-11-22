@@ -14,13 +14,14 @@ namespace FluentCMS.Admin.Tests.Administration;
 // retry, before the client's own timeout.
 public sealed class NavigationProgressTests : AdministrationTestContext
 {
-    private const string Loading = "Loading the page…";
+    private const string LoadingPage = "Loading the page…";
 
     public NavigationProgressTests() => UseNeutralResources();
 
     [Theory]
     [InlineData("users")]
     [InlineData("reviews")]
+    [InlineData("system/components")]
     public void AFirstLoadOfARouteWhoseAssemblyLoadsShowsTheShellAndALoadingStateUntilThePage(string route)
     {
         UseTheSampleHalf();
@@ -29,7 +30,7 @@ public sealed class NavigationProgressTests : AdministrationTestContext
 
         var app = Load(route);
 
-        app.WaitForAssertion(() => Status(app).ShouldBe(Loading));
+        app.WaitForAssertion(() => Loading(app).ShouldBe(LoadingPage));
         app.Find(".shell-sidebar a.cms-nav-link[href='users']");
         app.Find(".shell-header .shell-home");
         app.FindAll("main h1").ShouldBeEmpty();
@@ -38,7 +39,7 @@ public sealed class NavigationProgressTests : AdministrationTestContext
         download.SetResult();
 
         app.WaitForAssertion(() => Shows(app, route).ShouldBeTrue());
-        app.FindAll("main [role=status]").ShouldBeEmpty();
+        Loading(app).ShouldBeNull();
         app.FindComponents<AdminLayout>().ShouldHaveSingleItem();
         app.FindAll(".shell-header").ShouldHaveSingleItem();
     }
@@ -46,6 +47,7 @@ public sealed class NavigationProgressTests : AdministrationTestContext
     [Theory]
     [InlineData("users")]
     [InlineData("reviews")]
+    [InlineData("system/components")]
     public void ANavigationInsideTheAppToARouteWhoseAssemblyIsNotLoadedShowsProgressAtOnceAndKeepsTheLayout(string route)
     {
         UseTheSampleHalf();
@@ -57,15 +59,32 @@ public sealed class NavigationProgressTests : AdministrationTestContext
 
         Navigation.NavigateTo(route);
 
-        app.WaitForAssertion(() => Status(app).ShouldBe(Loading));
+        app.WaitForAssertion(() => Loading(app).ShouldBe(LoadingPage));
         Heading(app).ShouldBe(home);
         Loader.Loads.ShouldBe(1);
 
         download.SetResult();
 
         app.WaitForAssertion(() => Shows(app, route).ShouldBeTrue());
-        app.FindAll("main [role=status]").ShouldBeEmpty();
+        Loading(app).ShouldBeNull();
         app.FindComponent<AdminLayout>().Instance.ShouldBeSameAs(layout);
+    }
+
+    // Once the assembly is loaded, a navigation waits for nothing, and no frame shows the loading state.
+    [Fact]
+    public void ANavigationToARouteWhoseAssemblyIsLoadedShowsNoLoadingState()
+    {
+        Grant([], "users.manage", "roles.manage");
+        var app = Load("users");
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/users"));
+        var shown = 0;
+        app.OnMarkupUpdated += (_, _) => shown += Loading(app) is null ? 0 : 1;
+
+        Navigation.NavigateTo("roles");
+
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/roles"));
+        shown.ShouldBe(0);
+        Loader.Loads.ShouldBe(1);
     }
 
     // The content locale changes with the address that names it, on an area's route and on a half's.
@@ -88,12 +107,12 @@ public sealed class NavigationProgressTests : AdministrationTestContext
         Navigation.NavigateTo(route + "?locale=fr");
 
         app.WaitForAssertion(() => Management.Count("me/access").ShouldBeGreaterThan(reads));
-        app.WaitForAssertion(() => Status(app).ShouldBe(Loading));
+        app.WaitForAssertion(() => Loading(app).ShouldBe(LoadingPage));
         Shows(app, route).ShouldBeTrue();
 
         read.SetResult();
 
-        app.WaitForAssertion(() => app.FindAll("main [role=status]").ShouldBeEmpty());
+        app.WaitForAssertion(() => Loading(app).ShouldBeNull());
         Shows(app, route).ShouldBeTrue();
         Context.ContentLocale.ShouldBe("fr");
         app.FindComponent<AdminLayout>().Instance.ShouldBeSameAs(layout);
@@ -130,7 +149,29 @@ public sealed class NavigationProgressTests : AdministrationTestContext
         await app.InvokeAsync(hung.SetResult);
     }
 
-    private static string Status(IRenderedComponent<AdminApp> app) => app.Find("main [role=status]").TextContent;
+    // The same limit holds when the content locale changes without a navigation, as when the site no longer has it enabled
+    // and the shell goes back to the site's default.
+    [Fact]
+    public async Task AReadOfTheDefaultLocalesAccessThatHangsAfterTheLocaleIsDisabledEndsInAMessage()
+    {
+        Services.AddSingleton<TimeProvider>(new FastTime());
+        Management.AddLocale(MainSite, "fr", 1);
+        Grant(["roles.manage"]);
+        Management.LocaleAccess[(MainSite, "fr")] = Management.Access[MainSite].DeepClone().AsObject();
+        var app = Load("roles?locale=fr");
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/roles"));
+        app.WaitForAssertion(() => Context.ContentLocale.ShouldBe("fr"));
+        Management.Sites[0]!["locales"]!.AsArray()[1]!["enabled"] = false;
+        var hung = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Management.HoldPath = path => path.EndsWith("/me/access", StringComparison.Ordinal) ? hung.Task : null;
+
+        await app.InvokeAsync(() => Context.ReadSitesAsync());
+
+        app.WaitForAssertion(() => Heading(app).ShouldBe("The admin could not load"));
+        Context.Status.ShouldBe(ShellStatus.Failed);
+        hung.Task.IsCompleted.ShouldBeFalse();
+        await app.InvokeAsync(hung.SetResult);
+    }
 
     private static bool Shows(IRenderedComponent<AdminApp> app, string route) =>
         route == "reviews" ? app.FindAll("main .cms-card").Count > 0 : Shown(app) == "/" + route;

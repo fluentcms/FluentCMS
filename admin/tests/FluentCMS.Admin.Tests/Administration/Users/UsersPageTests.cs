@@ -238,6 +238,7 @@ public sealed class UsersPageTests : UsersTestContext
         await app.InvokeAsync(() => { });
 
         UserQueries.Count.ShouldBe(reads);
+        Loading(app).ShouldNotBeNull();
         Navigation.NavigateTo("users?q=ada");
         app.WaitForAssertion(() => Rows(app).Select(row => row[0]).ShouldBe(["ada"]));
         UserQueries[^1].ShouldBe("page=1&pageSize=25&search=ada");

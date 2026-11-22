@@ -78,6 +78,10 @@ public abstract class AdministrationTestContext : AdminTestContext
 
     private protected static string Heading(IRenderedComponent<AdminApp> app) => app.Find("main h1").TextContent;
 
+    // The layout's loading state while a navigation waits for what its page needs (#3446), or null while it shows none.
+    private protected static string? Loading(IRenderedComponent<AdminApp> app) =>
+        app.FindAll("main .shell-notice[role=status]").SingleOrDefault()?.TextContent;
+
     private protected static string[] Links(IRenderedComponent<AdminApp> app) =>
         [.. app.Find(".shell-sidebar").QuerySelectorAll("a.cms-nav-link").Select(link => link.GetAttribute("href")!)];
 

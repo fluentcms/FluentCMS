@@ -699,7 +699,8 @@ public sealed class ContentListBulkTests : AdminTestContext
         public Task<Assembly> LoadAsync(string assemblyName, CancellationToken cancellationToken) => Task.FromResult(typeof(ReviewsAdminPlugin).Assembly);
     }
 
-    // Lets every wait pass at once and records it, except the grace after a cancel, which passes only when the test ends it.
+    // Lets every wait pass at once and records it, except the grace after a cancel, which passes only when the test ends it,
+    // and the shell's limit for the reads of a new content locale, which never passes.
     private sealed class StepTime : TimeProvider
     {
         private (TimerCallback Callback, object? State)? _grace;
@@ -710,6 +711,11 @@ public sealed class ContentListBulkTests : AdminTestContext
 
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
+            if (dueTime == AdminContext.LocaleReadLimit)
+            {
+                return new Timer();
+            }
+
             if (dueTime == BulkProgress.StopGrace)
             {
                 _grace = (callback, state);

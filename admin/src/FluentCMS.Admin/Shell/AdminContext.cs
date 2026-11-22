@@ -191,7 +191,7 @@ internal sealed class AdminContext(
             var next = ++_generation;
             site.ContentLocale = chosen;
             Changed?.Invoke();
-            await (_localeReads = RunAsync(next, () => SiteReadsAsync(next)));
+            await (_localeReads = RunAsync(next, () => SiteReadsAsync(next, LocaleReadLimit)));
             return;
         }
 
