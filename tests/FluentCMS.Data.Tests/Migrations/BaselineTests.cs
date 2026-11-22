@@ -280,6 +280,29 @@ public sealed partial class BaselineTests : IDisposable
         DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
     }
 
+    // A host that does not migrate takes no lock, so the order of its reads alone keeps it from refusing the database: the
+    // other process applies the media stream just after the host first read the catalog.
+    [Fact]
+    public async Task ADatabaseThatAnotherProcessIsCreatingIsNotRefusedAsAnEarlierBaseline()
+    {
+        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production))
+        {
+            await built.StartAsync(Token);
+            await built.StopAsync(Token);
+        }
+
+        using var creating = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.AddPlugin<MediaPlugin>());
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, settings: NoMigrationOnStartup, configure: cms => cms.AddPlugin<MediaPlugin>());
+        var catalog = new CatalogReader(
+            host.Services.GetRequiredService<IDataProvider>().SchemaReader,
+            () => creating.Services.GetRequiredService<MigrationRunner>().MigrateAsync(Token));
+        var runner = InterceptedProvider.Runner(host.Services, (member, value) => member == $"get_{nameof(IDataProvider.SchemaReader)}" ? catalog : value);
+
+        await runner.RunAtStartupAsync(Token);
+
+        _database.Tables().ShouldContain("cms_media_preset");
+    }
+
     // A column folded into a table the earlier build already made, as cms_version.author_kind (#3097), is missed the same way.
     [Fact]
     public async Task ADatabaseOfAnEarlierBuildOfTheBaselineThatLacksAColumnIsRefused()
@@ -532,6 +555,24 @@ public sealed partial class BaselineTests : IDisposable
         using var command = connection.CreateCommand();
         command.CommandText = $"IF (SELECT is_read_committed_snapshot_on FROM sys.databases WHERE database_id = DB_ID()) <> {(on ? 1 : 0)} ALTER DATABASE CURRENT SET READ_COMMITTED_SNAPSHOT {(on ? "ON" : "OFF")} WITH ROLLBACK IMMEDIATE";
         command.ExecuteNonQuery();
+    }
+
+    // Runs what another process does once, after the first read of the catalog.
+    private sealed class CatalogReader(IDatabaseSchemaReader inner, Func<Task> afterFirstRead) : IDatabaseSchemaReader
+    {
+        private bool _read;
+
+        public async Task<DatabaseSchema> ReadAsync(System.Data.Common.DbConnection connection, CancellationToken cancellationToken = default)
+        {
+            var schema = await inner.ReadAsync(connection, cancellationToken);
+            if (!_read)
+            {
+                _read = true;
+                await afterFirstRead();
+            }
+
+            return schema;
+        }
     }
 
     [GeneratedRegex(@"^\s*GO\s*$", RegexOptions.Multiline)]

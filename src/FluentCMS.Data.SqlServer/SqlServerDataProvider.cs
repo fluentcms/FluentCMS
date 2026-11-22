@@ -80,7 +80,7 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
     {
         if (!await context.GetService<IRelationalDatabaseCreator>().ExistsAsync(cancellationToken))
         {
-            return null;
+            return new UncreatedDatabase(context);
         }
 
         await context.Database.OpenConnectionAsync(cancellationToken);
@@ -89,29 +89,47 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
             var result = await RunAsync(
                 context,
                 "DECLARE @result int; EXEC @result = sp_getapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session', @LockMode = 'Exclusive', @LockTimeout = -1; SELECT @result",
+                NoTimeout,
                 cancellationToken);
             return result >= 0 ? new MigrationsLock(context) : throw new InvalidOperationException($"sp_getapplock answered {result} for __EFMigrationsLock.");
         }
         catch
         {
+            // The server may have granted the lock before the failure or cancellation, so the session is ended, not pooled.
+            ClearPool(context);
             await context.Database.CloseConnectionAsync();
             throw;
         }
     }
 
-    // With no command timeout: the runner bounds the wait.
-    private static async Task<int> RunAsync(DbContext context, string sql, CancellationToken cancellationToken)
+    // EF takes a share of its own, which it leaves behind when it cannot create its history table, and when its acquire
+    // fails it releases the runner's instead, so the release counts on neither and frees what the session holds.
+    private const string ReleaseEveryShare = """
+        DECLARE @result int = 0;
+        WHILE @result >= 0 AND APPLOCK_MODE('public', '__EFMigrationsLock', 'Session') <> 'NoLock'
+            EXEC @result = sp_releaseapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session';
+        SELECT @result;
+        """;
+
+    // The runner bounds the wait for the lock.
+    private const int NoTimeout = 0;
+
+    private const int ReleaseTimeoutSeconds = 5;
+
+    private static void ClearPool(DbContext context) => SqlConnection.ClearPool((SqlConnection)context.Database.GetDbConnection());
+
+    private static async Task<int> RunAsync(DbContext context, string sql, int timeoutSeconds, CancellationToken cancellationToken)
     {
         await using var command = context.Database.GetDbConnection().CreateCommand();
 #pragma warning disable CA2100 // Constants of this class.
         command.CommandText = sql;
 #pragma warning restore CA2100
-        command.CommandTimeout = 0;
+        command.CommandTimeout = timeoutSeconds;
         return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture);
     }
 
     // A pooled connection keeps its session, and with it the lock, until it is used again, so the lock is released first. A
-    // connection that broke has lost its session, and the lock with it.
+    // connection that broke has lost its session, and the lock with it, and a session whose release failed is ended.
     private sealed class MigrationsLock(DbContext context) : IAsyncDisposable
     {
         public async ValueTask DisposeAsync()
@@ -120,13 +138,32 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
             {
                 if (context.Database.GetDbConnection().State == ConnectionState.Open)
                 {
-                    await RunAsync(context, "DECLARE @result int; EXEC @result = sp_releaseapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session'; SELECT @result", CancellationToken.None);
+                    var result = await RunAsync(context, ReleaseEveryShare, ReleaseTimeoutSeconds, CancellationToken.None);
+                    if (result < 0)
+                    {
+                        throw new InvalidOperationException($"sp_releaseapplock answered {result} for __EFMigrationsLock.");
+                    }
                 }
+            }
+            catch
+            {
+                ClearPool(context);
+                throw;
             }
             finally
             {
                 await context.Database.CloseConnectionAsync();
             }
+        }
+    }
+
+    // EF creates the database and takes its lock on a connection it then pools, with the share if it failed to release it.
+    private sealed class UncreatedDatabase(DbContext context) : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync()
+        {
+            ClearPool(context);
+            return ValueTask.CompletedTask;
         }
     }
 
