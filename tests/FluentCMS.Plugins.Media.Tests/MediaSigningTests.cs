@@ -33,7 +33,7 @@ public sealed class MediaSigningTests
         keys[1].ShouldBe(keys[0]);
         later.ShouldBe(keys[0]);
         await using var scope = services.CreateAsyncScope();
-        var row = await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<SigningKey>().AsNoTracking().SingleAsync(Token);
+        var row = await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<SigningKey>().AsNoTracking().SingleAsync(item => item.Id == MediaSigning.KeyId, Token);
         row.Key.ShouldNotContain(Convert.ToBase64String(keys[0]));
         var unprotected = services.GetRequiredService<IDataProtectionProvider>().CreateProtector("FluentCMS.Plugins.Media.SigningKey").Unprotect(row.Key);
         Convert.FromBase64String(unprotected).ShouldBe(keys[0]);
@@ -69,7 +69,7 @@ public sealed class MediaSigningTests
             var protection = rotated.GetRequiredService<IDataProtectionProvider>();
             var restarted = ActivatorUtilities.CreateInstance<MediaSigning>(media.Services, protection);
             await using var check = media.Services.CreateAsyncScope();
-            var row = await check.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<SigningKey>().AsNoTracking().SingleAsync(Token);
+            var row = await check.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<SigningKey>().AsNoTracking().SingleAsync(item => item.Id == MediaSigning.KeyId, Token);
 
             KeyIdOf(protection.CreateProtector("rotation").Protect("probe")).ShouldNotBe(before.KeyId);
             KeyIdOf(row.Key).ShouldBe(before.KeyId);

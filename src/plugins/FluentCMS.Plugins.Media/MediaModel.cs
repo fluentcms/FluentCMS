@@ -108,6 +108,7 @@ internal sealed class Preset
 }
 
 // The one signing key of the instance, protected by Data Protection, in the row whose id is MediaSigning.KeyId.
+// The row MediaDimensionsJob.StateId holds where the check of the image sizes stands, in Key, and no key.
 internal sealed class SigningKey
 {
     public int Id { get; set; }
