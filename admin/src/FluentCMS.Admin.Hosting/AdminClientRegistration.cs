@@ -19,6 +19,9 @@ internal sealed partial class AdminClientRegistration(
     IHostEnvironment environment,
     IConfiguration configuration) : IPostConfigureOptions<ClientOptions>
 {
+    // What AdminClientRemoval knows the registration's own client by, once the admin is off.
+    public const string DisplayName = "FluentCMS admin";
+
     // Kestrel's address when nothing names one.
     private const string DefaultAddress = "http://localhost:5000";
 
@@ -54,7 +57,7 @@ internal sealed partial class AdminClientRegistration(
             return;
         }
 
-        var client = new ClientRegistration { DisplayName = "FluentCMS admin", Pool = ClientPool.Admins };
+        var client = new ClientRegistration { DisplayName = DisplayName, Pool = ClientPool.Admins };
         foreach (var hostBase in origins)
         {
             client.RedirectUris.Add(hostBase + AdminSite.Path + AdminSite.CallbackPath);
@@ -80,6 +83,14 @@ internal sealed partial class AdminClientRegistration(
             throw new FluentCmsConfigurationException(
                 HostErrorCodes.InvalidOption,
                 $"{FluentCmsOptions.Section}:{ReverseProxyOptions.Section}:{nameof(ReverseProxyOptions.PathBase)} is '{pathBase}', which the admin cannot take in its addresses; use letters, digits and - . _ ~ / only, or turn the admin off.");
+        }
+
+        // A browser resolves /. and /.. in the page's <base href> and the admin's addresses, which would leave the path base.
+        if (pathBase.Split('/').Any(segment => segment.Length > 0 && segment.All(character => character == '.')))
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.InvalidOption,
+                $"{FluentCmsOptions.Section}:{ReverseProxyOptions.Section}:{nameof(ReverseProxyOptions.PathBase)} is '{pathBase}', which has a segment of dots only; a browser reads . and .. in the admin's addresses as steps, so give each segment a character other than a dot, or turn the admin off.");
         }
 
         if (origin.Base is { } publicBase)

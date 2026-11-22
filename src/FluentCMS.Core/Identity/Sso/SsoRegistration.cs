@@ -54,6 +54,7 @@ internal static class SsoRegistration
         });
 
         services.AddSingleton<IConfigureOptions<OpenIdConnectOptions>, HandlerOptions>();
+        services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, ChainedEvents>();
         services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, PublicOriginCallback>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());
         services.AddScoped<SsoSignIn>();
@@ -97,10 +98,81 @@ internal static class SsoRegistration
                     options.Scope.Add(scope);
                 }
             }
+        }
+    }
 
-            options.Events.OnTokenValidated = KeepSubjectAndSession;
-            options.Events.OnRemoteFailure = BackToLoginAsync;
-            options.Events.OnRemoteSignOut = NamedSignInOnlyAsync;
+    // The events of a provider run FluentCMS's own first and then those the host set, as Events or as EventsType, so that a
+    // host's events drop neither the check of the remote sign-out nor the token's subject and session (#3225). It runs
+    // after every Configure, and before PublicOriginCallback, which wraps the events it leaves.
+    private sealed class ChainedEvents(SsoOptions sso) : IPostConfigureOptions<OpenIdConnectOptions>
+    {
+        public void PostConfigure(string? name, OpenIdConnectOptions options)
+        {
+            if (name is null || !sso.Providers.ContainsKey(name))
+            {
+                return;
+            }
+
+            options.Events = new SsoEvents(options.Events, options.EventsType);
+            options.EventsType = null;
+        }
+    }
+
+    private sealed class SsoEvents : OpenIdConnectEvents
+    {
+        private static readonly OpenIdConnectEvents NoEvents = new();
+
+        private readonly object _hostItem = new();
+        private readonly OpenIdConnectEvents? _host;
+        private readonly Type? _hostType;
+
+        public SsoEvents(OpenIdConnectEvents? host, Type? hostType)
+        {
+            (_host, _hostType) = (host, hostType);
+            OnAuthenticationFailed = context => Host(context.HttpContext).AuthenticationFailed(context);
+            OnAuthorizationCodeReceived = context => Host(context.HttpContext).AuthorizationCodeReceived(context);
+            OnMessageReceived = context => Host(context.HttpContext).MessageReceived(context);
+            OnPushAuthorization = context => Host(context.HttpContext).PushAuthorization(context);
+            OnRedirectToIdentityProvider = context => Host(context.HttpContext).RedirectToIdentityProvider(context);
+            OnRedirectToIdentityProviderForSignOut = context => Host(context.HttpContext).RedirectToIdentityProviderForSignOut(context);
+            OnSignedOutCallbackRedirect = context => Host(context.HttpContext).SignedOutCallbackRedirect(context);
+            OnTokenResponseReceived = context => Host(context.HttpContext).TokenResponseReceived(context);
+            OnUserInformationReceived = context => Host(context.HttpContext).UserInformationReceived(context);
+            OnAccessDenied = context => Host(context.HttpContext).AccessDenied(context);
+            OnTicketReceived = context => Host(context.HttpContext).TicketReceived(context);
+            OnTokenValidated = async context =>
+            {
+                await KeepSubjectAndSession(context);
+                await Host(context.HttpContext).TokenValidated(context);
+            };
+            OnRemoteFailure = async context =>
+            {
+                await BackToLoginAsync(context);
+                await Host(context.HttpContext).RemoteFailure(context);
+            };
+            OnRemoteSignOut = async context =>
+            {
+                await NamedSignInOnlyAsync(context);
+                await Host(context.HttpContext).RemoteSignOut(context);
+            };
+        }
+
+        // A type is resolved once a request, as the handler resolves EventsType.
+        private OpenIdConnectEvents Host(HttpContext http)
+        {
+            if (_hostType is null)
+            {
+                return _host ?? NoEvents;
+            }
+
+            if (http.Items.TryGetValue(_hostItem, out var resolved) && resolved is OpenIdConnectEvents events)
+            {
+                return events;
+            }
+
+            events = (OpenIdConnectEvents)http.RequestServices.GetRequiredService(_hostType);
+            http.Items[_hostItem] = events;
+            return events;
         }
 
         // The provider's front-channel logout ends the sign-in on the hosted pages, the admin session, only when it carries
@@ -139,6 +211,7 @@ internal static class SsoRegistration
             await services.GetRequiredService<UserSessions>().EndAsync(userId, CmsSignInManager.ServerSession(cookie.Properties!), CancellationToken.None);
             await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
             SsoLog.RemoteSignOut(logger, context.Scheme.Name, userId);
+            await services.GetRequiredService<SessionEvents>().SignInEndedAsync(context.HttpContext, members: false, userId, cookie.Principal!, SessionEndReasons.RemoteSignOut, bySystem: true);
         }
 
         // The handler's message keeps the first of several values of a parameter, so a repeated one could hide another.

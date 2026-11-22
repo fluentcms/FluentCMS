@@ -612,11 +612,22 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
             .HasFilter("status = 'delivered'")
             .HasDatabaseName("ix_cms_outbox_delivered");
 
-        // Over failed rows only, in the order of the dead-letter list, newest first and then by id, which its purge and the
-        // prune walk too. Named, since ix_cms_outbox_pending has the same columns and an unnamed one would configure that.
+        // Over failed rows only, in the order of the dead-letter list, newest first and then by id. Named, since
+        // ix_cms_outbox_pending has the same columns and an unnamed one would configure that.
         entity.HasIndex(message => new { message.Sequence, message.Id }, "ix_cms_outbox_failed")
             .IsDescending(true, false)
             .HasFilter("status = 'failed'");
+
+        // For the prune of failed rows, which seeks those that failed before its time; the attempts tell the rows it keeps,
+        // owed to a missing or disabled plugin, without a read of the row.
+        entity.HasIndex(message => new { message.AvailableAt, message.Attempts })
+            .HasFilter("status = 'failed'")
+            .HasDatabaseName("ix_cms_outbox_failed_available_at");
+
+        // For the purge of one handler's failed rows.
+        entity.HasIndex(message => message.Handler)
+            .HasFilter("status = 'failed'")
+            .HasDatabaseName("ix_cms_outbox_failed_handler");
     }
 
     private void MapActivity(EntityTypeBuilder<ActivityRow> entity)

@@ -72,9 +72,14 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
                     return result;
                 }
 
-                if (!string.Equals(before.SecurityStamp, user.SecurityStamp, StringComparison.Ordinal))
+                if (!string.Equals(before.SecurityStamp, user.SecurityStamp, StringComparison.Ordinal)
+                    && await sessions.RevokeAllAsync(user.Id, cancellationToken) > 0)
                 {
-                    await sessions.RevokeAllAsync(user.Id, cancellationToken);
+                    var reason = before.DeactivatedAt is null && user.DeactivatedAt is not null ? SessionEndReasons.Deactivated
+                        : !string.Equals(before.PasswordHash, user.PasswordHash, StringComparison.Ordinal) ? SessionEndReasons.PasswordChanged
+                        : logins.Exists(login => !login.Linked) ? SessionEndReasons.LoginRemoved
+                        : SessionEndReasons.SecurityChanged;
+                    await changes.RaiseAsync(new UserSessionsEndedEvent(user.Id, user.UserName ?? "", reason, null), cancellationToken);
                 }
 
                 if (before.DeactivatedAt is null && user.DeactivatedAt is not null)

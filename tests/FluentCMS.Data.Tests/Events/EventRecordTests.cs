@@ -64,6 +64,8 @@ public sealed class EventRecordTests
         new MemberGroupDeletedEvent(Guid.Parse("00000000-0000-0000-0000-0000000000d1"), "gold"),
         new MemberLoginSucceededEvent(Entry, "mia@example.com", MemberLoginMethods.Password, "198.51.100.9"),
         new MemberLoginFailedEvent(null, null, MemberLoginMethods.DirectLogin, LoginFailureReasons.UnknownUser, "198.51.100.9"),
+        new UserSessionsEndedEvent(Entry, "ann", SessionEndReasons.Revoked, Guid.Parse("00000000-0000-0000-0000-0000000000f1")),
+        new MemberSessionsEndedEvent(Entry, "mia@example.com", SessionEndReasons.SignedOut, null),
     ];
 
     [Theory]
@@ -138,6 +140,7 @@ public sealed class EventRecordTests
             "MemberLoginSucceededEvent",
             "MemberLoginUnlinkedEvent",
             "MemberRegisteredEvent",
+            "MemberSessionsEndedEvent",
             "MemberUpdatedEvent",
             "MemberVerifiedEvent",
             "PluginDisabledEvent",
@@ -151,6 +154,7 @@ public sealed class EventRecordTests
             "UserLoginLinkedEvent",
             "UserLoginUnlinkedEvent",
             "UserRoleChangedEvent",
+            "UserSessionsEndedEvent",
             "UserTwoFactorResetEvent",
             "UserUpdatedEvent",
         ]);

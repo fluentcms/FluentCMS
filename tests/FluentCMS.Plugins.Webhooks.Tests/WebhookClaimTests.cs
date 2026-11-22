@@ -27,6 +27,7 @@ public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<Webh
         await using var receiver = await TestReceiver.StartAsync();
         var fault = new FailFirstResult();
         await using var host = Host().Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<WebhooksPlugin>>(options => options.AddInterceptors(fault)));
+        await MaintainedAsync(host);
         using var client = await AdminAsync(host);
         await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } });
         var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
@@ -102,6 +103,7 @@ public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<Webh
         await using var receiver = await TestReceiver.StartAsync();
         var claim = new ClaimBefore(before);
         await using var host = Host().Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<WebhooksPlugin>>(options => options.AddInterceptors(claim)));
+        await MaintainedAsync(host);
         using var client = await AdminAsync(host);
         var webhook = Id(await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
         var attempt = new WebhookAttempt(webhook, Guid.CreateVersion7(), Guid.CreateVersion7(), "content.published", 1, Manual: false, """{"id":1}""");
@@ -138,16 +140,16 @@ public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<Webh
         var scheduler = host.Services.GetRequiredService<IJobScheduler>();
         host.Time.Set(crashed.CreatedAt + Abandoned - TimeSpan.FromSeconds(1));
         await scheduler.EnqueueAsync<WebhookQueueJob, WebhookQueuePayload>(new WebhookQueuePayload(), cancellationToken: Token);
-        (await RunDueJobsAsync(host)).ShouldBe(1, "the queue job leaves a queue alone while its claim is in flight");
+        (await RunDueJobsAsync(host, WebhookQueueJob.Type, WebhookDeliveryJob.Type)).ShouldBe(1, "the queue job leaves a queue alone while its claim is in flight");
         receiver.Requests.ShouldBeEmpty("the claim of another attempt is in flight until it is abandoned");
 
         // No job of the claim wakes the delivery, so the queue job does once the queue has stalled.
         host.Time.Set(crashed.CreatedAt + Abandoned);
         await scheduler.EnqueueAsync<WebhookQueueJob, WebhookQueuePayload>(new WebhookQueuePayload(), cancellationToken: Token);
-        (await RunDueJobsAsync(host)).ShouldBe(1, "an abandoned claim alone is not a stalled queue");
+        (await RunDueJobsAsync(host, WebhookQueueJob.Type, WebhookDeliveryJob.Type)).ShouldBe(1, "an abandoned claim alone is not a stalled queue");
         host.Time.Set(crashed.CreatedAt + WebhookQueueJob.StalledAfter + TimeSpan.FromSeconds(1));
         await scheduler.EnqueueAsync<WebhookQueueJob, WebhookQueuePayload>(new WebhookQueuePayload(), cancellationToken: Token);
-        (await RunDueJobsAsync(host)).ShouldBe(2);
+        (await RunDueJobsAsync(host, WebhookQueueJob.Type, WebhookDeliveryJob.Type)).ShouldBe(2);
         var request = receiver.Requests.ShouldHaveSingleItem();
         request.Headers[WebhookSender.DeliveryHeader].ShouldNotBe(crashed.DeliveryId.ToString("D"));
         var taken = (await DeliveriesAsync(host, webhook)).Single(delivery => delivery.Id == crashed.Id);
@@ -165,6 +167,36 @@ public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<Webh
         deliveries.Where(delivery => delivery.DeliveryId == crashed.DeliveryId).Select(delivery => (delivery.Attempt, delivery.State))
             .ShouldBe([(1, DeliveryStates.Failed), (2, DeliveryStates.Succeeded)]);
         deliveries.ShouldNotContain(delivery => delivery.State == DeliveryStates.Pending);
+    }
+
+    // The attempt that follows a taken-over claim queues at the time of that claim, not at the time it runs, so it goes ahead
+    // of the events that came after the claim and still wait (#3380).
+    [Fact]
+    public async Task TheAttemptAfterATakenOverClaimGoesAheadOfTheEventsThatCameAfterIt()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        var host = await hosts.HostAsync();
+        using var client = await AdminAsync(host);
+        var webhook = Id(await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
+        var crashed = await ClaimAsync(host, webhook, manual: false);
+        var scheduler = host.Services.GetRequiredService<IJobScheduler>();
+
+        // The runner's retry of the crashed job takes its claim over and schedules the next attempt.
+        host.Time.Advance(Abandoned);
+        await scheduler.EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(WebhookDeliveryJob.AttemptOf(crashed), WebhookDeliveryJob.Options(DefaultSite.Id), Token);
+        (await RunDueJobsAsync(host)).ShouldBe(1);
+        receiver.Requests.ShouldBeEmpty();
+
+        // Two events that came after the claim wait in the queue, their jobs not run yet.
+        var later = await QueuedAsync(host, webhook, crashed.CreatedAt + TimeSpan.FromSeconds(1), """{"n":1}""");
+        var latest = await QueuedAsync(host, webhook, crashed.CreatedAt + TimeSpan.FromSeconds(2), """{"n":2}""");
+
+        host.Time.Advance(WebhookDeliveryJob.Retries[0]);
+        (await RunDueJobsAsync(host)).ShouldBe(3, "the next attempt, then the job of each event it wakes");
+        receiver.Requests.Select(request => request.Body).ShouldBe([crashed.RequestBody, later.RequestBody, latest.RequestBody]);
+        receiver.Requests[0].Headers[WebhookSender.DeliveryHeader].ShouldBe(crashed.DeliveryId.ToString("D"));
+        (await DeliveriesAsync(host, webhook)).Where(delivery => delivery.DeliveryId == crashed.DeliveryId).Select(delivery => (delivery.Attempt, delivery.State))
+            .ShouldBe([(1, DeliveryStates.Failed), (2, DeliveryStates.Succeeded)]);
     }
 
     [Fact]
@@ -209,6 +241,28 @@ public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<Webh
         database.Add(claim);
         await database.SaveChangesAsync(Token);
         return claim;
+    }
+
+    // An attempt queued for an event of the time given, as its job leaves it before the claim.
+    private static async Task<WebhookDelivery> QueuedAsync(FluentCmsTestHost host, Guid webhook, DateTimeOffset at, string body)
+    {
+        var queued = new WebhookDelivery
+        {
+            Id = Guid.CreateVersion7(),
+            DeliveryId = Guid.CreateVersion7(),
+            WebhookId = webhook,
+            EventId = Guid.CreateVersion7(),
+            Event = "content.published",
+            Attempt = 1,
+            State = DeliveryStates.Queued,
+            RequestBody = body,
+            CreatedAt = at,
+        };
+        await using var scope = host.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>();
+        database.Add(queued);
+        await database.SaveChangesAsync(Token);
+        return queued;
     }
 
     // Fails the first write of a result, after its attempt was sent.
