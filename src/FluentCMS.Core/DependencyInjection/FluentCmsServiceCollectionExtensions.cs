@@ -61,6 +61,10 @@ public static class FluentCmsServiceCollectionExtensions
     private const string OutboxSection = "Events:Outbox";
     private const string ActivitySection = "Activity";
 
+    // A scheduled publish or unpublish changes one entry, so this is far past what it takes; it only frees the worker of one
+    // that hangs. The runner's rules then retry it, and on its last attempt it is dead-lettered and its schedule failed.
+    private static readonly TimeSpan ScheduledChangeTimeout = TimeSpan.FromMinutes(5);
+
     public static IServiceCollection AddFluentCms(this IServiceCollection services, Action<FluentCmsBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -145,11 +149,14 @@ public static class FluentCmsServiceCollectionExtensions
 
         services.AddSingleton<RoleVersionInterceptor>();
         services.AddSingleton<LeaseRenewalInterceptor>();
+        services.AddScoped<HookScopeGuard>();
 
         var contentMigrations = builder.ContentMigrationsAssembly ?? Assembly.GetEntryAssembly() ?? typeof(CmsDbContext).Assembly;
         var pluginModels = plugins.Contributions.Models;
         services.AddDbContext<CmsDbContext>((serviceProvider, options) =>
         {
+            // Ahead of the provider's interceptors, so that a refused write has begun no transaction and renewed no lease.
+            options.AddInterceptors(serviceProvider.GetRequiredService<HookScopeGuard>());
             ContentMigrations.Configure(options, provider, serviceProvider.GetRequiredService<SchemaModel>(), contentMigrations, pluginModels);
             options.AddInterceptors(serviceProvider.GetRequiredService<RoleVersionInterceptor>());
             LeaseRenewalInterceptor.AddTo(options, serviceProvider, provider);
@@ -236,6 +243,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddSingleton<EntryCanonicalizer>();
         services.TryAddSingleton<EntryComposer>();
         services.TryAddSingleton<ResponseRichText>();
+        services.AddFluentCmsOptions(ContentWriteOptions.Section, HostErrorCodes.InvalidOption, new ContentWriteOptions(), content => content.Validate());
         services.AddScoped<HookPipeline>();
         services.AddScoped<ValidationPipeline>();
         services.AddScoped<EntryStore>();
@@ -267,8 +275,8 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddHostedService<JobRunnerHostedService>();
 
         builder.Jobs.AddJob<TrashPurgeJob, TrashPurgePayload>(TrashPurgeJob.Type, TrashPurgeJob.AttemptTimeout);
-        builder.Jobs.AddJob<ScheduledPublishJob, ScheduledPayload>(ScheduledPublishJob.Type);
-        builder.Jobs.AddJob<ScheduledUnpublishJob, ScheduledPayload>(ScheduledUnpublishJob.Type);
+        builder.Jobs.AddJob<ScheduledPublishJob, ScheduledPayload>(ScheduledPublishJob.Type, ScheduledChangeTimeout);
+        builder.Jobs.AddJob<ScheduledUnpublishJob, ScheduledPayload>(ScheduledUnpublishJob.Type, ScheduledChangeTimeout);
         builder.Events.AddHandler<JobDeadLetteredEvent, ScheduleDeadLetterHandler>();
         builder.Events.AddHandler<SiteUpdatedEvent, SiteCacheInvalidation>();
         services.AddHostedService<TrashPurgeScheduleService>();
@@ -280,8 +288,8 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddHostedService<OidcPruneScheduleService>();
         builder.Jobs.AddJob<UnverifiedMembersJob, UnverifiedMembersPayload>(UnverifiedMembersJob.Type, UnverifiedMembersJob.AttemptTimeout);
         builder.Jobs.Options.Queues.TryAdd(AccountMail.Queue, AccountMail.Workers);
-        builder.Jobs.AddJob<MemberMailJob, MemberMailRequest>(MemberMailJob.Type);
-        builder.Jobs.AddJob<PasswordResetMailJob, PasswordResetMailRequest>(PasswordResetMailJob.Type);
+        builder.Jobs.AddJob<MemberMailJob, MemberMailRequest>(MemberMailJob.Type, AccountMail.AttemptTimeout);
+        builder.Jobs.AddJob<PasswordResetMailJob, PasswordResetMailRequest>(PasswordResetMailJob.Type, AccountMail.AttemptTimeout);
 
         services.AddFluentCmsOptions(IdempotencyOptions.Section, HostErrorCodes.InvalidOption, builder.Idempotency, idempotency => idempotency.Validate());
         services.AddSingleton<IdempotencyStore>();
@@ -290,6 +298,8 @@ public static class FluentCmsServiceCollectionExtensions
 
         builder.Events.Outbox.Validate();
         builder.Jobs.Options.Queues.TryAdd(OutboxDrainJob.Queue, 1);
+        // No attempt timeout: a drain runs for as long as rows are due, and cuts off each delivery itself at DeliveryTimeout,
+        // on a thread of its own, so no handler holds it. A limit would only end a long drain that the sweep starts again.
         builder.Jobs.AddJob<OutboxDrainJob, OutboxDrainPayload>(OutboxDrainJob.Type);
         builder.Jobs.AddJob<OutboxPruneJob, OutboxPrunePayload>(OutboxPruneJob.Type, OutboxPruneJob.AttemptTimeout);
         services.AddFluentCmsOptions(OutboxSection, EventErrorCodes.InvalidOutboxOptions, builder.Events.Outbox, outbox => outbox.Validate());

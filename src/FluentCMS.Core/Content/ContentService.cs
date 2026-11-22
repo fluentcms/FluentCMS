@@ -21,6 +21,7 @@ using FluentCMS.Schema;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Content;
@@ -56,6 +57,7 @@ internal sealed partial class ContentService(
     IDataProvider provider,
     TimeProvider time,
     TransferImportMode importMode,
+    IServiceScopeFactory scopes,
     ILogger<ContentService> logger) : IContentService
 {
     internal const int DeadlockReruns = 5;
@@ -324,13 +326,14 @@ internal sealed partial class ContentService(
         var oneLocale = everyLocale ? await ResolveLocaleAsync(site, null, cancellationToken) : locale;
 
         var bound = query with { Site = site, Locale = oneLocale };
+        var budget = new PopulateBudget();
         IReadOnlyList<ContentDocument> found = [];
         ContentQueryResult? page = null;
         if (!everyLocale || id is null)
         {
-            page = trashed
-                ? await engine.ExecuteTrashAsync(typeName, bound, everySystemField, cancellationToken)
-                : await engine.ExecuteAsync(typeName, bound, everySystemField, known, cancellationToken);
+            page = trashed ? await engine.ExecuteTrashAsync(typeName, bound, everySystemField, budget, cancellationToken)
+                : everyLocale ? await engine.ExecuteEveryLocaleAsync(typeName, bound, await fallback.AnchorLocalesAsync(site, cancellationToken), cancellationToken)
+                : await engine.ExecuteAsync(typeName, bound, everySystemField, known, budget, cancellationToken);
             found = page.Items;
         }
 
@@ -342,7 +345,7 @@ internal sealed partial class ContentService(
         if (everyLocale)
         {
             var ids = id is { } single ? [single] : found.Select(entry => (Guid)entry["id"]!).ToList();
-            var items = await ReadEveryLocaleAsync(type, bound, ids, site, operation, access, cancellationToken);
+            var items = await ReadEveryLocaleAsync(type, bound, ids, site, operation, access, budget, cancellationToken);
             return new PagedResult<ContentDocument>(items, page?.Total, page?.Page, page?.PageSize ?? 1, page?.NextCursor) { SearchTruncated = page?.SearchTruncated ?? false };
         }
 
@@ -354,7 +357,7 @@ internal sealed partial class ContentService(
 
         if (type.Localized)
         {
-            found = await ApplyFallbackAsync(type, bound, found, id, site, locale, access, target, cancellationToken);
+            found = await ApplyFallbackAsync(type, bound, found, id, site, locale, access, target, budget, cancellationToken);
         }
 
         if (!ResponseRichText.IsJson(query.RichTextFormat))
@@ -365,18 +368,18 @@ internal sealed partial class ContentService(
         return new PagedResult<ContentDocument>(found, page?.Total, page?.Page, page?.PageSize ?? found.Count, page?.NextCursor) { SearchTruncated = page?.SearchTruncated ?? false };
     }
 
-    private async Task<IReadOnlyList<ContentDocument>> ApplyFallbackAsync(SchemaType type, ContentQuery query, IReadOnlyList<ContentDocument> found, Guid? id, SiteId site, string locale, FieldAccess access, AccessTarget target, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<ContentDocument>> ApplyFallbackAsync(SchemaType type, ContentQuery query, IReadOnlyList<ContentDocument> found, Guid? id, SiteId site, string locale, FieldAccess access, AccessTarget target, PopulateBudget budget, CancellationToken cancellationToken)
     {
         var chain = await fallback.ChainAsync(site, locale, query.Fallback, cancellationToken);
         if (found.Count > 0 || id is not { } single || query.Fallback == LocaleFallback.None)
         {
-            await fallback.ApplyAsync(type.Name, query, found, chain, cancellationToken);
+            await fallback.ApplyAsync(type.Name, query, found, chain, budget, cancellationToken);
             return found;
         }
 
         // An entry read by id that has no row in this locale is served by the first locale of the chain that has one,
         // and every localized field it holds then counts as fallen back. A list does not do this: decision 44.
-        if (await fallback.ReadFromChainAsync(type.Name, query, single, chain, cancellationToken) is not { } served)
+        if (await fallback.ReadFromChainAsync(type.Name, query, single, chain, budget, cancellationToken) is not { } served)
         {
             return [];
         }
@@ -397,9 +400,9 @@ internal sealed partial class ContentService(
         return [served];
     }
 
-    private async Task<List<ContentDocument>> ReadEveryLocaleAsync(SchemaType type, ContentQuery query, IReadOnlyList<Guid> ids, SiteId site, OperationContext operation, FieldAccess access, CancellationToken cancellationToken)
+    private async Task<List<ContentDocument>> ReadEveryLocaleAsync(SchemaType type, ContentQuery query, IReadOnlyList<Guid> ids, SiteId site, OperationContext operation, FieldAccess access, PopulateBudget budget, CancellationToken cancellationToken)
     {
-        var byEntry = await fallback.ReadAllAsync(type.Name, query with { Fallback = LocaleFallback.None }, ids, site, cancellationToken);
+        var byEntry = await fallback.ReadAllAsync(type.Name, query with { Fallback = LocaleFallback.None }, ids, site, budget, cancellationToken);
         List<ContentDocument> items = [];
         Dictionary<string, List<ContentDocument>> byLocale = new(StringComparer.Ordinal);
         foreach (var id in ids)
@@ -472,9 +475,13 @@ internal sealed partial class ContentService(
         return new WriteScope(operation, type, operation.Site, resolved, target, permissions, new FieldAccess(permissions, schema));
     }
 
-    // A flow joins only the write it started, so work it left running after that write cannot join a later one.
+    // A flow joins only the write it started, so work it left running after that write cannot join a later one. Once a hook
+    // of the scope was left running it may still use the scope's context and may call back in here, joining whatever write
+    // runs then, so no write runs in the scope after it, and none that ran then commits.
     private async Task<T> OneAtATimeAsync<T>(Func<Task<T>> write)
     {
+        hooks.ThrowIfLeftRunning();
+
         if (Volatile.Read(ref _write) is { } running && ReferenceEquals(_writeOfFlow.Value, running))
         {
             return await write();
@@ -508,18 +515,33 @@ internal sealed partial class ContentService(
 
     private async Task<T> TransactAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken)
     {
+        var tracked = TrackerSnapshot.Take(context);
         if (context.Database.CurrentTransaction is { } outer)
         {
-            return await InSavepointAsync(outer, work, cancellationToken);
+            try
+            {
+                return await InSavepointAsync(outer, work, cancellationToken);
+            }
+            catch (Exception) when (hooks.LeftRunning)
+            {
+                tracked.Restore();
+                throw;
+            }
         }
 
-        var tracked = TrackerSnapshot.Take(context);
         var keyRerun = false;
         for (var deadlocks = 0; ; )
         {
             try
             {
                 return await InOwnTransactionAsync(work, cancellationToken);
+            }
+            catch (Exception) when (hooks.LeftRunning)
+            {
+                // Never run again, and whatever it failed with, what it left tracked goes: the hook left running still holds
+                // the context, and so may a caller that goes on after the failure.
+                tracked.Restore();
+                throw;
             }
             catch (Exception exception) when (!keyRerun && provider.IsUniqueViolation(exception))
             {
@@ -557,6 +579,7 @@ internal sealed partial class ContentService(
             {
                 result = await work();
                 await StageAsync([.. _pending], cancellationToken);
+                hooks.ThrowIfLeftRunning();
                 await transaction.CommitAsync(CancellationToken.None);
                 committed = true;
                 _commits++;
@@ -599,6 +622,9 @@ internal sealed partial class ContentService(
             {
                 await StageAsync([.. _pending.Skip(pending)], cancellationToken);
             }
+
+            // In the try, so that a savepoint that may not be released is rolled back.
+            hooks.ThrowIfLeftRunning();
         }
         catch
         {
@@ -756,7 +782,7 @@ internal sealed partial class ContentService(
 
                 (working, var fields) = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, Client(refused), writable, document), cancellationToken);
 
-                var sharedChanged = type.Localized && type.Fields.Any(field => !field.Localizable && !JsonNode.DeepEquals(fields[field.Name], EntryJson.ToNode(stored[field.Name])));
+                var sharedChanged = SharedChanged(type, fields, stored);
                 var next = expectedVersion + 1;
                 var status = document.Status;
                 if (document.PublishedVersion is not null)
@@ -766,28 +792,20 @@ internal sealed partial class ContentService(
                     status = SameFields(type, fields, published) ? EntryStatus.Published : EntryStatus.Modified;
                 }
 
+                // Adding a locale writes the shared row as this write read it, so it moves the other locales as a change would.
+                var movesShared = sharedChanged || addsLocale;
+                var advanced = await AdvanceVersionsAsync(write, id, addsLocale ? null : document, expectedVersion, status, movesShared ? documents : [], cancellationToken);
                 if (addsLocale)
                 {
                     document.DraftVersion = next;
-                }
-                else if (await store.AdvanceVersionAsync(id, document.Locale, expectedVersion, status, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken))
-                {
-                    document.DraftVersion = next;
-                    document.Status = status;
-                    document.UpdatedAt = write.Operation.Timestamp;
-                    document.UpdatedBy = write.Operation.AuditPrincipal.Id;
-                }
-                else
-                {
-                    throw await ConflictAsync(write, id, expectedVersion, await store.DraftVersionAsync(id, document.Locale, cancellationToken), cancellationToken);
                 }
 
                 // The write changes a row of its own type, which a row rule on a relation to that type may read.
                 known.Readable.Forget(type);
                 known.References = await store.WriteDraftAsync(type, document, isNewDocument: addsLocale, rows, working, fields, write.Operation, cancellationToken);
-                if (sharedChanged)
+                if (movesShared)
                 {
-                    await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
+                    await RecomputeOtherLocalesAsync(write, document, cancellationToken, advanced, sharedChanged ? null : AddedMessage(document));
                 }
 
                 var skipped = await SkipStalePublishesAsync(write, sharedChanged ? documents : [document], document, cancellationToken);
@@ -1212,6 +1230,8 @@ internal sealed partial class ContentService(
     }
 
     private static List<string> LocalesOf(List<Document> documents) => [.. documents.Select(document => document.Locale).Order(StringComparer.Ordinal)];
+
+    private static string AddedMessage(Document document) => string.Create(CultureInfo.InvariantCulture, $"Added the locale {document.Locale}.");
 
     private async Task<VersionConflictException> ConflictAsync(WriteScope write, Guid id, int expected, int current, CancellationToken cancellationToken) =>
         new(expected, current, await ReadDraftOrNullAsync(write, id, write.Locale, LocaleFallback.None, cancellationToken));

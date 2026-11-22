@@ -6,6 +6,7 @@ using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema.FieldTypes;
+using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Events;
@@ -19,7 +20,7 @@ namespace FluentCMS.Core.Content;
 
 // The rows behind one entry: cms_document, the content tables, cms_reference and cms_version. It knows nothing of
 // permissions; ContentService decides, and calls this inside its transaction.
-internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichTextOptions richText, ILogger<EntryStore> logger)
+internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichTextOptions richText, IDataProvider provider, ILogger<EntryStore> logger)
 {
     private const string MediaTarget = "media";
 
@@ -132,6 +133,58 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
     // The entry as it is stored, hidden fields included, in the form EntryCanonicalizer gives. Not for a response.
     public async Task<ContentDocument> ReadAsync(SchemaType type, Document row, short state, CancellationToken cancellationToken) =>
         (await ReadStoredAsync(type, row, state, cancellationToken)).Entry;
+
+    // The stored states of the rows of many entries of one type, as ReadAsync gives each, in three queries whatever their
+    // number: the shared rows, the rows of the locales, and the references, each of every id at once. For an export.
+    public async Task<Dictionary<(Guid Id, string Locale, short State), ContentDocument>> ReadManyAsync(SchemaType type, IReadOnlyCollection<Document> rows, IReadOnlyList<short> states, CancellationToken cancellationToken)
+    {
+        List<Guid> ids = [.. rows.Select(row => row.DocumentId).Distinct()];
+        List<short> wanted = [.. states];
+        var shared = (await RowsOfAsync(StorageNames.Table(type), ids, wanted, cancellationToken))
+            .ToDictionary(row => ((Guid)row[StorageNames.DocumentId], (short)row[StorageNames.State]));
+        var localized = type.Localized
+            ? (await RowsOfAsync(StorageNames.LocaleTable(type), ids, wanted, cancellationToken))
+                .ToDictionary(row => ((Guid)row[StorageNames.DocumentId], (string)row[StorageNames.Locale], (short)row[StorageNames.State]))
+            : [];
+
+        var typeName = type.Name;
+        var references = (await context.References.AsNoTracking()
+            .Where(reference => reference.SourceType == typeName && ids.Contains(reference.SourceDocumentId) && wanted.Contains(reference.State))
+            .OrderBy(reference => reference.Position)
+            .ToListAsync(cancellationToken))
+            .ToLookup(reference => (reference.SourceDocumentId, reference.State));
+
+        Dictionary<(Guid Id, string Locale, short State), ContentDocument> read = [];
+        foreach (var row in rows)
+        {
+            foreach (var state in wanted)
+            {
+                var byField = references[(row.DocumentId, state)]
+                    .Where(reference => reference.Locale == "" || reference.Locale == row.Locale)
+                    .ToLookup(reference => (reference.Field, reference.Locale));
+                ContentDocument entry = [];
+                ApplySystem(entry, row);
+                FillFields(
+                    type,
+                    type,
+                    "",
+                    entry,
+                    shared.GetValueOrDefault((row.DocumentId, state)),
+                    localized.GetValueOrDefault((row.DocumentId, row.Locale, state)),
+                    byField,
+                    row.Locale,
+                    []);
+                read[(row.DocumentId, row.Locale, state)] = entry;
+            }
+        }
+
+        return read;
+    }
+
+    private Task<List<Dictionary<string, object>>> RowsOfAsync(string table, List<Guid> ids, List<short> states, CancellationToken cancellationToken) =>
+        context.Rows(table).AsNoTracking()
+            .Where(row => ids.Contains(EF.Property<Guid>(row, StorageNames.DocumentId)) && states.Contains(EF.Property<short>(row, StorageNames.State)))
+            .ToListAsync(cancellationToken);
 
     // The draft and the rows it was read from, so that writing over it in the same transaction need not read them again.
     public Task<StoredDraft> ReadDraftAsync(SchemaType type, Document row, CancellationToken cancellationToken) =>
@@ -272,6 +325,32 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
         return affected == 1;
     }
 
+    // Another locale's swap when the shared fields move under it: its version, not its status, which the recompute decides.
+    public async Task<bool> AdvanceDraftVersionAsync(Guid id, string locale, int expected, DateTimeOffset at, Guid by, CancellationToken cancellationToken)
+    {
+        var next = expected + 1;
+        var affected = await context.Documents
+            .Where(document => document.DocumentId == id && document.Locale == locale && document.DraftVersion == expected)
+            .ExecuteUpdateAsync(
+                set => set
+                    .SetProperty(document => document.DraftVersion, next)
+                    .SetProperty(document => document.UpdatedAt, at)
+                    .SetProperty(document => document.UpdatedBy, by),
+                cancellationToken);
+
+        return affected == 1;
+    }
+
+    // A compare that locks the row and changes nothing, for a write that moves its own row after the ones ordered behind it.
+    public async Task<bool> HoldVersionAsync(Guid id, string locale, int expected, CancellationToken cancellationToken)
+    {
+        var affected = await context.Documents
+            .Where(document => document.DocumentId == id && document.Locale == locale && document.DraftVersion == expected)
+            .ExecuteUpdateAsync(set => set.SetProperty(document => document.DraftVersion, expected), cancellationToken);
+
+        return affected == 1;
+    }
+
     public Task SetTrashedAsync(Guid id, DateTimeOffset? at, Guid? by, CancellationToken cancellationToken) =>
         context.Documents.IgnoreQueryFilters()
             .Where(document => document.DocumentId == id)
@@ -332,6 +411,13 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
     // Returns the references written, in position order within each field.
     public async Task<IReadOnlyList<Reference>> WriteDraftAsync(SchemaType type, Document row, bool isNewDocument, StoredRows over, ContentDocument entry, JsonObject fields, OperationContext operation, CancellationToken cancellationToken, string? message = null)
     {
+        // A new row of a site waits for a deletion of that site that is under way, and a deletion waits for it, so that no
+        // entry is left in a site that is gone: one deleted on another instance, whose cache still has it, is refused here.
+        if (isNewDocument && row.SiteId is { } site && !await provider.LockSiteAsync(context, site, exclusive: false, cancellationToken))
+        {
+            throw new ValidationException([new ValidationError("site", SiteErrorCodes.SiteNotFound, $"There is no site {site}.")]);
+        }
+
         List<Reference> written = [];
         var author = EventSource.From(operation);
         await SaveOwnRowsAsync(
@@ -351,21 +437,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
 
                 written.AddRange(await ReplaceReferencesAsync(type, row, stored, entry, cancellationToken));
 
-                context.Versions.Add(new ContentVersion
-                {
-                    DocumentId = row.DocumentId,
-                    Locale = row.Locale,
-                    Number = row.DraftVersion,
-                    Snapshot = EntryJson.Text(fields),
-                    StatusAfter = row.Status == EntryStatus.Published ? EntryStatus.Modified : row.Status,
-                    AuthorId = author.ActorId,
-                    AuthorKind = author.ActorKind,
-                    AuthorName = ActivityText.Required(author.ActorName, ActivityText.ActorNameMaxLength),
-                    Origin = author.Origin,
-                    ClientId = author.ClientId,
-                    Message = message,
-                    CreatedAt = row.UpdatedAt,
-                });
+                context.Versions.Add(NewVersion(row, fields, author, message));
             },
             () => PruneVersionsAsync(type, row, cancellationToken),
             cancellationToken);
@@ -376,6 +448,33 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
 
         return written;
     }
+
+    // The version of a locale whose draft moved with the shared row, which a write in another locale changed.
+    public Task AddVersionAsync(SchemaType type, Document row, JsonObject fields, OperationContext operation, string message, CancellationToken cancellationToken) =>
+        SaveOwnRowsAsync(
+            () =>
+            {
+                context.Versions.Add(NewVersion(row, fields, EventSource.From(operation), message));
+                return Task.CompletedTask;
+            },
+            () => PruneVersionsAsync(type, row, cancellationToken),
+            cancellationToken);
+
+    private static ContentVersion NewVersion(Document row, JsonObject fields, EventSource author, string? message) => new()
+    {
+        DocumentId = row.DocumentId,
+        Locale = row.Locale,
+        Number = row.DraftVersion,
+        Snapshot = EntryJson.Text(fields),
+        StatusAfter = row.Status == EntryStatus.Published ? EntryStatus.Modified : row.Status,
+        AuthorId = author.ActorId,
+        AuthorKind = author.ActorKind,
+        AuthorName = ActivityText.Required(author.ActorName, ActivityText.ActorNameMaxLength),
+        Origin = author.Origin,
+        ClientId = author.ClientId,
+        Message = message,
+        CreatedAt = row.UpdatedAt,
+    };
 
     // Copies the draft rows of one locale, and the shared row they sit on, over the published ones.
     public Task CopyDraftToPublishedAsync(SchemaType type, Document row, CancellationToken cancellationToken) =>

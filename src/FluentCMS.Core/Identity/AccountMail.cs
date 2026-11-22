@@ -13,4 +13,8 @@ internal static class AccountMail
     public const int Workers = 2;
 
     public static readonly JobOptions Options = new() { Queue = Queue };
+
+    // Well past what a send takes, and the SMTP client's own limit of each step, so that only a sender that hangs is cut off
+    // and its worker freed for the other mail.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(5);
 }

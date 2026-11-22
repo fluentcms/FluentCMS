@@ -22,7 +22,9 @@ internal sealed partial class ContentService
 
     // Skipped when every locale of the package is in the instance as the package has it, a conflict when the instance's
     // copy of a locale is newer, unless overwrite. Anything else is written, and refused as any write would be.
-    internal async Task<TransferOutcome> ImportAsync(string typeName, TransferEntry entry, bool overwrite, CancellationToken cancellationToken)
+    // With authorsFromImporter the caller is the updater of each locale the import writes and the creator of each it creates;
+    // a locale the instance has keeps its own creator.
+    internal async Task<TransferOutcome> ImportAsync(string typeName, TransferEntry entry, bool overwrite, bool authorsFromImporter, CancellationToken cancellationToken)
     {
         using var span = Span("import", typeName);
 
@@ -68,7 +70,7 @@ internal sealed partial class ContentService
             await InTransactionAsync(
                 async () =>
                 {
-                    await WriteImportedAsync(type, entry, rows, cancellationToken);
+                    await WriteImportedAsync(type, entry, rows, authorsFromImporter, cancellationToken);
                     return importMode.DryRun ? throw new DryRunRollback() : true;
                 },
                 cancellationToken);
@@ -83,11 +85,12 @@ internal sealed partial class ContentService
 
     // The published states go first, each written as the draft and published, so that a locale whose draft has moved on is
     // then written again with its draft. A locale the package does not publish is unpublished.
-    private async Task WriteImportedAsync(SchemaType type, TransferEntry entry, List<Document> before, CancellationToken cancellationToken)
+    private async Task WriteImportedAsync(SchemaType type, TransferEntry entry, List<Document> before, bool authorsFromImporter, CancellationToken cancellationToken)
     {
+        var named = entry.Locales.Select(locale => locale.Locale).ToHashSet(StringComparer.Ordinal);
         foreach (var locale in entry.Locales.Where(locale => locale.Published is not null))
         {
-            await WriteImportedDraftAsync(type, entry.Id, locale.Locale, locale.Published!, cancellationToken);
+            await WriteImportedDraftAsync(type, entry.Id, locale.Locale, locale.Published!, named, cancellationToken);
             await PublishAsync(type.Name, entry.Id, LocaleOf(type, locale), expectedVersion: null, cancellationToken);
         }
 
@@ -103,11 +106,12 @@ internal sealed partial class ContentService
         {
             if (locale.Published is null || !JsonNode.DeepEquals(locale.DraftFields, locale.Published))
             {
-                await WriteImportedDraftAsync(type, entry.Id, locale.Locale, locale.DraftFields, cancellationToken);
+                await WriteImportedDraftAsync(type, entry.Id, locale.Locale, locale.DraftFields, named, cancellationToken);
             }
         }
 
         var written = await store.DocumentsAsync(type, entry.Id, Current().Site, trashed: false, cancellationToken);
+        var importer = Current().AuditPrincipal.Id;
         foreach (var locale in entry.Locales)
         {
             var row = written.Find(item => item.Locale == locale.Locale)!;
@@ -124,9 +128,9 @@ internal sealed partial class ContentService
                     draftVersion,
                     publishedVersion,
                     locale.CreatedAt,
-                    locale.CreatedBy,
+                    authorsFromImporter ? before.Find(item => item.Locale == row.Locale)?.CreatedBy ?? importer : locale.CreatedBy,
                     locale.UpdatedAt,
-                    locale.UpdatedBy,
+                    authorsFromImporter ? importer : locale.UpdatedBy,
                     publishedVersion is null ? null : locale.PublishedAt ?? row.PublishedAt,
                     locale.FirstPublishedAt ?? row.FirstPublishedAt),
                 cancellationToken);
@@ -165,8 +169,10 @@ internal sealed partial class ContentService
 
     // A draft of one locale, as an update by the system would write it: every field of the package, hidden and read-only ones
     // too, and a new entry under the id of the package. A field the package does not have, as when the instance has more,
-    // keeps what the entry holds, or takes its default on a new entry.
-    private async Task WriteImportedDraftAsync(SchemaType type, Guid id, string locale, JsonObject fields, CancellationToken cancellationToken)
+    // keeps what the entry holds, or takes its default on a new entry. named are the locales of the package, which take the
+    // version numbers it has; a locale of an existing entry that it does not name advances with its shared fields, as a
+    // write would advance it (#3265).
+    private async Task WriteImportedDraftAsync(SchemaType type, Guid id, string locale, JsonObject fields, HashSet<string> named, CancellationToken cancellationToken)
     {
         var documents = await store.DocumentsAsync(type, id, Current().Site, trashed: false, cancellationToken);
         var isNewEntry = documents.Count == 0;
@@ -220,27 +226,20 @@ internal sealed partial class ContentService
             status = SameFields(type, written, published) ? EntryStatus.Published : EntryStatus.Modified;
         }
 
+        var sharedChanged = !isNewEntry && SharedChanged(type, written, stored!);
+        var movesShared = sharedChanged || (!isNewEntry && existing is null);
+        var moved = movesShared ? documents.Where(other => !named.Contains(other.Locale)) : [];
+        var advanced = await AdvanceVersionsAsync(write, id, existing is null ? null : document, document.DraftVersion, status, moved, cancellationToken);
         if (existing is null)
         {
             document.DraftVersion = 1;
-        }
-        else if (await store.AdvanceVersionAsync(id, document.Locale, document.DraftVersion, status, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken))
-        {
-            document.DraftVersion++;
-            document.Status = status;
-            document.UpdatedAt = write.Operation.Timestamp;
-            document.UpdatedBy = write.Operation.AuditPrincipal.Id;
-        }
-        else
-        {
-            throw await ConflictAsync(write, id, document.DraftVersion, await store.DraftVersionAsync(id, document.Locale, cancellationToken), cancellationToken);
         }
 
         await store.WriteDraftAsync(type, document, isNewDocument: existing is null, draft?.Rows ?? StoredRows.None, working, written, write.Operation, cancellationToken);
         List<EntryChange> skipped = [];
         if (!isNewEntry)
         {
-            await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
+            await RecomputeOtherLocalesAsync(write, document, cancellationToken, advanced, sharedChanged ? null : AddedMessage(document));
             skipped = await SkipStalePublishesAsync(write, existing is null ? [.. documents, document] : documents, document, cancellationToken);
         }
 

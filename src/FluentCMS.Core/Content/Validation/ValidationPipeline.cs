@@ -7,7 +7,10 @@ namespace FluentCMS.Core.Content.Validation;
 
 public sealed class ValidationPipeline(SchemaModel model, IServiceProvider services)
 {
-    private readonly DeclarativeValidator _declarative = new(model, services.GetService(typeof(ContentEntryMapper)) as ContentEntryMapper ?? new ContentEntryMapper(model));
+    private readonly DeclarativeValidator _declarative = new(
+        model,
+        services.GetService(typeof(ContentEntryMapper)) as ContentEntryMapper ?? new ContentEntryMapper(model),
+        (services.GetService(typeof(ContentWriteOptions)) as ContentWriteOptions)?.MaxItems ?? ContentWriteOptions.DefaultMaxItems);
     private readonly ConcurrentDictionary<(Type Owner, string Field), Type?> _propertyTypes = new();
 
     public async ValueTask<ValidationResult> ValidateAsync(

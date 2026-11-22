@@ -1,8 +1,11 @@
 using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Storage;
+using FluentCMS.Data.Tests.Authorization;
 using FluentCMS.Data.Tests.Providers;
+using FluentCMS.Providers;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -139,8 +142,8 @@ public sealed class ContentServiceReadTests : IDisposable
         var entry = await _database.CreateAsync(Editor, new() { ["title"] = "Hello", ["subtitle"] = "Sub" });
         var role = _database.Database.AddRoleForTest(
             "PerLocale",
-            ("content.article.read", new Core.Authorization.PermissionConstraints { Locales = ["en"] }),
-            ("content.article.read", new Core.Authorization.PermissionConstraints { Locales = ["fr-CA"], Fields = ["title"] }));
+            ("content.article.read", new PermissionConstraints { Locales = ["en"] }),
+            ("content.article.read", new PermissionConstraints { Locales = ["fr-CA"], Fields = ["title"] }));
 
         var read = (await _database.GetAsync(WithRole(role), IdOf(entry), Draft("fr-CA")))!;
 
@@ -166,6 +169,192 @@ public sealed class ContentServiceReadTests : IDisposable
         ((ContentDocument)listed["locales"]!).Keys.ShouldBe(["en", "fr"]);
 
         (await _database.GetAsync(Editor, Guid.CreateVersion7(), Draft("all"))).ShouldBeNull();
+    }
+
+    // #3277: each entry once, one without a default-locale row too, matched, sorted, paged and counted by its row in the
+    // first locale of the site that has one.
+    [Fact]
+    public async Task AListOfEveryLocaleHoldsEachEntryOnceWhateverLocalesItHas()
+    {
+        var english = IdOf(await _database.CreateAsync(Editor, Titled("B english")));
+        await _database.UpdateAsync(Editor, english, Titled("A anglais"), 0, locale: "fr");
+        var french = IdOf(await _database.CreateAsync(Editor, Titled("C french"), locale: "fr"));
+        var canadian = IdOf(await _database.CreateAsync(Editor, Titled("A canadian"), locale: "fr-CA"));
+        await _database.UpdateAsync(Editor, canadian, Titled("D quebec"), 0, locale: "fr");
+
+        var all = new ContentQuery { Status = QueryStatus.Draft, Locale = "all", Sort = [new SortField("title")], Page = new PageRequest { Size = 2 } };
+        var first = await _database.QueryAsync(Editor, all);
+        first.Total.ShouldBe(3);
+        first.Items.Select(item => item["id"]).ShouldBe([english, french]);
+        ((ContentDocument)first.Items[1]["locales"]!).Keys.ShouldBe(["fr"]);
+
+        var next = await _database.QueryAsync(Editor, all with { Page = new PageRequest { Size = 2, WithTotal = false }, Cursor = first.NextCursor });
+        var last = next.Items.ShouldHaveSingleItem();
+        last["id"].ShouldBe(canadian);
+        ((ContentDocument)last["locales"]!).Keys.ShouldBe(["fr", "fr-CA"]);
+        next.NextCursor.ShouldBeNull();
+
+        (await _database.QueryAsync(Editor, all with { Page = new PageRequest { Number = 2, Size = 2 } })).Items.ShouldHaveSingleItem()["id"].ShouldBe(canadian);
+
+        // The filter asks the row the entry is matched by, which for an entry with an English row is that one.
+        (await _database.QueryAsync(Editor, all with { Filter = new FieldFilter("title", FilterOperator.Equal, "C french") })).Items.ShouldHaveSingleItem()["id"].ShouldBe(french);
+        (await _database.QueryAsync(Editor, all with { Filter = new FieldFilter("title", FilterOperator.Equal, "A anglais") })).Items.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AListOfEveryLocaleShowsNothingOfALocaleThePrincipalMayNotRead()
+    {
+        var english = IdOf(await _database.CreateAsync(Editor, Titled("Hello")));
+        await _database.UpdateAsync(Editor, english, Titled("Bonjour"), 0, locale: "fr");
+        var canadian = IdOf(await _database.CreateAsync(Editor, Titled("Allo"), locale: "fr-CA"));
+        await _database.CreateAsync(Editor, Titled("Only English"));
+        var role = _database.Database.AddRoleForTest("French", ("content.article.read", new PermissionConstraints { Locales = ["fr", "fr-CA"] }));
+
+        var page = await _database.QueryAsync(WithRole(role), new ContentQuery { Status = QueryStatus.Draft, Locale = "all", Sort = [new SortField("title")] });
+
+        page.Total.ShouldBe(2);
+        page.Items.Select(item => item["id"]).ShouldBe([canadian, english]);
+        page.Items.Select(item => ((ContentDocument)item["locales"]!).Keys.ShouldHaveSingleItem()).ShouldBe(["fr-CA", "fr"]);
+    }
+
+    // An English row the principal's rule hides does not anchor the entry: its French row, which it may read, does.
+    [Fact]
+    public async Task AListOfEveryLocaleAnchorsAnEntryInTheFirstLocaleWhoseRuleLetsItThrough()
+    {
+        using var database = new ServiceDatabase(cms => cms.Authorization.AddRowRule<Regional>("region", ctx => article => article.Region == ctx.Principal.Claim("region")));
+        var abroad = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Abroad", ["region"] = "us" }));
+        await database.UpdateAsync(Editor, abroad, Titled("A l'etranger"), 0, locale: "fr");
+        var local = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Local", ["region"] = "eu" }));
+        await database.CreateAsync(Editor, new() { ["title"] = "Elsewhere", ["region"] = "us" });
+        var role = database.Database.AddRoleForTest(
+            "Regional",
+            ("content.article.read", new PermissionConstraints { Locales = ["en"], RowRule = "region" }),
+            ("content.article.read", new PermissionConstraints { Locales = ["fr"] }));
+        var regional = AuthorizationDatabase.User([role], [TokenScopes.Management], claims: new() { ["region"] = "eu" });
+
+        var page = await database.QueryAsync(regional, new ContentQuery { Status = QueryStatus.Draft, Locale = "all", Sort = [new SortField("title")] });
+
+        page.Total.ShouldBe(2);
+        page.Items.Select(item => item["id"]).ShouldBe([abroad, local]);
+        ((ContentDocument)page.Items[0]["locales"]!).Keys.ShouldBe(["fr"]);
+        ((ContentDocument)page.Items[1]["locales"]!).Keys.ShouldBe(["en"]);
+    }
+
+    private sealed class Hits
+    {
+        public List<Guid> Ids { get; } = [];
+
+        public List<SearchRequest> Requests { get; } = [];
+    }
+
+    private sealed class FakeSearch(Hits hits) : ISearchIndex
+    {
+        public bool MatchesByField => true;
+
+        public Task<IReadOnlyList<Guid>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default)
+        {
+            hits.Requests.Add(request);
+            return Task.FromResult<IReadOnlyList<Guid>>(hits.Ids);
+        }
+    }
+
+    // The index knows no row rule. A hit on an English row the rule hides finds nothing, though the entry's French row could
+    // be read: with a search, an entry's anchor is its row in the locale searched, under that locale's rule, alone.
+    [Fact]
+    public async Task AListOfEveryLocaleWithASearchAnchorsInTheSearchedLocaleAlone()
+    {
+        var hits = new Hits();
+        using var database = new ServiceDatabase(cms =>
+        {
+            cms.Authorization.AddRowRule<Regional>("region", ctx => article => article.Region == ctx.Principal.Claim("region"));
+            cms.Services.AddSingleton(hits);
+            cms.Providers.Use<ISearchIndex, FakeSearch>();
+        });
+        var abroad = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Merger abroad", ["region"] = "us" }));
+        await database.UpdateAsync(Editor, abroad, Titled("Fusion"), 0, locale: "fr");
+        var local = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Merger here", ["region"] = "eu" }));
+        hits.Ids.AddRange([abroad, local]);
+        var role = database.Database.AddRoleForTest(
+            "Regional",
+            ("content.article.read", new PermissionConstraints { Locales = ["en"], RowRule = "region" }),
+            ("content.article.read", new PermissionConstraints { Locales = ["fr"] }));
+        var regional = AuthorizationDatabase.User([role], [TokenScopes.Management], claims: new() { ["region"] = "eu" });
+
+        var page = await database.QueryAsync(regional, new ContentQuery { Status = QueryStatus.Draft, Locale = "all", Search = "merger" });
+
+        page.Total.ShouldBe(1);
+        page.Items.ShouldHaveSingleItem()["id"].ShouldBe(local);
+        hits.Requests[0].Locale.ShouldBe("en");
+    }
+
+    // A filter or a sort of a list of every locale is asked of rows in each locale it reads, so a field the caller may read in
+    // one of them and not another is refused, naming that locale.
+    [Fact]
+    public async Task AListOfEveryLocaleRefusesAFieldTheCallerMayNotReadInOneOfItsLocales()
+    {
+        await _database.CreateAsync(Editor, new() { ["title"] = "Hello", ["views"] = 1 });
+        var role = _database.Database.AddRoleForTest(
+            "Translator",
+            ("content.article.read", new PermissionConstraints { Locales = ["en"] }),
+            ("content.article.read", new PermissionConstraints { Locales = ["fr"], Fields = ["title"] }));
+        var all = new ContentQuery { Status = QueryStatus.Draft, Locale = "all" };
+
+        var filtered = await Should.ThrowAsync<ValidationException>(() => _database.QueryAsync(WithRole(role), all with { Filter = new FieldFilter("views", FilterOperator.Equal, 1) }));
+        var sorted = await Should.ThrowAsync<ValidationException>(() => _database.QueryAsync(WithRole(role), all with { Sort = [new SortField("views")] }));
+
+        var filter = filtered.Errors.ShouldHaveSingleItem();
+        (filter.Path, filter.Code).ShouldBe(("views", QueryErrorCodes.UnknownField));
+        filter.Message.ShouldContain("'fr'");
+        var sort = sorted.Errors.ShouldHaveSingleItem();
+        (sort.Path, sort.Code).ShouldBe(("sort", QueryErrorCodes.NotSortable));
+        sort.Message.ShouldContain("'fr'");
+        (await _database.QueryAsync(WithRole(role), all with { Filter = new FieldFilter("title", FilterOperator.Equal, "Hello"), Sort = [new SortField("title")] })).Total.ShouldBe(1);
+    }
+
+    [FluentCMS.Schema.Collection("article")]
+    private sealed class Regional : ContentItem
+    {
+        public string? Region { get; set; }
+    }
+
+    // #3284: the populate cap holds for the whole answer, not for each locale it reads.
+    [Fact]
+    public async Task ThePopulateCapHoldsAcrossTheLocalesOfAListOfEveryLocale()
+    {
+        await AssertCapAsync(async database =>
+        {
+            var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Hello", ["sponsor"] = IdOf(await database.CreateAsync(Editor, new() { ["name"] = "Ann" }, "author")) }));
+            await database.UpdateAsync(Editor, id, new() { ["title"] = "Bonjour", ["sponsor"] = IdOf(await database.CreateAsync(Editor, new() { ["name"] = "Bea" }, "author")) }, 0, locale: "fr");
+            return new ContentQuery { Status = QueryStatus.Draft, Locale = "all", Populate = ["sponsor"] };
+        });
+    }
+
+    [Fact]
+    public async Task ThePopulateCapHoldsAcrossTheLocalesAListFallsBackTo()
+    {
+        await AssertCapAsync(async database =>
+        {
+            var sponsor = IdOf(await database.CreateAsync(Editor, new() { ["name"] = "Ann" }, "author"));
+            await database.CreateAsync(Editor, new() { ["title"] = "Own", ["sponsor"] = sponsor }, locale: "fr-CA");
+            var fallsBack = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Bonjour", ["sponsor"] = sponsor }, locale: "fr"));
+            await database.UpdateAsync(Editor, fallsBack, Titled("Allo"), 0, locale: "fr-CA");
+            return new ContentQuery { Status = QueryStatus.Draft, Locale = "fr-CA", Fallback = LocaleFallback.Chain, Populate = ["sponsor"] };
+        });
+    }
+
+    // Two related entries in all: refused under a cap of one, which each locale's read alone stays within.
+    private static async Task AssertCapAsync(Func<ServiceDatabase, Task<ContentQuery>> arrange)
+    {
+        using (var strict = new ServiceDatabase(cms => cms.Services.AddSingleton(new ContentQueryOptions { MaxPopulatedEntries = 1 })))
+        {
+            var query = await arrange(strict);
+            var refused = await Should.ThrowAsync<ValidationException>(() => strict.QueryAsync(Editor, query));
+            (refused.Errors.ShouldHaveSingleItem().Path, refused.Errors.Single().Code).ShouldBe(("populate", QueryErrorCodes.LimitExceeded));
+        }
+
+        using var enough = new ServiceDatabase(cms => cms.Services.AddSingleton(new ContentQueryOptions { MaxPopulatedEntries = 2 }));
+        var page = await enough.QueryAsync(Editor, await arrange(enough));
+        page.Items.Count.ShouldBe(page.Items[0].ContainsKey("locales") ? 1 : 2);
     }
 
     [Fact]

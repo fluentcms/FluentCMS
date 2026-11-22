@@ -3,6 +3,7 @@ using FluentCMS.Core.Commands;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Plugins;
 using FluentCMS.Core.Storage;
+using FluentCMS.Data.Tests.Identity;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Plugins.AiAssist;
 using FluentCMS.Plugins.Mcp;
@@ -14,6 +15,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 
@@ -323,6 +325,66 @@ public sealed partial class BaselineTests : IDisposable
         var before = DatabaseCatalog.Of(_database, historyRows: true);
         using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.AddPlugin<AiAssistPlugin>());
         var refusal = $"FCMS1308: stream ai has applied its baseline {BaselineOf<PluginDbContext<AiAssistPlugin>>(host.Services)} but lacks {table}.{column}; " +
+            "nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
+
+        exception.Code.ShouldBe("FCMS1308");
+        exception.Message.ShouldBe(refusal);
+        DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
+    }
+
+    // An index folded into the baseline later, as ix_cms_job_status_completed (#3285), only makes what it serves read more
+    // rows, so a database without it starts and the index is named (#3407). One made by the baseline names none.
+    [Fact]
+    public async Task ADatabaseOfAnEarlierBuildOfTheBaselineThatLacksAnIndexStartsAndNamesIt()
+    {
+        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => Array.ForEach(Streams, stream => stream.Add(cms))))
+        {
+            await built.StartAsync(Token);
+            await built.StopAsync(Token);
+        }
+
+        // The start that makes the database compares no index, since its migrations are still pending when it checks.
+        var healthy = new CapturedLogs();
+        using (var untouched = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms =>
+        {
+            Array.ForEach(Streams, stream => stream.Add(cms));
+            cms.Services.AddSingleton<ILoggerProvider>(healthy);
+        }))
+        {
+            await untouched.StartAsync(Token);
+            await untouched.StopAsync(Token);
+        }
+
+        healthy.Messages.ShouldNotContain(message => message.Contains("but lacks the indexes", StringComparison.Ordinal));
+
+        const string index = "ix_cms_job_status_completed";
+        _database.Execute(TestProvider.IsSqlServer ? $"drop index {TestProvider.Quote(index)} on {TestProvider.Quote("cms_job")}" : $"drop index {TestProvider.Quote(index)}");
+        var logs = new CapturedLogs();
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.Services.AddSingleton<ILoggerProvider>(logs));
+
+        await host.StartAsync(Token);
+        await host.StopAsync(Token);
+
+        logs.Messages.ShouldContain(message => message.StartsWith($"The system stream has applied its baseline {BaselineOf<SystemDbContext>(host.Services)} but lacks the indexes {index}, which a later build", StringComparison.Ordinal));
+    }
+
+    // A unique index that is missing would let in rows the model refuses, so it is refused with the columns.
+    [Fact]
+    public async Task ADatabaseOfAnEarlierBuildOfTheBaselineThatLacksAUniqueIndexIsRefused()
+    {
+        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production))
+        {
+            await built.StartAsync(Token);
+            await built.StopAsync(Token);
+        }
+
+        const string index = "uq_cms_schedule_pending";
+        _database.Execute(TestProvider.IsSqlServer ? $"drop index {TestProvider.Quote(index)} on {TestProvider.Quote("cms_schedule")}" : $"drop index {TestProvider.Quote(index)}");
+        var before = DatabaseCatalog.Of(_database, historyRows: true);
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production);
+        var refusal = $"FCMS1308: stream system has applied its baseline {BaselineOf<SystemDbContext>(host.Services)} but lacks index {index}; " +
             "nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";
 
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));

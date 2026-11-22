@@ -450,7 +450,7 @@ public sealed class ContentServiceRelationKeepTests : IDisposable
 
         var read = (await _database.GetAsync(ann, id))!;
         read["title"] = "Only the title";
-        await _database.UpdateAsync(ann, id, read, 1);
+        await _database.UpdateAsync(ann, id, read, VersionOf(read));
 
         TagsOf(id).ShouldBe([hidden, mine]);
         _database.Read(context => context.Documents.AsNoTracking().Single(document => document.DocumentId == id && document.Locale == "fr").Status).ShouldBe(EntryStatus.Published);

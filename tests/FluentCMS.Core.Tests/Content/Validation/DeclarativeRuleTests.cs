@@ -1,8 +1,10 @@
 #pragma warning disable CA1861
 using FluentCMS.Content;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Tests.Schema.Samples;
 using FluentCMS.Media;
 using FluentCMS.Schema;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 
@@ -266,6 +268,39 @@ public class DeclarativeRuleTests
         few.Errors.ShouldHaveSingleItem().ShouldBe(new ValidationError("tags", ValidationErrorCodes.MinLength, "Must have at least 2 items, has 1."));
 
         (await Run(new() { ["tags"] = new[] { "a", "b", "c", "d" } })).ShouldBe(["tags|FCMS2103"]);
+    }
+
+    // #3307: a list that declares no maximum is held to FluentCms:Content:MaxItems, 1,000 by default; a declared one holds instead.
+    [Fact]
+    public async Task AListWithoutAMaximumHoldsAThousandItemsAndOneThatDeclaresOneHoldsItsOwn()
+    {
+        var model = ValidationFixtures.Model(
+            thing => thing
+                .Field("many", "list", f => f.Multiple())
+                .Field("more", "list", f => f.Multiple().Length(0, 2000))
+                .Field("body", "blocks", f => f.Setting(FieldSettings.Blocks, new[] { "card" })),
+            others => others.AddBlock("card", block => block.Field("link", "url")));
+
+        static string[] Items(int count) => [.. Enumerable.Range(0, count).Select(index => $"i{index}")];
+        static Dictionary<string, object?>[] Cards(int count) => [.. Enumerable.Range(0, count).Select(_ => new Dictionary<string, object?> { ["type"] = "card" })];
+
+        (await ValidationFixtures.ValidateAsync(model, "thing", new() { ["many"] = Items(1000), ["more"] = Items(2000), ["body"] = Cards(1000) }, ValidationMode.Draft)).IsValid.ShouldBeTrue();
+
+        var over = await ValidationFixtures.ValidateAsync(model, "thing", new() { ["many"] = Items(1001), ["more"] = Items(2001), ["body"] = Cards(1001) }, ValidationMode.Draft);
+        over.Errors.Where(error => error.Code == ValidationErrorCodes.MaxLength).ShouldBe(
+        [
+            new ValidationError("many", ValidationErrorCodes.MaxLength, "Must have at most 1000 items, has 1001."),
+            new ValidationError("more", ValidationErrorCodes.MaxLength, "Must have at most 2000 items, has 2001."),
+            new ValidationError("body", ValidationErrorCodes.MaxLength, "Must have at most 1000 items, has 1001."),
+        ]);
+
+        var configured = await ValidationFixtures.ValidateAsync(
+            model,
+            "thing",
+            new() { ["many"] = Items(11) },
+            ValidationMode.Draft,
+            register: services => services.AddSingleton(new ContentWriteOptions { MaxItems = 10 }));
+        configured.Errors.ShouldHaveSingleItem().ShouldBe(new ValidationError("many", ValidationErrorCodes.MaxLength, "Must have at most 10 items, has 11."));
     }
 
     [Fact]

@@ -39,7 +39,7 @@ public sealed class WebhooksPlugin : IPlugin
             .AddMigrations(typeof(WebhooksPlugin).Assembly)
             .AddJob<WebhookDeliveryJob, WebhookAttempt>(WebhookDeliveryJob.Type)
             .AddJobQueue(WebhookDeliveryJob.Queue, services => services.GetRequiredService<IOptions<WebhooksOptions>>().Value.Workers)
-            .AddJob<WebhookRetentionJob, WebhookRetentionPayload>(WebhookRetentionJob.Type, WebhookRetentionJob.AttemptTimeout)
+            .AddJob<WebhookRetentionJob, WebhookRetentionPayload>(WebhookRetentionJob.Type, WebhookRetentionJob.AttemptTimeout, resumable: true)
             .AddJob<WebhookQueueJob, WebhookQueuePayload>(WebhookQueueJob.Type)
             .AddOutboxHandler<SiteDeletedEvent, DeletedSiteWebhooks>("webhooks.cleanup.site.deleted")
             .AddErrorCode(WebhookErrorCodes.InvalidField, 422, "Invalid webhook")

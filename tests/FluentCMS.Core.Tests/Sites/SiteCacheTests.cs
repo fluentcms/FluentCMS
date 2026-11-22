@@ -26,6 +26,70 @@ public sealed class SiteCacheTests
         _cache.TryGet<bool>(SiteCache.SiteKey(Site), out _).ShouldBeFalse();
     }
 
+    // #3306: the requests that miss a key at once share one read, and what it found is then kept for the next.
+    [Fact]
+    public async Task RequestsThatMissAKeyAtOnceShareOneRead()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reads = 0;
+        async Task<Guid?> Load(CancellationToken token)
+        {
+            Interlocked.Increment(ref reads);
+            await release.Task;
+            return Site;
+        }
+
+        var requests = Enumerable.Range(0, 20)
+            .Select(_ => Task.Run(() => _cache.GetOrLoadAsync(SiteCache.DefaultKey, Load, found => found is not null, TestContext.Current.CancellationToken)))
+            .ToList();
+        await Task.Delay(200, TestContext.Current.CancellationToken);
+        release.SetResult();
+
+        (await Task.WhenAll(requests)).ShouldAllBe(found => found == Site);
+        reads.ShouldBe(1);
+        (await _cache.GetOrLoadAsync(SiteCache.DefaultKey, Load, found => found is not null, TestContext.Current.CancellationToken)).ShouldBe(Site);
+        reads.ShouldBe(1);
+    }
+
+    // A request that stops waiting fails alone; the read goes on for the one that runs it.
+    [Fact]
+    public async Task ARequestThatStopsWaitingDoesNotFailTheReadItShares()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<bool> Load(CancellationToken token) => release.Task.ContinueWith(_ => true, token, TaskContinuationOptions.None, TaskScheduler.Default);
+        var key = SiteCache.SiteKey(Site);
+
+        var reading = _cache.GetOrLoadAsync(key, Load, found => found, TestContext.Current.CancellationToken);
+        using var stop = new CancellationTokenSource();
+        var waiting = _cache.GetOrLoadAsync(key, Load, found => found, stop.Token);
+        await stop.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => waiting);
+
+        release.SetResult();
+        (await reading).ShouldBeTrue();
+        _cache.TryGet<bool>(key, out _).ShouldBeTrue();
+    }
+
+    // A read that began before a write may find the old row, so a request after the write reads again.
+    [Fact]
+    public async Task AReadBegunBeforeAnInvalidationIsNotSharedWithARequestAfterIt()
+    {
+        var first = new TaskCompletionSource<Guid?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reads = 0;
+        var before = _cache.GetOrLoadAsync(SiteCache.DefaultKey, _ => { Interlocked.Increment(ref reads); return first.Task; }, found => found is not null, TestContext.Current.CancellationToken);
+
+        _cache.Invalidate();
+        var after = Guid.CreateVersion7();
+        var fresh = await _cache.GetOrLoadAsync(SiteCache.DefaultKey, _ => { Interlocked.Increment(ref reads); return Task.FromResult<Guid?>(after); }, found => found is not null, TestContext.Current.CancellationToken);
+
+        first.SetResult(Site);
+        (await before).ShouldBe(Site);
+        fresh.ShouldBe(after);
+        reads.ShouldBe(2);
+        _cache.TryGet<Guid>(SiteCache.DefaultKey, out var kept).ShouldBeTrue();
+        kept.ShouldBe(after);
+    }
+
     [Fact]
     public void InvalidateDropsEveryValue()
     {
