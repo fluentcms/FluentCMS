@@ -143,9 +143,10 @@ internal sealed class RoleDraft
         // The grants read, less those the user kept or changed, are those the user took away. A grant that remembers the grant
         // it was read as claims that one first; then a grant added again as it was read, as after a removal undone, is that
         // grant kept, so that the other change's version of it stands.
-        var takenAway = Counted(read.Grants.Select(GrantDraft.From));
+        var readGrants = read.Grants.Select(GrantDraft.From).ToList();
+        var takenAway = Counted(readGrants);
         var unclaimed = new List<GrantDraft>();
-        var changed = new List<GrantDraft>();
+        var changed = new List<(GrantDraft Grant, string Origin)>();
         foreach (var grant in mine.Grants)
         {
             if (grant.Origin is { } origin && takenAway.GetValueOrDefault(origin) > 0)
@@ -153,7 +154,7 @@ internal sealed class RoleDraft
                 takenAway[origin]--;
                 if (grant.Identity != origin)
                 {
-                    changed.Add(grant);
+                    changed.Add((grant, origin));
                 }
             }
             else
@@ -162,12 +163,29 @@ internal sealed class RoleDraft
             }
         }
 
-        var added = new List<GrantDraft>();
+        var other = new List<GrantDraft>();
         foreach (var grant in unclaimed)
         {
             if (takenAway.GetValueOrDefault(grant.Identity) > 0)
             {
                 takenAway[grant.Identity]--;
+            }
+            else
+            {
+                other.Add(grant);
+            }
+        }
+
+        // A grant added with the permission of one taken away gives what the user read another reach, so it is a change of
+        // that grant, the first of them in the order read, and merged as one; only a permission the read role did not grant
+        // is added.
+        var added = new List<GrantDraft>();
+        foreach (var grant in other)
+        {
+            if (readGrants.FirstOrDefault(item => item.Permission == grant.Permission && takenAway.GetValueOrDefault(item.Identity) > 0) is { } replaced)
+            {
+                takenAway[replaced.Identity]--;
+                changed.Add((grant, replaced.Identity));
             }
             else
             {
@@ -179,9 +197,8 @@ internal sealed class RoleDraft
         var left = Counted(theirs);
         var replacing = new Dictionary<string, Queue<GrantDraft>>(StringComparer.Ordinal);
         var refused = new List<GrantDraft>();
-        foreach (var grant in changed)
+        foreach (var (grant, origin) in changed)
         {
-            var origin = grant.Origin!;
             if (left.GetValueOrDefault(origin) - takenAway.GetValueOrDefault(origin) > 0)
             {
                 left[origin]--;

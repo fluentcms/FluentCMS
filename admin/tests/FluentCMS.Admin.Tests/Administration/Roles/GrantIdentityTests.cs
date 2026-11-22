@@ -177,6 +177,69 @@ public sealed class GrantIdentityTests
         dropped.ShouldBeEmpty();
     }
 
+    // A grant removed and added again with other limits is a change of it, as a change in place is: where the other change
+    // narrowed it or took it away, the other change's version stands and the user's is named.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AGrantRemovedAndAddedAgainWithOtherLimitsIsAChangeOfIt(bool narrowed)
+    {
+        var read = Read(Grant("content.article.update", null));
+        var mine = RoleDraft.From(read);
+        mine.Grants.RemoveAt(1);
+        mine.Grants.Add(new GrantDraft("content.article.update", new JsonObject { ["locales"] = new JsonArray("en") }));
+        var theirs = new JsonObject { ["sites"] = new JsonArray("0193a1b2-0000-7000-8000-00000000a001") };
+        var current = narrowed ? Read(Grant("content.article.update", theirs)) : Read();
+
+        var (rebased, dropped) = RoleDraft.Rebase(read, mine, current);
+
+        string[] expected = narrowed
+            ? [GrantDraft.IdentityOf("schema.read", null), GrantDraft.IdentityOf("content.article.update", theirs)]
+            : [GrantDraft.IdentityOf("schema.read", null)];
+        rebased.Grants.Select(grant => grant.Identity).ShouldBe(expected);
+        dropped.ShouldBe(["content.article.update"]);
+    }
+
+    // Where the other change left the grant as read, the user's version takes its place.
+    [Fact]
+    public void AGrantRemovedAndAddedAgainWithOtherLimitsReplacesTheOneTheOtherChangeLeft()
+    {
+        var read = Read(Grant("content.article.update", null), Grant("content.article.read", null));
+        var mine = RoleDraft.From(read);
+        mine.Grants.RemoveAt(1);
+        mine.Grants.Add(new GrantDraft("content.article.update", new JsonObject { ["locales"] = new JsonArray("en") }));
+
+        var (rebased, dropped) = RoleDraft.Rebase(read, mine, Read(Grant("content.article.update", null), Grant("content.article.read", null), Grant("content.article.create", null)));
+
+        rebased.Grants.Select(grant => grant.Identity).ShouldBe([
+            GrantDraft.IdentityOf("schema.read", null),
+            GrantDraft.IdentityOf("content.article.update", new JsonObject { ["locales"] = new JsonArray("en") }),
+            GrantDraft.IdentityOf("content.article.read", null),
+            GrantDraft.IdentityOf("content.article.create", null)]);
+        dropped.ShouldBeEmpty();
+    }
+
+    // So is a limited grant removed and added again without limits: it widens the grant read, so it holds only where the
+    // other change left that grant.
+    [Fact]
+    public void ALimitedGrantRemovedAndAddedAgainWithoutLimitsIsAChangeOfIt()
+    {
+        var limited = new JsonObject { ["sites"] = new JsonArray("0193a1b2-0000-7000-8000-00000000a001") };
+        var read = Read(Grant("content.article.update", limited));
+        var mine = RoleDraft.From(read);
+        mine.Grants.RemoveAt(1);
+        mine.Grants.Add(new GrantDraft("content.article.update", null));
+        var theirs = new JsonObject { ["sites"] = new JsonArray("0193a1b2-0000-7000-8000-00000000a001"), ["locales"] = new JsonArray("fr") };
+
+        var (kept, keptDropped) = RoleDraft.Rebase(read, mine, Read(Grant("content.article.update", limited)));
+        var (narrowed, narrowedDropped) = RoleDraft.Rebase(read, mine, Read(Grant("content.article.update", theirs)));
+
+        kept.Grants.Select(grant => grant.Identity).ShouldBe([GrantDraft.IdentityOf("schema.read", null), GrantDraft.IdentityOf("content.article.update", null)]);
+        keptDropped.ShouldBeEmpty();
+        narrowed.Grants.Select(grant => grant.Identity).ShouldBe([GrantDraft.IdentityOf("schema.read", null), GrantDraft.IdentityOf("content.article.update", theirs)]);
+        narrowedDropped.ShouldBe(["content.article.update"]);
+    }
+
     // The user took B away and changed A into B; the other change took A away. Neither is left, so the change is named.
     [Fact]
     public void AChangeTheMergeLeavesOutIsNamedThoughTheServerHadItsIdentity()
