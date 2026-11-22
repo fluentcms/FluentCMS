@@ -753,6 +753,30 @@ public sealed class SchedulingTests : IDisposable
         _fixture.Seen.Of<EntryPublishedEvent>().ShouldBeEmpty();
     }
 
+    // Adding a locale moves the English version (#3265) but not the English draft, so the publish scheduled of it still runs.
+    [Fact]
+    public async Task AddingALocaleKeepsTheScheduledPublishOfTheLocaleItMoves()
+    {
+        var id = await _fixture.DraftAsync();
+        await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)), "en");
+
+        await Database.UpdateAsync(Editor, id, new() { ["title"] = "Un" }, 0, locale: "fr");
+        Database.Document(id, "en").DraftVersion.ShouldBe(2);
+        var pending = _fixture.Schedules(id).Single();
+        (pending.Status, pending.Version).ShouldBe((ScheduleRow.Pending, 2));
+
+        _fixture.AdvanceTo(Start.AddHours(1));
+        (await _fixture.RunDueAsync()).ShouldBeTrue();
+
+        var row = _fixture.Schedules(id).Single();
+        (row.Status, row.Error).ShouldBe((ScheduleRow.Executed, null));
+        var english = Database.Document(id, "en");
+        (english.Status, english.PublishedVersion, english.SchedulePublishAt).ShouldBe((EntryStatus.Published, 2, null));
+        Database.Document(id, "fr").Status.ShouldBe(EntryStatus.Draft);
+        _fixture.Seen.Of<EntryPublishedEvent>().ShouldHaveSingleItem().Locale.ShouldBe("en");
+        _fixture.Seen.Of<EntryScheduleCancelledEvent>().ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task TheJobStillSkipsAPublishWhoseSharedFieldsMovedWithoutASave()
     {

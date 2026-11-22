@@ -92,8 +92,44 @@ public sealed class SharedFieldTests
         var conflict = await Should.ThrowAsync<VersionConflictException>(() => database.UpdateAsync(Editor, id, new() { ["title"] = "Bonjour", ["views"] = 1 }, 0, locale: "fr"));
 
         crossing.Run.ShouldBeNull();
-        conflict.ExpectedVersion.ShouldBe(0);
+        (conflict.ExpectedVersion, conflict.CurrentVersion).ShouldBe((0, 0));
+        conflict.Current.ShouldBeNull();
         database.Versions(id).ShouldAllBe(version => version.Locale == "en");
+    }
+
+    // The race of UniqueRaceTests on PostgreSQL, one step at a time: both writes read [en], and the loser meets the winner
+    // at the swap of en, before its insert of fr could. The answer is of fr, the locale they raced on.
+    [Fact]
+    public async Task AddingALocaleThatLostToAnAddOfThatLocaleNamesTheVersionTheWinnerGaveIt()
+    {
+        var crossing = new Crossing { When = "fr", As = "fr" };
+        using var database = WithCrossing(crossing);
+        var id = IdOf(await database.CreateAsync(Editor, Titled("Hello")));
+        crossing.Run = services => Content(services).UpdateAsync("article", id, Titled("Salut"), 0, Token);
+
+        var conflict = await Should.ThrowAsync<VersionConflictException>(() => database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr"));
+
+        crossing.Run.ShouldBeNull();
+        (conflict.ExpectedVersion, conflict.CurrentVersion).ShouldBe((0, 1));
+        var current = conflict.Current.ShouldNotBeNull();
+        (current["locale"], current["version"], current["title"]).ShouldBe(("fr", 1, "Salut"));
+    }
+
+    // The loser of two shared changes that swaps the other locale first learns the version the winner gave its own.
+    [Fact]
+    public async Task ASharedChangeThatLostAtTheSwapOfAnotherLocaleNamesTheVersionOfItsOwn()
+    {
+        var crossing = new Crossing { When = "fr", As = "en" };
+        using var database = WithCrossing(crossing);
+        var id = await EnglishAndFrenchAsync(database);
+        crossing.Run = services => Content(services).PatchAsync("article", id, new() { ["views"] = 7 }, 2, Token);
+
+        var conflict = await Should.ThrowAsync<VersionConflictException>(() => database.PatchAsync(Editor, id, new() { ["views"] = 9 }, 1, locale: "fr"));
+
+        crossing.Run.ShouldBeNull();
+        (conflict.ExpectedVersion, conflict.CurrentVersion).ShouldBe((1, 2));
+        var current = conflict.Current.ShouldNotBeNull();
+        (current["locale"], current["version"], current["views"]).ShouldBe(("fr", 2, 7L));
     }
 
     // B read [en] and changes a shared field, and A adds fr in between: B would leave fr behind, so B is refused.
@@ -118,11 +154,14 @@ public sealed class SharedFieldTests
         var crossing = new Crossing { When = "en", As = "fr" };
         using var database = WithCrossing(crossing);
         var id = await EnglishAndFrenchAsync(database);
+        await database.PublishAsync(Editor, id);
         crossing.Run = services => Content(services).PatchAsync("article", id, Titled("Salut"), 1, Token);
 
         var conflict = await Should.ThrowAsync<VersionConflictException>(() => database.PatchAsync(Editor, id, new() { ["views"] = 5 }, 2));
 
         (conflict.ExpectedVersion, conflict.CurrentVersion).ShouldBe((2, 2));
+        var current = conflict.Current.ShouldNotBeNull();
+        (current["version"], current["status"], current["views"]).ShouldBe((2, EntryStatus.Published, 1L));
         (await database.GetAsync(Editor, id))!["views"].ShouldBe(1L);
     }
 

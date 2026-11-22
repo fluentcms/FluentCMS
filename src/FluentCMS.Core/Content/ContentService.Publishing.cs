@@ -716,42 +716,57 @@ internal sealed partial class ContentService
 
     // Every compare and swap of one write, in one order, ordinal by locale code, so that two writes that cross wait for each
     // other rather than deadlock (#3265): the write's own locale, unless it adds that locale, and each other locale whose
-    // draft moved with the shared fields, from the version this transaction read. An own swap that fails is a conflict on the
-    // version the client sent; another locale's is one too, though the client's own version is unchanged. Another locale's
-    // swap moves its version, updatedAt and updatedBy alone: its status is the recompute's. Answers the other locales advanced.
+    // draft moved with the shared fields, from the version this transaction read. The own row is locked in its place in that
+    // order but moved last, so that a conflict at any swap reads it as stored, never as this write would have left it. Another
+    // locale's swap moves its version, updatedAt and updatedBy alone: its status is the recompute's. Answers the other locales
+    // advanced.
     private async Task<List<Document>> AdvanceVersionsAsync(WriteScope write, Guid id, Document? own, int expected, EntryStatus status, IEnumerable<Document> moved, CancellationToken cancellationToken)
     {
         var at = write.Operation.Timestamp;
         var by = write.Operation.AuditPrincipal.Id;
-        var others = moved.Where(other => own is null || other.Locale != own.Locale).ToList();
-        List<Document> swaps = own is null ? [.. others] : [.. others, own];
-        foreach (var row in swaps.OrderBy(row => row.Locale, StringComparer.Ordinal))
+        var others = moved.Where(other => own is null || other.Locale != own.Locale).OrderBy(other => other.Locale, StringComparer.Ordinal).ToList();
+        var held = false;
+        foreach (var other in others)
         {
-            if (ReferenceEquals(row, own))
+            if (!held && own is not null && string.CompareOrdinal(own.Locale, other.Locale) < 0)
             {
-                if (!await store.AdvanceVersionAsync(id, own.Locale, expected, status, at, by, cancellationToken))
+                held = await store.HoldVersionAsync(id, own.Locale, expected, cancellationToken);
+                if (!held)
                 {
-                    throw await ConflictAsync(write, id, expected, await store.DraftVersionAsync(id, own.Locale, cancellationToken), cancellationToken);
+                    throw await SwapConflictAsync(write, id, expected, cancellationToken);
                 }
-
-                own.DraftVersion = expected + 1;
-                own.Status = status;
-            }
-            else if (await store.AdvanceDraftVersionAsync(id, row.Locale, row.DraftVersion, at, by, cancellationToken))
-            {
-                row.DraftVersion++;
-            }
-            else
-            {
-                throw await ConflictAsync(write, id, expected, expected, cancellationToken);
             }
 
-            row.UpdatedAt = at;
-            row.UpdatedBy = by;
+            if (!await store.AdvanceDraftVersionAsync(id, other.Locale, other.DraftVersion, at, by, cancellationToken))
+            {
+                throw await SwapConflictAsync(write, id, expected, cancellationToken);
+            }
+
+            other.DraftVersion++;
+            other.UpdatedAt = at;
+            other.UpdatedBy = by;
+        }
+
+        if (own is not null)
+        {
+            if (!await store.AdvanceVersionAsync(id, own.Locale, expected, status, at, by, cancellationToken))
+            {
+                throw await SwapConflictAsync(write, id, expected, cancellationToken);
+            }
+
+            own.DraftVersion = expected + 1;
+            own.Status = status;
+            own.UpdatedAt = at;
+            own.UpdatedBy = by;
         }
 
         return others;
     }
+
+    // Whichever swap lost, the answer is of the locale written, read now that the winner has committed: the version the
+    // winner gave it or added it at, or the client's own when only another locale moved.
+    private async Task<VersionConflictException> SwapConflictAsync(WriteScope write, Guid id, int expected, CancellationToken cancellationToken) =>
+        await ConflictAsync(write, id, expected, await store.DraftVersionAsync(id, write.DocumentLocale, cancellationToken), cancellationToken);
 
     private static bool SharedChanged(SchemaType type, JsonObject fields, ContentDocument stored) =>
         type.Localized && type.Fields.Any(field => !field.Localizable && !JsonNode.DeepEquals(fields[field.Name], EntryJson.ToNode(stored.GetValueOrDefault(field.Name))));

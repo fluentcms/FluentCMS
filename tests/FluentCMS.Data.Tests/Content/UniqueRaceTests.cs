@@ -143,6 +143,11 @@ public sealed class UniqueRaceTests : IDisposable
 
         ShouldHaveOneWinner(outcomes, outcome => outcome.ShouldBeOfType<VersionConflictException>());
         var winner = outcomes.FindIndex(outcome => outcome is null);
+        var loser = 1 - winner;
+        var conflict = (VersionConflictException)outcomes[loser]!;
+        (conflict.ExpectedVersion, conflict.CurrentVersion).ShouldBe((versions[loser], versions[loser] + 1));
+        var current = conflict.Current.ShouldNotBeNull();
+        (current["locale"], current["version"]).ShouldBe((locales[loser], versions[loser] + 1));
         foreach (var locale in locales)
         {
             var entry = (await _database.GetAsync(Editor, id, locale: locale)).ShouldNotBeNull();

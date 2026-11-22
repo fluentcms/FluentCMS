@@ -288,6 +288,16 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
         return affected == 1;
     }
 
+    // A compare that locks the row and changes nothing, for a write that moves its own row after the ones ordered behind it.
+    public async Task<bool> HoldVersionAsync(Guid id, string locale, int expected, CancellationToken cancellationToken)
+    {
+        var affected = await context.Documents
+            .Where(document => document.DocumentId == id && document.Locale == locale && document.DraftVersion == expected)
+            .ExecuteUpdateAsync(set => set.SetProperty(document => document.DraftVersion, expected), cancellationToken);
+
+        return affected == 1;
+    }
+
     public Task SetTrashedAsync(Guid id, DateTimeOffset? at, Guid? by, CancellationToken cancellationToken) =>
         context.Documents.IgnoreQueryFilters()
             .Where(document => document.DocumentId == id)
