@@ -185,6 +185,49 @@ public sealed class PublishGuardTests
         await ShouldConflictWithTheSharedChangeAsync(database, id, () => database.PublishAsync(Editor, id, "fr"));
     }
 
+    [Fact]
+    public async Task TheConflictShowsTheEntryAsStoredAndNotWhatAHookOfThePublishWrote()
+    {
+        var between = new Between();
+        using var database = WithHook(between);
+        var id = await EnglishAndFrenchAsync(database);
+        await database.PublishAsync(Editor, id, "fr");
+        between.Run = async services =>
+        {
+            await SharedChangeInEnglishAsync(services, database, id);
+            await Content(services).UnpublishAsync("article", id, new LocaleOptions { Locale = "fr" }, Token);
+        };
+
+        var conflict = await Should.ThrowAsync<VersionConflictException>(() => database.PublishAsync(Editor, id, "fr"));
+
+        var current = conflict.Current.ShouldNotBeNull();
+        (current["version"], current["status"]).ShouldBe((2, EntryStatus.Modified));
+        database.Document(id, "fr").PublishedVersion.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AHookThatMovesTheVersionPastTheServiceIsRefusedAsTheHook()
+    {
+        var between = new Between();
+        using var database = WithHook(between);
+        var id = await EnglishAndFrenchAsync(database);
+        between.Run = async services =>
+        {
+            var context = services.GetRequiredService<CmsDbContext>();
+            await context.Rows("cms_article")
+                .Where(row => EF.Property<Guid>(row, StorageNames.DocumentId) == id)
+                .ExecuteUpdateAsync(set => set.SetProperty(row => EF.Property<long?>(row, "views"), 9L), Token);
+            await context.Documents
+                .Where(document => document.DocumentId == id && document.Locale == "fr")
+                .ExecuteUpdateAsync(set => set.SetProperty(document => document.DraftVersion, 2), Token);
+        };
+        var before = database.Trace(id);
+
+        (await Should.ThrowAsync<HookRejectedException>(() => database.PublishAsync(Editor, id, "fr"))).Code.ShouldBe(ContentErrorCodes.DraftMovedByHook);
+
+        database.Trace(id).ShouldBe(before);
+    }
+
     // A caller's transaction ends unseen, so what an earlier one moved is no mark of this publish.
     [Fact]
     public async Task ASaveEarlierInTheScopeDoesNotMakeTheConflictThePublishesOwn()

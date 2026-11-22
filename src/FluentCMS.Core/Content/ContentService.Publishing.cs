@@ -12,6 +12,7 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Hooks;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
+using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Core.Content;
 
@@ -30,6 +31,7 @@ internal sealed partial class ContentService
 
         var write = await BeginAsync(type, ContentOperation.Publish, cancellationToken, locale);
         List<PublishWarning> warnings = [];
+        var ownsTransaction = context.Database.CurrentTransaction is null;
         var row = await InTransactionAsync(
             async () =>
             {
@@ -64,7 +66,7 @@ internal sealed partial class ContentService
                 // and so would what another request committed since the first read, which read committed shows here.
                 if (!JsonNode.DeepEquals(original, EntryJson.Fields(write.Type, await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken))))
                 {
-                    throw await DraftMovedAsync(write, id, document, movedBefore, cancellationToken);
+                    throw await DraftMovedAsync(write, id, document, movedBefore, ownsTransaction, cancellationToken);
                 }
 
                 List<Document> advanced = [];
@@ -95,10 +97,17 @@ internal sealed partial class ContentService
 
     // A hook's save and another request's both move the stored version, so that alone cannot name the writer (#3536). A swap
     // of this transaction holds the row to its end, so with none since the publish began a newer version is another's commit.
-    private async Task<Exception> DraftMovedAsync(WriteScope write, Guid id, Document document, int movedBefore, CancellationToken cancellationToken)
+    // A publish in a transaction of its own ends it before it reads that version and entry, so that they are what is stored
+    // and nothing a hook wrote past the swaps; one inside another transaction cannot, and reads them as that one sees them.
+    private async Task<Exception> DraftMovedAsync(WriteScope write, Guid id, Document document, int movedBefore, bool ownsTransaction, CancellationToken cancellationToken)
     {
         if (!_moved.Skip(movedBefore).Contains((id, document.Locale)))
         {
+            if (ownsTransaction)
+            {
+                await context.Database.RollbackTransactionAsync(CancellationToken.None);
+            }
+
             var stored = await store.DraftVersionAsync(id, document.Locale, cancellationToken);
             if (stored > document.DraftVersion)
             {
