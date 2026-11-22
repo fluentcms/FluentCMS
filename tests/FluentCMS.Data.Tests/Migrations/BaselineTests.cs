@@ -339,7 +339,7 @@ public sealed partial class BaselineTests : IDisposable
     [Fact]
     public async Task ADatabaseOfAnEarlierBuildOfTheBaselineThatLacksAnIndexStartsAndNamesIt()
     {
-        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production))
+        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => Array.ForEach(Streams, stream => stream.Add(cms))))
         {
             await built.StartAsync(Token);
             await built.StopAsync(Token);
@@ -347,7 +347,11 @@ public sealed partial class BaselineTests : IDisposable
 
         // The start that makes the database compares no index, since its migrations are still pending when it checks.
         var healthy = new CapturedLogs();
-        using (var untouched = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.Services.AddSingleton<ILoggerProvider>(healthy)))
+        using (var untouched = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms =>
+        {
+            Array.ForEach(Streams, stream => stream.Add(cms));
+            cms.Services.AddSingleton<ILoggerProvider>(healthy);
+        }))
         {
             await untouched.StartAsync(Token);
             await untouched.StopAsync(Token);
