@@ -17,6 +17,8 @@
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj" />
     <!-- The AI assist half's own client and records, held to the AI routes. -->
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.AiAssist.Admin/FluentCMS.Plugins.AiAssist.Admin.csproj" />
+    <!-- The multi-site half's client and records, held to the routes of the multi-site plugin. -->
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.MultiSite.Admin/FluentCMS.Plugins.MultiSite.Admin.csproj" />
     <ProjectReference Include="../../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
     <!-- The Blog sample and every first-party plugin, which the test host discovers, as the reference host runs them (spec 7). -->
     <ProjectReference Include="../../../samples/Blog/Blog.csproj" />

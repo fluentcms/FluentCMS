@@ -1,15 +1,18 @@
 using Bunit;
+using FluentCMS.Admin.Administration.Gallery;
 using FluentCMS.Admin.Components;
-using Microsoft.AspNetCore.Components;
+using FluentCMS.Admin.Plugins;
+using FluentCMS.Admin.Shell;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 
-namespace FluentCMS.Admin.Tests;
+namespace FluentCMS.Admin.Tests.Administration.Gallery;
 
-public sealed class ComponentGalleryTests : AdminTestContext
+// The gallery is a page of the administration assembly that any signed-in user may open, loaded on its first visit (#3354).
+public sealed class ComponentGalleryTests : AdministrationTestContext
 {
-    private const string Route = "/system/components";
+    private const string Route = "system/components";
 
     [Theory]
     [InlineData(PseudoCulture.LeftToRight, false, "rtl")]
@@ -17,7 +20,6 @@ public sealed class ComponentGalleryTests : AdminTestContext
     public void TheGalleryTakesTheDirectionOfTheInterfaceUntilTheSwitchSaysOtherwise(string culture, bool rightToLeft, string other)
     {
         UseInterfaceCulture(culture);
-        Start();
         var app = RenderGallery();
         // The first switch, in the gallery's header.
         var toggle = app.FindComponents<CmsSwitch>()[0];
@@ -33,8 +35,6 @@ public sealed class ComponentGalleryTests : AdminTestContext
     [Fact]
     public void TheGalleryIsAPageOfTheShell()
     {
-        Start();
-
         var app = RenderGallery();
 
         app.Find(".cms-root main#main .gallery h1").GetAttribute("tabindex").ShouldBe("-1");
@@ -44,8 +44,6 @@ public sealed class ComponentGalleryTests : AdminTestContext
     [Fact]
     public void TheGalleryShowsAOneTimeCodeInput()
     {
-        Start();
-
         var app = RenderGallery();
 
         app.Find(".gallery input[autocomplete='one-time-code']").GetAttribute("inputmode").ShouldBe("numeric");
@@ -56,7 +54,6 @@ public sealed class ComponentGalleryTests : AdminTestContext
     [InlineData("Light", "light")]
     public void TheThemeChosenInTheGalleryAppliesToTheShell(string mode, string attribute)
     {
-        Start();
         var app = RenderGallery();
 
         app.Find(".gallery-header select").Change(mode);
@@ -85,16 +82,70 @@ public sealed class ComponentGalleryTests : AdminTestContext
     [Fact]
     public void TheHomePageLinksToTheGallery()
     {
-        Start();
-
-        var app = Render<AdminApp>();
+        var app = Load();
 
         app.Find("main a[href='system/components']");
+        Loader.Loads.ShouldBe(0);
     }
+
+    // Neither the start page nor any other page of the shell fetches the assembly; the gallery's first visit does, once.
+    [Fact]
+    public void TheGalleryIsFetchedOnItsFirstVisitAndOnce()
+    {
+        var app = Load();
+        Loader.Loads.ShouldBe(0);
+
+        Navigation.NavigateTo(Route);
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/" + Route));
+        Navigation.NavigateTo("");
+        app.WaitForAssertion(() => app.FindAll("main .gallery").ShouldBeEmpty());
+        Navigation.NavigateTo(Route);
+
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/" + Route));
+        Loader.Loads.ShouldBe(1);
+        Services.GetRequiredService<AdminPlugins>().Assemblies.ShouldBe([typeof(GalleryResources).Assembly]);
+    }
+
+    // The gallery asks for no permission, and its sidebar has no entry of an area for a user who holds none.
+    [Fact]
+    public void AUserWithoutAPermissionOfAnAreaOpensTheGallery()
+    {
+        Grant([]);
+
+        var app = RenderGallery();
+
+        Heading(app).ShouldBe(Localized<GalleryResources>("System.Components.Heading"));
+        Links(app).ShouldBe([""]);
+    }
+
+    [Fact]
+    public void AFailedLoadShowsTheRetryWhichLoadsTheGallery()
+    {
+        UseNeutralResources();
+        Loader.Failures = 1;
+        var app = Load(Route);
+        app.WaitForAssertion(() => Heading(app).ShouldBe("This page could not load"));
+
+        app.FindAll("main fluent-button").Single(button => button.TextContent.Trim() == "Try again").Click();
+
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/" + Route));
+        Loader.Loads.ShouldBe(2);
+    }
+
+    [Theory]
+    [InlineData("system/components", true)]
+    [InlineData("/System/Components/", true)]
+    [InlineData("system/components?theme=dark#top", true)]
+    [InlineData("system/components/more", false)]
+    [InlineData("system", false)]
+    [InlineData("system/plugins", false)]
+    public void TheGalleryIsTheOpenRoute(string route, bool open) =>
+        AdministrationAreas.IsOpen(route).ShouldBe(open);
 
     private IRenderedComponent<AdminApp> RenderGallery()
     {
-        Services.GetRequiredService<NavigationManager>().NavigateTo(Route);
-        return Render<AdminApp>();
+        var app = Load(Route);
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/" + Route));
+        return app;
     }
 }

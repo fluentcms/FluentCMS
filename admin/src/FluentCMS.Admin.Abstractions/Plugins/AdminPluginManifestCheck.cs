@@ -200,6 +200,21 @@ public static class AdminPluginManifestCheck
                 pages.Add(new AdminManifestPage { Type = name, Route = page.Route, Permission = page.Permission, InstanceOnly = page.InstanceOnly });
             }
 
+            // The router hands a page its route values and not the route it matched, so the shell gates a page by every route
+            // of its class whose parameters those values fit, and asks for what each of them needs (specification 2.6).
+            var byRoute = typePages.OrderBy(page => page.Route, StringComparer.Ordinal).ToList();
+            for (var first = 0; first < byRoute.Count; first++)
+            {
+                foreach (var second in byRoute.Skip(first + 1))
+                {
+                    var one = byRoute[first];
+                    if ((one.Permission != second.Permission || one.InstanceOnly != second.InstanceOnly) && SameParameters(one.Route, second.Route))
+                    {
+                        problems.Add($"pages '{one.Route}' and '{second.Route}' of {name}: the router gives both routes the same parameters, so the shell asks for what each needs on either, and a caller who may open only one opens neither; give them one permission, or put them in two classes");
+                    }
+                }
+            }
+
             // The shell gates a page by its [AdminPage], so a route without one would show in a site where the plugin is
             // disabled.
             foreach (var route in routes.Where(route => !typePages.Exists(page => page.Route == route)).Order(StringComparer.Ordinal))
@@ -324,6 +339,39 @@ public static class AdminPluginManifestCheck
             .Where(group => group.Count() > 1)
             .Select(group => $"{group.Key.Kind} {Quote(group.Key.Key)} is declared more than once: by {string.Join(" and ", group.Select(item => item.Type))}"));
         return manifest;
+    }
+
+    // Whether route values exist that both routes fit: each route's parameters that may not be absent are parameters of
+    // the other, as the shell's PageRoutes reads them.
+    private static bool SameParameters(string one, string other)
+    {
+        var first = Parameters(one);
+        var second = Parameters(other);
+        return first.All(parameter => parameter.Value || second.ContainsKey(parameter.Key))
+            && second.All(parameter => parameter.Value || first.ContainsKey(parameter.Key));
+    }
+
+    // The parameters of a route by name, true for one that may be absent: optional, or a catch-all.
+    private static Dictionary<string, bool> Parameters(string route)
+    {
+        var parameters = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        foreach (var segment in route.Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (segment is not ['{', .., '}'])
+            {
+                continue;
+            }
+
+            var parameter = segment[1..^1];
+            var catchAll = parameter.StartsWith('*');
+            parameter = parameter.TrimStart('*');
+            var optional = catchAll || parameter.EndsWith('?');
+            parameter = parameter.TrimEnd('?');
+            var constraint = parameter.IndexOf(':', StringComparison.Ordinal);
+            parameters[constraint < 0 ? parameter : parameter[..constraint]] = optional;
+        }
+
+        return parameters;
     }
 
     // A version of 0 reads as an absent one, so the text is asked.

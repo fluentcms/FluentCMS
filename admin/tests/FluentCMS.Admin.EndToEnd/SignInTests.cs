@@ -147,7 +147,7 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         var gallery = new Uri(Host.Admin, "system/components").AbsoluteUri;
         await tab.Page.GotoAsync(gallery);
         await browser.SignInOnTheHostedPageAsync(tab, editor);
-        await Expect(tab.Heading("System.Components.Heading")).ToBeVisibleAsync();
+        await Expect(GalleryHeading(tab)).ToBeVisibleAsync();
 
         // The reload comes seconds after the sign-in, well within the admin's 60-second window for "ended right after sign-in".
         editor = await Host.ResetPasswordAsync(editor);
@@ -160,8 +160,12 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         await tab.Button("Authentication.Gate.TryAgain").ClickAsync();
 
         await browser.SignInOnTheHostedPageAsync(tab, editor);
-        await Expect(tab.Heading("System.Components.Heading")).ToBeVisibleAsync();
+        await Expect(GalleryHeading(tab)).ToBeVisibleAsync();
         tab.Page.Url.ShouldBe(gallery);
         browser.PolicyViolations.ShouldBeEmpty();
     }
+
+    // The gallery is a page of the administration assembly, with its texts in the folder Gallery there.
+    private static ILocator GalleryHeading(AdminTab tab) =>
+        tab.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = Repository.AdministrationText("Gallery", "System.Components.Heading"), Exact = true });
 }

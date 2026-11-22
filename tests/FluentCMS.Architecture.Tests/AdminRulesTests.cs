@@ -20,6 +20,7 @@ public class AdminRulesTests
     private const string AdminComponents = "FluentCMS.Admin.Components";
     private const string AdminRichText = "FluentCMS.Admin.RichText";
     private const string AdminApp = "FluentCMS.Admin.App";
+    private const string MediaHalfAssembly = "FluentCMS.Plugins.Media.Admin";
 
     // Core's administration pages, which the app loads lazily: a part of the shell, and no half.
     private const string AdminAdministration = "FluentCMS.Admin.Administration";
@@ -41,22 +42,24 @@ public class AdminRulesTests
 
     // Spec 3.1: the types that may use JavaScript interop, the document module, the tab's sessionStorage of the sign-in,
     // localStorage for the theme's one key and for the column names of the lists, the drop and paste of the media library,
-    // in the media half (A-21), the rich text editor's bundle (A-24), and the messages of the preview frame (A-29). The
-    // component library's script is loaded by the library's own types, so no type of FluentCMS.Admin.Components is listed. The
-    // clipboard module joins the list by name, in FluentCMS.Admin or FluentCMS.Admin.RichText, with the issue that writes it.
-    private static readonly string[] InteropTypes =
+    // in the media half (A-21), the rich text editor's bundle (A-24), the messages of the preview frame (A-29), and the
+    // clipboard that the secret shown once writes to (A-33), in the wrapped set since the halves that show a secret reach no
+    // other admin package. The component library's script is loaded by the library's own types, which are not the set's.
+    // Each type with the one assembly it is in, so that a type moved to another assembly fails the rule below.
+    private static readonly (string Type, string Assembly)[] InteropTypesByAssembly =
     [
-        "FluentCMS.Admin.Interop.ColumnStorageInterop",
-        "FluentCMS.Admin.Interop.DocumentInterop",
-        "FluentCMS.Admin.Interop.PreviewInterop",
-        "FluentCMS.Admin.Interop.SessionStorageInterop",
-        "FluentCMS.Admin.Interop.TabChannelInterop",
-        "FluentCMS.Admin.Interop.ThemeStorageInterop",
-        "FluentCMS.Plugins.Media.Admin.MediaDropZone",
-        "FluentCMS.Admin.RichText.RichTextFieldEditor",
+        ("FluentCMS.Admin.Components.CmsClipboard", AdminComponents),
+        ("FluentCMS.Admin.Interop.ColumnStorageInterop", Admin),
+        ("FluentCMS.Admin.Interop.DocumentInterop", Admin),
+        ("FluentCMS.Admin.Interop.PreviewInterop", Admin),
+        ("FluentCMS.Admin.Interop.SessionStorageInterop", Admin),
+        ("FluentCMS.Admin.Interop.TabChannelInterop", Admin),
+        ("FluentCMS.Admin.Interop.ThemeStorageInterop", Admin),
+        ("FluentCMS.Plugins.Media.Admin.MediaDropZone", MediaHalfAssembly),
+        ("FluentCMS.Admin.RichText.RichTextFieldEditor", AdminRichText),
     ];
 
-    private const string MediaHalfAssembly = "FluentCMS.Plugins.Media.Admin";
+    private static readonly string[] InteropTypes = [.. InteropTypesByAssembly.Select(listed => listed.Type)];
 
     private static readonly string[] InteropNamespaces = ["Microsoft.JSInterop", "System.Runtime.InteropServices.JavaScript"];
 
@@ -353,14 +356,18 @@ public class AdminRulesTests
     }
 
     [Fact]
-    public void EachAllowListedInteropTypeIsInTheShellTheRichTextEditorOrTheMediaHalf()
+    public void EachAllowListedInteropTypeIsInTheOneAssemblyTheListNames()
     {
-        foreach (var name in InteropTypes)
+        foreach (var (name, assembly) in InteropTypesByAssembly)
         {
             var type = browser.Value.Types.SingleOrDefault(type => type.FullName == name);
             type.ShouldNotBeNull($"{name} is on the interop list but is not a type of the admin.");
-            type.Assembly.Name.Split(',')[0].ShouldBeOneOf(Admin, AdminRichText, MediaHalfAssembly);
+            type.Assembly.Name.Split(',')[0].ShouldBe(assembly, $"{name} is listed in {assembly}.");
         }
+
+        // The shell, the wrapped set (the clipboard alone), the rich text editor and the media half.
+        InteropTypesByAssembly.Select(listed => listed.Assembly).Distinct().ShouldBe([AdminComponents, Admin, MediaHalfAssembly, AdminRichText], ignoreOrder: true);
+        InteropTypesByAssembly.Count(listed => listed.Assembly == AdminComponents).ShouldBe(1);
     }
 
     // Spec 2.6: the administration pages are a part of the shell that loads lazily, so the shell does not reference their
