@@ -37,7 +37,7 @@ public sealed class AiHost : IAsyncDisposable
     // The type of the job the media plugin enqueues at the start of a host, which is internal to it.
     public const string MediaBackfill = "media.dimensions.backfill";
 
-    private readonly DirectoryInfo _media =Directory.CreateTempSubdirectory("fluentcms-ai-");
+    private readonly DirectoryInfo _media = Directory.CreateTempSubdirectory("fluentcms-ai-");
     private readonly ConcurrentDictionary<HttpClient, Guid> _principals = new();
 
     public AiHost()
