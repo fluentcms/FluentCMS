@@ -4,8 +4,9 @@ using System.Text.Json.Serialization;
 
 namespace FluentCMS.Admin.Api;
 
-// Every record the admin reads or writes, so that the app trims (spec 2.7). Entries stay JsonObject.
-[JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
+// Every record the admin reads or writes, so that the app trims (spec 2.7). Entries stay JsonObject. Metadata only: the
+// serialization fast path would be in the first download for the few records the admin writes (spec 7, #3354).
+[JsonSourceGenerationOptions(JsonSerializerDefaults.Web, GenerationMode = JsonSourceGenerationMode.Metadata)]
 [JsonSerializable(typeof(ApiProblem))]
 [JsonSerializable(typeof(MeResponse))]
 [JsonSerializable(typeof(ItemList<MySiteInfo>))]

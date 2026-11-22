@@ -88,7 +88,7 @@ public sealed class HomePageTests : AdminTestContext
     [Fact]
     public void TheHalfLoadsOnlyWhenTheHomePageShowsItsWidget()
     {
-        var app = Load([Half("reviews", Widget("ReviewsSettingsPage", WidgetSize.Small))], enabled: ["reviews"], route: "system/components");
+        var app = Load([Half("reviews", Widget("ReviewsSettingsPage", WidgetSize.Small))], enabled: ["reviews"], route: "system/plugins");
         loader.Loads.ShouldBeEmpty();
 
         Navigation.NavigateTo("");

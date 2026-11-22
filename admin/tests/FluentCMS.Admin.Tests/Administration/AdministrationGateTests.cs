@@ -471,12 +471,14 @@ public sealed class AdministrationGateTests : AdministrationTestContext
     }
 
     [Fact]
-    public void EveryPageOfTheAssemblyIsAtOrBelowTheRouteOfAnAreaAndEveryAreaHasAPageAtItsRoute()
+    public void EveryPageOfTheAssemblyIsAtOrBelowTheRouteOfAnAreaOrAtAnOpenRouteAndEveryAreaHasAPageAtItsRoute()
     {
         var routes = typeof(UsersPage).Assembly.GetTypes().SelectMany(type => type.GetCustomAttributes<RouteAttribute>()).Select(route => route.Template).ToList();
 
-        routes.Where(route => AdministrationAreas.OfRoute(route) is null).ShouldBeEmpty();
+        routes.Where(route => AdministrationAreas.OfRoute(route) is null && !AdministrationAreas.IsOpen(route)).ShouldBeEmpty();
         AdministrationAreas.All.Select(area => "/" + area.Route).Except(routes).ShouldBeEmpty();
+        AdministrationAreas.OpenRoutes.Select(route => "/" + route).Except(routes).ShouldBeEmpty();
+        AdministrationAreas.OpenRoutes.Where(route => AdministrationAreas.OfRoute(route) is not null).ShouldBeEmpty();
     }
 
     // The app trims only the assemblies that opt in, so the pages of this one, which nothing references, are kept whole.
@@ -570,7 +572,9 @@ public sealed class AdministrationGateTests : AdministrationTestContext
         AdministrationAreas.OfPage(typeof(LeadingParameter)).ShouldBeNull();
         AdministrationAreas.OfPage(typeof(AdministrationGateTests)).ShouldBeNull();
         typeof(UsersPage).Assembly.GetTypes().Where(type => type.IsDefined(typeof(RouteAttribute), inherit: false))
-            .Where(type => AdministrationAreas.OfPage(type) is null).ShouldBeEmpty();
+            .Where(type => AdministrationAreas.OfPage(type) is null && !AdministrationAreas.IsOpen(type)).ShouldBeEmpty();
+        AdministrationAreas.IsOpen(typeof(OutsideAndInside)).ShouldBeFalse();
+        AdministrationAreas.IsOpen(typeof(AdministrationGateTests)).ShouldBeFalse();
     }
 
     // The routes of a page that the route data the router gives it agrees with, from its route values alone.
