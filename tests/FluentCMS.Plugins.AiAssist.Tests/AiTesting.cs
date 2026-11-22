@@ -18,6 +18,7 @@ using FluentCMS.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Shouldly;
 using SkiaSharp;
@@ -33,6 +34,9 @@ namespace FluentCMS.Plugins.AiAssist.Tests;
 // plugin's default. The tests of a class share a host, each in a site of its own, with its settings, callers and usage.
 public sealed class AiHost : IAsyncDisposable
 {
+    // The type of the job the media plugin enqueues at the start of a host, which is internal to it.
+    public const string MediaBackfill = "media.dimensions.backfill";
+
     private readonly DirectoryInfo _media = Directory.CreateTempSubdirectory("fluentcms-ai-");
     private readonly ConcurrentDictionary<HttpClient, Guid> _principals = new();
 
@@ -167,6 +171,25 @@ public sealed class AiHost : IAsyncDisposable
         await using var scope = Services.CreateAsyncScope();
         var rows = await scope.ServiceProvider.GetRequiredService<PluginDbContext<AiAssistPlugin>>().Set<AiUsage>().AsNoTracking().Where(usage => usage.SiteId == site).ToListAsync(Token);
         return [.. rows.OrderBy(usage => usage.CreatedAt).ThenBy(usage => usage.Id)];
+    }
+
+    // Completes when the steps the media plugin takes once the host has started are done; the last enqueues MediaBackfill.
+    public async Task MediaStartedAsync() =>
+        await Services.GetServices<IHostedService>().OfType<BackgroundService>().Single(service => service.GetType().Name == "MediaStartup").ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(30), Token);
+
+    // Runs the due jobs of the default queue until one of the type has run, and gives the types that ran, in order. No
+    // worker of the host takes that queue, so a job another plugin enqueued earlier is the next one.
+    public async Task<List<string>> RunJobAsync(string type)
+    {
+        var ran = new List<string>();
+        while (ran.LastOrDefault() != type)
+        {
+            var job = (await Services.GetRequiredService<JobStore>().ClaimAsync(JobRunnerOptions.DefaultQueue, "test", Token)).ShouldNotBeNull($"no {type} is due");
+            await Services.GetRequiredService<JobExecutor>().RunAsync(job);
+            ran.Add(job.Type);
+        }
+
+        return ran;
     }
 
     public async ValueTask DisposeAsync()
