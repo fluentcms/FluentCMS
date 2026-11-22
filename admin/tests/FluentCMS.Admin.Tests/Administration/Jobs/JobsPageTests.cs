@@ -89,29 +89,68 @@ public sealed class JobsPageTests : JobsTestContext
         Navigation.Uri.ShouldEndWith($"/jobs/{Rebuild:D}");
     }
 
+    // One read of the page for all its rows, however many run, so that a page of running jobs does not spend the rate limit
+    // the user's tabs share; the attempts and the times follow too.
     [Fact]
-    public void ARunningJobsStatusIsReadAgainEveryFiveSecondsUntilItNoLongerRuns()
+    public void ThePageOfRunningJobsIsReadAgainOnceEveryFiveSecondsUntilNoneRuns()
+    {
+        Jobs.Clear();
+        for (var index = 0; index < 25; index++)
+        {
+            Jobs.Add(Job(Guid.NewGuid(), $"job.{index:D2}", "default", "running", attempts: 1));
+        }
+
+        var app = Load("jobs");
+        app.WaitForAssertion(() => ListRows(app).Length.ShouldBe(25));
+        Eventually(() => Time.Waits.Count(wait => wait == TimeSpan.FromSeconds(5)) == 1);
+        JobQueries.Count.ShouldBe(1);
+
+        JobOf((Guid)Jobs[0]!["id"]!)["attempts"] = 2;
+        Time.Tick();
+
+        app.WaitForAssertion(() => ListRows(app)[0][3].ShouldBe("2 of 5"));
+        Eventually(() => Time.Waits.Count(wait => wait == TimeSpan.FromSeconds(5)) == 1);
+        JobQueries.Count.ShouldBe(2);
+        JobQueries[^1].ShouldBe(JobQueries[0]);
+        Management.Calls.ShouldNotContain(call => call.Path.StartsWith("jobs/", StringComparison.Ordinal) && call.Path != "jobs/dead-letter");
+
+        foreach (var job in Jobs)
+        {
+            job!["status"] = "succeeded";
+        }
+
+        Time.Tick();
+
+        app.WaitForAssertion(() => ListRows(app).ShouldAllBe(row => row[2] == "Succeeded"));
+        JobQueries.Count.ShouldBe(3);
+        Eventually(() => Time.Waits.All(wait => wait != TimeSpan.FromSeconds(5)));
+    }
+
+    // A refusal of the rate limit, or a server that fails, skips the tick: the rows stay, and the next tick reads again.
+    [Theory]
+    [InlineData(429)]
+    [InlineData(503)]
+    public void AReadThatFailsWhileFollowingKeepsTheRowsAndTheNextTickReadsAgain(int status)
     {
         var app = Load("jobs");
         app.WaitForAssertion(() => ListRows(app)[0][2].ShouldBe("Running"));
-
-        // Only the running job waits, and nothing is read before its wait ends.
         Eventually(() => Time.Waits.Count(wait => wait == TimeSpan.FromSeconds(5)) == 1);
-        JobReads(Publish).ShouldBe(0);
+        var failing = true;
+        Management.Answer = (method, path) => failing && path == "jobs" ? new HttpResponseMessage((HttpStatusCode)status) : null;
 
         Time.Tick();
-        Eventually(() => JobReads(Publish) == 1 && Time.Waits.Count(wait => wait == TimeSpan.FromSeconds(5)) == 1);
-        ListRows(app)[0][2].ShouldBe("Running");
 
-        (JobOf(Publish)["status"], JobOf(Publish)["completedAt"]) = ("succeeded", Now);
+        Eventually(() => Management.Calls.Count(call => call.Path == "jobs") == 2 && Time.Waits.Count(wait => wait == TimeSpan.FromSeconds(5)) == 1);
+        ListRows(app).Length.ShouldBe(4);
+        app.FindAll("main .record-list-problem").ShouldBeEmpty();
+
+        failing = false;
+        JobOf(Publish)["status"] = "succeeded";
         Time.Tick();
 
         app.WaitForAssertion(() => ListRows(app)[0][2].ShouldBe("Succeeded"));
-        JobReads(Publish).ShouldBe(2);
         Eventually(() => Time.Waits.All(wait => wait != TimeSpan.FromSeconds(5)));
-        JobQueries.Count.ShouldBe(1);
     }
-
     [Fact]
     public void ADeadLetteredJobIsRetriedAndLeavesTheDeadLettersAndTheListIsReadAgain()
     {
@@ -238,6 +277,75 @@ public sealed class JobsPageTests : JobsTestContext
         Management.Calls.Count(call => call.Path == "events/dead-letter" && call.Method == HttpMethod.Get).ShouldBe(2);
     }
 
+    // The first page held only the handler purged; its other rows were on the next page, which the list reads at once.
+    [Fact]
+    public void APurgeThatEmptiesTheListReadsOnAtOnceForTheRowsNotShown()
+    {
+        Deliveries.Clear();
+        for (var index = 0; index < 25; index++)
+        {
+            Deliveries.Add(Delivery(Guid.NewGuid(), $"Event{index:D2}", "handler.h", "failed"));
+        }
+
+        Deliveries.Add(Delivery(Guid.NewGuid(), "EventK", "handler.k", "failed"));
+        var app = Load("jobs");
+        app.WaitForAssertion(() => Rows(Section(app, "Failed event deliveries")).Length.ShouldBe(25));
+
+        Section(app, "Failed event deliveries").QuerySelector("form.jobs-purge select")!.Change("handler.h");
+        Section(app, "Failed event deliveries").QuerySelector("form.jobs-purge")!.Submit();
+        app.WaitForAssertion(() => app.Find("main fluent-dialog").TextContent.ShouldContain("Every failed delivery to handler.h is removed"));
+        Button(app.Find("main fluent-dialog"), "Purge").Click();
+
+        app.WaitForAssertion(() => Rows(Section(app, "Failed event deliveries")).Select(row => row[1]).ShouldBe(["handler.k"]));
+        Message(Section(app, "Failed event deliveries")).ShouldBe("29 failed deliveries to handler.h are removed.");
+        Section(app, "Failed event deliveries").TextContent.ShouldNotContain("No event delivery has failed.");
+    }
+
+    // A row taken out moved the later rows back by one, so More reads the first page again before the next.
+    [Fact]
+    public void MoreAfterARowWasTakenOutPassesOverNone()
+    {
+        Deliveries.Clear();
+        for (var index = 0; index < 27; index++)
+        {
+            Deliveries.Add(Delivery(Guid.NewGuid(), $"Event{index:D2}", "handler", "failed"));
+        }
+
+        var app = Load("jobs");
+        app.WaitForAssertion(() => Rows(Section(app, "Failed event deliveries")).Length.ShouldBe(25));
+        Starting(Section(app, "Failed event deliveries"), "Remove Event00 to handler").Click();
+        app.WaitForAssertion(() => app.Find("main fluent-dialog").TextContent.ShouldContain("Event00"));
+        Button(app.Find("main fluent-dialog"), "Remove").Click();
+        app.WaitForAssertion(() => Rows(Section(app, "Failed event deliveries")).Length.ShouldBe(24));
+
+        Button(Section(app, "Failed event deliveries"), "More").Click();
+
+        app.WaitForAssertion(() => Rows(Section(app, "Failed event deliveries")).Select(row => row[0]).ShouldBe([.. Enumerable.Range(1, 26).Select(index => $"Event{index:D2}")]));
+        HasButton(Section(app, "Failed event deliveries"), "More").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void RetryingEveryDeadLetteredJobShownReadsOnAtOnceForThoseNotShown()
+    {
+        Jobs.Clear();
+        for (var index = 0; index < 26; index++)
+        {
+            Jobs.Add(Job(Guid.NewGuid(), $"job.{index:D2}", "default", "dead_lettered", attempts: 5, completed: Now));
+        }
+
+        var app = Load("jobs");
+        app.WaitForAssertion(() => Rows(Section(app, "Dead-lettered jobs")).Length.ShouldBe(25));
+
+        for (var left = 24; left >= 0; left--)
+        {
+            Section(app, "Dead-lettered jobs").QuerySelector("tbody fluent-button")!.Click();
+            var shown = left;
+            app.WaitForAssertion(() => Rows(Section(app, "Dead-lettered jobs")).Length.ShouldBe(shown == 0 ? 1 : shown));
+        }
+
+        app.WaitForAssertion(() => Rows(Section(app, "Dead-lettered jobs")).Single()[0].ShouldBe("job.25"));
+        Section(app, "Dead-lettered jobs").TextContent.ShouldNotContain("No job is dead-lettered.");
+    }
     // jobs.manage held through a role of a site opens no call of the area, so neither page is shown and nothing is read.
     [Theory]
     [InlineData("jobs")]

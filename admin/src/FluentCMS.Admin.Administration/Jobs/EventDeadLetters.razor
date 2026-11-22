@@ -2,8 +2,8 @@
    and no filter by handler, so it reads on with More while the last page read was full, and purge offers the handlers of the
    rows read; a purge removes every failed delivery of the handler, those not read too. Retry, remove and purge are asked
    first. A delivery the 30-day retention removed meanwhile answers 404, and one that is no longer failed 409: either takes its
-   row out, and the message says so. A row taken out moves the server's pages, so More can pass over as many rows as were
-   taken out, which the next visit shows. *@
+   row out, and the message says so. A row taken out moves the server's later rows back, so the next read starts at the page
+   the first row not shown is on now; a list that its last row leaves while there may be more reads on at once. *@
 @implements IDisposable
 @inject IManagementApi Api
 @inject FormatService Formats
@@ -63,7 +63,7 @@
         }
         @if (more)
         {
-            <CmsButton Disabled="@(state == JobSectionState.Loading)" OnClick="@(() => ReadAsync(read + 1))">@L["Jobs.Events.More"]</CmsButton>
+            <CmsButton Disabled="@(state == JobSectionState.Loading)" OnClick="MoreAsync">@L["Jobs.Events.More"]</CmsButton>
         }
 
         <form class="jobs-purge" @onsubmit="AskPurge">
@@ -96,6 +96,7 @@
     private JobSectionState state = JobSectionState.Loading;
     private int read;
     private bool more;
+    private int dropped;
     private bool busy;
     private string? handler;
     private (Change Change, FailedDeliveryRecord? Delivery, string Handler)? asked;
@@ -145,14 +146,15 @@
     }
 
     // The first page replaces what is shown; a later one adds the rows not shown yet.
-    private async Task ReadAsync(int page)
+    private async Task<bool> ReadAsync(int page)
     {
         state = JobSectionState.Loading;
         try
         {
             var found = await Api.GetFailedDeliveriesAsync(page, Closing);
             deliveries = page == 1 ? [.. found] : [.. deliveries, .. found.Where(delivery => deliveries.All(shown => shown.Id != delivery.Id))];
-            (read, more, state) = (page, found.Count == JobsApi.DeadLetterPageSize, JobSectionState.Ready);
+            (read, more, dropped, state) = (page, found.Count == JobsApi.DeadLetterPageSize, 0, JobSectionState.Ready);
+            return true;
         }
         catch (OperationCanceledException) when (closing.IsCancellationRequested)
         {
@@ -160,6 +162,21 @@
         catch (Exception exception) when (JobProblems.IsFailure(exception))
         {
             state = JobSectionState.Failed;
+        }
+
+        return false;
+    }
+
+    // The page after the last one read, from the page the first row not shown is on now, which reads again rows shown already.
+    private async Task MoreAsync()
+    {
+        var last = read + 1;
+        for (var page = JobTexts.NextPage(read, dropped, JobsApi.DeadLetterPageSize); page <= last; page++)
+        {
+            if (!await ReadAsync(page) || !more)
+            {
+                return;
+            }
         }
     }
 
@@ -187,7 +204,7 @@
             {
                 case { Change: Change.Purge, Handler: var name }:
                     var purged = await Api.PurgeDeliveriesAsync(name, Closing);
-                    deliveries.RemoveAll(delivery => delivery.Handler == name);
+                    dropped += deliveries.RemoveAll(delivery => delivery.Handler == name);
                     (handler, message) = (null, purged.Removed == 1 ? L["Jobs.Events.PurgedOne", name] : L["Jobs.Events.Purged", purged.Removed, name]);
                     break;
                 case { Change: Change.Retry, Delivery: { } delivery }:
@@ -227,12 +244,16 @@
 
         // The row changed is gone, and its buttons with it, so focus goes to the result.
         focusMessage = true;
+        if (deliveries.Count == 0 && more)
+        {
+            await MoreAsync();
+        }
     }
 
     // A handler that no longer has a row shown leaves the purge's choices.
     private void Drop(FailedDeliveryRecord delivery)
     {
-        deliveries.RemoveAll(shown => shown.Id == delivery.Id);
+        dropped += deliveries.RemoveAll(shown => shown.Id == delivery.Id);
         if (handler is { } name && deliveries.All(shown => shown.Handler != name))
         {
             handler = null;

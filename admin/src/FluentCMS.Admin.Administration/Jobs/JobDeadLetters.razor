@@ -1,8 +1,9 @@
 @* The dead-lettered jobs of the instance (spec 4.15), the last first: those that used all their attempts and those that were
    cancelled. The list has no total, so it reads on with More while the last page read was full. A retry queues the job again
    with as many attempts again as a new job gets, and takes its row out; so does an answer that the job is gone, as after the
-   30-day retention, or that it is no longer dead-lettered. A row taken out moves the server's pages, so More can pass over
-   as many rows as were taken out, which the next visit shows. *@
+   30-day retention, or that it is no longer dead-lettered. A row taken out moves the server's later rows back, so the next
+   read starts at the page the first row not shown is on now; a list that its last row leaves while there may be more reads
+   on at once. *@
 @implements IDisposable
 @inject IManagementApi Api
 @inject FormatService Formats
@@ -59,7 +60,7 @@
         }
         @if (more)
         {
-            <CmsButton Disabled="@(state == JobSectionState.Loading)" OnClick="@(() => ReadAsync(read + 1))">@L["Jobs.DeadJobs.More"]</CmsButton>
+            <CmsButton Disabled="@(state == JobSectionState.Loading)" OnClick="MoreAsync">@L["Jobs.DeadJobs.More"]</CmsButton>
         }
     }
     <p class="jobs-message" tabindex="-1" @ref="messageElement">@message</p>
@@ -70,6 +71,7 @@
     private JobSectionState state = JobSectionState.Loading;
     private int read;
     private bool more;
+    private int dropped;
     private bool busy;
     private string? message;
     private bool focusMessage;
@@ -100,14 +102,15 @@
     }
 
     // The first page replaces what is shown; a later one adds the rows not shown yet.
-    private async Task ReadAsync(int page)
+    private async Task<bool> ReadAsync(int page)
     {
         state = JobSectionState.Loading;
         try
         {
             var found = await Api.GetDeadJobsAsync(page, Closing);
             jobs = page == 1 ? [.. found] : [.. jobs, .. found.Where(job => jobs.All(shown => shown.Id != job.Id))];
-            (read, more, state) = (page, found.Count == JobsApi.DeadLetterPageSize, JobSectionState.Ready);
+            (read, more, dropped, state) = (page, found.Count == JobsApi.DeadLetterPageSize, 0, JobSectionState.Ready);
+            return true;
         }
         catch (OperationCanceledException) when (closing.IsCancellationRequested)
         {
@@ -115,6 +118,21 @@
         catch (Exception exception) when (JobProblems.IsFailure(exception))
         {
             state = JobSectionState.Failed;
+        }
+
+        return false;
+    }
+
+    // The page after the last one read, from the page the first row not shown is on now, which reads again rows shown already.
+    private async Task MoreAsync()
+    {
+        var last = read + 1;
+        for (var page = JobTexts.NextPage(read, dropped, JobsApi.DeadLetterPageSize); page <= last; page++)
+        {
+            if (!await ReadAsync(page) || !more)
+            {
+                return;
+            }
         }
     }
 
@@ -157,13 +175,18 @@
         }
 
         focusMessage = true;
+        if (jobs.Count == 0 && more)
+        {
+            await MoreAsync();
+        }
+
         if (retried)
         {
             await OnRetried.InvokeAsync();
         }
     }
 
-    private void Drop(DeadJobRecord job) => jobs.RemoveAll(shown => shown.Id == job.Id);
+    private void Drop(DeadJobRecord job) => dropped += jobs.RemoveAll(shown => shown.Id == job.Id);
 
     // Two dead letters of one type are told apart by their time.
     private string When(DeadJobRecord job) => job.DeadLetteredAt is { } at ? Formats.DateTime(at) : job.Id.ToString("D");

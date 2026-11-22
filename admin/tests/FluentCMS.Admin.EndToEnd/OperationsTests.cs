@@ -11,7 +11,7 @@ namespace FluentCMS.Admin.EndToEnd;
 // The plugins, jobs and diagnostics pages of A-39 on the reference host, by keyboard: a Super Admin turns the webhooks plugin
 // off in the default site, whose menu item leaves the sidebar without a reload, and on again; cancels a pending job, which
 // goes among the dead letters, and retries it from there; and reads the startup report and the health. The pending job is
-// the next attempt of a webhook delivery to a host that never resolves, which the plugin schedules a minute after the first.
+// the second attempt of a webhook delivery to a host that never resolves, which the plugin schedules a minute after the first.
 public sealed class OperationsTests(EndToEndHost host) : BrowserTest(host)
 {
     private const string Delivery = "webhooks.deliver";
@@ -61,10 +61,13 @@ public sealed class OperationsTests(EndToEndHost host) : BrowserTest(host)
         var webhook = await WebhookAsync(management);
         try
         {
-            var job = await PendingDeliveryAsync(management);
+            // Signed in first, so that the job's minute is spent on the page alone.
             var browser = await OpenBrowserAsync();
-            var tab = await SignedInTabAsync(browser, $"jobs?status=pending&type={Delivery}", await Host.CreateEditorAsync("Super Admin"));
+            var tab = await SignedInTabAsync(browser, "jobs", await Host.CreateEditorAsync("Super Admin"));
             var main = tab.Page.Locator("main");
+            await Expect(Heading(tab, Repository.AdministrationHeading("Jobs"))).ToBeVisibleAsync();
+            var job = await PendingDeliveryAsync(management);
+            await tab.TokenRequestOfAsync(() => tab.Page.GotoAsync(new Uri(Host.Admin, $"jobs?status=pending&type={Delivery}").AbsoluteUri));
             await Expect(Heading(tab, Repository.AdministrationHeading("Jobs"))).ToBeVisibleAsync();
 
             // A row is one tab stop, and Enter opens the job.
@@ -135,9 +138,13 @@ public sealed class OperationsTests(EndToEndHost host) : BrowserTest(host)
         return JsonNode.Parse(answer)!["id"]!.GetValue<Guid>();
     }
 
-    // A draft saved after the webhook was made, whose first delivery fails and whose second waits its minute as a pending job.
+    // A draft saved after the webhook was made, whose first delivery fails, so that the plugin schedules the second a minute
+    // after it. No route schedules a job for later, so the case takes only such a retry, one made after the draft whose run is
+    // half a minute or more after it was made and still at least 40 s away, which leaves the page that long to cancel it; an
+    // attempt that is due, as the first, may be claimed by a worker meanwhile and is never taken.
     private async Task<Guid> PendingDeliveryAsync(HttpClient management)
     {
+        var saved = DateTimeOffset.UtcNow.AddSeconds(-1);
         using var draft = await management.PostAsJsonAsync(new Uri("api/management/v1/content/article", UriKind.Relative), new JsonObject { ["title"] = $"Jobs {Mark}" }, Token);
         draft.StatusCode.ShouldBe(HttpStatusCode.Created, await draft.Content.ReadAsStringAsync(Token));
 
@@ -146,10 +153,18 @@ public sealed class OperationsTests(EndToEndHost host) : BrowserTest(host)
             async () =>
             {
                 var pending = await management.GetFromJsonAsync<JsonObject>(new Uri($"api/management/v1/jobs?status=pending&type={Delivery}&pageSize=100", UriKind.Relative), Token);
-                found = pending!["items"]!.AsArray().Select(item => item!["id"]!.GetValue<Guid>()).Cast<Guid?>().FirstOrDefault();
+                found = pending!["items"]!.AsArray()
+                    .Where(item =>
+                    {
+                        var (created, runAt) = (item!["createdAt"]!.GetValue<DateTimeOffset>(), item["runAt"]!.GetValue<DateTimeOffset>());
+                        return created >= saved && runAt - created >= TimeSpan.FromSeconds(30) && runAt - DateTimeOffset.UtcNow >= TimeSpan.FromSeconds(40);
+                    })
+                    .Select(item => item!["id"]!.GetValue<Guid>())
+                    .Cast<Guid?>()
+                    .FirstOrDefault();
                 return found is not null;
             },
-            "the webhook's second attempt is scheduled");
+            "the webhook's second attempt is scheduled a minute ahead");
         return found!.Value;
     }
 

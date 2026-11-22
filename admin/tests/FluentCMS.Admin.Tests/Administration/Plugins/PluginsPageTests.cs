@@ -77,6 +77,26 @@ public sealed class PluginsPageTests : PluginsTestContext
         Context.Status.ShouldBe(FluentCMS.Admin.Shell.ShellStatus.Ready);
     }
 
+    // The server may have applied the change, so the shell reads its plugins again once the answer comes, page or no page.
+    [Fact]
+    public void LeavingThePageWhileASwitchIsUnderWayStillTakesTheContributionsOut()
+    {
+        var held = new TaskCompletionSource();
+        Management.HoldPath = path => path.StartsWith("/api/management/v1/plugins/reviews/sites/", StringComparison.Ordinal) ? held.Task : null;
+        var app = Load("plugins");
+        app.WaitForAssertion(() => Links(app).ShouldContain("reviews"));
+        var reads = PluginReads;
+
+        Switch(app, "Enabled in Main").Find("fluent-switch").Change(false);
+        Navigation.NavigateTo("");
+        app.WaitForAssertion(() => Shown(app).ShouldBeNull());
+        held.SetResult();
+
+        app.WaitForAssertion(() => Links(app).ShouldNotContain("reviews"));
+        Disabled.ShouldBe([("reviews", MainSite)]);
+        PluginReads.ShouldBe(reads + 1);
+    }
+
     [Fact]
     public void APluginTurnedOffInAnotherSiteLeavesTheShellAsItIs()
     {

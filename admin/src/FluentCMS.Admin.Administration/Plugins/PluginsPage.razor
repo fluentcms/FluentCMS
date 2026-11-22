@@ -152,7 +152,9 @@ else
         }
     }
 
-    // The switch shows the value asked for while the server answers, and the one it holds after a refusal.
+    // The switch shows the value asked for while the server answers, and the one it holds after a refusal. The change is sent
+    // without the page's token, so that leaving the page while it is under way does not leave the shell's plugins behind what
+    // the server applied: the shell reads them again whether the page is still shown or not.
     private async Task SwitchAsync(string name, PluginSiteInfo site, bool enabled)
     {
         var key = (name, site.SiteId);
@@ -164,7 +166,7 @@ else
         messages.Remove(name);
         try
         {
-            var answer = await Api.SetPluginEnabledAsync(name, site.SiteId, enabled, Closing);
+            var answer = await Api.SetPluginEnabledAsync(name, site.SiteId, enabled, CancellationToken.None);
             var shown = answer.SiteId == Context.Site?.Id;
             plugins = [.. plugins.Select(plugin => plugin.Name != name ? plugin : plugin with
             {
@@ -176,9 +178,6 @@ else
             {
                 await Context.ReadPluginsAsync();
             }
-        }
-        catch (OperationCanceledException) when (closing.IsCancellationRequested)
-        {
         }
         catch (Exception exception) when (PluginProblems.IsForbidden(exception))
         {
@@ -202,10 +201,14 @@ else
         }
     }
 
+    // A page that was left says nothing.
     private void Say(string plugin, string text, AnnouncementPoliteness politeness)
     {
         messages[plugin] = text;
-        Announcer.Announce(text, politeness);
+        if (!closing.IsCancellationRequested)
+        {
+            Announcer.Announce(text, politeness);
+        }
     }
 
     // The pages of the half without a route parameter that the caller may open, each by the label of its menu item, else by

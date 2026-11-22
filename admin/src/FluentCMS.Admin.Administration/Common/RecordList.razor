@@ -210,6 +210,41 @@ else
         StateHasChanged();
     }
 
+    // Reads the page shown again in place, as a page that follows its rows does: the rows stay while it reads, and a read that
+    // fails keeps them and says nothing, so that the page tries again later. It reads nothing while a read is under way, while
+    // the list shows a problem, or while the address is another path's; false when it read nothing new.
+    public async Task<bool> RefreshAsync()
+    {
+        if (loading || problem is not null || PathOf(Navigation.Uri) != path)
+        {
+            return false;
+        }
+
+        reading?.Dispose();
+        var current = reading = new CancellationTokenSource();
+        try
+        {
+            var page = await Read(shown, current.Token);
+            if (Overtaken(current))
+            {
+                return false;
+            }
+
+            (items, total) = (page.Items, page.Total);
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return false;
+        }
+
+        StateHasChanged();
+        return true;
+    }
+
     // A change of the query string of this path reads again. The address of another path is another page's, or this page's
     // at another address, which the next render of the list reads.
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)

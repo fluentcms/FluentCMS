@@ -21,9 +21,14 @@ internal static class JobTexts
     private static readonly string[] Outcomes = ["succeeded", "failed", "lease_expired", "released"];
 
     // The job's page follows a running job, which changes by itself, and a pending one that is due, which a worker takes next,
-    // as after a retry. A row of the list follows only a running job, so that a page of due jobs is not a read each per row.
+    // as after a retry. The list reads its page again while it shows a running job, with one read for all its rows.
     public static bool Follows(JobRecord job, DateTimeOffset now) =>
         job.Status == "running" || (job.Status == "pending" && job.RunAt <= now);
+
+    // The page of a list of dead letters to read next, after the pages up to read were read full and rows of them were taken
+    // out since: those rows moved the later ones back by as many places, so the next read starts at the page the first row
+    // not shown is on now, which can be one read already, whose rows shown are left out.
+    public static int NextPage(int read, int dropped, int pageSize) => Math.Max(1, ((read * pageSize) - dropped) / pageSize + 1);
 
     public static string Status(string status, IStringLocalizer<JobsResources> texts) =>
         JobsApi.Statuses.Contains(status, StringComparer.Ordinal) ? texts[$"Jobs.Status.{status}"] : status;

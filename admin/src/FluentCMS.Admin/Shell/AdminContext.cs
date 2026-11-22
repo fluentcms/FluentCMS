@@ -36,6 +36,9 @@ internal sealed class AdminContext(
 
     private Task? _starting;
     private int _generation;
+
+    // The reads of ReadPluginsAsync, of which only the last one started applies.
+    private int _pluginReads;
     private Task _localeReads = Task.CompletedTask;
     private Task<IReadOnlyDictionary<string, MyAccessInfo>>? _localeAccess;
 
@@ -193,7 +196,7 @@ internal sealed class AdminContext(
     }
 
     // After a plugin was enabled or disabled in the site shown (spec 4.15), so that its admin contributions follow without a
-    // reload. A read that fails, or that a switch or a change of locale overtook, changes nothing.
+    // reload. A read that fails, or that a switch, a change of locale or a later read overtook, changes nothing.
     public async Task ReadPluginsAsync()
     {
         if (Status != ShellStatus.Ready)
@@ -201,7 +204,7 @@ internal sealed class AdminContext(
             return;
         }
 
-        var generation = _generation;
+        var (generation, read) = (_generation, ++_pluginReads);
         metadata.ForgetPlugins();
         IReadOnlyList<PluginInfo> installed;
         try
@@ -214,7 +217,7 @@ internal sealed class AdminContext(
             return;
         }
 
-        if (generation == _generation)
+        if (generation == _generation && read == _pluginReads)
         {
             Plugins = installed;
             Changed?.Invoke();
