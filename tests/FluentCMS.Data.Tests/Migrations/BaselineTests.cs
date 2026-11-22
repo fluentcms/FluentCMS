@@ -62,6 +62,13 @@ public sealed partial class BaselineTests : IDisposable
         ("index:cms_outbox.ix_cms_outbox_failed_handler:", "handler", "status='failed'"),
     ];
 
+    // Without the index's name, which can hold a key's, as ix_cms_outbox_failed_handler does.
+    private static string DefinitionOf(List<string> catalog, string index)
+    {
+        var line = catalog.Single(item => item.StartsWith(index, StringComparison.Ordinal))[index.Length..];
+        return Normalized(line.Replace(index[(index.IndexOf('.', StringComparison.Ordinal) + 1)..^1], "", StringComparison.Ordinal));
+    }
+
     private static string Normalized(string line) =>
         new([.. line.Replace("::text", "", StringComparison.Ordinal).ToLowerInvariant().Where(character => character is not ('"' or '[' or ']' or '(' or ')' or ' ' or '`'))]);
 
@@ -135,7 +142,7 @@ public sealed partial class BaselineTests : IDisposable
         var all = DatabaseCatalog.Of(baseline, historyRows: false);
         foreach (var (index, keys, filter) in AddedIndexShapes)
         {
-            var line = Normalized(all.Single(item => item.StartsWith(index, StringComparison.Ordinal)));
+            var line = DefinitionOf(all, index);
             line.ShouldContain(keys, Case.Sensitive, index);
             if (filter is null)
             {
@@ -280,6 +287,22 @@ public sealed partial class BaselineTests : IDisposable
         exitCode.ShouldBe(1);
         error.ShouldBe(refusal + Environment.NewLine);
         DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
+    }
+
+    [Fact]
+    public async Task TheShapeCheckFailsForAnIndexOfTheRightNameOnTheWrongKey()
+    {
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production);
+        await host.Services.GetRequiredService<MigrationRunner>().MigrateAsync(Token);
+        var (index, keys, _) = AddedIndexShapes.Single(shape => shape.Index == "index:cms_outbox.ix_cms_outbox_failed_handler:");
+        DefinitionOf(DatabaseCatalog.Of(_database, historyRows: false), index).ShouldContain(keys);
+
+        var name = TestProvider.Quote("ix_cms_outbox_failed_handler");
+        var table = TestProvider.Quote("cms_outbox");
+        _database.Execute(TestProvider.IsSqlServer ? $"drop index {name} on {table}" : $"drop index {name}");
+        _database.Execute($"create index {name} on {table} ({TestProvider.Quote("sequence")}) where {TestProvider.Quote("status")} = 'failed'");
+
+        DefinitionOf(DatabaseCatalog.Of(_database, historyRows: false), index).ShouldNotContain(keys);
     }
 
     // The same for a plugin stream: a media database of a build before owns_file (#3133).

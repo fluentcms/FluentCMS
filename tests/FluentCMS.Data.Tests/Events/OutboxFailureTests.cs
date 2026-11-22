@@ -173,7 +173,8 @@ public sealed class OutboxFailureTests
 
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
-            if (state is not CancellationTokenSource)
+            // The drain's deadline of a stop waits without end until the host stops, so it is no limit to hold back.
+            if (state is not CancellationTokenSource || dueTime == Timeout.InfiniteTimeSpan)
             {
                 return clock.CreateTimer(callback, state, dueTime, period);
             }
@@ -196,6 +197,53 @@ public sealed class OutboxFailureTests
             }
 
             return ValueTask.FromResult(result);
+        }
+    }
+
+    // The writes that end a delivery, by kind, with what a test does before each runs.
+    private sealed class EndingWrites : DbCommandInterceptor
+    {
+        public const string Settle = "settle";
+        public const string Release = "release";
+        public const string Failure = "failure";
+
+        public ConcurrentQueue<string> Written { get; } = new();
+
+        public Func<string, CancellationToken, Task>? Writing { get; set; }
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (KindOf(command) is { } kind && Writing is { } writing)
+            {
+                await writing(kind, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            return result;
+        }
+
+        public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (KindOf(command) is { } kind)
+            {
+                Written.Enqueue(kind);
+            }
+
+            return ValueTask.FromResult(result);
+        }
+
+        private static string? KindOf(DbCommand command)
+        {
+            var text = command.CommandText;
+            if (!text.StartsWith("UPDATE", StringComparison.Ordinal) || !text.Contains("cms_outbox", StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            return text.Contains(TestProvider.Quote("delivered_at"), StringComparison.Ordinal) ? Settle
+                : text.Contains(TestProvider.Quote("last_error"), StringComparison.Ordinal) ? Failure
+                : text.Contains($"{TestProvider.Quote("attempts")} - 1", StringComparison.Ordinal) ? Release
+                : null;
         }
     }
 
@@ -789,6 +837,144 @@ public sealed class OutboxFailureTests
         rows.ShouldAllBe(row => row.Status == OutboxStatus.Delivered && row.Attempts == 2);
     }
 
+    // The settle takes two of the three seconds of the stop, so the release has the one that is left.
+    [Fact]
+    public async Task TheWritesOfAStopShareTheReleaseTimeoutWithTheDeliveredRowsSettledFirst()
+    {
+        var seen = new Seen();
+        var writes = new EndingWrites();
+        var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var releasing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var stopping = new CancellationTokenSource();
+        StopAtTheSecondDelivery(seen, stopping);
+        writes.Writing = async (kind, token) =>
+        {
+            if (kind == EndingWrites.Settle)
+            {
+                clock.Advance(TimeSpan.FromSeconds(2));
+            }
+            else if (kind == EndingWrites.Release)
+            {
+                releasing.TrySetResult();
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            }
+        };
+        using var database = StoppingDatabase(seen, clock, logs, writes);
+        for (var index = 0; index < 4; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        var drain = DrainWithAsync(database.Database.Services, stopping.Token);
+        await Eventually.CompletesAsync(releasing.Task);
+        clock.Advance(TimeSpan.FromSeconds(1));
+        await Eventually.CompletesAsync(drain);
+        await Eventually.HoldsAsync(() => logs.Count("SettleFailed") == 3);
+
+        writes.Written.ShouldBe([EndingWrites.Settle]);
+        var rows = database.Rows();
+        rows[0].Status.ShouldBe(OutboxStatus.Delivered);
+        rows.Skip(1).ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 1 && row.LeaseOwner != null);
+
+        writes.Writing = null;
+        seen.Behavior = (_, _) => Task.CompletedTask;
+        clock.Advance(TimeSpan.FromMinutes(10));
+        (await DrainAsync(database.Database.Services)).ShouldBe(3);
+    }
+
+    // The settle blocks its thread and ignores its token, as SQLite does while it waits for the write lock.
+    [Fact]
+    public async Task AStopIsNotHeldPastTheReleaseTimeoutByASettleThatIgnoresItsTokenAndItsRowsAreDeliveredAgain()
+    {
+        var seen = new Seen();
+        var writes = new EndingWrites();
+        var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var settling = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var delivering = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var handler = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new ManualResetEventSlim();
+        using var stopping = new CancellationTokenSource();
+        seen.Behavior = (_, _) =>
+        {
+            if (seen.Calls.Count == 1)
+            {
+                return Task.CompletedTask;
+            }
+
+            delivering.TrySetResult();
+            return handler.Task;
+        };
+        writes.Writing = (kind, _) =>
+        {
+            if (kind == EndingWrites.Settle)
+            {
+                settling.TrySetResult();
+                gate.Wait(Token);
+            }
+
+            return Task.CompletedTask;
+        };
+        using var database = StoppingDatabase(seen, clock, logs, writes);
+        for (var index = 0; index < 4; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        try
+        {
+            var drain = DrainWithAsync(database.Database.Services, stopping.Token);
+            await Eventually.CompletesAsync(delivering.Task);
+            var cancelled = stopping.CancelAsync();
+            await Eventually.CompletesAsync(settling.Task);
+
+            // The host's own cancellation is not held by the write either.
+            await Eventually.CompletesAsync(cancelled);
+            clock.Advance(TimeSpan.FromSeconds(3));
+            await Eventually.CompletesAsync(drain);
+        }
+        finally
+        {
+            gate.Set();
+            handler.TrySetResult();
+        }
+
+        await Eventually.HoldsAsync(() => logs.Count("SettleFailed") == 4);
+        writes.Written.ShouldBeEmpty();
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 1 && row.LeaseOwner != null);
+
+        writes.Writing = null;
+        seen.Behavior = (_, _) => Task.CompletedTask;
+        clock.Advance(TimeSpan.FromMinutes(10));
+        (await DrainAsync(database.Database.Services)).ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task AFailureBeingWrittenWhenTheHostStopsIsWrittenAfterTheDeliveredRowsAreSettled()
+    {
+        var seen = new Seen();
+        var writes = new EndingWrites();
+        using var stopping = new CancellationTokenSource();
+        seen.Behavior = (_, _) => seen.Calls.Count == 1 ? Task.CompletedTask : throw new InvalidOperationException("Down.");
+        writes.Writing = (kind, _) => kind == EndingWrites.Failure ? stopping.CancelAsync() : Task.CompletedTask;
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(writes)))));
+        for (var index = 0; index < 3; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        await DrainWithAsync(database.Database.Services, stopping.Token);
+
+        writes.Written.ShouldBe([EndingWrites.Settle, EndingWrites.Failure, EndingWrites.Release]);
+        var rows = database.Rows();
+        rows[0].Status.ShouldBe(OutboxStatus.Delivered);
+        (rows[1].Status, rows[1].Attempts, rows[1].LeaseOwner).ShouldBe((OutboxStatus.Pending, 1, null));
+        rows[1].LastError!.ShouldContain("Down.");
+        (rows[2].Status, rows[2].Attempts, rows[2].LeaseOwner).ShouldBe((OutboxStatus.Pending, 0, null));
+    }
+
     [Fact]
     public async Task ARowWhoseHandlerThisInstanceDoesNotHaveWaitsWithoutUsingAnAttempt()
     {
@@ -973,6 +1159,28 @@ public sealed class OutboxFailureTests
 
         database.Rows().ShouldHaveSingleItem().Status.ShouldBe(OutboxStatus.Delivered);
     }
+
+    private static void StopAtTheSecondDelivery(Seen seen, CancellationTokenSource stopping) =>
+        seen.Behavior = (_, _) =>
+        {
+            if (seen.Calls.Count == 1)
+            {
+                return Task.CompletedTask;
+            }
+
+            stopping.Cancel();
+            throw new OperationCanceledException(stopping.Token);
+        };
+
+    // A host that gives a stop three seconds, on a clock that only the test moves.
+    private static ServiceDatabase StoppingDatabase(Seen seen, ManualTimeProvider clock, RecordingLogs logs, EndingWrites writes) =>
+        new(EventRegistrations.With(seen, Fast(cms =>
+        {
+            cms.Jobs.Options.ReleaseTimeout = TimeSpan.FromSeconds(3);
+            cms.Services.AddSingleton<TimeProvider>(clock);
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(writes));
+        })));
 
     private static Task<int> DrainWithAsync(IServiceProvider instance, CancellationToken token) =>
         instance.GetRequiredService<OutboxDrainer>().DrainAsync(token);
