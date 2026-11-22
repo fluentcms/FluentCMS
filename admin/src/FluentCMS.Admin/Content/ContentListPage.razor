@@ -181,6 +181,7 @@ else if (view is { } shownView)
 @code {
     private ContentLocaleAddress? address;
     private CancellationTokenSource? reading;
+    private bool disposed;
     private string? storedKey;
     private IReadOnlyList<string>? stored;
     private string? readKey;
@@ -262,16 +263,21 @@ else if (view is { } shownView)
 
     private IReadOnlyList<CmsSortKey> GridSort => [.. sort.Select(key => new CmsSortKey(key.Path, key.Descending))];
 
+    // While the router waits for the next page, this page gets that address's query and stays drawn: it neither follows nor
+    // reads it, and is not drawn again with it. The address is checked again after every wait, since it may change meanwhile.
+    protected override bool ShouldRender() => AtRoute();
+
+    private bool AtRoute() => ContentRoutes.IsList(Navigation, Type);
+
     protected override async Task OnParametersSetAsync()
     {
-        if (!ContentRoutes.IsList(Navigation, Type))
+        // The access and the schema are those of the content locale, so they are read in it before anything else.
+        address ??= new ContentLocaleAddress(Context, Navigation, Announcer, Document, L);
+        if (!AtRoute() || !await address.FollowAsync(Type, LocaleQuery, AtRoute))
         {
             return;
         }
 
-        // The access and the schema are those of the content locale, so they are read in it before anything else.
-        address ??= new ContentLocaleAddress(Context, Navigation, Announcer, Document, L);
-        await address.FollowAsync(Type, LocaleQuery);
         if (Described is not { Kind: "collection" } type || Context.Schema is not { } schema)
         {
             (view, readKey) = (null, null);
@@ -287,7 +293,7 @@ else if (view is { } shownView)
             });
 
             // A later change of the parameters, or of the site, runs on its own.
-            if (Described != type || Context.Schema != schema)
+            if (Described != type || Context.Schema != schema || !AtRoute())
             {
                 return;
             }
@@ -298,6 +304,11 @@ else if (view is { } shownView)
         var names = ColumnsQuery is not null
             ? ColumnsQuery.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             : await StoredColumnsAsync(type.Name);
+        if (!AtRoute())
+        {
+            return;
+        }
+
         shown = view.Choose(names);
         sort = view.ParseSort(SortQuery);
         page = ListView.ParsePage(PageQuery);
@@ -320,10 +331,13 @@ else if (view is { } shownView)
     // is not disabled there (FCMS2211).
     private bool Searchable(ListView list) => list.Searchable && Context.SearchIndex;
 
+    // A read that ends after the page is gone may still run its continuation, which then reads nothing.
     public void Dispose()
     {
+        disposed = true;
         reading?.Cancel();
         reading?.Dispose();
+        reading = null;
     }
 
     // Read once per user, site and type: only this page writes the choice, and it keeps what it writes.
@@ -347,7 +361,7 @@ else if (view is { } shownView)
     private async Task ReadAsync(ContentQuery query, bool again = false)
     {
         var key = $"{Context.Site?.Id}/{Context.ContentLocale}/{Type}?{query.ToQueryString()}";
-        if (key == readKey && !again)
+        if (disposed || (key == readKey && !again))
         {
             return;
         }
@@ -390,7 +404,7 @@ else if (view is { } shownView)
             badgeLocales = badges;
             total = result.Total ?? result.Items.Count;
             AnnounceFound(query);
-            if (entries.Count == 0 && total > 0 && page > Pages)
+            if (entries.Count == 0 && total > 0 && page > Pages && AtRoute())
             {
                 // A page past the end, as after entries were deleted or another site was chosen: its last page instead.
                 Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(new Dictionary<string, object?> { ["page"] = Pages > 1 ? (int)Pages : null }), replace: true);

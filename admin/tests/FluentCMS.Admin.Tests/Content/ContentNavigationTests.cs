@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using Bunit;
 using Bunit.TestDoubles;
 using FluentCMS.Admin.Administration.Users;
+using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Plugins;
 using FluentCMS.Admin.Plugins.Sample;
 using FluentCMS.Admin.Tests.Administration;
@@ -65,6 +66,56 @@ public sealed class ContentNavigationTests : AdministrationTestContext
         AssertLanded(app, route);
     }
 
+    // The check of the address holds after each wait of the page: a change of locale on the list's own route waits for the
+    // access of en, the router then waits for the administration assembly at /users, and the access answers meanwhile.
+    [Fact]
+    public async Task AListWhoseLocaleIsReadWhileTheAddressMovesOnReadsNothing()
+    {
+        var app = LoadContent("content/post?locale=fr&pageSize=50");
+        var access = HoldTheAccessWhileGoingTo(app, "content/post?locale=en&pageSize=50");
+        var reads = Management.Count("content/post");
+
+        var hold = await HeldVisitAsync(app, "users", access);
+
+        Management.Count("content/post").ShouldBe(reads);
+        Navigation.Uri.ShouldBe("http://localhost/users");
+        hold.SetResult();
+        AssertLanded(app, "users");
+    }
+
+    // The same with an address of the list that names no locale, whose follow waits for the read in flight: it adds no
+    // locale to the next address once the read answers.
+    [Fact]
+    public async Task AFollowThatEndsWhileTheAddressMovesOnAddsNoLocaleToTheNextAddress()
+    {
+        var app = LoadContent("content/post?locale=fr");
+        var access = HoldTheAccessWhileGoingTo(app, "content/post?locale=en");
+        Navigation.NavigateTo("content/post?pageSize=50");
+
+        var hold = await HeldVisitAsync(app, "users", access);
+
+        Navigation.Uri.ShouldBe("http://localhost/users");
+        hold.SetResult();
+        AssertLanded(app, "users");
+    }
+
+    // The list is not drawn again with the next address's query: its filters and its search stay as its own address has
+    // them, also when the next address has a search of its own.
+    [Fact]
+    public async Task AListAboutToBeReplacedKeepsItsFiltersAndItsSearch()
+    {
+        var app = LoadContent("content/post?locale=fr&filter[title][contains]=Hel&q=tour");
+        Chips(app).ShouldBe(["Title contains Hel"]);
+        SearchBox(app).Instance.Value.ShouldBe("tour");
+
+        var hold = await HeldVisitAsync(app, "users?q=ada");
+
+        Chips(app).ShouldBe(["Title contains Hel"]);
+        SearchBox(app).Instance.Value.ShouldBe("tour");
+        hold.SetResult();
+        AssertLanded(app, "users?q=ada");
+    }
+
     [Fact]
     public void AChangeOfTheQueryOnTheListsOwnRouteReadsAgainAndFollowsTheLocale()
     {
@@ -104,30 +155,64 @@ public sealed class ContentNavigationTests : AdministrationTestContext
 
     // The first visit of the route in this page load, whose load of the administration assembly or of the half the router
     // waits for: the address is already the route's while the content page stays drawn.
-    private async Task<TaskCompletionSource> HeldVisitAsync(IRenderedComponent<AdminApp> app, string route)
+    // With a held read of the access, the visit starts while that read waits, which then answers.
+    private async Task<TaskCompletionSource> HeldVisitAsync(IRenderedComponent<AdminApp> app, string route, TaskCompletionSource? access = null)
     {
         var hold = Loader.Hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         Navigation.NavigateTo(route);
-        app.WaitForAssertion(() => Loader.Loads.ShouldBe(1));
-        for (var turn = 0; turn < 3; turn++)
+        await DrainAsync(app);
+        access?.SetResult();
+
+        // The load starts once the access answers, and the content page is not drawn again then, so no render tells of it.
+        for (var turn = 0; Loader.Loads == 0 && turn < 500; turn++)
         {
-            await app.InvokeAsync(() => { });
+            await Task.Delay(10, Xunit.TestContext.Current.CancellationToken);
         }
 
+        Loader.Loads.ShouldBe(1);
+        await DrainAsync(app);
         return hold;
+    }
+
+    // Goes to the route with the reads of the access held, once the first has started.
+    private TaskCompletionSource HoldTheAccessWhileGoingTo(IRenderedComponent<AdminApp> app, string route)
+    {
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reads = Management.Count("me/access");
+        Management.HoldPath = path => path.EndsWith("/me/access", StringComparison.Ordinal) ? held.Task : null;
+        Navigation.NavigateTo(route);
+        app.WaitForAssertion(() => Management.Count("me/access").ShouldBeGreaterThan(reads));
+        return held;
     }
 
     private void AssertLanded(IRenderedComponent<AdminApp> app, string route)
     {
-        app.WaitForAssertion(() => app.FindComponent<RouteView>().Instance.RouteData.PageType.ShouldBe(route == "users" ? typeof(UsersPage) : typeof(ReviewsPage)));
+        var path = route.Split('?')[0];
+        app.WaitForAssertion(() => app.FindComponent<RouteView>().Instance.RouteData.PageType.ShouldBe(path == "users" ? typeof(UsersPage) : typeof(ReviewsPage)));
         Navigation.Uri.ShouldBe("http://localhost/" + route);
-        ((BunitNavigationManager)Navigation).History.Select(entry => entry.Uri).ShouldNotContain($"http://localhost/{route}?locale=fr");
+        ((BunitNavigationManager)Navigation).History.Select(entry => entry.Uri)
+            .Where(uri => uri.StartsWith($"http://localhost/{path}", StringComparison.Ordinal)).ShouldAllBe(uri => !uri.Contains("locale="));
     }
+
+    private static async Task DrainAsync(IRenderedComponent<AdminApp> app)
+    {
+        for (var turn = 0; turn < 3; turn++)
+        {
+            await app.InvokeAsync(() => { });
+        }
+    }
+
+    private static List<string> Chips(IRenderedComponent<AdminApp> app) =>
+        [.. app.FindAll(".content-filter").Select(chip => chip.QuerySelector("fluent-button")!.TextContent.Trim())];
+
+    private static IRenderedComponent<CmsTextInput> SearchBox(IRenderedComponent<AdminApp> app) =>
+        app.FindComponents<CmsTextInput>().Single(input => input.Instance.Label == "Search");
 
     private static JsonObject Post()
     {
         var title = Field("title");
         title["localizable"] = true;
+        title["searchable"] = true;
         var type = Type("post", fields: [title]);
         type["localized"] = true;
         return type;
