@@ -457,6 +457,13 @@ internal sealed partial class SiteManager(
             throw new ValidationException([new ValidationError("code", LocaleErrorCodes.LocaleInUse, $"'{row.Code}' is the default locale of the site; make another the default first.")]);
         }
 
+        // Entries first, so a client is not sent to change a chain for a locale it cannot remove anyway.
+        var locale = row.Code;
+        if (await context.Documents.IgnoreQueryFilters().AnyAsync(document => document.SiteId == id && document.Locale == locale, cancellationToken))
+        {
+            throw EntriesIn(locale);
+        }
+
         // Fallbacks are JSON, which the statement below cannot read alike on every database. A chain set while this runs is not
         // seen, and breaks no read, since a chain skips a code the site does not have (SiteLocales.Chain).
         var naming = rows.Where(other => other != row && Chain(other.Fallbacks) is { } chain && chain.Contains(row.Code, StringComparer.OrdinalIgnoreCase)).ToList();
@@ -468,19 +475,21 @@ internal sealed partial class SiteManager(
                 $"'{other.Code}' names '{row.Code}' as a fallback; take '{row.Code}' out of the fallbacks of '{other.Code}' first."))]);
         }
 
-        // One statement, so an entry written after a separate check would stop it too.
-        var locale = row.Code;
+        // One statement, so an entry written after the check above would stop it too.
         var removed = await context.Set<SiteLocale>()
             .Where(item => item.SiteId == id && item.Code == locale
                 && !context.Documents.IgnoreQueryFilters().Any(document => document.SiteId == id && document.Locale == locale))
             .ExecuteDeleteAsync(cancellationToken);
         if (removed == 0)
         {
-            throw new ValidationException([new ValidationError("code", LocaleErrorCodes.LocaleInUse, $"The site has entries in '{locale}'. Disable the locale instead, or delete them first.")]);
+            throw EntriesIn(locale);
         }
 
         await LocaleChangedAsync("site.locale-removed", site, locale);
     }
+
+    private static ValidationException EntriesIn(string locale) =>
+        new([new ValidationError("code", LocaleErrorCodes.LocaleInUse, $"The site has entries in '{locale}'. Disable the locale instead, or delete them first.")]);
 
     private async Task<Site> FindAsync(Guid id, bool tracked, CancellationToken cancellationToken)
     {

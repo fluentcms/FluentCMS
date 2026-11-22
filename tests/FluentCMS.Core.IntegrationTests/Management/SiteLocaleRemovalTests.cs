@@ -45,6 +45,22 @@ public sealed class SiteLocaleRemovalTests(AdminFixture fixture) : IClassFixture
         (await FallbacksAsync("it-CH")).ShouldBe(["en"]);
     }
 
+    // The entries are answered first, so a client is not sent to change a chain for a locale it cannot remove anyway.
+    [Fact]
+    public async Task ALocaleWithEntriesThatIsNamedAsAFallbackIsRefusedForItsEntries()
+    {
+        await AddAsync("""{ "code": "es" }""");
+        await AddAsync("""{ "code": "es-MX", "fallbacks": ["es", "en"] }""");
+        (await fixture.PostAsync("content/page?locale=es", """{ "title": "Hola" }""")).Status.ShouldBe(HttpStatusCode.Created);
+
+        var refused = await fixture.DeleteAsync($"sites/{Site}/locales/es");
+
+        refused.Status.ShouldBe(HttpStatusCode.Conflict, refused.Body?.ToJsonString());
+        refused.Json["code"]!.GetValue<string>().ShouldBe("FCMS3136");
+        Codes(await fixture.GetAsync($"sites/{Site}/locales")).ShouldContain("es");
+        (await FallbacksAsync("es-MX")).ShouldBe(["es", "en"]);
+    }
+
     // The implicit chain is worked out on each read from the locales the site has, so it names no locale.
     [Fact]
     public async Task ALocaleNoChainNamesIsRemoved()
