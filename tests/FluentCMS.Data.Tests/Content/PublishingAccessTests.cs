@@ -370,7 +370,7 @@ public sealed class PublishingAccessTests : IDisposable
         await _database.PublishAsync(translator, id, "fr");
         _database.Document(id, "fr").Status.ShouldBe(EntryStatus.Published);
 
-        await _database.PatchAsync(Editor, id, new() { ["views"] = 99 }, 1);
+        await _database.PatchAsync(Editor, id, new() { ["views"] = 99 }, 2);
         var before = _database.Trace(id);
 
         await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.PublishAsync(translator, id, "fr"));
@@ -564,7 +564,7 @@ public sealed class PublishingAccessTests : IDisposable
     {
         var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "Hello", ["views"] = 1 }));
         await _database.PatchAsync(Editor, id, new() { ["title"] = "Un" }, 0, locale: "fr");
-        await _database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 1);
+        await _database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 2);
         await _database.PublishAsync(Editor, id);
         await _database.PublishAsync(Editor, id, "fr");
 

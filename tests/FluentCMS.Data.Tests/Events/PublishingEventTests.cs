@@ -193,7 +193,7 @@ public sealed class PublishingEventTests
         await database.PatchAsync(Editor, id, new() { ["title"] = "Bonjour" }, 0, locale: "fr");
         await database.PublishAsync(Editor, id);
         await database.PublishAsync(Editor, id, "fr", operationLocale: "fr");
-        await database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 1);
+        await database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 2);
         seen.Events.Clear();
 
         await database.PublishAsync(Editor, id);

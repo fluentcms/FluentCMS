@@ -12,6 +12,13 @@ internal sealed class ScheduleStore(CmsDbContext context)
         context.Set<ScheduleRow>().AsNoTracking()
             .FirstOrDefaultAsync(row => row.DocumentId == documentId && row.Locale == locale && row.Action == action && row.Status == ScheduleRow.Pending, cancellationToken);
 
+    // A locale's draft moved with the shared row, so its version did: a pending publish takes the new one, since the draft it
+    // scheduled is the same but for the shared fields, which the write then compares by their hash.
+    public Task MovePendingPublishAsync(Guid documentId, string locale, int from, int to, CancellationToken cancellationToken) =>
+        context.Set<ScheduleRow>()
+            .Where(row => row.DocumentId == documentId && row.Locale == locale && row.Action == ScheduleRow.Publish && row.Status == ScheduleRow.Pending && row.Version == from)
+            .ExecuteUpdateAsync(set => set.SetProperty(row => row.Version, to), cancellationToken);
+
     // For a job that has been dead-lettered: its schedule will never run, so it is closed rather than left pending. Once it
     // is found, neither write takes the caller's token, since nothing would clear the mirror of a schedule already closed.
     public async Task<bool> FailByJobAsync(Guid jobId, DateTimeOffset at, string error, CancellationToken cancellationToken)
