@@ -84,7 +84,7 @@ else
             </CmsStack>
         </CmsCard>
 
-        <RoleGrants Grants="@draft.Grants" Catalogue="@catalogue" RoleSite="@RoleSite" ReadOnly="@Fixed" />
+        <RoleGrants Grants="@draft.Grants" Catalogue="@catalogue" RoleSite="@RoleSite" ReadOnly="@Fixed" Disabled="@busy" />
 
         <div role="alert">
             <p tabindex="-1" @ref="messageElement">@message</p>
@@ -388,8 +388,9 @@ else
         try
         {
             var current = await Api.GetRoleAsync(read!.Id, CancellationToken.None);
-            (draft, read) = (RoleDraft.Rebase(read, draft!, current), current);
-            Say(L["Roles.Editor.Changed"]);
+            var (rebased, dropped) = RoleDraft.Rebase(read, draft!, current);
+            (draft, read) = (rebased, current);
+            Say(dropped.Count == 0 ? L["Roles.Editor.Changed"] : L["Roles.Editor.ChangedLimitsDropped", string.Join(", ", dropped)]);
         }
         catch (Exception exception) when (RoleProblems.Has(exception, RoleProblems.RoleNotFound))
         {

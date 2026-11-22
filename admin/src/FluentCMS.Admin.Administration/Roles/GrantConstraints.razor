@@ -46,7 +46,7 @@
 @if (!ReadOnly)
 {
     <details open="@ConstraintsRefused">
-        <summary>@L["Roles.Constraints.Edit"]<span class="cms-visually-hidden">@L["Roles.Constraints.EditWhich", Permission]</span></summary>
+        <summary>@L["Roles.Constraints.Edit"]<span id="@($"{messageId}-grant")" class="cms-visually-hidden">@L["Roles.Constraints.EditWhich", Permission]</span></summary>
         <p>@L["Roles.Constraints.Help"]</p>
         @if (Refusals.Contains(Whole))
         {
@@ -72,6 +72,8 @@
                        ValueChanged="@(rule => SetAsync(RowRule, rule is null ? null : JsonValue.Create(rule)))"
                        Placeholder="@L["Roles.Constraints.NoRule"]"
                        Clearable="true"
+                       Disabled="@Disabled"
+                       DescribedBy="@($"{messageId}-grant")"
                        Help="@(Catalogue.RowRules is null ? L["Roles.Constraints.RulesUnread"].Value : null)"
                        Error="@(Refused(RowRule) ? L["Roles.Constraints.RuleRefused", Rule(Value) ?? string.Empty].Value : null)" />
         }
@@ -106,6 +108,10 @@
 
     [Parameter]
     public bool ReadOnly { get; set; }
+
+    // Shown and not changed, while a save is in flight.
+    [Parameter]
+    public bool Disabled { get; set; }
 
     // The permission or pattern the grant names.
     [Parameter, EditorRequired]
@@ -154,11 +160,12 @@
 
     private RenderFragment Choices(string member, string legend, string? help, IReadOnlyList<CmsOption> choices) =>
         @<fieldset class="cms-field" aria-describedby="@($"{messageId}-{member}")">
-            <legend class="cms-field-label">@legend</legend>
+            <legend class="cms-field-label">@legend<span class="cms-visually-hidden">@L["Roles.Constraints.EditWhich", Permission]</span></legend>
             @foreach (var choice in choices)
             {
                 <CmsCheckbox @key="choice.Value"
                              Label="@choice.Text"
+                             Disabled="@Disabled"
                              MarkedInvalid="@Refused(member)"
                              DescribedBy="@($"{messageId}-{member}")"
                              Value="@Chosen(member, choice.Value)"
@@ -177,11 +184,21 @@
     private bool Refused(string member) =>
         Refusals.Any(path => path == $"{Whole}.{member}" || path.StartsWith($"{Whole}.{member}.", StringComparison.Ordinal) || path.StartsWith($"{Whole}.{member}[", StringComparison.Ordinal));
 
-    // The options, then each value stored that they do not offer, marked so, so that it can be taken off.
-    private IReadOnlyList<CmsOption> WithStored(string member, IReadOnlyList<CmsOption> offered) =>
-        [.. offered, .. (Strings(Value, member) ?? [])
-            .Where(value => !offered.Any(option => Same(member, option.Value, value)))
-            .Select(value => new CmsOption(value, L["Roles.Constraints.NotOffered", member == Sites ? SiteName(value) : value]))];
+    // The options, then each value stored that they do not offer, marked so, so that it can be taken off; once, since the
+    // server does not make sites or fields distinct.
+    private IReadOnlyList<CmsOption> WithStored(string member, IReadOnlyList<CmsOption> offered)
+    {
+        var options = offered.ToList();
+        foreach (var value in Strings(Value, member) ?? [])
+        {
+            if (!options.Any(option => Same(member, option.Value, value)))
+            {
+                options.Add(new CmsOption(value, L["Roles.Constraints.NotOffered", member == Sites ? SiteName(value) : value]));
+            }
+        }
+
+        return options;
+    }
 
     private bool Chosen(string member, string value) => Strings(Value, member)?.Any(stored => Same(member, stored, value)) == true;
 

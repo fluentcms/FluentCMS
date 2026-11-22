@@ -10,10 +10,11 @@ public sealed class GrantDraft
     // The members of the constraints the server knows, in the order of the identity.
     private static readonly string[] Members = ["sites", "locales", "fields", "rowRule", "resources"];
 
-    internal GrantDraft(string permission, JsonObject? constraints)
+    internal GrantDraft(string permission, JsonObject? constraints, string? origin = null)
     {
         Permission = permission;
         Constraints = constraints;
+        Origin = origin;
     }
 
     // Tells the rows apart for rendering and for the server's refusal of one of them.
@@ -23,6 +24,9 @@ public sealed class GrantDraft
 
     public JsonObject? Constraints { get; set; }
 
+    // The identity of the grant as it was read, which the merge after FCMS3045 starts from; null for a grant the user added.
+    public string? Origin { get; }
+
     // The paths below the grant the server refused on its last save, such as constraints.locales; empty when none.
     public IReadOnlyList<string> Refusals { get; set; } = [];
 
@@ -31,7 +35,7 @@ public sealed class GrantDraft
     public string Identity => IdentityOf(Permission, Constraints);
 
     // The grant as the server tells grants apart once it has stored them: the known members in a fixed order, each list
-    // as a set with the server's normalization (sites as ids, locales lower-cased, every list distinct), and a member that
+    // as a set as the server compares it (sites as ids, locales in any case, every list distinct), and a member that
     // is null, or an object with none, as no constraint, which the server stores as null. A member it does not know is kept
     // as written, since the server refuses it rather than drop it.
     public static string IdentityOf(string permission, JsonObject? constraints)
@@ -74,7 +78,8 @@ public sealed class GrantDraft
         return new JsonArray([.. texts.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Select(text => (JsonNode)JsonValue.Create(text))]);
     }
 
-    internal static GrantDraft From(RoleGrantRecord grant) => new(grant.Permission, grant.Constraints?.DeepClone().AsObject());
+    internal static GrantDraft From(RoleGrantRecord grant) =>
+        new(grant.Permission, grant.Constraints?.DeepClone().AsObject(), IdentityOf(grant.Permission, grant.Constraints));
 
     internal JsonObject ToJson()
     {
@@ -119,8 +124,10 @@ internal sealed class RoleDraft
     // After another change of the role was saved during this one (FCMS3045): the role as it is now, with what the user
     // changed since the read put back on it. A field the user changed keeps the user's value; a grant the user took away is
     // taken from the role as it is now, and one the user added is added to it, so that a grant the other change added or
-    // narrowed is kept as it saved it.
-    public static RoleDraft Rebase(RoleRecord read, RoleDraft mine, RoleRecord current)
+    // narrowed is kept as it saved it. A grant whose constraints the user changed takes the change only where the other
+    // change left that grant as it was read: where it changed or took it away, its version stays and the user's change is
+    // dropped and named in Dropped, since the two together could reach further than either meant.
+    public static (RoleDraft Draft, IReadOnlyList<string> Dropped) Rebase(RoleRecord read, RoleDraft mine, RoleRecord current)
     {
         var rebased = new RoleDraft
         {
@@ -129,14 +136,19 @@ internal sealed class RoleDraft
             RequireTwoFactor = mine.RequireTwoFactor != read.RequireTwoFactor ? mine.RequireTwoFactor : current.RequireTwoFactor,
         };
 
-        // The grants read, less those the user kept, are those the user took away.
-        var removed = Counted(read.Grants.Select(GrantDraft.From));
+        // The grants read, less those the user kept or changed, are those the user took away.
+        var takenAway = Counted(read.Grants.Select(GrantDraft.From));
         var added = new List<GrantDraft>();
+        var changed = new List<GrantDraft>();
         foreach (var grant in mine.Grants)
         {
-            if (removed.TryGetValue(grant.Identity, out var count) && count > 0)
+            if (grant.Origin is { } origin && takenAway.GetValueOrDefault(origin) > 0)
             {
-                removed[grant.Identity] = count - 1;
+                takenAway[origin]--;
+                if (grant.Identity != origin)
+                {
+                    changed.Add(grant);
+                }
             }
             else
             {
@@ -144,11 +156,38 @@ internal sealed class RoleDraft
             }
         }
 
-        foreach (var grant in current.Grants.Select(GrantDraft.From))
+        var theirs = current.Grants.Select(GrantDraft.From).ToList();
+        var left = Counted(theirs);
+        var replacing = new Dictionary<string, Queue<GrantDraft>>(StringComparer.Ordinal);
+        var dropped = new List<string>();
+        foreach (var grant in changed)
         {
-            if (removed.TryGetValue(grant.Identity, out var count) && count > 0)
+            var origin = grant.Origin!;
+            if (left.GetValueOrDefault(origin) - takenAway.GetValueOrDefault(origin) > 0)
             {
-                removed[grant.Identity] = count - 1;
+                left[origin]--;
+                if (!replacing.TryGetValue(origin, out var queue))
+                {
+                    replacing[origin] = queue = new Queue<GrantDraft>();
+                }
+
+                queue.Enqueue(grant);
+            }
+            else if (theirs.All(kept => kept.Identity != grant.Identity))
+            {
+                dropped.Add(grant.Permission);
+            }
+        }
+
+        foreach (var grant in theirs)
+        {
+            if (takenAway.GetValueOrDefault(grant.Identity) > 0)
+            {
+                takenAway[grant.Identity]--;
+            }
+            else if (replacing.TryGetValue(grant.Identity, out var queue) && queue.Count > 0)
+            {
+                rebased.Grants.Add(queue.Dequeue());
             }
             else
             {
@@ -157,8 +196,15 @@ internal sealed class RoleDraft
         }
 
         // A grant both changes added is there once.
-        rebased.Grants.AddRange(added.Where(grant => rebased.Grants.All(kept => kept.Identity != grant.Identity)));
-        return rebased;
+        foreach (var grant in added)
+        {
+            if (rebased.Grants.All(kept => kept.Identity != grant.Identity))
+            {
+                rebased.Grants.Add(grant);
+            }
+        }
+
+        return (rebased, [.. dropped.Distinct(StringComparer.Ordinal)]);
     }
 
     private static bool Same(string? left, string? right) =>

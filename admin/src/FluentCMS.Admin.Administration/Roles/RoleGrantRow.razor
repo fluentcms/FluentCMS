@@ -38,12 +38,13 @@
                       ValueChanged="@OnConstraintsChanged"
                       RoleSite="@RoleSite"
                       ReadOnly="@ReadOnly"
+                      Disabled="@Disabled"
                       Permission="@Grant.Permission"
                       Catalogue="@Catalogue"
                       Refusals="@Grant.Refusals" />
     @if (!ReadOnly)
     {
-        <CmsButton OnClick="@(() => OnRemove.InvokeAsync(Grant))">
+        <CmsButton Disabled="@Disabled" OnClick="@(() => OnRemove.InvokeAsync(Grant))">
             @L["Roles.Grants.Remove"]<span class="cms-visually-hidden">@L["Roles.Grants.RemoveWhich", Grant.Permission]</span>
         </CmsButton>
     }
@@ -63,14 +64,36 @@
     public bool ReadOnly { get; set; }
 
     [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
     public EventCallback<GrantDraft> OnRemove { get; set; }
 
     [Parameter]
     public EventCallback OnChanged { get; set; }
 
+    // A refusal is of the value that was sent, so it goes once the user changes the constraint it is on.
     private Task OnConstraintsChanged(JsonObject? constraints)
     {
+        Grant.Refusals = [.. Grant.Refusals.Where(path => !ChangedBelow(path, Grant.Constraints, constraints))];
         Grant.Constraints = constraints;
         return OnChanged.InvokeAsync();
+    }
+
+    private static bool ChangedBelow(string path, JsonObject? before, JsonObject? after)
+    {
+        const string Whole = "constraints";
+        if (path == Whole)
+        {
+            return !JsonNode.DeepEquals(before, after);
+        }
+
+        if (!path.StartsWith(Whole + ".", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var member = path[(Whole.Length + 1)..].Split('.', '[')[0];
+        return !JsonNode.DeepEquals(before?[member], after?[member]);
     }
 }

@@ -303,6 +303,9 @@
   <data name="Roles.Editor.Changed" xml:space="preserve">
     <value>Someone saved a change of this role while you edited it. The role was read again, with your changes kept on it: check it and save again.</value>
   </data>
+  <data name="Roles.Editor.ChangedLimitsDropped" xml:space="preserve">
+    <value>Someone saved a change of this role while you edited it. The role was read again, with your changes kept on it, except your change to the limits of {0}, which the other change also changed or took away: check those grants, change them again if you still want to, and save again.</value>
+  </data>
   <data name="Roles.Editor.ChangedNotRead" xml:space="preserve">
     <value>Someone saved a change of this role while you edited it, and it could not be read again. Your changes are kept; save again.</value>
   </data>

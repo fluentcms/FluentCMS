@@ -128,7 +128,8 @@ public sealed class GrantConstraintsTests : RolesTestContext
         row.QuerySelector("details")!.HasAttribute("open").ShouldBeTrue();
         var select = RuleSelect(row);
         select.GetAttribute("aria-invalid").ShouldBe("true");
-        row.QuerySelector($"#{select.GetAttribute("aria-describedby")}")!.TextContent.ShouldBe("There is no registered row rule retired, so the server refused it.");
+        select.GetAttribute("aria-describedby")!.Split(' ').Select(id => row.QuerySelector($"#{id}")!.TextContent)
+            .ShouldContain("There is no registered row rule retired, so the server refused it.");
         Group(row, "Fields").QuerySelectorAll(".cms-field-message-error").ShouldBeEmpty();
         Row(app, "media.read").QuerySelector("details")!.HasAttribute("open").ShouldBeFalse();
     }
@@ -240,14 +241,137 @@ public sealed class GrantConstraintsTests : RolesTestContext
         GrantsShown(app).Count(grant => grant == "schema.read").ShouldBe(1);
     }
 
-    private static readonly Guid ShopEditors2 = new("0193a1b2-0000-7000-8000-0000000000b4");
+    // A member of the constraints the editor does not name goes back as read through an edit of another.
+    [Fact]
+    public void AMemberTheEditorDoesNotKnowIsSentBackThroughAnEdit()
+    {
+        RoleOf(Reviewers)["grants"]![1]!["constraints"]!["tenants"] = new JsonArray("north");
+        var app = Open($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => Row(app, "content.article.read"));
+
+        Uncheck(app, "content.article.read", "Fields", "body");
+        Save(app);
+
+        app.WaitForAssertion(() => Alert(app).ShouldBe("The role was saved."));
+        var sent = LastWrite(HttpMethod.Put)["grants"]![1]!["constraints"]!;
+        JsonNode.DeepEquals(sent["tenants"], new JsonArray("north")).ShouldBeTrue(sent.ToJsonString());
+        JsonNode.DeepEquals(sent["fields"], new JsonArray("title")).ShouldBeTrue(sent.ToJsonString());
+    }
+
+    // The refusal is of the rule that was sent: changing another limit keeps it, and another rule takes it off.
+    [Fact]
+    public void ARefusalOfARowRuleGoesOnceTheRuleIsChanged()
+    {
+        RoleOf(Reviewers)["grants"]![1]!["constraints"]!["rowRule"] = "retired";
+        Refuse = (method, path) => method == HttpMethod.Put ? Problem(HttpStatusCode.BadRequest, "FCMS3042", "grants[1].constraints.rowRule") : null;
+        var app = Open($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => Row(app, "content.article.read"));
+        Save(app);
+        app.WaitForAssertion(() => RuleSelect(Row(app, "content.article.read")).GetAttribute("aria-invalid").ShouldBe("true"));
+
+        Uncheck(app, "content.article.read", "Fields", "body");
+        RuleSelect(Row(app, "content.article.read")).GetAttribute("aria-invalid").ShouldBe("true");
+
+        RuleSelect(Row(app, "content.article.read")).Change("own-entries");
+
+        app.WaitForAssertion(() => RuleSelect(Row(app, "content.article.read")).HasAttribute("aria-invalid").ShouldBeFalse());
+        Row(app, "content.article.read").TextContent.ShouldNotContain("There is no registered row rule");
+        Row(app, "content.article.read").QuerySelector("[role=alert]").ShouldBeNull();
+    }
+
+    // Each grant has the same limits, so a screen reader hears which grant a group or the rule belongs to.
+    [Fact]
+    public void TheLimitsNameTheirGrantToAScreenReader()
+    {
+        var app = Open($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => Row(app, "content.article.read"));
+
+        var row = Row(app, "content.article.read");
+        foreach (var legend in Groups(row))
+        {
+            Group(row, legend).QuerySelector("legend .cms-visually-hidden")!.TextContent.Trim().ShouldBe("of the grant content.article.read");
+        }
+
+        var described = RuleSelect(row).GetAttribute("aria-describedby")!.Split(' ');
+        described.Select(id => row.QuerySelector($"#{id}")?.TextContent.Trim()).ShouldContain("of the grant content.article.read");
+    }
+
+    // The answer of a save replaces the grants, so nothing of them changes while it is awaited.
+    [Fact]
+    public void TheGrantsCannotBeChangedWhileASaveIsInFlight()
+    {
+        var app = Open($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => Row(app, "content.article.read"));
+        var held = new TaskCompletionSource();
+        Management.HoldPath = path => path.EndsWith($"roles/{Reviewers:D}", StringComparison.Ordinal) ? held.Task : null;
+
+        Save(app);
+
+        app.WaitForAssertion(() => RuleSelect(Row(app, "content.article.read")).HasAttribute("disabled").ShouldBeTrue());
+        Boxes(Group(Row(app, "content.article.read"), "Fields")).ShouldAllBe(box => box.HasAttribute("disabled"));
+        Button(app, "Remove the grant schema.read").HasAttribute("disabled").ShouldBeTrue();
+        Field(app, "Permission or pattern").HasAttribute("disabled").ShouldBeTrue();
+
+        held.SetResult();
+
+        app.WaitForAssertion(() => Alert(app).ShouldBe("The role was saved."));
+        Boxes(Group(Row(app, "content.article.read"), "Fields")).ShouldAllBe(box => !box.HasAttribute("disabled"));
+    }
+
+    // The server keeps a site or a field given twice; the editor shows it once.
+    [Fact]
+    public void AValueStoredTwiceIsOfferedOnce()
+    {
+        RoleOf(Reviewers)["grants"]![1]!["constraints"]!["fields"] = new JsonArray("title", "title", "legacy", "legacy");
+        var app = Open($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => Row(app, "content.article.read"));
+
+        Labels(Group(Row(app, "content.article.read"), "Fields")).ShouldBe(["title", "body", "summary", "legacy (not offered here)"]);
+        Checked(Group(Row(app, "content.article.read"), "Fields")).ShouldBe(["title", "legacy (not offered here)"]);
+    }
+
+    // FCMS3045 after the user narrowed one grant and limited another: the other change limited the first too, so its
+    // version stays and the message names it; the user's change of the second, which the other change left, is kept.
+    [Fact]
+    public void AConcurrentChangeOfAGrantTheUserNarrowedKeepsTheOtherChangeAndSaysSo()
+    {
+        var refusals = 1;
+        Refuse = (method, path) => method == HttpMethod.Put && refusals-- > 0 ? Problem(HttpStatusCode.Conflict, "FCMS3045", "id") : null;
+        var app = Open($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => Row(app, "content.article.read"));
+
+        Uncheck(app, "content.article.read", "Fields", "body");
+        Check(app, "media.read", "Locales", "fr");
+        RoleOf(Reviewers)["grants"]![1]!["constraints"]!["locales"] = new JsonArray("fr");
+        Save(app);
+
+        app.WaitForAssertion(() => Alert(app).ShouldBe(
+            "Someone saved a change of this role while you edited it. The role was read again, with your changes kept on it, except your change to the limits of content.article.read, which the other change also changed or took away: check those grants, change them again if you still want to, and save again."));
+        Checked(Group(Row(app, "content.article.read"), "Fields")).ShouldBe(["title", "body"]);
+        Checked(Group(Row(app, "content.article.read"), "Locales")).Select(label => label[..2]).ShouldBe(["fr"]);
+        Checked(Group(Row(app, "media.read"), "Locales")).Select(label => label[..2]).ShouldBe(["fr"]);
+
+        Save(app);
+
+        app.WaitForAssertion(() => Alert(app).ShouldBe("The role was saved."));
+        var grants = LastWrite(HttpMethod.Put)["grants"]!;
+        JsonNode.DeepEquals(grants[1]!["constraints"], RoleOf(Reviewers)["grants"]![1]!["constraints"]).ShouldBeTrue(grants.ToJsonString());
+        JsonNode.DeepEquals(grants[1]!["constraints"]!["locales"], new JsonArray("fr")).ShouldBeTrue(grants.ToJsonString());
+        JsonNode.DeepEquals(grants[2]!["constraints"], new JsonObject { ["resources"] = new JsonArray(PressKit), ["locales"] = new JsonArray("fr") }).ShouldBeTrue(grants.ToJsonString());
+    }
+
+    private static readonly Guid ShopEditors2 =new("0193a1b2-0000-7000-8000-0000000000b4");
 
     private static IElement Row(IRenderedComponent<AdminApp> app, string permission) => app.Find($"main [data-grant='{permission}']");
 
-    private static string[] Groups(IElement row) => [.. row.QuerySelectorAll("fieldset legend").Select(legend => legend.TextContent.Trim())];
+    private static string[] Groups(IElement row) => [.. row.QuerySelectorAll("fieldset legend").Select(Shown)];
 
     private static IElement Group(IElement row, string legend) =>
-        row.QuerySelectorAll("fieldset").Single(group => group.QuerySelector("legend")!.TextContent.Trim() == legend);
+        row.QuerySelectorAll("fieldset").Single(group => Shown(group.QuerySelector("legend")!) == legend);
+
+    // The text of a legend that is shown, without the grant's name that only a screen reader reads.
+    private static string Shown(IElement legend) =>
+        legend.TextContent.Replace(legend.QuerySelector(".cms-visually-hidden")?.TextContent ?? string.Empty, string.Empty, StringComparison.Ordinal).Trim();
 
     private static IElement RuleSelect(IElement row) => row.QuerySelector("details select")!;
 
@@ -270,7 +394,7 @@ public sealed class GrantConstraintsTests : RolesTestContext
 
         // A value taken off that is not offered goes with its box, and its group when it was the last.
         app.WaitForAssertion(() => Row(app, permission).QuerySelectorAll("fieldset")
-            .Where(group => group.QuerySelector("legend")!.TextContent.Trim() == legend)
+            .Where(group => Shown(group.QuerySelector("legend")!) == legend)
             .SelectMany(Checked)
             .Any(shown => shown.StartsWith(label, StringComparison.Ordinal))
             .ShouldBe(on));

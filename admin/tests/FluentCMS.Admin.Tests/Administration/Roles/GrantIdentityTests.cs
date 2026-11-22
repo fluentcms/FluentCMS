@@ -50,7 +50,7 @@ public sealed class GrantIdentityTests
         mine.Grants.Add(new GrantDraft("content.article.update", new JsonObject { ["locales"] = new JsonArray("en"), ["fields"] = new JsonArray("title") }));
         var current = Read(Grant("content.article.update", new JsonObject { ["fields"] = new JsonArray("title"), ["locales"] = new JsonArray("en") }));
 
-        var rebased = RoleDraft.Rebase(read, mine, current);
+        var (rebased, _) = RoleDraft.Rebase(read, mine, current);
 
         rebased.Grants.Select(grant => grant.Permission).ShouldBe(["schema.read", "content.article.update"]);
     }
@@ -65,7 +65,7 @@ public sealed class GrantIdentityTests
         mine.Grants.RemoveAll(grant => grant.Permission == "content.article.read");
         var current = Read(Grant("content.article.read", new JsonObject { ["fields"] = new JsonArray("title"), ["locales"] = new JsonArray("fr", "en") }));
 
-        RoleDraft.Rebase(read, mine, current).Grants.Select(grant => grant.Permission).ShouldBe(["schema.read"]);
+        RoleDraft.Rebase(read, mine, current).Draft.Grants.Select(grant => grant.Permission).ShouldBe(["schema.read"]);
     }
 
     // The user's grant with empty constraints is the server's grant with none: kept once, not taken away and added again.
@@ -77,7 +77,60 @@ public sealed class GrantIdentityTests
         mine.Grants[1].Constraints = [];
         var current = Read(Grant("content.article.read", null), Grant("content.article.create", null));
 
-        RoleDraft.Rebase(read, mine, current).Grants.Select(grant => grant.Permission).ShouldBe(["schema.read", "content.article.read", "content.article.create"]);
+        RoleDraft.Rebase(read, mine, current).Draft.Grants.Select(grant => grant.Permission).ShouldBe(["schema.read", "content.article.read", "content.article.create"]);
+    }
+
+    // The user limited a grant to a field while the other change limited it to a locale: both together would give every field
+    // in that locale, and the field in every locale. The other change's grant stays, and the user's change is named.
+    [Fact]
+    public void AGrantBothChangesNarrowedKeepsTheirsAndNamesMine()
+    {
+        var read = Read(Grant("content.article.update", null));
+        var mine = RoleDraft.From(read);
+        mine.Grants[1].Constraints = new JsonObject { ["fields"] = new JsonArray("title") };
+        var current = Read(Grant("content.article.update", new JsonObject { ["locales"] = new JsonArray("en") }));
+
+        var (rebased, dropped) = RoleDraft.Rebase(read, mine, current);
+
+        rebased.Grants.Select(grant => grant.Identity).ShouldBe([
+            GrantDraft.IdentityOf("schema.read", null),
+            GrantDraft.IdentityOf("content.article.update", new JsonObject { ["locales"] = new JsonArray("en") })]);
+        dropped.ShouldBe(["content.article.update"]);
+    }
+
+    // The user narrowed a grant the other change took away: it stays away.
+    [Fact]
+    public void AGrantTheOtherChangeTookAwayStaysAwayThoughTheUserNarrowedIt()
+    {
+        var read = Read(Grant("content.article.update", null));
+        var mine = RoleDraft.From(read);
+        mine.Grants[1].Constraints = new JsonObject { ["fields"] = new JsonArray("title") };
+
+        var (rebased, dropped) = RoleDraft.Rebase(read, mine, Read());
+
+        rebased.Grants.Select(grant => grant.Permission).ShouldBe(["schema.read"]);
+        dropped.ShouldBe(["content.article.update"]);
+    }
+
+    // A change of constraints to a grant the other change left as it was read is kept, in its place; one the other change
+    // made just as the user did is not named.
+    [Fact]
+    public void AChangeOfAGrantTheOtherChangeLeftIsKept()
+    {
+        var read = Read(Grant("content.article.update", null), Grant("content.article.read", null));
+        var mine = RoleDraft.From(read);
+        mine.Grants[1].Constraints = new JsonObject { ["fields"] = new JsonArray("title") };
+        mine.Grants[2].Constraints = new JsonObject { ["locales"] = new JsonArray("fr") };
+        var current = Read(Grant("content.article.update", null), Grant("content.article.read", new JsonObject { ["locales"] = new JsonArray("FR") }), Grant("content.article.create", null));
+
+        var (rebased, dropped) = RoleDraft.Rebase(read, mine, current);
+
+        rebased.Grants.Select(grant => grant.Identity).ShouldBe([
+            GrantDraft.IdentityOf("schema.read", null),
+            GrantDraft.IdentityOf("content.article.update", new JsonObject { ["fields"] = new JsonArray("title") }),
+            GrantDraft.IdentityOf("content.article.read", new JsonObject { ["locales"] = new JsonArray("fr") }),
+            GrantDraft.IdentityOf("content.article.create", null)]);
+        dropped.ShouldBeEmpty();
     }
 
     [Fact]
