@@ -2,8 +2,10 @@ using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Schema;
+using FluentCMS.Settings;
 
 namespace FluentCMS.Core.Schema;
 
@@ -17,38 +19,74 @@ internal sealed class SchemaIntrospection(
     SchemaModel schema,
     IAuthorizationEvaluator evaluator,
     ManagementAuthority authority,
-    IOperationContextAccessor accessor) : ISchemaIntrospection
+    IOperationContextAccessor accessor,
+    ISettings<PreviewSettings> previews) : ISchemaIntrospection
 {
     private static readonly ConditionalWeakTable<SchemaModel, HashSet<SchemaType>> UsedByModel = [];
 
-    public async Task<SchemaDescription> DescribeAsync(CancellationToken cancellationToken = default) =>
-        SchemaDescriber.Describe(await VisibleAsync(cancellationToken));
+    public async Task<SchemaDescription> DescribeAsync(CancellationToken cancellationToken = default)
+    {
+        var (visible, permissions) = await VisibleAsync(cancellationToken);
+        var described = SchemaDescriber.Describe(visible);
+        var previewable = await PreviewableAsync(visible.ContentTypes, permissions, cancellationToken);
+        return previewable.Count == 0
+            ? described
+            : described with { Types = [.. described.Types.Select(type => previewable.Contains(type.Name) ? type with { Previewable = true } : type)] };
+    }
 
     public async Task<SchemaTypeDescription?> DescribeTypeAsync(string name, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(name);
 
-        return (await VisibleAsync(cancellationToken)).FindContentType(name) is { } type ? SchemaDescriber.Describe(type) : null;
+        var (visible, permissions) = await VisibleAsync(cancellationToken);
+        return visible.FindContentType(name) is { } type
+            ? SchemaDescriber.Describe(type) with { Previewable = (await PreviewableAsync([type], permissions, cancellationToken)).Count > 0 }
+            : null;
     }
 
     // The canonical snapshot of what the principal sees: the instance's own, with its hash, when nothing is left out.
     public async Task<SchemaSnapshot> SnapshotAsync(CancellationToken cancellationToken = default)
     {
-        var visible = await VisibleAsync(cancellationToken);
+        var (visible, _) = await VisibleAsync(cancellationToken);
         return ReferenceEquals(visible, schema) ? SchemaSnapshot.Of(schema) : SchemaSnapshot.Create(SchemaJsonWriter.Write(visible));
     }
 
-    private async Task<SchemaModel> VisibleAsync(CancellationToken cancellationToken)
+    private async Task<(SchemaModel Visible, EffectivePermissions? Permissions)> VisibleAsync(CancellationToken cancellationToken)
     {
         if (accessor.Current is not { } operation)
         {
-            return schema;
+            return (schema, null);
         }
 
         await authority.RequireAsync(CorePermissions.SchemaRead, operation.Site.Value, cancellationToken);
         var permissions = await evaluator.ResolveAsync(operation, cancellationToken);
-        return permissions.IsSystem ? schema : Narrow(schema, permissions, new AccessTarget(operation.Site, operation.Locale));
+        return (permissions.IsSystem ? schema : Narrow(schema, permissions, new AccessTarget(operation.Site, operation.Locale)), permissions);
     }
+
+    // The types the principal may mint a preview token of, through the Management API and with a draft read, whose template in
+    // the site fits the type as the principal sees it. A template that reads a field that went would give no URL, so it is none,
+    // as a title field that went is. Outside an operation there is no site, and so no template.
+    private async Task<HashSet<string>> PreviewableAsync(IEnumerable<SchemaType> visible, EffectivePermissions? permissions, CancellationToken cancellationToken)
+    {
+        if (permissions is null || accessor.Current is not { } operation || !MayMint(operation.Principal))
+        {
+            return [];
+        }
+
+        var target = new AccessTarget(operation.Site, operation.Locale);
+        List<SchemaType> drafts = [.. visible.Where(type => permissions.CanReadDraft(schema.FindContentType(type.Name)!, target))];
+        if (drafts.Count == 0)
+        {
+            return [];
+        }
+
+        var settings = await previews.GetAsync(operation.Site, cancellationToken);
+        return drafts.Where(type => settings.TemplateOf(type) is not null).Select(type => type.Name).ToHashSet(StringComparer.Ordinal);
+    }
+
+    private static bool MayMint(Principal principal) =>
+        principal.Kind is not (PrincipalKind.System or PrincipalKind.Anonymous)
+        && (principal.Claim(TokenScopes.Claim) ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(TokenScopes.Management, StringComparer.Ordinal);
 
     // The schema with what the permissions do not let the principal read there left out, as said above.
     public static SchemaModel Narrow(SchemaModel schema, EffectivePermissions permissions, AccessTarget target)

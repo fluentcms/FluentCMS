@@ -8,7 +8,7 @@ namespace FluentCMS.Core.Identity.PreviewTokens;
 
 internal sealed record PreviewTokenRequest(int? Minutes, string? Locale);
 
-internal sealed record IssuedPreviewToken(string Token, DateTimeOffset ExpiresAt, PreviewBinding Binding, string? Url = null, string? PublishedUrl = null);
+internal sealed record IssuedPreviewToken(string Token, DateTimeOffset ExpiresAt, TimeSpan Lifetime, PreviewBinding Binding, string? Url = null, string? PublishedUrl = null);
 
 // Mints a token that reads the draft of one entry in the operation's site, and of one locale when the request names it,
 // on the Delivery API. Minting reads that draft as the caller first, so a caller who may not read it gets the 404 the read
@@ -46,12 +46,13 @@ internal sealed class PreviewTokenService(
         var draft = await content.GetAsync(found.Name, id, read, cancellationToken) ?? throw new EntryNotFoundException(found.Name, id);
 
         var binding = new PreviewBinding(operation.Site.Value, found.Name, id, locale);
-        // A JWT holds whole seconds, so the answer says the expiry the token has.
-        var expires = DateTimeOffset.FromUnixTimeSeconds((time.GetUtcNow() + lifetime).ToUnixTimeSeconds());
-        var token = issuer.Create(PreviewTokenIssuer.ClaimsOf(operation.Principal, binding), expires);
+        // A JWT holds whole seconds, so the answer says the issue and expiry the token has, which are the lifetime apart.
+        var issued = DateTimeOffset.FromUnixTimeSeconds(time.GetUtcNow().ToUnixTimeSeconds());
+        var expires = issued + lifetime;
+        var token = issuer.Create(PreviewTokenIssuer.ClaimsOf(operation.Principal, binding), issued, expires);
         if (await TemplateAsync(found, operation.Site, cancellationToken) is not { } template)
         {
-            return new IssuedPreviewToken(token, expires, binding);
+            return new IssuedPreviewToken(token, expires, lifetime, binding);
         }
 
         // Filled from what the caller's reads show, which is what the token's own read shows, so a field the caller may not read
@@ -61,7 +62,7 @@ internal sealed class PreviewTokenService(
         var published = found.Localized && served is null
             ? null
             : await content.GetAsync(found.Name, id, new GetOptions { Status = QueryStatus.Published, Locale = served, Fallback = LocaleFallback.None }, cancellationToken);
-        return new IssuedPreviewToken(token, expires, binding, template.Fill(draft, id, served, token), published is null ? null : template.Fill(published, id, served, token: null));
+        return new IssuedPreviewToken(token, expires, lifetime, binding, template.Fill(draft, id, served, token), published is null ? null : template.Fill(published, id, served, token: null));
     }
 
     // The locale of the row that gave the draft, as the site lists it: the token's, or for a token of no locale the first of the
@@ -102,12 +103,9 @@ internal sealed class PreviewTokenService(
         }
     }
 
-    // The type's template in the site, or in the instance defaults. One that the schema no longer fits, since it was saved, is none.
-    private async Task<PreviewUrlTemplate?> TemplateAsync(SchemaType type, SiteId site, CancellationToken cancellationToken)
-    {
-        var templates = (await settings.GetAsync(site, cancellationToken)).Templates;
-        return templates.TryGetValue(type.Name, out var template) ? PreviewUrlTemplate.Parse(template, type, "", []) : null;
-    }
+    // The type's template in the site, or in the instance defaults.
+    private async Task<PreviewUrlTemplate?> TemplateAsync(SchemaType type, SiteId site, CancellationToken cancellationToken) =>
+        (await settings.GetAsync(site, cancellationToken)).TemplateOf(type);
 
     private TimeSpan Lifetime(int? minutes)
     {
