@@ -251,8 +251,13 @@ else
         try
         {
             var role = Id is { } id ? Api.GetRoleAsync(id, current.Token) : null;
+            var rules = catalogue is null ? RowRulesAsync(current.Token) : null;
             var permissions = catalogue is null ? await Api.GetPermissionsAsync(current.Token) : null;
             var found = role is null ? null : await role;
+            var registered = rules is null ? null : await rules;
+            var named = catalogue?.Folders is null && found?.Grants.Any(grant => GrantCatalogue.NamesFolders(grant.Permission, grant.Constraints)) == true
+                ? await FoldersAsync(current.Token)
+                : null;
             if (Overtaken(current))
             {
                 return;
@@ -260,9 +265,10 @@ else
 
             if (permissions is not null)
             {
-                catalogue = new GrantCatalogue(permissions, Context);
+                catalogue = new GrantCatalogue(permissions, Context) { RowRules = registered };
             }
 
+            catalogue!.Folders ??= named;
             read = found;
             draft = read is null ? new RoleDraft() : RoleDraft.From(read);
             state = State.Ready;
@@ -282,6 +288,33 @@ else
 
     private bool Overtaken(CancellationTokenSource read) => read.IsCancellationRequested || read != reading;
 
+    // The rules a grant may name; null when they could not be read, and the editor then offers no rule but the one stored.
+    private async Task<IReadOnlyList<RowRuleRecord>?> RowRulesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await Api.GetRowRulesAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException && RoleProblems.IsFailure(exception))
+        {
+            return null;
+        }
+    }
+
+    // The names of the folders the caller reads in the shell's site; none when the media plugin does not answer, or the
+    // caller lacks media.read, and the resources then show as ids.
+    private async Task<IReadOnlyDictionary<string, string>> FoldersAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return (await Api.GetFoldersAsync(cancellationToken)).ToDictionary(folder => folder.Id.ToString("D"), folder => folder.Name, StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException && RoleProblems.IsFailure(exception))
+        {
+            return new Dictionary<string, string>();
+        }
+    }
+
     private async Task SaveAsync()
     {
         if (busy || draft is null)
@@ -290,7 +323,7 @@ else
         }
 
         (nameError, descriptionError, message, detail) = (null, null, null, null);
-        draft.Grants.ForEach(grant => grant.Refused = false);
+        draft.Grants.ForEach(grant => grant.Refusals = []);
         if (string.IsNullOrWhiteSpace(draft.Name))
         {
             nameError = L["Roles.Editor.NameRequired"];
@@ -321,20 +354,19 @@ else
         {
             await RebaseAsync();
         }
-        catch (Exception exception) when (RoleProblems.OnPath(exception, RoleProblems.InvalidRole, "name") || RoleProblems.OnPath(exception, RoleProblems.InvalidRole, "description"))
+        catch (Exception exception) when (RoleProblems.OnPath(exception, RoleProblems.InvalidRole, "name") || RoleProblems.OnPath(exception, RoleProblems.InvalidRole, "description")
+            || RoleProblems.RefusedGrants(exception).Count > 0)
         {
             nameError = RoleProblems.OnPath(exception, RoleProblems.InvalidRole, "name") ? L["Roles.Editor.NameRefused"].Value : null;
             descriptionError = RoleProblems.OnPath(exception, RoleProblems.InvalidRole, "description") ? L["Roles.Editor.DescriptionRefused"].Value : null;
-            Say(L["Roles.Editor.NotSaved"]);
-        }
-        catch (Exception exception) when (RoleProblems.Has(exception, RoleProblems.InvalidGrant))
-        {
-            foreach (var index in RoleProblems.RefusedGrants(exception).Where(index => index < sent.Count))
+
+            // Each refusal goes to the grant it names and, below it, to the constraint's field.
+            foreach (var refused in RoleProblems.RefusedGrants(exception).Where(refusal => refusal.Index < sent.Count).GroupBy(refusal => refusal.Index))
             {
-                sent[index].Refused = true;
+                sent[refused.Key].Refusals = [.. refused.Select(refusal => refusal.Path)];
             }
 
-            Say(L["Roles.Editor.GrantsRefused"]);
+            Say(nameError is null && descriptionError is null ? L["Roles.Editor.GrantsRefused"] : L["Roles.Editor.NotSaved"]);
         }
         catch (Exception exception) when (Refused(exception) is { } refusal)
         {

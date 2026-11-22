@@ -144,6 +144,54 @@
   <data name="Roles.Constraints.Resources" xml:space="preserve">
     <value>Resources</value>
   </data>
+  <data name="Roles.Constraints.Edit" xml:space="preserve">
+    <value>Change the limits</value>
+  </data>
+  <data name="Roles.Constraints.EditWhich" xml:space="preserve">
+    <value> of the grant {0}</value>
+  </data>
+  <data name="Roles.Constraints.Help" xml:space="preserve">
+    <value>A limited grant reaches only what each of its limits names. A limit with nothing checked does not narrow the grant, and is left out when the role is saved.</value>
+  </data>
+  <data name="Roles.Constraints.Refused" xml:space="preserve">
+    <value>The server refused the limits of this grant.</value>
+  </data>
+  <data name="Roles.Constraints.LimitRefused" xml:space="preserve">
+    <value>The server refused this limit.</value>
+  </data>
+  <data name="Roles.Constraints.NoneChecked" xml:space="preserve">
+    <value>With nothing checked, this does not narrow the grant.</value>
+  </data>
+  <data name="Roles.Constraints.NoneCheckedWith" xml:space="preserve">
+    <value>{0} With nothing checked, this does not narrow the grant.</value>
+  </data>
+  <data name="Roles.Constraints.FieldsHelp" xml:space="preserve">
+    <value>Fields you cannot read are not listed.</value>
+  </data>
+  <data name="Roles.Constraints.NotOffered" xml:space="preserve">
+    <value>{0} (not offered here)</value>
+  </data>
+  <data name="Roles.Constraints.Locale" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="Roles.Constraints.LocaleCode" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Roles.Constraints.NoRule" xml:space="preserve">
+    <value>No row rule</value>
+  </data>
+  <data name="Roles.Constraints.RulesUnread" xml:space="preserve">
+    <value>The registered row rules could not be read, so none is offered.</value>
+  </data>
+  <data name="Roles.Constraints.RuleNotListed" xml:space="preserve">
+    <value>{0} (not registered for this grant)</value>
+  </data>
+  <data name="Roles.Constraints.RuleRefused" xml:space="preserve">
+    <value>There is no registered row rule {0}, so the server refused it.</value>
+  </data>
+  <data name="Roles.Constraints.ResourcesKept" xml:space="preserve">
+    <value>The resources this grant is limited to are kept as they are; they are not changed here.</value>
+  </data>
   <data name="Roles.Editor.Loading" xml:space="preserve">
     <value>Reading the role…</value>
   </data>

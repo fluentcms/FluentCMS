@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.Administration.Common;
 using FluentCMS.Admin.Administration.Roles;
+using FluentCMS.Admin.Api;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Sites;
 using Shouldly;
@@ -26,6 +27,8 @@ public sealed class RolesContractTests
         OpenApiContractTests.Check(RolesJsonContext.Default.RoleRecord, OpenApiContractTests.Answer(paths, "/api/management/v1/roles", "post", "201"), "roles post", document, gaps);
         OpenApiContractTests.Check(RolesJsonContext.Default.RoleRecord, OpenApiContractTests.Answer(paths, "/api/management/v1/roles/{id}", "put"), "roles/{id} put", document, gaps);
         OpenApiContractTests.Check(RolesJsonContext.Default.ItemListPermissionRecord, OpenApiContractTests.Answer(paths, "/api/management/v1/permissions", "get"), "permissions", document, gaps);
+        OpenApiContractTests.Check(RolesJsonContext.Default.ItemListRowRuleRecord, OpenApiContractTests.Answer(paths, "/api/management/v1/permissions/row-rules", "get"), "permissions/row-rules", document, gaps);
+        OpenApiContractTests.Check(RolesJsonContext.Default.ItemListFolderRecord, OpenApiContractTests.Answer(paths, "/api/management/v1/media/folders", "get"), "media/folders", document, gaps);
         gaps.ShouldBeEmpty();
 
         // What the editor sends, and the sources it groups the catalogue by.
@@ -81,6 +84,40 @@ public sealed class RolesContractTests
         {
             JsonNode.DeepEquals(before.Constraints, again.Grants.Single(grant => grant.Permission == before.Permission).Constraints).ShouldBeTrue(before.Permission);
         }
+    }
+
+    // The editor's identity of a grant is the server's: what it sends is the grant it reads back once the server has
+    // normalized it, the rules it offers are the registered ones, and a rule that is not registered is refused on its path.
+    [Fact]
+    public async Task AGrantReadBackHasTheIdentityItWasSentWithAndAnUnregisteredRowRuleIsRefusedOnItsField()
+    {
+        await using var admin = new AdminHost();
+        using var super = await admin.SignInAsync(BuiltInRoles.SuperAdminName);
+        var sent = new GrantDraft("content.article.read", new JsonObject
+        {
+            ["locales"] = new JsonArray("FR", "en", "fr"),
+            ["fields"] = new JsonArray("title"),
+            ["resources"] = new JsonArray("b", "a", "b"),
+            ["sites"] = new JsonArray(DefaultSite.Id.ToString("D").ToUpperInvariant()),
+        });
+        var draft = new RoleDraft { Name = "Translators" };
+        draft.Grants.Add(sent);
+        draft.Grants.Add(new GrantDraft("schema.read", []));
+        var body = draft.ToJson();
+        body["siteId"] = null;
+        var made = await super.Api.CreateRoleAsync(body, Token);
+
+        var read = RoleDraft.From(await super.Api.GetRoleAsync(made.Id, Token));
+        read.Grants.Select(grant => grant.Identity).ShouldBe(draft.Grants.Select(grant => grant.Identity), ignoreOrder: true);
+        read.Grants.Single(grant => grant.Permission == "schema.read").Constraints.ShouldBeNull();
+
+        var rules = await super.Api.GetRowRulesAsync(Token);
+        rules.ShouldContain(rule => rule.Name == BuiltInRoles.OwnEntriesRule);
+        read.Grants.Single(grant => grant.Permission == "content.article.read").Constraints!["rowRule"] = "not-registered";
+        var refused = await Should.ThrowAsync<ApiProblemException>(() => super.Api.UpdateRoleAsync(made.Id, read.ToJson(), Token));
+        refused.Problem.Errors.ShouldContain(error => error.Code == RoleProblems.InvalidGrant);
+        var index = read.Grants.FindIndex(grant => grant.Permission == "content.article.read");
+        RoleProblems.RefusedGrants(refused).ShouldBe([(index, "constraints.rowRule")]);
     }
 
     // The Public role of a site is what anyone reads without signing in (row 4.8).

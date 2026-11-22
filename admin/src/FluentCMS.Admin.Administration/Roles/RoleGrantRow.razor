@@ -34,7 +34,13 @@
     {
         <p role="alert">@L["Roles.Grants.Refused"]</p>
     }
-    <GrantConstraints Value="@Grant.Constraints" ValueChanged="@OnConstraintsChanged" RoleSite="@RoleSite" ReadOnly="@ReadOnly" />
+    <GrantConstraints Value="@Grant.Constraints"
+                      ValueChanged="@OnConstraintsChanged"
+                      RoleSite="@RoleSite"
+                      ReadOnly="@ReadOnly"
+                      Permission="@Grant.Permission"
+                      Catalogue="@Catalogue"
+                      Refusals="@Grant.Refusals" />
     @if (!ReadOnly)
     {
         <CmsButton OnClick="@(() => OnRemove.InvokeAsync(Grant))">
