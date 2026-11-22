@@ -47,6 +47,7 @@ internal static class IdentityRegistration
         services.AddScoped<IdentityChanges>();
         services.AddHostedService<CrossNameStartupCheck>();
         services.AddScoped<SignInEvents>();
+        services.AddScoped<SessionEvents>();
         services.AddScoped<InvitationService>();
         services.AddScoped<PasswordResetService>();
         services.AddScoped<UserAdministration>();

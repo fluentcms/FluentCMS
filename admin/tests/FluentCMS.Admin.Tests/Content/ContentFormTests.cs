@@ -261,6 +261,18 @@ public sealed class ContentFormTests : AdminTestContext
     }
 
     [Fact]
+    public void ASaveAHookRejectsShowsItsDetailAboveTheForm()
+    {
+        var id = _content.Add("article", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/article/{id:D}");
+        _content.NextWrite = _ => ServerProblem(System.Net.HttpStatusCode.UnprocessableEntity, "ACME001", "Rejected by a hook", "Articles are frozen this week.");
+
+        Save(app);
+
+        app.WaitForAssertion(() => app.Find(".content-form-problem li").TextContent.ShouldBe("Articles are frozen this week."));
+    }
+
+    [Fact]
     public void A412IsShownAsItsProblemAndReloadReadsTheEntryAgain()
     {
         var id = _content.Add("article", new JsonObject { ["title"] = "Hello" });

@@ -563,9 +563,13 @@ jobs:
       - name: Publish the admin trimmed
         run: dotnet publish admin/src/FluentCMS.Admin.App -c Release --no-build -o artifacts/admin
 
-      - name: Check that the admin app holds the Blazor script
+      # The licence and the third-party notices travel with the compiled code (#3215).
+      - name: Check that the admin app holds the Blazor script and the notices
         shell: bash
-        run: test -f artifacts/admin/wwwroot/_framework/blazor.webassembly.js
+        run: |
+          test -f artifacts/admin/wwwroot/_framework/blazor.webassembly.js
+          cmp LICENSE artifacts/admin/wwwroot/LICENSE
+          cmp THIRD-PARTY-NOTICES.md artifacts/admin/wwwroot/THIRD-PARTY-NOTICES.md
 
       # Admin spec 7: the Brotli size of the first download, without lazy assemblies. The budget was set in #3144 from a
       # measurement of 3,226,834 B and raised in #3346 at 3,499,922 B; raise it on purpose, in the specification too, never

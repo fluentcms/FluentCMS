@@ -71,6 +71,8 @@ public sealed class ActivityLogTests
         new MemberGroupDeletedEvent(Job, "gold"),
         new MemberLoginSucceededEvent(Entry, "mia@example.com", MemberLoginMethods.Password, "10.0.0.9"),
         new MemberLoginFailedEvent(null, null, MemberLoginMethods.DirectLogin, LoginFailureReasons.UnknownUser, "10.0.0.10"),
+        new UserSessionsEndedEvent(Entry, "ann", SessionEndReasons.Revoked, Job),
+        new MemberSessionsEndedEvent(Entry, "mia@example.com", SessionEndReasons.PasswordChanged, null),
         new ApiKeyCreatedEvent(Entry, "site key", "delivery"),
         new ApiKeyRevokedEvent(Entry, "site key"),
         new ApiKeyExpiryChangedEvent(Entry, "site key", new DateTimeOffset(2026, 12, 1, 8, 0, 0, TimeSpan.Zero)),

@@ -116,9 +116,11 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
 
                     try
                     {
+                        // The server writes errors only for a validation problem, and the generated reader leaves a missing
+                        // member null in place of the initializer.
                         if (body.Deserialize(ManagementJsonContext.Default.ApiProblem) is { } problem)
                         {
-                            return problem with { Status = status };
+                            return problem with { Status = status, Errors = problem.Errors ?? [] };
                         }
                     }
                     catch (JsonException)

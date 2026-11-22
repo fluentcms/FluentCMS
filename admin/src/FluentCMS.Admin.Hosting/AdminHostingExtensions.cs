@@ -20,7 +20,8 @@ public static class AdminHostingExtensions
 
     // The admin of admin spec 6.1, with FluentCms:Admin from configuration winning over what configure sets. While
     // FluentCms:Admin:Enabled is true it registers the admin's client under cms.Clients.AdminClientId, unless the host or
-    // FluentCms:Clients lists one there, which then wins whole.
+    // FluentCms:Clients lists one there, which then wins whole. While it is false and the options list no client, it deletes
+    // the client it registered before; while they list any, the host deletes it, as any client they no longer list.
     public static FluentCmsBuilder AddAdmin(this FluentCmsBuilder cms, Action<AdminOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(cms);
@@ -34,6 +35,7 @@ public static class AdminHostingExtensions
         configure?.Invoke(options);
         cms.Services.AddFluentCmsOptions(AdminOptions.Section, HostErrorCodes.InvalidOption, options, admin => admin.Validate());
         cms.Services.AddSingleton<IPostConfigureOptions<ClientOptions>, AdminClientRegistration>();
+        cms.Services.AddHostedService<AdminClientRemoval>();
         cms.Services.AddSingleton<AdminSite>();
         return cms;
     }
@@ -169,6 +171,7 @@ public static class AdminHostingExtensions
         var html = await site.IndexAsync(context.RequestAborted);
         context.Response.ContentType = "text/html; charset=utf-8";
         context.Response.Headers.CacheControl = "no-store";
+        // Preview is a frame, which this leaves alone; nothing of the admin needs a window of another origin it opened (spec 6.1).
         context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
         await context.Response.WriteAsync(html, Encoding.UTF8, context.RequestAborted);
     }

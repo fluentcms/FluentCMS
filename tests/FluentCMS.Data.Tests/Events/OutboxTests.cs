@@ -93,7 +93,7 @@ public sealed class OutboxTests
     }
 
     // The update that claims a batch is the only one on cms_outbox that adds to the attempts.
-    private sealed class ClaimCounter : DbCommandInterceptor
+    internal sealed class ClaimCounter : DbCommandInterceptor
     {
         private int _claims;
         private int _writes;
@@ -521,7 +521,7 @@ public sealed class OutboxTests
     public void ADeferralLastsMissingHandlerDelayAndThenTheRowIsTriedAgain()
     {
         var clock = new ManualTimeProvider(JobFixture.Start);
-        var deferrals = new OutboxDrainer.Deferrals(clock, TimeSpan.FromMinutes(5));
+        var deferrals = new OutboxDrainer.Deferrals(clock, TimeSpan.FromMinutes(5), limit: 50);
         var id = Guid.CreateVersion7();
 
         deferrals.Add(id);
@@ -530,6 +530,27 @@ public sealed class OutboxTests
 
         clock.Advance(TimeSpan.FromSeconds(1));
         deferrals.Current().ShouldBeEmpty();
+    }
+
+    // The ids of the deferred rows go into every claim, so only the latest are kept, and the oldest is tried again sooner.
+    [Fact]
+    public void DeferralsKeepTheLatestUpToTheirLimitAndLeaveTheOldestOut()
+    {
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var deferrals = new OutboxDrainer.Deferrals(clock, TimeSpan.FromMinutes(5), limit: 2);
+        List<Guid> ids = [Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7()];
+
+        foreach (var id in ids)
+        {
+            deferrals.Add(id);
+            clock.Advance(TimeSpan.FromSeconds(1));
+        }
+
+        deferrals.Current().ShouldBe(ids[1..], ignoreOrder: true);
+
+        deferrals.Add(ids[1]);
+        deferrals.Add(ids[0]);
+        deferrals.Current().ShouldBe([ids[0], ids[1]], ignoreOrder: true);
     }
 
     [Fact]
@@ -1013,6 +1034,7 @@ public sealed class OutboxTests
 
         claims.Claims.ShouldBe(3);
         database.Rows().Select(row => row.Attempts).ShouldBe([2, 2, 1]);
+        seen.Deliveries.Select(delivery => delivery.Key).ShouldBe(database.Rows().Select(row => row.Id));
     }
 
     [Fact]

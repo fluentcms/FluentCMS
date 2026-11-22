@@ -486,14 +486,12 @@ internal sealed class ApiKeyService(
 
     // apikeys.manage where the key reaches and the role ceiling, checked again in the transaction of the change with the
     // caller's grants read there, not as the request resolved them before it, so that grants cut in between refuse the change
-    // (#3391). A calling key is read again as well, since the request holds the row it authenticated.
+    // (#3391). A calling key is read again as well, since the request holds the row it authenticated, with the secret and
+    // the address the request came with (#3483).
     private async Task RequireNowAsync(Guid roleId, IReadOnlyCollection<Guid>? sites, IReadOnlyCollection<string>? types, CancellationToken cancellationToken)
     {
         var operation = accessor.Current;
-        if (operation?.Principal is { Kind: PrincipalKind.ApiKey } caller && await principals.ActiveAsync(caller.Id, cancellationToken) is null)
-        {
-            throw new ManagementAccessDeniedException("The key that made this request was revoked or has expired.");
-        }
+        await principals.RequireCallerAsync(operation?.Principal, cancellationToken);
 
         accessor.Current = operation is null ? null : operation with { };
         try

@@ -522,10 +522,12 @@ public sealed class MigrationRunner(
 
     private async Task<IReadOnlyList<StreamMigration>> ApplyAsync(IEnumerable<Stream> streams, CancellationToken cancellationToken)
     {
+        Stream[] ordered = [.. streams];
+
         // Taken before the pending migrations are read, so that a process that waited finds what the other applied.
-        await using var held = await provider.LockMigrationsAsync(cancellationToken);
+        await using var held = await WaitForSessionLockAsync(provider.LockMigrationsAsync, ordered[0].Name, DatabaseMigrationsLock, cancellationToken);
         var applied = new List<StreamMigration>();
-        foreach (var stream in streams)
+        foreach (var stream in ordered)
         {
             await using var scope = scopes.CreateAsyncScope();
             var context = stream.ResolveContext(scope.ServiceProvider);
@@ -538,6 +540,7 @@ public sealed class MigrationRunner(
             }
 
             await WaitForMigrationsLockAsync(context, stream.Name, cancellationToken);
+            await using var taken = await WaitForSessionLockAsync(token => provider.TakeMigrationsLockAsync(context, token), stream.Name, EfApplicationLock, cancellationToken);
             MigrationLog.ApplyingStream(logger, pending.Count, stream.Name);
             using var recorder = AppliedMigrations.Record(context.GetService<IMigrator>());
             await context.Database.MigrateAsync(cancellationToken);
@@ -560,17 +563,16 @@ public sealed class MigrationRunner(
         {
             // Before the bound, so that a wait that ends in the timeout has always logged it.
             var waited = _time.GetElapsedTime(started);
+            var row = $"EF Core's migrations lock, the row of __EFMigrationsLock written at {written}";
             if (!logged && waited >= MigrationsLockWaitLogged)
             {
-                MigrationLog.WaitingForMigrationsLock(logger, stream, written, MigrationsLockWait.TotalMinutes, MigrationsLockFix);
+                MigrationLog.WaitingForMigrationsLock(logger, stream, row, MigrationsLockWait.TotalMinutes, MigrationsLockFix);
                 logged = true;
             }
 
             if (waited >= MigrationsLockWait)
             {
-                throw new TimeoutException(
-                    $"EF Core's migrations lock, the row of __EFMigrationsLock written at {written}, was not released within " +
-                    $"{MigrationsLockWait.TotalMinutes:0} minutes, so the {stream} stream was not migrated; {MigrationsLockFix}.");
+                throw MigrationsLockTimeout(row, stream, MigrationsLockFix);
             }
 
             // Each read is logged by EF, so a wait that has been reported looks less often.
@@ -585,6 +587,59 @@ public sealed class MigrationRunner(
         "and no 'fluentcms migrate' runs on the database, then delete the row with DELETE FROM \"__EFMigrationsLock\" and run " +
         "again; a migration that rebuilds a table may have been partly applied, so if the next run fails on a table or column " +
         "that already exists, restore the backup taken before the upgrade; a migration without a rebuild rolls back whole";
+
+    private const string EfApplicationLock = "EF Core's migrations lock, the application lock __EFMigrationsLock that another session holds";
+
+    private const string DatabaseMigrationsLock = "the migrations lock of FluentCMS, which another session of the database holds";
+
+    private const string SessionLockFix =
+        "another process is applying migrations: a host that starts or a 'fluentcms migrate' holds this lock while it applies " +
+        "migrations, and the lock ends with its database session, so a process that stopped did not leave it behind; let that " +
+        "process finish and run again, and if it does not finish, find the session that holds the lock on the database server " +
+        "and what it runs";
+
+    private static TimeoutException MigrationsLockTimeout(string held, string stream, string fix, Exception? inner = null) => new(
+        $"{held}, was not released within {MigrationsLockWait.TotalMinutes:0} minutes, so the {stream} stream was not migrated; {fix}.", inner);
+
+    // EF waits for a lock that ends with its holder's session no longer than a command may run, 30 seconds by default, and its
+    // timeout names nothing, and the lock of a whole run has no bound at all. So a provider takes such a lock with no timeout of
+    // its own, and the runner bounds the wait as it bounds the wait for SQLite's row. A lock granted as the wait gives up is kept.
+    private async Task<IAsyncDisposable?> WaitForSessionLockAsync(
+        Func<CancellationToken, Task<IAsyncDisposable?>> take, string stream, string held, CancellationToken cancellationToken)
+    {
+        using var giveUp = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var taking = take(giveUp.Token);
+        var started = _time.GetTimestamp();
+        var poll = FirstMigrationsLockPoll;
+        var logged = false;
+        while (!taking.IsCompleted && !cancellationToken.IsCancellationRequested)
+        {
+            var waited = _time.GetElapsedTime(started);
+            if (!logged && waited >= MigrationsLockWaitLogged)
+            {
+                MigrationLog.WaitingForMigrationsLock(logger, stream, held, MigrationsLockWait.TotalMinutes, SessionLockFix);
+                logged = true;
+            }
+
+            if (waited >= MigrationsLockWait)
+            {
+                await giveUp.CancelAsync();
+                break;
+            }
+
+            await Task.WhenAny(taking, Task.Delay(poll, _time, cancellationToken));
+            poll = poll * 2 < LongestMigrationsLockPoll ? poll * 2 : LongestMigrationsLockPoll;
+        }
+
+        try
+        {
+            return await taking;
+        }
+        catch (Exception exception) when (giveUp.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            throw MigrationsLockTimeout(held, stream, SessionLockFix, exception);
+        }
+    }
 
     // With whether it recorded the schema history, which it does when it applied every change and, for a host that schema
     // apply serves, the history says none is lost.

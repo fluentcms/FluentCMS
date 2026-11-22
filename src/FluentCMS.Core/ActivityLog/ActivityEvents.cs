@@ -89,6 +89,8 @@ internal static class ActivityEvents
             Ip = message.Ip,
         });
 
+        events.AddActivity<UserSessionsEndedEvent>("user.sessions_ended", message => User("user.sessions_ended", message.UserId, message.UserName, Ended(message.Reason, message.SessionId)));
+
         events.AddActivity<MemberRegisteredEvent>("member.registered", message => Member("member.registered", message.MemberId, message.Email, null));
         events.AddActivity<MemberVerifiedEvent>("member.verified", message => Member("member.verified", message.MemberId, message.Email, null));
         events.AddActivity<MemberUpdatedEvent>("member.updated", message => Member("member.updated", message.MemberId, message.Email, new Dictionary<string, string?>
@@ -132,6 +134,8 @@ internal static class ActivityEvents
             },
             Ip = message.Ip,
         });
+
+        events.AddActivity<MemberSessionsEndedEvent>("member.sessions_ended", message => Member("member.sessions_ended", message.MemberId, message.Email, Ended(message.Reason, message.SessionId)));
 
         events.AddActivity<ApiKeyCreatedEvent>("api_key.created", message => Key("api_key.created", message.KeyId, message.Name, new Dictionary<string, string?>
         {
@@ -293,6 +297,12 @@ internal static class ActivityEvents
             TargetLabel = name,
             Details = details,
         };
+
+    private static Dictionary<string, string?> Ended(string reason, Guid? sessionId) => new()
+    {
+        ["reason"] = reason,
+        ["session"] = sessionId?.ToString("D"),
+    };
 
     private static string Number(int value) => value.ToString(CultureInfo.InvariantCulture);
 }
