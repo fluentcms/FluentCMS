@@ -1,0 +1,324 @@
+@* One API key (spec 4.15): what it is bound to and its state, and rotate with an overlap from none to the server's longest,
+   the allowed addresses, expire, which only brings the expiry forward, and revoke. A key the caller does not manage answers
+   404 and is shown as not found. Each change needs every grant of the key's role as the key is bound (#3391), and a caller
+   below it is told so by the 403 of the change. A rotation's secret is shown once by CmsSecretDialog and held in one field
+   until the dialog closes. *@
+@page "/api-keys/{Id:guid}"
+@implements IDisposable
+@inject IManagementApi Api
+@inject AdminContext Context
+@inject FormatService Formats
+@inject TimeProvider Time
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<ApiKeysResources> L
+
+<PageCrumb Text="@key?.Name" />
+<h1 tabindex="-1" @ref="heading">@(key?.Name ?? L["ApiKeys.Page.Heading"])</h1>
+
+@if (state == State.Loading)
+{
+    <p role="status">@L["ApiKeys.Key.Loading"]</p>
+}
+else if (state is State.NotFound or State.Forbidden)
+{
+    <p>@L[state == State.NotFound ? "ApiKeys.Key.NotFound" : "ApiKeys.Key.Forbidden"]</p>
+    <p><a href="@ApiKeyRoutes.List">@L["ApiKeys.Key.BackToList"]</a></p>
+}
+else if (state == State.Failed || key is null)
+{
+    <p role="alert">@L["ApiKeys.Key.Failed"]</p>
+    <CmsButton OnClick="ReadAsync">@L["ApiKeys.Key.TryAgain"]</CmsButton>
+}
+else
+{
+    <dl class="api-key-facts">
+        <dt>@L["ApiKeys.Key.Status"]</dt>
+        <dd>@ApiKeyTexts.Status(key, Time.GetUtcNow(), Formats, L)</dd>
+        <dt>@L["ApiKeys.Key.Class"]</dt>
+        <dd>@L[$"ApiKeys.Class.{key.Class}"]</dd>
+        <dt>@L["ApiKeys.Key.Prefix"]</dt>
+        <dd><code>@key.KeyPrefix</code></dd>
+        <dt>@L["ApiKeys.Key.Role"]</dt>
+        <dd>@ApiKeyTexts.Role(key, roles, Context.Sites, L)</dd>
+        <dt>@L["ApiKeys.Key.Sites"]</dt>
+        <dd>@ApiKeyTexts.Sites(key, Context.Sites, L)</dd>
+        <dt>@L["ApiKeys.Key.Types"]</dt>
+        <dd>@(key.TypeNames is { } typeNames ? string.Join(", ", typeNames) : L["ApiKeys.Key.AllTypes"])</dd>
+        <dt>@L["ApiKeys.Key.Expires"]</dt>
+        <dd>@(key.ExpiresAt is { } expires ? Formats.DateTime(expires) : L["ApiKeys.Key.NeverExpires"])</dd>
+        <dt>@L["ApiKeys.Key.RateLimit"]</dt>
+        <dd>@(key.RateLimit is { } limit ? L["ApiKeys.Key.RateLimitValue", Formats.Number(limit)] : L["ApiKeys.Key.RateLimitServer"])</dd>
+        <dt>@L["ApiKeys.Key.Addresses"]</dt>
+        <dd>@(key.AllowedAddresses is { } allowed ? string.Join(", ", allowed) : L["ApiKeys.Key.AnyAddress"])</dd>
+        <dt>@L["ApiKeys.Key.LastUsed"]</dt>
+        <dd>@(key.LastUsedAt is { } used ? Formats.DateTime(used) : L["ApiKeys.LastUsed.Never"])</dd>
+        <dt>@L["ApiKeys.Key.Created"]</dt>
+        <dd>@Formats.DateTime(key.CreatedAt)</dd>
+    </dl>
+
+    @if (actionError is { } refusal)
+    {
+        <p class="api-key-problem" role="alert">@refusal</p>
+    }
+
+    @if (key.Revoked)
+    {
+        <p>@L["ApiKeys.Key.RevokedNote"]</p>
+    }
+    else
+    {
+        <section aria-labelledby="api-key-rotate">
+            <h2 id="api-key-rotate">@L["ApiKeys.Key.RotateHeading"]</h2>
+            <p>@L["ApiKeys.Key.RotateText"]</p>
+            <CmsNumberInput Label="@L["ApiKeys.Key.Overlap"]" Help="@L["ApiKeys.Key.OverlapHelp"]" AllowNegative="false" Culture="@Formats.NumberCulture"
+                            Error="@ApiKeyProblems.FieldError(problem, "overlapSeconds", L)" Value="@overlapHours" ValueChanged="@(value => overlapHours = value)" />
+            <CmsButton @ref="rotateButton" Disabled="@busy" OnClick="@(() => Ask(Change.Rotate))">@L["ApiKeys.Key.Rotate"]</CmsButton>
+        </section>
+
+        <section aria-labelledby="api-key-addresses">
+            <h2 id="api-key-addresses">@L["ApiKeys.Key.AddressesHeading"]</h2>
+            <form @onsubmit="SaveAddressesAsync">
+                <CmsTextArea Label="@L["ApiKeys.Key.Addresses"]" Help="@L["ApiKeys.New.AddressesHelp"]" Spellcheck="false" Rows="3"
+                             Error="@ApiKeyProblems.FieldError(problem, "allowedAddresses", L)" Value="@addresses" ValueChanged="@(value => addresses = value)" />
+                <CmsButton Submit="true" Disabled="@busy">@L["ApiKeys.Key.SaveAddresses"]</CmsButton>
+            </form>
+        </section>
+
+        <section aria-labelledby="api-key-expire">
+            <h2 id="api-key-expire">@L["ApiKeys.Key.ExpireHeading"]</h2>
+            <p>@L["ApiKeys.Key.ExpireText"]</p>
+            <ApiKeyExpiry Legend="@L["ApiKeys.New.Expiry"]" Error="@ApiKeyProblems.FieldError(problem, "expiresAt", L, expiryForward: true)" ValueChanged="@(value => expireAt = value)" />
+            <CmsButton Disabled="@busy" OnClick="@(() => Ask(Change.Expire))">@L["ApiKeys.Key.Expire"]</CmsButton>
+        </section>
+
+        <section aria-labelledby="api-key-revoke">
+            <h2 id="api-key-revoke">@L["ApiKeys.Key.RevokeHeading"]</h2>
+            <p>@L["ApiKeys.Key.RevokeText"]</p>
+            <CmsButton Disabled="@busy" OnClick="@(() => Ask(Change.Revoke))">@L["ApiKeys.Key.Revoke"]</CmsButton>
+        </section>
+    }
+}
+
+<CmsDialog Title="@ConfirmTitle" Open="@(asked is not null)" OpenChanged="@(open => { if (!open) asked = null; })">
+    <ChildContent>
+        <p>@ConfirmText</p>
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="ConfirmAsync">@L[$"ApiKeys.Confirm.{asked ?? Change.Revoke}"]</CmsButton>
+        <CmsButton OnClick="@(() => asked = null)">@L["ApiKeys.Confirm.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+<CmsSecretDialog Title="@L["ApiKeys.Secret.RotatedTitle"]" Label="@L["ApiKeys.Secret.Label"]" @bind-Secret="secret" OnClosed="@(() => returnFocus = true)">
+    <p>@L["ApiKeys.Secret.Text"]</p>
+</CmsSecretDialog>
+
+@code {
+    private enum State
+    {
+        Loading,
+        Ready,
+        NotFound,
+        Forbidden,
+        Failed,
+    }
+
+    private enum Change
+    {
+        Rotate,
+        Expire,
+        Revoke,
+    }
+
+    private Guid? read;
+    private State state;
+    private ApiKeyInfo? key;
+    private IReadOnlyList<RoleSummary>? roles;
+    private decimal? overlapHours;
+    private string? addresses;
+    private DateTimeOffset? expireAt;
+    private Change? asked;
+    private bool busy;
+    private ApiProblem? problem;
+    private string? actionError;
+    private string? secret;
+    private CancellationTokenSource? reading;
+    private ElementReference heading;
+    private CmsButton? rotateButton;
+    private bool returnFocus;
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    // Whether the page shows Rotate, as the markup above decides.
+    private bool CanRotate => state == State.Ready && key is { Revoked: false };
+
+    private string ConfirmTitle => L[$"ApiKeys.Confirm.{asked ?? Change.Revoke}Title", key?.Name ?? ""];
+
+    private string ConfirmText => asked switch
+    {
+        Change.Rotate when overlapHours is null => L["ApiKeys.Confirm.RotateLongest"],
+        Change.Rotate when overlapHours == 0 => L["ApiKeys.Confirm.RotateNone"],
+        Change.Rotate => L["ApiKeys.Confirm.RotateHours", Formats.Number(overlapHours!.Value)],
+        Change.Expire when expireAt is { } at => L["ApiKeys.Confirm.ExpireAt", Formats.DateTime(at)],
+        Change.Expire => L["ApiKeys.Confirm.ExpireNow"],
+        _ => L["ApiKeys.Confirm.RevokeText"],
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (read != Id)
+        {
+            read = Id;
+            (key, secret, asked, problem, actionError, overlapHours, expireAt) = (null, null, null, null, null, null, null);
+            await ReadAsync();
+        }
+    }
+
+    // The Rotate button was disabled while the rotation ran, so the secret's dialog had no control to give focus back to. It
+    // goes back to Rotate, or to the heading when the page no longer shows Rotate, as after a failed read. It moves after the
+    // render that the dialog's close caused, so that its target is in the page and not one that left it.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (returnFocus)
+        {
+            returnFocus = false;
+            await (CanRotate && rotateButton is not null ? rotateButton.FocusAsync() : heading.FocusAsync());
+        }
+    }
+
+    public void Dispose()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+        var current = reading = new CancellationTokenSource();
+        state = State.Loading;
+        try
+        {
+            var found = await Api.GetApiKeyAsync(Id, current.Token);
+            roles ??= await ApiKeyTexts.RolesAsync(Api, current.Token);
+            Show(found);
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+        }
+        catch (ApiProblemException failure)
+        {
+            state = ApiKeyProblems.IsNotFound(failure.Problem) ? State.NotFound
+                : ApiKeyProblems.IsRefused(failure.Problem) ? State.Forbidden
+                : State.Failed;
+        }
+        catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            state = State.Failed;
+        }
+    }
+
+    private void Show(ApiKeyInfo found)
+    {
+        (key, state) = (found, State.Ready);
+        addresses = ApiKeyAddresses.Format(found.AllowedAddresses);
+    }
+
+    private void Ask(Change change) => (asked, problem, actionError) = (change, null, null);
+
+    private async Task ConfirmAsync()
+    {
+        if (asked is not { } change || busy)
+        {
+            return;
+        }
+
+        asked = null;
+        await RunAsync(change switch
+        {
+            Change.Rotate => RotateAsync,
+            Change.Expire => ExpireAsync,
+            _ => RevokeAsync,
+        });
+    }
+
+    private async Task RotateAsync()
+    {
+        var seconds = overlapHours is { } hours ? (int)Math.Clamp(Math.Round(hours * 3600), 0, int.MaxValue) : (int?)null;
+        secret = (await Api.RotateApiKeyAsync(Id, seconds, CancellationToken.None)).Secret;
+        Announcer.Announce(L["ApiKeys.Key.Rotated"]);
+        await ReadAsync();
+    }
+
+    private async Task ExpireAsync()
+    {
+        Show(await Api.ExpireApiKeyAsync(Id, expireAt, CancellationToken.None));
+        Announcer.Announce(L["ApiKeys.Key.ExpirySet"]);
+    }
+
+    private async Task RevokeAsync()
+    {
+        await Api.RevokeApiKeyAsync(Id, CancellationToken.None);
+        Announcer.Announce(L["ApiKeys.Key.Revoked"]);
+        await ReadAsync();
+    }
+
+    private async Task SaveAddressesAsync()
+    {
+        if (!busy)
+        {
+            (problem, actionError) = (null, null);
+            await RunAsync(async () =>
+            {
+                Show(await Api.SetApiKeyAddressesAsync(Id, ApiKeyAddresses.Parse(addresses), CancellationToken.None));
+                Announcer.Announce(L["ApiKeys.Key.AddressesSaved"]);
+            });
+        }
+    }
+
+    // A refusal is named by what it means: a role below the key's (403), a key gone from the caller's reach (404), a key
+    // revoked, expired or rotated meanwhile (409), or a field the server refused.
+    private async Task RunAsync(Func<Task> change)
+    {
+        busy = true;
+        try
+        {
+            await change();
+        }
+        catch (ApiProblemException failure) when (ApiKeyProblems.IsRefused(failure.Problem))
+        {
+            Refuse(L["ApiKeys.Key.Refused"]);
+        }
+        catch (ApiProblemException failure) when (ApiKeyProblems.IsNotFound(failure.Problem))
+        {
+            (key, state) = (null, State.NotFound);
+            Announcer.Announce(L["ApiKeys.Key.NotFound"], AnnouncementPoliteness.Assertive);
+        }
+        catch (ApiProblemException failure) when (failure.Problem.Code == ApiKeyProblems.NotRotatable)
+        {
+            Refuse(L["ApiKeys.Key.NotRotatable"]);
+            await ReadAsync();
+        }
+        catch (ApiProblemException failure) when (ApiKeyProblems.HasFieldErrors(failure.Problem, "overlapSeconds", "expiresAt", "allowedAddresses"))
+        {
+            problem = failure.Problem;
+            Announcer.Announce(L["ApiKeys.Key.ActionFailed"], AnnouncementPoliteness.Assertive);
+        }
+        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            Refuse(L["ApiKeys.Key.ActionFailed"]);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void Refuse(string text)
+    {
+        actionError = text;
+        Announcer.Announce(text, AnnouncementPoliteness.Assertive);
+    }
+}

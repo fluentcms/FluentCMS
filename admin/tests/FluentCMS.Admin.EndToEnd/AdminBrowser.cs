@@ -118,6 +118,13 @@ public sealed class AdminBrowser
         }
     }
 
+    // A secret the test read from the page, as from the clipboard, so that a kept trace is masked of it and checked for it.
+    public void Mask(string secret) => Keep(secret);
+
+    // Lets the pages of the host read and write the clipboard, as a user who allows it does.
+    public Task GrantClipboardAsync() =>
+        _context.GrantPermissionsAsync(["clipboard-read", "clipboard-write"], new BrowserContextGrantPermissionsOptions { Origin = _host.Origin.GetLeftPart(UriPartial.Authority) });
+
     // Every secret this context has seen, for a test of a kept trace.
     public async Task<IReadOnlyCollection<string>> SecretsAsync()
     {
@@ -216,12 +223,18 @@ public sealed class AdminBrowser
             return;
         }
 
-        _reads.Add(ReadAsync(response, token ? tab : null));
+        _reads.Add(ReadAsync(response, token ? tab : null, IsSecretAnswer(response)));
     }
 
-    // The cookies a response sets and the tokens of the token endpoint's answer. A body that can no longer be read, as a
-    // redirect's or one Chromium has dropped, is skipped; the access token is also kept from the requests that carry it.
-    private async Task ReadAsync(IResponse response, AdminTab? tab)
+    // A Management call that may answer a secret shown once, as making or rotating an API key: a POST whose answer is JSON.
+    private bool IsSecretAnswer(IResponse response) =>
+        response.Request.Method == "POST" && response.Status is 200 or 201
+        && response.Url.StartsWith(new Uri(_host.Origin, "api/management/v1/").AbsoluteUri, StringComparison.Ordinal);
+
+    // The cookies a response sets, the tokens of the token endpoint's answer and the secret of a Management answer. A body
+    // that can no longer be read, as a redirect's or one Chromium has dropped, is skipped; the access token is also kept from
+    // the requests that carry it, and a test keeps a secret it read from the page with Mask.
+    private async Task ReadAsync(IResponse response, AdminTab? tab, bool secretAnswer)
     {
         try
         {
@@ -244,6 +257,12 @@ public sealed class AdminBrowser
                     }
                 }
 
+            }
+
+            if (secretAnswer && JsonNode.Parse(await response.TextAsync()) is JsonObject created && created["secret"] is JsonValue secret
+                && secret.TryGetValue<string>(out var shownOnce))
+            {
+                Keep(shownOnce);
             }
         }
         catch (Exception exception) when (exception is PlaywrightException or System.Text.Json.JsonException)
