@@ -19,16 +19,17 @@ internal sealed class ScheduleStore(CmsDbContext context)
             .Where(row => row.DocumentId == documentId && row.Locale == locale && row.Action == ScheduleRow.Publish && row.Status == ScheduleRow.Pending && row.Version == from)
             .ExecuteUpdateAsync(set => set.SetProperty(row => row.Version, to), cancellationToken);
 
-    // For a job that has been dead-lettered: its schedule will never run, so it is closed rather than left pending.
+    // For a job that has been dead-lettered: its schedule will never run, so it is closed rather than left pending. Once it
+    // is found, neither write takes the caller's token, since nothing would clear the mirror of a schedule already closed.
     public async Task<bool> FailByJobAsync(Guid jobId, DateTimeOffset at, string error, CancellationToken cancellationToken)
     {
         if (await context.Set<ScheduleRow>().AsNoTracking().FirstOrDefaultAsync(row => row.JobId == jobId && row.Status == ScheduleRow.Pending, cancellationToken) is not { } pending
-            || !await CloseAsync(pending.Id, jobId, ScheduleRow.Failed, at, error, cancellationToken))
+            || !await CloseAsync(pending.Id, jobId, ScheduleRow.Failed, at, error, CancellationToken.None))
         {
             return false;
         }
 
-        await SetMirrorAsync(pending.DocumentId, pending.Locale, pending.Action, null, cancellationToken);
+        await SetMirrorAsync(pending.DocumentId, pending.Locale, pending.Action, null, CancellationToken.None);
         return true;
     }
 

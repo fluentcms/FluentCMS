@@ -423,6 +423,7 @@ public sealed class MigrationRunner(
     internal async Task RefuseEarlierBaselineAsync(CancellationToken cancellationToken = default)
     {
         var refused = new List<string>();
+        var slow = new List<(string Stream, string Baseline, string Indexes)>();
         DatabaseSchema? database = null;
         foreach (var stream in SystemAndPlugins)
         {
@@ -436,10 +437,18 @@ public sealed class MigrationRunner(
             }
 
             database ??= await ReadDatabaseAsync(context, cancellationToken);
-            var missing = MissingFrom(database, context.GetService<IDesignTimeModel>().Model);
+            var model = context.GetService<IDesignTimeModel>().Model;
+            var indexes = IndexesMissingFrom(database, model);
+            var missing = MissingFrom(database, model);
+            missing.AddRange(indexes.Where(index => index.IsUnique).Select(index => $"index {index.Name}"));
             if (missing.Count > 0)
             {
                 refused.Add($"stream {stream.Name} has applied its baseline {baseline} but lacks {string.Join(", ", missing)}");
+            }
+
+            if (indexes.Where(index => !index.IsUnique).Select(index => index.Name).ToList() is { Count: > 0 } slower)
+            {
+                slow.Add((stream.Name, baseline, string.Join(", ", slower)));
             }
         }
 
@@ -449,6 +458,43 @@ public sealed class MigrationRunner(
                 StorageErrorCodes.EarlierBaseline,
                 $"{string.Join("; ", refused)}; nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again");
         }
+
+        foreach (var (name, baseline, indexes) in slow)
+        {
+            MigrationLog.BaselineIndexesMissing(logger, name, baseline, indexes);
+        }
+    }
+
+    // An index of the model the database lacks on a table it has. A missing unique index would let rows in that the model
+    // refuses, so it is refused with the columns; any other only makes what it serves read more rows, so the host starts with
+    // a warning rather than be refused for it (#3407). Adding it to the database would take a migration, which a preview
+    // does not have.
+    private static List<(string Name, bool IsUnique)> IndexesMissingFrom(DatabaseSchema database, IModel model)
+    {
+        var missing = new List<(string Name, bool IsUnique)>();
+        var tables = model.GetEntityTypes()
+            .Where(entity => entity.GetViewName() is null && !entity.IsTableExcludedFromMigrations() && entity.GetTableName() is not null)
+            .GroupBy(entity => entity.GetTableName()!, StringComparer.Ordinal);
+        foreach (var table in tables)
+        {
+            if (table.Key == StorageNames.SchemaHistory || !database.Tables.TryGetValue(table.Key, out var found))
+            {
+                continue;
+            }
+
+            var store = StoreObjectIdentifier.Table(table.Key, table.First().GetSchema());
+            foreach (var index in table.SelectMany(entity => entity.GetIndexes()))
+            {
+                if (index.GetDatabaseName(store) is { } name
+                    && !found.Indexes.Any(existing => string.Equals(existing.Name, name, StringComparison.OrdinalIgnoreCase))
+                    && !missing.Any(other => other.Name == name))
+                {
+                    missing.Add((name, index.IsUnique));
+                }
+            }
+        }
+
+        return [.. missing.OrderBy(index => index.Name, StringComparer.Ordinal)];
     }
 
     // A table of the model the database lacks, or a column of one it has, as table.column. The columns of the schema history
