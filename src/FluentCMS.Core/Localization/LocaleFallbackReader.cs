@@ -24,7 +24,10 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
     // Fills each localized top-level field that is missing in an entry from the first locale of the chain that has a
     // value, and names that locale under "fallbacks". An entry that falls back nowhere gets no "fallbacks" key.
     // A field the query did not select is not there to fill.
-    public async Task ApplyAsync(string typeName, ContentQuery query, IReadOnlyList<ContentDocument> entries, FallbackChain chain, CancellationToken cancellationToken = default)
+    public Task ApplyAsync(string typeName, ContentQuery query, IReadOnlyList<ContentDocument> entries, FallbackChain chain, CancellationToken cancellationToken = default) =>
+        ApplyAsync(typeName, query, entries, chain, new PopulateBudget(), cancellationToken);
+
+    public async Task ApplyAsync(string typeName, ContentQuery query, IReadOnlyList<ContentDocument> entries, FallbackChain chain, PopulateBudget budget, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(entries);
@@ -55,7 +58,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
             }
 
             var wanted = pending.Values.SelectMany(item => item.Fields).Distinct().ToList();
-            var read = await ReadAsync(typeName, query, locale, [.. pending.Keys], wanted, cancellationToken);
+            var read = await ReadAsync(typeName, query, locale, [.. pending.Keys], wanted, budget, cancellationToken);
             foreach (var other in read)
             {
                 var id = (Guid)other["id"]!;
@@ -87,7 +90,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
 
     // An entry by id that has no row in the requested locale: read from the first locale of the chain that has one, under
     // the requested locale, with what that locale and the ones after it serve named under "fallbacks".
-    public async Task<ContentDocument?> ReadFromChainAsync(string typeName, ContentQuery query, Guid id, FallbackChain chain, CancellationToken cancellationToken = default)
+    public async Task<ContentDocument?> ReadFromChainAsync(string typeName, ContentQuery query, Guid id, FallbackChain chain, PopulateBudget budget, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(chain);
@@ -95,7 +98,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
         var fallbacks = chain.Fallbacks.ToList();
         for (var index = 0; index < fallbacks.Count; index++)
         {
-            var read = await ReadAsync(typeName, query, fallbacks[index], [id], [.. query.Select], cancellationToken);
+            var read = await ReadAsync(typeName, query, fallbacks[index], [id], [.. query.Select], budget, cancellationToken);
             if (read.Count == 0)
             {
                 continue;
@@ -114,7 +117,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
                 }
             }
 
-            await ApplyAsync(typeName, query, read, new FallbackChain(fallbacks.Skip(index)), cancellationToken);
+            await ApplyAsync(typeName, query, read, new FallbackChain(fallbacks.Skip(index)), budget, cancellationToken);
             if (entry.TryGetValue(FallbacksKey, out var further) && further is ContentDocument map)
             {
                 foreach (var (name, locale) in map)
@@ -138,7 +141,10 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
     // The locale=all read of entries already found: the stored values of each, by locale code, in the order the site
     // lists its locales. A locale the principal cannot read, or in which an entry has no row, is not in the map. A
     // type that is not localized has one document, under "".
-    public async Task<IReadOnlyDictionary<Guid, ContentDocument>> ReadAllAsync(string typeName, ContentQuery query, IReadOnlyList<Guid> ids, SiteId site, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyDictionary<Guid, ContentDocument>> ReadAllAsync(string typeName, ContentQuery query, IReadOnlyList<Guid> ids, SiteId site, CancellationToken cancellationToken = default) =>
+        ReadAllAsync(typeName, query, ids, site, new PopulateBudget(), cancellationToken);
+
+    public async Task<IReadOnlyDictionary<Guid, ContentDocument>> ReadAllAsync(string typeName, ContentQuery query, IReadOnlyList<Guid> ids, SiteId site, PopulateBudget budget, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(ids);
@@ -147,7 +153,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
         var byEntry = ids.ToDictionary(id => id, _ => new ContentDocument());
         foreach (var locale in locales)
         {
-            foreach (var entry in await ReadAsync(typeName, query, locale, ids, select: [.. query.Select], cancellationToken))
+            foreach (var entry in await ReadAsync(typeName, query, locale, ids, select: [.. query.Select], budget, cancellationToken))
             {
                 byEntry[(Guid)entry["id"]!][locale] = entry;
             }
@@ -156,8 +162,15 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
         return byEntry;
     }
 
+    // The locales a list of every locale anchors an entry in: the site's default, then the others in the site's order.
+    public async Task<IReadOnlyList<string>> AnchorLocalesAsync(SiteId site, CancellationToken cancellationToken)
+    {
+        var locales = await registry.GetAsync(site, cancellationToken);
+        return [locales.Default, .. locales.Codes.Where(code => !string.Equals(code, locales.Default, StringComparison.OrdinalIgnoreCase))];
+    }
+
     // The filter names the ids, and counts against MaxFilterNodes, so a long list is read in batches that stay under it.
-    private async Task<IReadOnlyList<ContentDocument>> ReadAsync(string typeName, ContentQuery query, string locale, IReadOnlyList<Guid> ids, List<string> select, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<ContentDocument>> ReadAsync(string typeName, ContentQuery query, string locale, IReadOnlyList<Guid> ids, List<string> select, PopulateBudget budget, CancellationToken cancellationToken)
     {
         var batchSize = Math.Max(1, Math.Min(options.MaxPageSize, options.MaxFilterNodes - 1));
         List<ContentDocument> found = [];
@@ -181,7 +194,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
 
             try
             {
-                found.AddRange((await engine.ExecuteAsync(typeName, other, cancellationToken)).Items);
+                found.AddRange((await engine.ExecuteAsync(typeName, other, budget, cancellationToken)).Items);
             }
             catch (ValidationException exception) when (exception.Errors.All(RefusesTheLocale))
             {
