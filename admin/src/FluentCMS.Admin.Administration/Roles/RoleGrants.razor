@@ -1,5 +1,6 @@
-@* The grants of the role (spec 4.15): each as read, with its constraints, and a pick of a permission or a pattern from the
-   catalogue of GET /permissions by its source to add an unconstrained grant. The draft holds them; a save sends them all. *@
+@* The grants of the role (spec 4.15): each with its constraints, which the row edits, and a pick of a permission or a pattern
+   from the catalogue of GET /permissions by its source to add an unconstrained grant. The draft holds them; a save sends
+   them all. *@
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<RolesResources> L
 
@@ -14,7 +15,7 @@
             @foreach (var grant in Grants)
             {
                 <li @key="grant.Key">
-                    <RoleGrantRow Grant="@grant" Catalogue="@Catalogue" RoleSite="@RoleSite" ReadOnly="@ReadOnly" OnRemove="@RemoveAsync" OnChanged="@OnChanged" />
+                    <RoleGrantRow Grant="@grant" Catalogue="@Catalogue" RoleSite="@RoleSite" ReadOnly="@ReadOnly" Disabled="@Disabled" OnRemove="@RemoveAsync" OnChanged="@OnChanged" />
                 </li>
             }
         </ul>
@@ -30,13 +31,14 @@
     @if (!ReadOnly)
     {
         <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
-            <CmsSelect Label="@L["Roles.Grants.Source"]" Options="@SourceOptions" Value="@source" ValueChanged="@OnSourceChanged" />
+            <CmsSelect Label="@L["Roles.Grants.Source"]" Options="@SourceOptions" Value="@source" ValueChanged="@OnSourceChanged" Disabled="@Disabled" />
             <CmsSelect Label="@L["Roles.Grants.Permission"]"
                        Options="@PermissionOptions"
                        Value="@permission"
                        ValueChanged="@(value => permission = value)"
-                       Placeholder="@L["Roles.Grants.Choose"]" />
-            <CmsButton Disabled="@string.IsNullOrEmpty(permission)" OnClick="AddAsync">@L["Roles.Grants.Add"]</CmsButton>
+                       Placeholder="@L["Roles.Grants.Choose"]"
+                       Disabled="@Disabled" />
+            <CmsButton Disabled="@(Disabled || string.IsNullOrEmpty(permission))" OnClick="AddAsync">@L["Roles.Grants.Add"]</CmsButton>
         </CmsStack>
     }
 </CmsCard>
@@ -59,6 +61,10 @@
 
     [Parameter]
     public bool ReadOnly { get; set; }
+
+    // While a save is in flight, since the draft it answers replaces the grants.
+    [Parameter]
+    public bool Disabled { get; set; }
 
     // Raised after the grants changed.
     [Parameter]
@@ -97,7 +103,7 @@
         return Catalogue.Holds(name, RoleSite) ? text : L["Roles.Grants.OptionNotHeld", text];
     }
 
-    // An unconstrained grant the role has already is not added twice.
+    // An unconstrained grant the role has already, by its identity, so that an empty object is none, is not added twice.
     private async Task AddAsync()
     {
         if (permission is not { Length: > 0 } chosen)
@@ -105,7 +111,7 @@
             return;
         }
 
-        if (Grants.Any(grant => grant.Permission == chosen && grant.Constraints is null))
+        if (Grants.Any(grant => grant.Identity == GrantDraft.IdentityOf(chosen, null)))
         {
             message = L["Roles.Grants.AlreadyGranted", chosen];
         }

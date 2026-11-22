@@ -1,0 +1,38 @@
+@* The layout with its loading state while the router's first navigation waits, as on a reload of a route whose assembly
+   loads lazily: the router draws nothing until that navigation has ended, and a Navigating content would draw the layout
+   again on every later navigation (#3446). Drawn from the first wait until the router's first page, which replaces it. *@
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "LayoutView is the framework's: the analyzer counts a closure field of its own, which the layout does not need.")]
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "AdminLayout is named by typeof, which keeps it for the layout.")]
+@implements IDisposable
+@inject NavigationProgress Progress
+
+@if (waited && !Progress.PageShown)
+{
+    <LayoutView Layout="typeof(AdminLayout)" />
+}
+
+@code {
+    private bool waited;
+
+    protected override void OnInitialized()
+    {
+        Progress.Changed += OnProgressChanged;
+        waited = Progress.Waiting;
+    }
+
+    public void Dispose() => Progress.Changed -= OnProgressChanged;
+
+    private void OnProgressChanged() => _ = InvokeAsync(() =>
+    {
+        if (!Progress.PageShown && Progress.Waiting && !waited)
+        {
+            waited = true;
+            StateHasChanged();
+        }
+        else if (Progress.PageShown && waited)
+        {
+            waited = false;
+            StateHasChanged();
+        }
+    });
+}

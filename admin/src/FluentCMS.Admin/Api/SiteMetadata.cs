@@ -60,6 +60,16 @@ internal sealed class SiteMetadata(ManagementClient client, ICurrentSite current
         }
     }
 
+    // A read the shell gave up on, so that the next caller sends a new one.
+    public void ForgetPending()
+    {
+        lock (_gate)
+        {
+            _schema = _schema is { IsCompleted: false } ? null : _schema;
+            _plugins = _plugins is { IsCompleted: false } ? null : _plugins;
+        }
+    }
+
     private string? SwitchTo(string? site)
     {
         if (!string.Equals(site, _site, StringComparison.Ordinal))

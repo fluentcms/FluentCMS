@@ -66,6 +66,38 @@ public sealed class RolesLocalizationTests : RolesTestContext
         PseudoCulture.Unlocalized(app.Nodes).ShouldBeEmpty();
     }
 
+    // The editor of the constraints with a refusal on two of its fields, and one of the constraints of another grant.
+    [Theory]
+    [InlineData(PseudoCulture.LeftToRight)]
+    [InlineData(PseudoCulture.RightToLeft)]
+    public void EveryTextOfARefusalOfAConstraintComesFromTheResources(string culture)
+    {
+        MarkData(culture);
+        Management.AddLocale(MainSite, "fr", 1);
+        Refuse = (method, path) => method == HttpMethod.Put
+            ? new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = Json(new JsonObject
+                {
+                    ["status"] = 400,
+                    ["code"] = "FCMS3042",
+                    ["title"] = "Problem",
+                    ["errors"] = new JsonArray(
+                        new JsonObject { ["path"] = "grants[1].constraints.locales", ["code"] = "FCMS3042" },
+                        new JsonObject { ["path"] = "grants[1].constraints.rowRule", ["code"] = "FCMS3042" },
+                        new JsonObject { ["path"] = "grants[2].constraints", ["code"] = "FCMS2108" }),
+                }).Content,
+            }
+            : null;
+        var app = LoadLocalized(culture, $"roles/{Reviewers:D}", shown => shown.FindAll("main details").Count.ShouldBe(3));
+
+        Save(app);
+
+        app.WaitForAssertion(() => app.FindAll("main details[open]").Count.ShouldBe(2));
+        app.FindAll("main .cms-field-message-error").ShouldNotBeEmpty();
+        PseudoCulture.Unlocalized(app.Nodes).ShouldBeEmpty();
+    }
+
     // Data the fake serves is marked as a resource is, so that only a text of the page itself can fail the check.
     private void MarkData(string culture)
     {
@@ -109,9 +141,23 @@ public sealed class RolesLocalizationTests : RolesTestContext
             permission["description"] = Mark((string)permission["description"]!);
         }
 
+        foreach (var rule in RowRules)
+        {
+            rule!["name"] = Mark((string)rule["name"]!);
+        }
+
+        foreach (var folder in Folders)
+        {
+            folder!["name"] = Mark((string)folder["name"]!);
+        }
+
         MarkAll(Management.Plugins[MainSite][0]!["contributions"]!["permissions"]);
         Management.Plugins[MainSite][0]!["name"] = Mark("media");
         Management.Schemas[MainSite]["types"]![0]!["displayName"] = Mark("Article");
+        foreach (var field in Management.Schemas[MainSite]["types"]![0]!["fields"]!.AsArray())
+        {
+            field!["name"] = Mark((string)field["name"]!);
+        }
         foreach (var site in Management.Sites)
         {
             site!["name"] = Mark((string)site["name"]!);

@@ -30,9 +30,16 @@ internal sealed class AdminContext(
     ShellSite site,
     FormatService formats,
     ISessionStorage storage,
+    TimeProvider time,
     ILogger<AdminContext> logger) : IAdminContext, IAdminAccess
 {
     internal const string SchemaRead = "schema.read";
+
+    // How long the reads of a new content locale may take before the shell gives up on them and shows that they failed, with
+    // a retry, rather than a loading state until the client's own timeout of 100 s per attempt (#3446). They are two reads in
+    // a row, /me/access and then /schema with /plugins alongside, each of which may wait once after a 429
+    // (RateLimitHandler.MaxWait) before it tries again, with time for the attempts.
+    public static readonly TimeSpan LocaleReadLimit = (2 * RateLimitHandler.MaxWait) + TimeSpan.FromSeconds(15);
 
     private Task? _starting;
     private int _generation;
@@ -188,7 +195,7 @@ internal sealed class AdminContext(
             var next = ++_generation;
             site.ContentLocale = chosen;
             Changed?.Invoke();
-            await (_localeReads = RunAsync(next, () => SiteReadsAsync(next)));
+            await (_localeReads = RunAsync(next, () => SiteReadsAsync(next, LocaleReadLimit)));
             return;
         }
 
@@ -262,7 +269,7 @@ internal sealed class AdminContext(
 
         var generation = ++_generation;
         site.ContentLocale = chosen;
-        return _localeReads = RunAsync(generation, () => SiteReadsAsync(generation));
+        return _localeReads = RunAsync(generation, () => SiteReadsAsync(generation, LocaleReadLimit));
     }
 
     // The content locale an address that names a locale is in: one of the site's enabled locales, null for its default, and
@@ -414,18 +421,34 @@ internal sealed class AdminContext(
         Changed?.Invoke();
     }
 
-    private async Task SiteReadsAsync(int generation)
+    // Without a limit, a read ends only with the client's timeout. The metadata reads the limit gives up on are dropped, as
+    // they go on until that timeout and a retry would wait for them again.
+    private async Task SiteReadsAsync(int generation, TimeSpan? limit = null)
+    {
+        using var limited = limit is { } after ? new CancellationTokenSource(after, time) : null;
+        try
+        {
+            await SiteReadsAsync(generation, limited?.Token ?? CancellationToken.None);
+        }
+        catch (OperationCanceledException) when (limited?.IsCancellationRequested == true)
+        {
+            metadata.ForgetPending();
+            throw;
+        }
+    }
+
+    private async Task SiteReadsAsync(int generation, CancellationToken token)
     {
         var locale = site.ContentLocale;
-        var access = await client.GetMyAccessAsync(site.Site, locale, CancellationToken.None);
-        var plugins = metadata.GetPluginsAsync(CancellationToken.None);
+        var access = await client.GetMyAccessAsync(site.Site, locale, token);
+        var plugins = metadata.GetPluginsAsync(token);
         SchemaDescription? schema = null;
         var refused = !Holds(access, SchemaRead);
         if (!refused)
         {
             try
             {
-                schema = await metadata.GetSchemaAsync(CancellationToken.None);
+                schema = await metadata.GetSchemaAsync(token);
             }
             catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.Forbidden)
             {
@@ -449,8 +472,8 @@ internal sealed class AdminContext(
         {
             await reads();
         }
-        // No cancellation is asked for, so a TaskCanceledException is the client's timeout.
-        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)
+        // No caller cancels, so a cancellation is the client's timeout or the limit of a new locale's reads.
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or OperationCanceledException)
         {
             ShellLog.StartFailed(logger, exception);
             if (generation == _generation)

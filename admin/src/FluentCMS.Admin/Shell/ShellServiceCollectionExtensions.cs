@@ -17,6 +17,7 @@ internal static class ShellServiceCollectionExtensions
         services.AddScoped<IAdminContext>(provider => provider.GetRequiredService<AdminContext>());
         services.AddScoped<IAdminAccess>(provider => provider.GetRequiredService<AdminContext>());
         services.TryAddScoped<PageCrumbs>();
+        services.AddScoped<NavigationProgress>();
         services.AddScoped<AdminOverlays>();
         services.AddScoped<IAdminOverlays>(provider => provider.GetRequiredService<AdminOverlays>());
         return services;

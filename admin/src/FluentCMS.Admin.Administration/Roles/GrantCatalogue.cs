@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Shell;
 
@@ -40,6 +41,29 @@ public sealed class GrantCatalogue
     }
 
     public IReadOnlyList<PermissionRecord> Entries { get; }
+
+    // The rules of GET /permissions/row-rules, or null when they could not be read.
+    public IReadOnlyList<RowRuleRecord>? RowRules { get; init; }
+
+    // The names of the media folders of the shell's site by id, read once a role has a media grant limited to resources.
+    public IReadOnlyDictionary<string, string>? Folders { get; set; }
+
+    // A grant of a media permission or pattern limited to resources, which are folder ids (decision record 0004).
+    public static bool NamesFolders(string permission, JsonObject? constraints) =>
+        permission.StartsWith("media.", StringComparison.Ordinal) && constraints?["resources"] is JsonArray { Count: > 0 };
+
+    // The content type a grant names, as content.{type}.{operation} or content.{type}.*; null for any other grant.
+    public static string? ContentTypeOf(string permission) =>
+        ContentParts(permission) is var (type, _) && type != Wildcard ? type : null;
+
+    public static bool IsContent(string permission) => ContentParts(permission) is not null;
+
+    // The rules a content grant may name: those registered for every type, and those of its type when it names one.
+    public IReadOnlyList<string> RulesFor(string permission)
+    {
+        var type = ContentTypeOf(permission);
+        return [.. (RowRules ?? []).Where(rule => rule.TypeNames is null || (type is not null && rule.TypeNames.Contains(type, StringComparer.Ordinal))).Select(rule => rule.Name)];
+    }
 
     // The sources in the order the editor offers them, core's always for Everything; one the admin does not know comes last.
     public IReadOnlyList<string> Sources =>
