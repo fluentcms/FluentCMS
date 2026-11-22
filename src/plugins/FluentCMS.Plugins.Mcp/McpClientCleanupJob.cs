@@ -20,6 +20,9 @@ internal sealed class McpClientCleanupJob(IMcpClients clients, ISettings<McpSett
 
     public static readonly TimeSpan PendingLifetime = TimeSpan.FromDays(7);
 
+    // Far past a run, which reads at most MaxClients clients, so that only a run that hangs is cut off and frees its worker.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(10);
+
     public async Task ExecuteAsync(McpClientCleanupPayload payload, JobContext context)
     {
         ArgumentNullException.ThrowIfNull(context);

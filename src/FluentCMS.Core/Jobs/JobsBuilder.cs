@@ -19,7 +19,9 @@ public sealed class JobsBuilder
     public JobsBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout = null)
         where TJob : class, IJob<TPayload> => AddJob<TJob, TPayload>(type, attemptTimeout, resumable: false);
 
-    internal JobsBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout, bool resumable)
+    // A resumable job stops on its token wherever it is and leaves what is left for its next run, as a delete in batches
+    // does, so one that stops at its attempt timeout has succeeded. Something must run it again, such as a schedule.
+    public JobsBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout, bool resumable)
         where TJob : class, IJob<TPayload>
     {
         ArgumentException.ThrowIfNullOrEmpty(type);

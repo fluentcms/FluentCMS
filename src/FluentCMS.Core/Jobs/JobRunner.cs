@@ -19,7 +19,9 @@ internal sealed class JobRunner(
 
     private readonly CancellationTokenSource _stopping = new();
 
-    private readonly CancellationTokenSource _shutdown = new();
+    // One for each worker, each cancelled on a thread of its own: a job's await can end inside the cancellation, and what
+    // follows it, such as its release, which SQLite writes there synchronously, would hold the stop and the workers after it.
+    private readonly List<CancellationTokenSource> _shutdowns = [];
 
     // Stops the heartbeats of jobs that ignored the shutdown, so that their leases can expire.
     private readonly CancellationTokenSource _abandon = new();
@@ -44,7 +46,9 @@ internal sealed class JobRunner(
             for (var worker = 0; worker < workers; worker++)
             {
                 var owner = $"{_instance}/{queue}/{worker}";
-                loops.Add(Task.Run(() => WorkAsync(queue, owner), CancellationToken.None));
+                var shutdown = new CancellationTokenSource();
+                _shutdowns.Add(shutdown);
+                loops.Add(Task.Run(() => WorkAsync(queue, owner, shutdown.Token), CancellationToken.None));
             }
         }
 
@@ -59,17 +63,17 @@ internal sealed class JobRunner(
             return;
         }
 
-        await _stopping.CancelAsync();
-
-        if (await FinishedWithinAsync(options.ShutdownGracePeriod, cancellationToken))
+        // The waits run from the cancellations, not from the end of their callbacks, and include them, so that what a callback
+        // throws still reaches the host.
+        var stopping = _stopping.CancelAsync();
+        if (await FinishedWithinAsync([stopping], options.ShutdownGracePeriod, cancellationToken))
         {
             return;
         }
 
-        await _shutdown.CancelAsync();
-
         // The host may have stopped waiting, but a job that stops now still gets its release written.
-        if (!await FinishedWithinAsync(options.ReleaseTimeout, CancellationToken.None))
+        var told = _shutdowns.Select(shutdown => shutdown.CancelAsync()).ToList();
+        if (!await FinishedWithinAsync([stopping, .. told], options.ReleaseTimeout, CancellationToken.None))
         {
             JobLog.StoppedWithRunningJobs(logger);
             await _abandon.CancelAsync();
@@ -80,7 +84,11 @@ internal sealed class JobRunner(
     public void Dispose()
     {
         _stopping.Cancel();
-        _shutdown.Cancel();
+        foreach (var shutdown in _shutdowns)
+        {
+            shutdown.Cancel();
+        }
+
         _abandon.Cancel();
 
         try
@@ -95,15 +103,19 @@ internal sealed class JobRunner(
         }
 
         _stopping.Dispose();
-        _shutdown.Dispose();
+        foreach (var shutdown in _shutdowns)
+        {
+            shutdown.Dispose();
+        }
+
         _abandon.Dispose();
     }
 
-    private async Task<bool> FinishedWithinAsync(TimeSpan period, CancellationToken cancellationToken)
+    private async Task<bool> FinishedWithinAsync(IEnumerable<Task> cancellations, TimeSpan period, CancellationToken cancellationToken)
     {
         try
         {
-            await _loops!.WaitAsync(period, time, cancellationToken);
+            await Task.WhenAll([_loops!, .. cancellations]).WaitAsync(period, time, cancellationToken);
             return true;
         }
         catch (Exception exception) when (exception is TimeoutException or OperationCanceledException)
@@ -112,14 +124,14 @@ internal sealed class JobRunner(
         }
     }
 
-    private async Task WorkAsync(string queue, string owner)
+    private async Task WorkAsync(string queue, string owner, CancellationToken shutdown)
     {
         while (!_stopping.IsCancellationRequested)
         {
             var worked = false;
             try
             {
-                worked = await executor.RunNextAsync(queue, owner, _stopping.Token, _shutdown.Token, _abandon.Token);
+                worked = await executor.RunNextAsync(queue, owner, _stopping.Token, shutdown, _abandon.Token);
             }
             catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
             {

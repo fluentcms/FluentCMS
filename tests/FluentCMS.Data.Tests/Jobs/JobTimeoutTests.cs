@@ -15,6 +15,9 @@ using FluentCMS.Core.Telemetry;
 using FluentCMS.Jobs;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.AiAssist;
+using FluentCMS.Plugins.Mcp;
+using FluentCMS.Plugins.Media;
+using FluentCMS.Plugins.Search;
 using FluentCMS.Plugins.Webhooks;
 using FluentCMS.Providers;
 using FluentCMS.Sites;
@@ -600,24 +603,75 @@ public sealed class JobTimeoutTests : IDisposable
         _fixture.Logs.Count(nameof(JobLog.StoppedAtLimit)).ShouldBe(1);
     }
 
+    // A host cannot see IResumableJob either, so it says so when it registers the job, as a plugin does (#3529).
     [Fact]
-    public void TheRetentionJobsOfTheWebhooksAndAiAssistPluginsAreResumable()
+    public async Task AHostJobRegisteredResumableStoppedAtItsLimitHasSucceeded()
     {
-        var instance = _fixture.NewInstance(cms: cms =>
-        {
-            cms.AddPlugin<WebhooksPlugin>();
-            cms.AddPlugin<AiAssistPlugin>();
-        });
-        var registry = instance.GetRequiredService<JobRegistry>();
+        var instance = _fixture.NewInstance(cms: cms => cms.Jobs.AddJob<TimedJob, ProbePayload>(TimedJob.Type, Limit, resumable: true));
+        var executor = instance.GetRequiredService<JobExecutor>();
+        RunUntilCancelled();
+        var id = await instance.GetRequiredService<IJobScheduler>().EnqueueAsync<TimedJob, ProbePayload>(new ProbePayload("host"), new JobOptions { MaxAttempts = 1 }, Token);
+
+        var running = StartAsync(executor);
+        await WaitForRunsAsync(1);
+        _fixture.Clock.Advance(Limit);
+        await running;
+
+        var job = _fixture.Job(id);
+        job.Status.ShouldBe(JobStatus.Succeeded, "what is left waits for the next run");
+        job.LastError.ShouldBeNull();
+        _fixture.Events.DeadLettered.ShouldBeEmpty();
+        _fixture.Logs.Count(nameof(JobLog.StoppedAtLimit)).ShouldBe(1);
+    }
+
+    [Fact]
+    public void TheJobsOfThePluginsThatDeleteInBatchesAreResumable()
+    {
+        var registry = WithFirstPartyPlugins().GetRequiredService<JobRegistry>();
 
         // The AI Assist plugin's job is internal to it, so its stored type is named here.
-        foreach (var type in new[] { WebhookRetentionJob.Type, "ai.usage-retention" })
+        foreach (var type in new[] { WebhookRetentionJob.Type, "ai.usage-retention", MediaVariantCleanupJob.Type })
         {
             var registration = registry.Find(type).ShouldNotBeNull(type);
             registration.Resumable.ShouldBeTrue(type);
             registration.AttemptTimeout.ShouldNotBeNull(type);
         }
     }
+
+    // A job of a first-party plugin that ignores its token would hold its worker for good without one (#3529).
+    [Fact]
+    public void EveryJobOfTheFirstPartyPluginsHasAnAttemptTimeout()
+    {
+        var instance = WithFirstPartyPlugins();
+        var untimed = instance.GetServices<JobRegistration>()
+            .Where(registration => registration.AttemptTimeout is null && registration.Type != JobFixture.ProbeType)
+            .Select(registration => registration.Type);
+        untimed.ShouldBe([OutboxDrainJob.Type]);
+
+        var registry = instance.GetRequiredService<JobRegistry>();
+        var timeouts = new Dictionary<string, TimeSpan>
+        {
+            [McpClientCleanupJob.Type] = TimeSpan.FromMinutes(10),
+            [MediaVariantCleanupJob.Type] = TimeSpan.FromHours(1),
+            [MediaDimensionsJob.Type] = TimeSpan.FromMinutes(30),
+            [WebhookDeliveryJob.Type] = TimeSpan.FromMinutes(10),
+            [WebhookQueueJob.Type] = TimeSpan.FromMinutes(5),
+        };
+        foreach (var (type, timeout) in timeouts)
+        {
+            registry.Find(type).ShouldNotBeNull(type).AttemptTimeout.ShouldBe(timeout, type);
+        }
+
+        registry.Find(MediaDimensionsJob.Type)!.Resumable.ShouldBeFalse("a run moves its cursor only at its end");
+    }
+
+    private ServiceProvider WithFirstPartyPlugins() =>
+        _fixture.NewInstance(cms: cms => cms
+            .AddPlugin<WebhooksPlugin>()
+            .AddPlugin<AiAssistPlugin>()
+            .AddPlugin<MediaPlugin>()
+            .AddPlugin<McpPlugin>()
+            .AddPlugin<SearchPlugin>());
 
     [Theory]
     [InlineData(0)]
