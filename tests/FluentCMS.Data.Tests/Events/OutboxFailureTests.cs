@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Data.Common;
 using FluentCMS.Content;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Content;
@@ -342,6 +343,143 @@ public sealed class OutboxFailureTests
         {
             await _gate.Task;
             await work();
+        }
+    }
+
+    // Once armed, stops the host as soon as a claim's update has landed, so that the read of what it won is cancelled.
+    private sealed class StopAfterTheClaim : DbCommandInterceptor
+    {
+        private CancellationTokenSource? _stopping;
+        private int _claimed;
+
+        public bool Claimed => Volatile.Read(ref _claimed) == 1;
+
+        public void Arm(CancellationTokenSource stopping) => Volatile.Write(ref _stopping, stopping);
+
+        public override async ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (result > 0 && command.CommandText.Contains($"{TestProvider.Quote("attempts")} + 1", StringComparison.Ordinal) && Interlocked.Exchange(ref _stopping, null) is { } stopping)
+            {
+                await stopping.CancelAsync();
+                Volatile.Write(ref _claimed, 1);
+            }
+
+            return result;
+        }
+
+        // As every provider does with a token that is cancelled before the command starts.
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (Claimed)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    // Once armed, holds the read of a site's default locale or the disposal of a delivery's scope, and stops the host as it
+    // starts. The hold ignores the stop's token, as the shared read of the locale and a scope's disposal do.
+    private sealed class SlowEnd : DbCommandInterceptor
+    {
+        public const string Locale = "locale";
+        public const string Disposal = "disposal";
+
+        private CancellationTokenSource? _stopping;
+
+        public string? Slow { get; init; }
+
+        public TaskCompletionSource Gate { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public OpenConnections Connections { get; } = new();
+
+        public void Arm(CancellationTokenSource stopping) => Volatile.Write(ref _stopping, stopping);
+
+        public async Task HoldAsync(string kind)
+        {
+            if (kind == Slow && Interlocked.Exchange(ref _stopping, null) is { } stopping)
+            {
+                await stopping.CancelAsync();
+                await Gate.Task;
+            }
+        }
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains(TestProvider.Quote("default_locale"), StringComparison.Ordinal))
+            {
+                await HoldAsync(Locale);
+            }
+
+            return result;
+        }
+    }
+
+    private sealed class SlowDisposal(SlowEnd end) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync() => await end.HoldAsync(SlowEnd.Disposal);
+    }
+
+    // Built with a disposal of the scope of its delivery, which the scope disposes after it.
+    private sealed class ScopedOutbox(Seen seen, SlowDisposal disposal) : IOutboxEventHandler<EntryDraftSavedEvent>
+    {
+        public ValueTask HandleAsync(EntryDraftSavedEvent message, EventDelivery delivery, CancellationToken cancellationToken)
+        {
+            GC.KeepAlive(disposal);
+            return seen.HeardAsync("scoped", message, delivery, cancellationToken);
+        }
+    }
+
+    // Stops the host when the first delivery of a handler this instance does not have is put back to wait.
+    private sealed class StopAtTheFirstWait(CancellationTokenSource stopping) : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) => new Logger(stopping);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class Logger(CancellationTokenSource stopping) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state)
+                where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                if (eventId.Name == "HandlerMissing" && !stopping.IsCancellationRequested)
+                {
+                    stopping.Cancel();
+                }
+            }
+        }
+    }
+
+    // Holds the first release, past its token as SQLite does while it waits for the write lock, and then writes it.
+    private sealed class LateRelease : DbCommandInterceptor
+    {
+        private int _held;
+
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Gate { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Landed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (!command.CommandText.Contains($"{TestProvider.Quote("attempts")} - 1", StringComparison.Ordinal) || Interlocked.Exchange(ref _held, 1) != 0)
+            {
+                return result;
+            }
+
+            Entered.TrySetResult();
+            await Gate.Task;
+            var written = await command.ExecuteNonQueryAsync(CancellationToken.None);
+            Landed.TrySetResult();
+            return InterceptionResult<int>.SuppressWithResult(written);
         }
     }
 
@@ -1257,6 +1395,245 @@ public sealed class OutboxFailureTests
 
             await Eventually.HoldsAsync(() => writes.Connections.Count == 0);
         }
+    }
+
+    [Fact]
+    public async Task AClaimTheHostStopsBeforeItsReadBackGivesItsRowsBackWithTheirAttempts()
+    {
+        var seen = new Seen();
+        var interruption = new StopAfterTheClaim();
+        using var stopping = new CancellationTokenSource();
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(interruption)))));
+        for (var index = 0; index < 3; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        interruption.Arm(stopping);
+        (await DrainWithAsync(database.Database.Services, stopping.Token)).ShouldBe(0);
+
+        interruption.Claimed.ShouldBeTrue();
+        seen.Calls.ShouldBeEmpty();
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 0 && row.LeaseOwner == null);
+
+        (await DrainAsync(database.Database.Services)).ShouldBe(3);
+        seen.Deliveries.ShouldAllBe(delivery => delivery.Attempt == 1);
+    }
+
+    // The stop comes after the delivery last looked for one and before its work item runs, as one during a renewal does. Inline,
+    // the work item runs before the delivery abandons the hand-off, which a work item on the thread pool can do too.
+    [Fact]
+    public async Task NoHandlerStartsOnceItsLaneIsToldOfTheStop()
+    {
+        var seen = new Seen();
+        using var stopping = new CancellationTokenSource();
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast()));
+        for (var index = 0; index < 3; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        var drainer = database.Database.Services.GetRequiredService<OutboxDrainer>();
+        drainer.HandOff = work =>
+        {
+            if (!seen.Calls.IsEmpty)
+            {
+                stopping.Cancel();
+            }
+
+            return work();
+        };
+
+        (await drainer.DrainAsync(stopping.Token)).ShouldBe(1);
+
+        seen.Calls.Count.ShouldBe(1);
+        var rows = database.Rows();
+        rows[0].Status.ShouldBe(OutboxStatus.Delivered);
+        rows.Skip(1).ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 0 && row.LeaseOwner == null);
+    }
+
+    // The clock never moves, so a drain that waited for the read or the disposal would not return.
+    [Theory]
+    [InlineData(SlowEnd.Locale)]
+    [InlineData(SlowEnd.Disposal)]
+    public async Task AStopDuringTheReadOfTheLocaleOrTheDisposalOfAScopeSettlesWhatWasDelivered(string slow)
+    {
+        var seen = new Seen();
+        var end = new SlowEnd { Slow = slow };
+        using var stopping = new CancellationTokenSource();
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
+        {
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, ScopedOutbox>("scoped-outbox");
+            cms.Jobs.Options.ReleaseTimeout = TimeSpan.FromSeconds(3);
+            cms.Services.AddSingleton<TimeProvider>(new ManualTimeProvider(JobFixture.Start));
+            cms.Services.AddSingleton(end);
+            cms.Services.AddScoped<SlowDisposal>();
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(end, end.Connections));
+        }));
+        for (var index = 0; index < 4; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        if (slow == SlowEnd.Locale)
+        {
+            // The first delivery reads the locale into the cache, so the second reads it again only once the cache is emptied.
+            var cache = database.Database.Services.GetRequiredService<SiteCache>();
+            seen.Behavior = (_, _) =>
+            {
+                cache.Invalidate();
+                end.Arm(stopping);
+                return Task.CompletedTask;
+            };
+        }
+        else
+        {
+            end.Arm(stopping);
+        }
+
+        try
+        {
+            await Eventually.CompletesAsync(DrainWithAsync(database.Database.Services, stopping.Token));
+
+            var rows = database.Rows();
+            rows[0].Status.ShouldBe(OutboxStatus.Delivered);
+            rows.Skip(1).ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 0 && row.LeaseOwner == null);
+        }
+        finally
+        {
+            end.Gate.TrySetResult();
+            await Eventually.HoldsAsync(() => end.Connections.Count == 0);
+        }
+
+        seen.Calls.Count.ShouldBe(1);
+    }
+
+    // The first row waits for its handler, which this instance does not have, and the host stops before the second. The write
+    // that gives them back takes two of the three seconds of the stop; with one attempt a row, the sweep would fail a row it
+    // left leased, though no handler saw it.
+    [Fact]
+    public async Task TheRowsAStopGivesBackGoWithOneWriteSoASlowOneLeavesNoneOfThemLeased()
+    {
+        var writes = new EndingWrites();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        using var stopping = new CancellationTokenSource();
+        writes.Writing = (kind, _) =>
+        {
+            if (kind == EndingWrites.Release)
+            {
+                clock.Advance(TimeSpan.FromSeconds(2));
+            }
+
+            return Task.CompletedTask;
+        };
+        using var database = StoppingDatabase(new Seen(), clock, new RecordingLogs(), writes, cms =>
+        {
+            cms.Events.Outbox.MaxAttempts = 1;
+            cms.Services.AddSingleton<ILoggerProvider>(new StopAtTheFirstWait(stopping));
+        });
+        var now = clock.GetUtcNow();
+        database.Read(context =>
+        {
+            for (var index = 0; index < 4; index++)
+            {
+                context.Add(new OutboxMessage
+                {
+                    EventId = Guid.CreateVersion7(),
+                    EventType = "Acme.Thing",
+                    Handler = "acme-plugin",
+                    Payload = "{}",
+                    OccurredAt = now,
+                    Sequence = index + 1,
+                    AvailableAt = now.AddMinutes(-1),
+                });
+            }
+
+            return context.SaveChanges();
+        });
+
+        await DrainWithAsync(database.Database.Services, stopping.Token);
+
+        writes.Written.ShouldBe([EndingWrites.Release]);
+        var rows = database.Rows();
+        rows.ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 0 && row.LeaseOwner == null);
+        rows[0].AvailableAt.ShouldBe(now + new OutboxOptions().MissingHandlerDelay);
+        rows.Skip(1).ShouldAllBe(row => row.AvailableAt == now.AddMinutes(-1));
+
+        writes.Writing = null;
+        clock.Advance(TimeSpan.FromMinutes(10));
+        await database.Database.Services.GetRequiredService<OutboxDrainer>().SweepAsync(Token);
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Pending);
+    }
+
+    // Batches of two rows. The drain is cancelled without a stop of its host, as when its job lost its lease, and the release
+    // of the second row of the first batch is held past the end of ReleaseTimeout, so the drain returns while it is in flight.
+    [Fact]
+    public async Task ADrainJobThatComesWhileTheReleaseOfACancelledDrainIsInFlightLeavesTheOwnersLaterRowsAlone()
+    {
+        var seen = new Seen();
+        var late = new LateRelease();
+        var writes = new EndingWrites();
+        var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        using var stopping = new CancellationTokenSource();
+        StopAtTheSecondDelivery(seen, stopping);
+        using var database = StoppingDatabase(seen, clock, logs, writes, cms =>
+        {
+            cms.Events.Outbox.BatchSize = 2;
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(late));
+        });
+        for (var index = 0; index < 4; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        var drainer = database.Database.Services.GetRequiredService<OutboxDrainer>();
+        try
+        {
+            var cancelled = drainer.DrainOnceAsync(stopping.Token);
+            await Eventually.CompletesAsync(late.Entered.Task);
+            clock.Advance(TimeSpan.FromSeconds(3));
+            await Eventually.CompletesAsync(cancelled);
+
+            // The lane that delivered the first row had not ended.
+            (await cancelled).ShouldBe(0);
+            logs.Count("DrainLeftLanes").ShouldBe(1);
+
+            seen.Behavior = (_, _) => Task.CompletedTask;
+            (await drainer.DrainOnceAsync(Token)).ShouldBe(0);
+            seen.Calls.Count.ShouldBe(2);
+        }
+        finally
+        {
+            late.Gate.TrySetResult();
+            await Eventually.CompletesAsync(late.Landed.Task);
+            await Eventually.HoldsAsync(() => writes.Connections.Count == 0);
+        }
+
+        // A drain job is turned away until the lanes of the cancelled drain have ended, and then delivers the rest in order.
+        var drained = 0;
+        var next = drainer.DrainOnceAsync(Token);
+        await Eventually.HoldsAsync(() =>
+        {
+            if (!next.IsCompleted)
+            {
+                return false;
+            }
+
+            drained += next.Result;
+            if (drained > 0)
+            {
+                return true;
+            }
+
+            next = drainer.DrainOnceAsync(Token);
+            return false;
+        });
+
+        drained.ShouldBe(3);
+        seen.Deliveries.Skip(2).Select(delivery => delivery.Key).ShouldBe(database.Rows().Skip(1).Select(row => row.Id));
+        logs.Count("DrainLeftLanes").ShouldBe(1);
     }
 
     [Fact]
