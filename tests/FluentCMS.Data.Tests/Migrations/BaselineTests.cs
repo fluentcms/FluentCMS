@@ -339,12 +339,21 @@ public sealed partial class BaselineTests : IDisposable
     [Fact]
     public async Task ADatabaseOfAnEarlierBuildOfTheBaselineThatLacksAnIndexStartsAndNamesIt()
     {
-        var fresh = new CapturedLogs();
-        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.Services.AddSingleton<ILoggerProvider>(fresh)))
+        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production))
         {
             await built.StartAsync(Token);
             await built.StopAsync(Token);
         }
+
+        // The start that makes the database compares no index, since its migrations are still pending when it checks.
+        var healthy = new CapturedLogs();
+        using (var untouched = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.Services.AddSingleton<ILoggerProvider>(healthy)))
+        {
+            await untouched.StartAsync(Token);
+            await untouched.StopAsync(Token);
+        }
+
+        healthy.Messages.ShouldNotContain(message => message.Contains("but lacks the indexes", StringComparison.Ordinal));
 
         const string index = "ix_cms_job_status_completed";
         _database.Execute(TestProvider.IsSqlServer ? $"drop index {TestProvider.Quote(index)} on {TestProvider.Quote("cms_job")}" : $"drop index {TestProvider.Quote(index)}");
@@ -354,8 +363,7 @@ public sealed partial class BaselineTests : IDisposable
         await host.StartAsync(Token);
         await host.StopAsync(Token);
 
-        fresh.Messages.ShouldNotContain(message => message.Contains("but lacks the indexes", StringComparison.Ordinal));
-        logs.Messages.ShouldContain(message => message.StartsWith($"The system stream has applied its baseline {BaselineOf<SystemDbContext>(host.Services)} but lacks the indexes {index}, ", StringComparison.Ordinal));
+        logs.Messages.ShouldContain(message => message.StartsWith($"The system stream has applied its baseline {BaselineOf<SystemDbContext>(host.Services)} but lacks the indexes {index}, which a later build", StringComparison.Ordinal));
     }
 
     // A unique index that is missing would let in rows the model refuses, so it is refused with the columns.
