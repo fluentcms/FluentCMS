@@ -94,9 +94,11 @@ public interface IPluginServiceBuilder
     /// <param name="attemptTimeout">The limit of one attempt, or null for the runner's.</param>
     /// <param name="resumable">Whether the job is resumable.</param>
     /// <returns>This builder.</returns>
-    /// <exception cref="NotSupportedException">The builder does not take this overload.</exception>
+    /// <exception cref="NotSupportedException"><paramref name="resumable"/> is <see langword="true"/> and the builder does not register resumable jobs.</exception>
     IPluginServiceBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout, bool resumable)
-        where TJob : class, IJob<TPayload> => throw new NotSupportedException("This plugin service builder does not register resumable jobs.");
+        where TJob : class, IJob<TPayload> => resumable
+            ? throw new NotSupportedException("This plugin service builder does not register resumable jobs.")
+            : AddJob<TJob, TPayload>(type, attemptTimeout);
 
     /// <summary>
     /// Adds a job queue with workers on every instance, so that the plugin's jobs, enqueued with <see cref="JobOptions.Queue"/>,
