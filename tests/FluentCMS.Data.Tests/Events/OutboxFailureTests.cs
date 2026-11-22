@@ -1574,10 +1574,11 @@ public sealed class OutboxFailureTests
         var seen = new Seen();
         var late = new LateRelease();
         var writes = new EndingWrites();
+        var logs = new RecordingLogs();
         var clock = new ManualTimeProvider(JobFixture.Start);
         using var stopping = new CancellationTokenSource();
         StopAtTheSecondDelivery(seen, stopping);
-        using var database = StoppingDatabase(seen, clock, new RecordingLogs(), writes, cms =>
+        using var database = StoppingDatabase(seen, clock, logs, writes, cms =>
         {
             cms.Events.Outbox.BatchSize = 2;
             cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(late));
@@ -1597,6 +1598,7 @@ public sealed class OutboxFailureTests
 
             // The lane that delivered the first row had not ended.
             (await cancelled).ShouldBe(0);
+            logs.Count("DrainLeftLanes").ShouldBe(1);
 
             seen.Behavior = (_, _) => Task.CompletedTask;
             (await drainer.DrainOnceAsync(Token)).ShouldBe(0);
@@ -1609,8 +1611,29 @@ public sealed class OutboxFailureTests
             await Eventually.HoldsAsync(() => writes.Connections.Count == 0);
         }
 
-        (await drainer.DrainAsync(Token)).ShouldBe(3);
+        // A drain job is turned away until the lanes of the cancelled drain have ended, and then delivers the rest in order.
+        var drained = 0;
+        var next = drainer.DrainOnceAsync(Token);
+        await Eventually.HoldsAsync(() =>
+        {
+            if (!next.IsCompleted)
+            {
+                return false;
+            }
+
+            drained += next.Result;
+            if (drained > 0)
+            {
+                return true;
+            }
+
+            next = drainer.DrainOnceAsync(Token);
+            return false;
+        });
+
+        drained.ShouldBe(3);
         seen.Deliveries.Skip(2).Select(delivery => delivery.Key).ShouldBe(database.Rows().Skip(1).Select(row => row.Id));
+        logs.Count("DrainLeftLanes").ShouldBe(1);
     }
 
     [Fact]

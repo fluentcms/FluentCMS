@@ -79,4 +79,7 @@ internal static partial class EventLog
 
     [LoggerMessage(EventId = 9627, Level = LogLevel.Warning, Message = "The outbox lane of {Owner} found the database busy after its retries; it is tried again on the next signal or sweep, and the other lanes go on.")]
     public static partial void LaneBusy(ILogger logger, Exception exception, string owner);
+
+    [LoggerMessage(EventId = 9628, Level = LogLevel.Warning, Message = "The outbox drain returned at the end of its stop with lanes still ending; until they have, a drain of this instance only signals and ends, and once they have it drains again at the next kick or sweep.")]
+    public static partial void DrainLeftLanes(ILogger logger);
 }

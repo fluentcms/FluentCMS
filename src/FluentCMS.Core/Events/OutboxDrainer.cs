@@ -177,7 +177,7 @@ internal sealed class OutboxDrainer(
     // more than one worker still gives one lane to each owner here and keeps the order of its events. A drain cancelled
     // without a host stop, as when its job lost its lease, returns at the end of ReleaseTimeout while a lane may still wait for
     // its release; it holds off the next drain until its lanes end, so that no new lane claims an owner's later rows while
-    // its earlier ones are still leased. Those wait for the next kick or sweep.
+    // its earlier ones are still leased. Nothing kicks a drain when they end, so the rows wait for the next kick or sweep.
     public async Task<int> DrainOnceAsync(CancellationToken cancellationToken = default)
     {
         if (Interlocked.CompareExchange(ref _draining, 1, 0) != 0)
@@ -194,6 +194,11 @@ internal sealed class OutboxDrainer(
         }
         finally
         {
+            if (!unfinished.IsCompleted)
+            {
+                EventLog.DrainLeftLanes(logger);
+            }
+
             _ = unfinished.ContinueWith(
                 ended =>
                 {
