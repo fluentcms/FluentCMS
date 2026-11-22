@@ -66,6 +66,10 @@ internal sealed partial class ContentService(
     // scope's service runs one write at a time: a hook that calls back runs in the flow of that write and joins it, and a
     // write from any other flow while one runs throws (OneAtATimeAsync) rather than mixing the changes of the two.
     private readonly List<EntryChange> _pending = [];
+
+    // The draft versions moved in the transaction in progress, less what rolled back. A caller's transaction ends unseen,
+    // so a publish looks only from where it began.
+    private readonly List<(Guid Id, string Locale)> _moved = [];
     private readonly AsyncLocal<object?> _writeOfFlow = new();
     private object? _write;
     private bool _ownsTransaction;
@@ -588,6 +592,7 @@ internal sealed partial class ContentService(
             finally
             {
                 _ownsTransaction = false;
+                _moved.Clear();
                 events.Close();
                 if (!committed)
                 {
@@ -604,6 +609,7 @@ internal sealed partial class ContentService(
     private async Task<T> InSavepointAsync<T>(IDbContextTransaction outer, Func<Task<T>> work, CancellationToken cancellationToken)
     {
         var pending = _pending.Count;
+        var moved = _moved.Count;
         var buffered = events.Mark;
         var savepoint = string.Create(CultureInfo.InvariantCulture, $"cms_content_{++_savepoints}");
         if (outer.SupportsSavepoints)
@@ -629,6 +635,7 @@ internal sealed partial class ContentService(
         catch
         {
             _pending.RemoveRange(pending, _pending.Count - pending);
+            _moved.RemoveRange(moved, _moved.Count - moved);
             events.Truncate(buffered);
 
             // Without a savepoint the failed write's rows cannot be undone alone, and the transaction must not be

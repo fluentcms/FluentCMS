@@ -30,6 +30,7 @@ internal sealed partial class ContentService
 
         var write = await BeginAsync(type, ContentOperation.Publish, cancellationToken, locale);
         List<PublishWarning> warnings = [];
+        var ownsTransaction = context.Database.CurrentTransaction is null;
         var row = await InTransactionAsync(
             async () =>
             {
@@ -45,6 +46,7 @@ internal sealed partial class ContentService
                 // Settling what is settled changes nothing, so it is done again only after a hook that ran.
                 var original = EntryJson.Fields(write.Type, draft);
                 var working = ContentCopy.Of(draft);
+                var movedBefore = _moved.Count;
                 await hooks.RunAsync(HookKind.BeforeValidate, write.Type, write.Operation, working, CopyOf(previous), cancellationToken);
                 (working, var validated) = Settle(write, working, original, draft, writable);
                 await ValidateForPublishAsync(write, working, validated, document, target, warnings, cancellationToken);
@@ -59,10 +61,11 @@ internal sealed partial class ContentService
                     }
                 }
 
-                // A hook can call the service. What it saved, in another locale too, would go out with the shared row unvalidated.
+                // A hook can call the service. What it saved, in another locale too, would go out with the shared row unvalidated,
+                // and so would what another request committed since the first read, which read committed shows here.
                 if (!JsonNode.DeepEquals(original, EntryJson.Fields(write.Type, await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken))))
                 {
-                    throw new HookRejectedException(ContentErrorCodes.DraftMovedByHook, "A hook changed the draft being published.");
+                    throw await DraftMovedAsync(write, id, document, movedBefore, ownsTransaction, cancellationToken);
                 }
 
                 List<Document> advanced = [];
@@ -89,6 +92,32 @@ internal sealed partial class ContentService
             cancellationToken);
 
         return new PublishResult<ContentDocument>(await RespondAsync(write, row), warnings);
+    }
+
+    // A hook's save and another request's both move the stored version, so that alone cannot name the writer (#3536). A swap
+    // of this transaction holds the row to its end, so with none since the publish began a newer version is another's commit.
+    // A publish in a transaction of its own ends it before it reads that version and entry, so that they are what is stored
+    // and nothing a hook wrote past the swaps; one inside another transaction cannot, and reads them as that one sees them.
+    private async Task<Exception> DraftMovedAsync(WriteScope write, Guid id, Document document, int movedBefore, bool ownsTransaction, CancellationToken cancellationToken)
+    {
+        // A write nested in a validator can have left a hook running, which refuses the publish before either answer (FCMS2410).
+        hooks.ThrowIfLeftRunning();
+
+        if (!_moved.Skip(movedBefore).Contains((id, document.Locale)))
+        {
+            if (ownsTransaction)
+            {
+                await context.Database.RollbackTransactionAsync(CancellationToken.None);
+            }
+
+            var stored = await store.DraftVersionAsync(id, document.Locale, cancellationToken);
+            if (stored > document.DraftVersion)
+            {
+                return await ConflictAsync(write, id, document.DraftVersion, stored, cancellationToken);
+            }
+        }
+
+        return new HookRejectedException(ContentErrorCodes.DraftMovedByHook, "A hook changed the draft being published.");
     }
 
     public Task<ContentDocument> UnpublishAsync(string type, Guid id, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
@@ -742,6 +771,7 @@ internal sealed partial class ContentService
                 throw await SwapConflictAsync(write, id, expected, cancellationToken);
             }
 
+            _moved.Add((id, other.Locale));
             other.DraftVersion++;
             other.UpdatedAt = at;
             other.UpdatedBy = by;
@@ -754,6 +784,7 @@ internal sealed partial class ContentService
                 throw await SwapConflictAsync(write, id, expected, cancellationToken);
             }
 
+            _moved.Add((id, own.Locale));
             own.DraftVersion = expected + 1;
             own.Status = status;
             own.UpdatedAt = at;
