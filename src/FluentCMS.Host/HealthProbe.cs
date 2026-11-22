@@ -33,8 +33,9 @@ internal static class HealthProbe
         }
     }
 
-    // Kestrel:Endpoints wins over urls, which wins over http_ports, as in Kestrel; ASPNETCORE_URLS and ASPNETCORE_HTTP_PORTS
-    // reach the host as urls and http_ports, which is also where a JSON file puts them.
+    // The first http endpoint of Kestrel:Endpoints, else of urls, else http_ports; ASPNETCORE_URLS and ASPNETCORE_HTTP_PORTS
+    // reach the host as urls and http_ports, which is also where a JSON file puts them. Kestrel ignores urls and http_ports
+    // whenever endpoints are configured, even with no http one among them, which the probe does not follow.
     private static string Port(IConfiguration configuration)
     {
         var endpoints = configuration.GetSection("Kestrel:Endpoints").GetChildren().Select(endpoint => endpoint["Url"]);
