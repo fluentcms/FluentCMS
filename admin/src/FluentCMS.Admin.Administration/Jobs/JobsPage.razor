@@ -1,5 +1,99 @@
-@* The jobs of the instance and the dead letters (spec 4.15). The page shows its heading until its issue writes it. *@
+@* The jobs of the instance (spec 4.15, rows 6.6 and 8.10): read in pages with the filters status, type and queue, each a
+   link to the job's page; the dead-lettered jobs with retry; and the event deliveries that failed, with retry, remove and
+   purge by handler. Every call needs jobs.manage for the instance, which the shell's gate asks for before the page shows. *@
 @page "/jobs"
+@inject IManagementApi Api
+@inject NavigationManager Navigation
+@inject FormatService Formats
 @inject IStringLocalizer<JobsResources> L
 
 <h1 tabindex="-1">@L["Jobs.Page.Heading"]</h1>
+
+<div class="jobs-filters" role="group" aria-label="@L["Jobs.Filters.Label"]">
+    <CmsSelect Label="@L["Jobs.Filters.Status"]"
+               Options="@StatusOptions"
+               Value="@Status"
+               ValueChanged="@(value => list?.SetFilter(JobsApi.StatusFilter, value))"
+               Placeholder="@L["Jobs.Filters.AnyStatus"]" />
+    <form class="jobs-names" @onsubmit="ApplyNames">
+        <CmsTextInput Label="@L["Jobs.Filters.Type"]" Autocomplete="off" Value="@typeText" ValueChanged="@(value => typeText = value)" />
+        <CmsTextInput Label="@L["Jobs.Filters.Queue"]" Autocomplete="off" Value="@queueText" ValueChanged="@(value => queueText = value)" />
+        <div>
+            <CmsButton Submit="true">@L["Jobs.Filters.Apply"]</CmsButton>
+        </div>
+    </form>
+</div>
+
+<RecordList @ref="list"
+            TItem="JobRecord"
+            Label="@L["Jobs.Page.Heading"]"
+            Read="@Api.GetJobsAsync"
+            Searchable="false"
+            Filters="@Filters"
+            EmptyText="@L["Jobs.List.Empty"]"
+            RowLabel="@(job => job.Type)"
+            OnRowActivated="@Open">
+    <Columns>
+        <CmsDataGridColumn TItem="JobRecord" Name="type" Title="@L["Jobs.List.Type"]" Order="0">
+            <a href="@JobRoute(context.Id)" tabindex="-1">@context.Type</a>
+        </CmsDataGridColumn>
+        <CmsDataGridColumn TItem="JobRecord" Name="queue" Title="@L["Jobs.List.Queue"]" Order="1" Value="@(job => job.Queue)" />
+        <CmsDataGridColumn TItem="JobRecord" Name="status" Title="@L["Jobs.List.Status"]" Order="2">
+            <JobStatusCell @key="context.Id" Id="@context.Id" Status="@context.Status" />
+        </CmsDataGridColumn>
+        <CmsDataGridColumn TItem="JobRecord" Name="attempts" Title="@L["Jobs.List.Attempts"]" Order="3" Value="@(job => JobTexts.Attempts(job, L))" />
+        <CmsDataGridColumn TItem="JobRecord" Name="createdAt" Title="@L["Jobs.List.Created"]" Order="4" Value="@(job => Formats.DateTime(job.CreatedAt))" />
+        <CmsDataGridColumn TItem="JobRecord" Name="runAt" Title="@L["Jobs.List.RunAt"]" Order="5" Value="@(job => Formats.DateTime(job.RunAt))" />
+    </Columns>
+</RecordList>
+
+<JobDeadLetters OnRetried="ReloadAsync" />
+
+<EventDeadLetters />
+
+@code {
+    private static readonly IReadOnlyList<string> Filters = [JobsApi.StatusFilter, JobsApi.TypeFilter, JobsApi.QueueFilter];
+
+    private RecordList<JobRecord>? list;
+    private string? typeText;
+    private string? queueText;
+    private (string? Type, string? Queue)? named;
+
+    [SupplyParameterFromQuery(Name = JobsApi.StatusFilter)]
+    public string? Status { get; set; }
+
+    [SupplyParameterFromQuery(Name = JobsApi.TypeFilter)]
+    public string? Type { get; set; }
+
+    [SupplyParameterFromQuery(Name = JobsApi.QueueFilter)]
+    public string? Queue { get; set; }
+
+    private IReadOnlyList<CmsOption> StatusOptions => [.. JobsApi.Statuses.Select(status => new CmsOption(status, JobTexts.Status(status, L)))];
+
+    // The fields follow the address, as after Back, and keep what the user typed while it stays.
+    protected override void OnParametersSet()
+    {
+        if (named != (Type, Queue))
+        {
+            named = (Type, Queue);
+            (typeText, queueText) = (Type, Queue);
+        }
+    }
+
+    // Both names in one navigation, which shows the first page of what they find.
+    private void ApplyNames() =>
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            [JobsApi.TypeFilter] = Trimmed(typeText),
+            [JobsApi.QueueFilter] = Trimmed(queueText),
+            ["page"] = null,
+        }));
+
+    private Task ReloadAsync() => list?.ReloadAsync() ?? Task.CompletedTask;
+
+    private void Open(JobRecord job) => Navigation.NavigateTo(JobRoute(job.Id));
+
+    internal static string JobRoute(Guid id) => $"jobs/{id:D}";
+
+    private static string? Trimmed(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+}

@@ -15,4 +15,55 @@
   <data name="Search.Page.Heading" xml:space="preserve">
     <value>Search index</value>
   </data>
+  <data name="Search.Page.Intro" xml:space="preserve">
+    <value>The search index holds the searchable fields of the site's entries and follows every change of them. Rebuild it for content that was there before the plugin, or after the plugin was disabled in the site for a while. A rebuild runs as a job in the background and writes only what differs.</value>
+  </data>
+  <data name="Search.Rebuild.Heading" xml:space="preserve">
+    <value>Rebuild the index</value>
+  </data>
+  <data name="Search.Rebuild.TypesLoading" xml:space="preserve">
+    <value>Loading the content types…</value>
+  </data>
+  <data name="Search.Rebuild.TypesFailed" xml:space="preserve">
+    <value>The content types could not be read; the rebuild covers every type.</value>
+  </data>
+  <data name="Search.Rebuild.Type" xml:space="preserve">
+    <value>Content type</value>
+  </data>
+  <data name="Search.Rebuild.TypeHelp" xml:space="preserve">
+    <value>The types with a searchable field. Without one, every such type is rebuilt.</value>
+  </data>
+  <data name="Search.Rebuild.EveryType" xml:space="preserve">
+    <value>Every searchable type</value>
+  </data>
+  <data name="Search.Rebuild.Submit" xml:space="preserve">
+    <value>Rebuild</value>
+  </data>
+  <data name="Search.Rebuild.StartedEvery" xml:space="preserve">
+    <value>The rebuild of every searchable type has started.</value>
+  </data>
+  <data name="Search.Rebuild.StartedEveryNoJobs" xml:space="preserve">
+    <value>The rebuild of every searchable type has started. It runs in the background, and search answers from the index as it is until it ends.</value>
+  </data>
+  <data name="Search.Rebuild.Started" xml:space="preserve">
+    <value>The rebuild of {0} has started.</value>
+  </data>
+  <data name="Search.Rebuild.StartedNoJobs" xml:space="preserve">
+    <value>The rebuild of {0} has started. It runs in the background, and search answers from the index as it is until it ends.</value>
+  </data>
+  <data name="Search.Rebuild.FollowJob" xml:space="preserve">
+    <value>Follow the job of the rebuild</value>
+  </data>
+  <data name="Search.Rebuild.Forbidden" xml:space="preserve">
+    <value>Not started: you may not rebuild the index of this site.</value>
+  </data>
+  <data name="Search.Rebuild.NotSearchable" xml:space="preserve">
+    <value>Not started: {0} has no searchable field, so it has nothing to index.</value>
+  </data>
+  <data name="Search.Rebuild.NotAType" xml:space="preserve">
+    <value>Not started: {0} is no longer a content type.</value>
+  </data>
+  <data name="Search.Rebuild.Failed" xml:space="preserve">
+    <value>Not started: the server did not answer. Try again.</value>
+  </data>
 </root>

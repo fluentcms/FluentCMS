@@ -1,5 +1,275 @@
-@* The startup report and the health of the instance (spec 4.15). The page shows its heading until its issue writes it. *@
+@* The diagnostics of the instance (spec 4.15, row 10.14): the startup report of GET /system/diagnostics, with the providers,
+   the plugins, the pending migrations, the schema drift and the insecure defaults, and the detailed health of every check of
+   GET /system/health, which is read again on request. Both need system.read for the instance, which the shell's gate asks
+   for before the page shows. *@
 @page "/system/diagnostics"
+@implements IDisposable
+@inject IManagementApi Api
+@inject FormatService Formats
 @inject IStringLocalizer<DiagnosticsResources> L
 
 <h1 tabindex="-1">@L["Diagnostics.Page.Heading"]</h1>
+<p>@L["Diagnostics.Page.Intro"]</p>
+
+<CmsCard Title="@L["Diagnostics.Report.Heading"]">
+    @if (reportState == Section.Loading)
+    {
+        <p role="status">@L["Diagnostics.Report.Loading"]</p>
+    }
+    else if (report is null)
+    {
+        <p role="alert">@L[reportState == Section.NotReady ? "Diagnostics.Report.NotReady" : "Diagnostics.Report.Failed"] <CmsButton OnClick="ReadReportAsync">@L["Diagnostics.Page.TryAgain"]</CmsButton></p>
+    }
+    else
+    {
+        @if (report.Failure is { } failure)
+        {
+            <p role="alert">@L["Diagnostics.Report.Incomplete", failure]</p>
+        }
+        <dl class="diagnostics-facts">
+            <dt>@L["Diagnostics.Report.Version"]</dt>
+            <dd>@report.Version</dd>
+            <dt>@L["Diagnostics.Report.Environment"]</dt>
+            <dd>@report.Environment</dd>
+            <dt>@L["Diagnostics.Report.Started"]</dt>
+            <dd>@Formats.DateTime(report.StartedAt)</dd>
+            <dt>@L["Diagnostics.Report.Database"]</dt>
+            <dd>@L["Diagnostics.Report.ProviderVersion", report.DataProvider.Provider, report.DataProvider.ProviderVersion]</dd>
+            <dt>@L["Diagnostics.Report.MigrateOnStartup"]</dt>
+            <dd>@YesNo(report.DataProvider.MigrateOnStartup)</dd>
+            <dt>@L["Diagnostics.Report.SchemaSync"]</dt>
+            <dd><code>@report.DataProvider.SchemaSync</code></dd>
+        </dl>
+
+        <h3>@L["Diagnostics.Insecure.Heading"]</h3>
+        @if (report.InsecureDefaults.Count == 0)
+        {
+            <p>@L["Diagnostics.Insecure.None"]</p>
+        }
+        else
+        {
+            <ul class="diagnostics-insecure">
+                @foreach (var item in report.InsecureDefaults)
+                {
+                    <li @key="item.Id"><code>@item.Id</code>: @item.Message</li>
+                }
+            </ul>
+        }
+
+        <h3>@L["Diagnostics.Migrations.Heading"]</h3>
+        @if (report.PendingMigrations.Count == 0)
+        {
+            <p>@L["Diagnostics.Migrations.None"]</p>
+        }
+        else
+        {
+            <table class="diagnostics-table">
+                <thead>
+                    <tr>
+                        <th scope="col">@L["Diagnostics.Migrations.Stream"]</th>
+                        <th scope="col">@L["Diagnostics.Migrations.Id"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var migration in report.PendingMigrations)
+                    {
+                        <tr>
+                            <td>@migration.Stream</td>
+                            <td><code>@migration.Id</code></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <h3>@L["Diagnostics.Schema.Heading"]</h3>
+        <p>@L[report.Schema.Drifted ? "Diagnostics.Schema.Drifted" : "Diagnostics.Schema.NotDrifted"]</p>
+        <dl class="diagnostics-facts">
+            <dt>@L["Diagnostics.Schema.Hash"]</dt>
+            <dd><code>@report.Schema.Hash</code></dd>
+            <dt>@L["Diagnostics.Schema.AppliedHash"]</dt>
+            <dd>@if (report.Schema.AppliedHash is { } applied) { <code>@applied</code> } else { @L["Diagnostics.Schema.NeverApplied"] }</dd>
+            @if (report.Schema.AppliedAt is { } at)
+            {
+                <dt>@L["Diagnostics.Schema.AppliedAt"]</dt>
+                <dd>@Formats.DateTime(at)</dd>
+            }
+            @if (report.Schema.AppliedVersion is { } version)
+            {
+                <dt>@L["Diagnostics.Schema.AppliedVersion"]</dt>
+                <dd>@version</dd>
+            }
+        </dl>
+        @if (report.Schema.Changes is { Length: > 0 } changes)
+        {
+            <pre class="diagnostics-changes">@changes</pre>
+        }
+
+        <h3>@L["Diagnostics.Plugins.Heading"]</h3>
+        @if (report.Plugins.Count == 0)
+        {
+            <p>@L["Diagnostics.Plugins.None"]</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var plugin in report.Plugins)
+                {
+                    <li @key="plugin.Name">@L["Diagnostics.Report.NameVersion", plugin.Name, plugin.Version]</li>
+                }
+            </ul>
+        }
+
+        <h3>@L["Diagnostics.Providers.Heading"]</h3>
+        <table class="diagnostics-table">
+            <thead>
+                <tr>
+                    <th scope="col">@L["Diagnostics.Providers.Slot"]</th>
+                    <th scope="col">@L["Diagnostics.Providers.Implementation"]</th>
+                    <th scope="col">@L["Diagnostics.Providers.Source"]</th>
+                    <th scope="col">@L["Diagnostics.Providers.Plugin"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var slot in report.ProviderSlots)
+                {
+                    <tr @key="slot.Slot">
+                        <th scope="row"><code>@slot.Slot</code></th>
+                        <td>@(slot.Implementation is { } implementation ? implementation : L["Diagnostics.Providers.None"])</td>
+                        <td>@slot.Source</td>
+                        <td>@slot.Plugin</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <details>
+            <summary>@L["Diagnostics.Assemblies.Heading", report.Assemblies.Count]</summary>
+            <ul>
+                @foreach (var assembly in report.Assemblies)
+                {
+                    <li @key="assembly.Name">@L["Diagnostics.Report.NameVersion", assembly.Name, assembly.Version]</li>
+                }
+            </ul>
+        </details>
+    }
+</CmsCard>
+
+<CmsCard Title="@L["Diagnostics.Health.Heading"]">
+    @if (healthState == Section.Loading && health is null)
+    {
+        <p role="status">@L["Diagnostics.Health.Loading"]</p>
+    }
+    else if (health is null)
+    {
+        <p role="alert">@L["Diagnostics.Health.Failed"]</p>
+    }
+    else
+    {
+        <p>@L["Diagnostics.Health.Overall", HealthStatus(health.Status), Milliseconds(health.TotalDurationMs)]</p>
+        <table class="diagnostics-table">
+            <thead>
+                <tr>
+                    <th scope="col">@L["Diagnostics.Health.Check"]</th>
+                    <th scope="col">@L["Diagnostics.Health.Status"]</th>
+                    <th scope="col">@L["Diagnostics.Health.Duration"]</th>
+                    <th scope="col">@L["Diagnostics.Health.Tags"]</th>
+                    <th scope="col">@L["Diagnostics.Health.Description"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var check in health.Checks)
+                {
+                    <tr @key="check.Name">
+                        <th scope="row">@check.Name</th>
+                        <td>@HealthStatus(check.Status)</td>
+                        <td>@Milliseconds(check.DurationMs)</td>
+                        <td>@string.Join(", ", check.Tags)</td>
+                        <td>
+                            @check.Description
+                            @if (check.Error is { } error)
+                            {
+                                <span class="diagnostics-error">@L["Diagnostics.Health.Error", error]</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    <CmsButton Disabled="@(healthState == Section.Loading)" OnClick="ReadHealthAsync">@L["Diagnostics.Health.Again"]</CmsButton>
+    <p class="diagnostics-message" role="status">@healthMessage</p>
+</CmsCard>
+
+@code {
+    private StartupReportRecord? report;
+    private HealthRecord? health;
+    private Section reportState = Section.Loading;
+    private Section healthState = Section.Loading;
+    private string? healthMessage;
+    private readonly CancellationTokenSource closing = new();
+
+    private enum Section
+    {
+        Loading,
+        Ready,
+        NotReady,
+        Failed,
+    }
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    protected override Task OnInitializedAsync() => Task.WhenAll(ReadReportAsync(), ReadHealthAsync());
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task ReadReportAsync()
+    {
+        reportState = Section.Loading;
+        try
+        {
+            (report, reportState) = (await Api.GetStartupReportAsync(Closing), Section.Ready);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (DiagnosticsApi.NotMadeYet(exception))
+        {
+            (report, reportState) = (null, Section.NotReady);
+        }
+        catch (Exception exception) when (DiagnosticsApi.IsFailure(exception))
+        {
+            (report, reportState) = (null, Section.Failed);
+        }
+    }
+
+    // The checks shown stay while they are read again, and a read that fails keeps them, with a message that says so.
+    private async Task ReadHealthAsync()
+    {
+        var again = health is not null;
+        (healthState, healthMessage) = (Section.Loading, null);
+        try
+        {
+            (health, healthState) = (await Api.GetHealthAsync(Closing), Section.Ready);
+            healthMessage = again ? L["Diagnostics.Health.Read"].Value : null;
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (DiagnosticsApi.IsFailure(exception))
+        {
+            healthState = Section.Failed;
+            healthMessage = again ? L["Diagnostics.Health.ReadFailed"].Value : null;
+        }
+    }
+
+    private string YesNo(bool value) => L[value ? "Diagnostics.Report.Yes" : "Diagnostics.Report.No"];
+
+    private string HealthStatus(string status) => status is "Healthy" or "Degraded" or "Unhealthy" ? L[$"Diagnostics.Health.{status}"] : status;
+
+    private string Milliseconds(double value) => L["Diagnostics.Health.Milliseconds", Formats.Number((decimal)value, 1)];
+}

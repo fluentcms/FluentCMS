@@ -192,6 +192,35 @@ internal sealed class AdminContext(
         Changed?.Invoke();
     }
 
+    // After a plugin was enabled or disabled in the site shown (spec 4.15), so that its admin contributions follow without a
+    // reload. A read that fails, or that a switch or a change of locale overtook, changes nothing.
+    public async Task ReadPluginsAsync()
+    {
+        if (Status != ShellStatus.Ready)
+        {
+            return;
+        }
+
+        var generation = _generation;
+        metadata.ForgetPlugins();
+        IReadOnlyList<PluginInfo> installed;
+        try
+        {
+            installed = await metadata.GetPluginsAsync(CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)
+        {
+            ShellLog.PluginsNotRead(logger, exception);
+            return;
+        }
+
+        if (generation == _generation)
+        {
+            Plugins = installed;
+            Changed?.Invoke();
+        }
+    }
+
     private Task LeaveAsync(IReadOnlyList<MySiteInfo> mine)
     {
         if (mine.Count > 0)

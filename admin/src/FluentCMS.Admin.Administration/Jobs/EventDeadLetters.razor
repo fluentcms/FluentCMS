@@ -1,0 +1,244 @@
+@* The deliveries of events to outbox handlers that used all their attempts (spec 4.15), the last first. The list has no total
+   and no filter by handler, so it reads on with More while the last page read was full, and purge offers the handlers of the
+   rows read; a purge removes every failed delivery of the handler, those not read too. Retry, remove and purge are asked
+   first. A delivery the 30-day retention removed meanwhile answers 404, and one that is no longer failed 409: either takes its
+   row out, and the message says so. A row taken out moves the server's pages, so More can pass over as many rows as were
+   taken out, which the next visit shows. *@
+@implements IDisposable
+@inject IManagementApi Api
+@inject FormatService Formats
+@inject IStringLocalizer<JobsResources> L
+
+<CmsCard Title="@L["Jobs.Events.Heading"]">
+    <p>@L["Jobs.Events.Intro"]</p>
+    @if (state == JobSectionState.Failed && deliveries.Count == 0)
+    {
+        <p role="alert">@L["Jobs.Events.Failed"] <CmsButton OnClick="@(() => ReadAsync(1))">@L["Jobs.Events.TryAgain"]</CmsButton></p>
+    }
+    else if (state == JobSectionState.Loading && deliveries.Count == 0)
+    {
+        <p role="status">@L["Jobs.Events.Loading"]</p>
+    }
+    else if (deliveries.Count == 0)
+    {
+        <p>@L["Jobs.Events.None"]</p>
+    }
+    else
+    {
+        <table class="jobs-dead">
+            <thead>
+                <tr>
+                    <th scope="col">@L["Jobs.Events.Event"]</th>
+                    <th scope="col">@L["Jobs.Events.Handler"]</th>
+                    <th scope="col">@L["Jobs.List.Attempts"]</th>
+                    <th scope="col">@L["Jobs.Events.Occurred"]</th>
+                    <th scope="col">@L["Jobs.DeadJobs.LastError"]</th>
+                    <th scope="col"><span class="cms-visually-hidden">@L["Jobs.DeadJobs.Actions"]</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var delivery in deliveries)
+                {
+                    <tr @key="delivery.Id">
+                        <th scope="row">@delivery.EventType</th>
+                        <td>@delivery.Handler</td>
+                        <td>@Formats.Number(delivery.Attempts)</td>
+                        <td>@Formats.DateTime(delivery.OccurredAt)</td>
+                        <td class="jobs-error">@delivery.LastError</td>
+                        <td>
+                            <CmsButton Disabled="@busy" OnClick="@(() => Ask(Change.Retry, delivery))">
+                                @L["Jobs.Events.Retry"]<span class="cms-visually-hidden">@Which(delivery)</span>
+                            </CmsButton>
+                            <CmsButton Disabled="@busy" OnClick="@(() => Ask(Change.Remove, delivery))">
+                                @L["Jobs.Events.Remove"]<span class="cms-visually-hidden">@Which(delivery)</span>
+                            </CmsButton>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (state == JobSectionState.Failed)
+        {
+            <p role="alert">@L["Jobs.Events.MoreFailed"]</p>
+        }
+        @if (more)
+        {
+            <CmsButton Disabled="@(state == JobSectionState.Loading)" OnClick="@(() => ReadAsync(read + 1))">@L["Jobs.Events.More"]</CmsButton>
+        }
+
+        <form class="jobs-purge" @onsubmit="AskPurge">
+            <CmsSelect Label="@L["Jobs.Events.PurgeHandler"]"
+                       Help="@L["Jobs.Events.PurgeHelp"]"
+                       Options="@HandlerOptions"
+                       Value="@handler"
+                       ValueChanged="@(value => handler = value)"
+                       Placeholder="@L["Jobs.Events.ChooseHandler"]" />
+            <div>
+                <CmsButton Submit="true" Disabled="@(busy || handler is null)">@L["Jobs.Events.Purge"]</CmsButton>
+            </div>
+        </form>
+    }
+    <p class="jobs-message" tabindex="-1" @ref="messageElement">@message</p>
+</CmsCard>
+
+<CmsDialog Title="@ConfirmTitle" Open="@(asked is not null)" OpenChanged="@(open => { if (!open) asked = null; })">
+    <ChildContent>
+        <p>@Question</p>
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="ConfirmAsync">@L[$"Jobs.Confirm.{asked?.Change ?? Change.Retry}"]</CmsButton>
+        <CmsButton OnClick="@(() => asked = null)">@L["Jobs.Confirm.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    private List<FailedDeliveryRecord> deliveries = [];
+    private JobSectionState state = JobSectionState.Loading;
+    private int read;
+    private bool more;
+    private bool busy;
+    private string? handler;
+    private (Change Change, FailedDeliveryRecord? Delivery, string Handler)? asked;
+    private string? message;
+    private bool focusMessage;
+    private ElementReference messageElement;
+    private readonly CancellationTokenSource closing = new();
+
+    private enum Change
+    {
+        Retry,
+        Remove,
+        Purge,
+    }
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    // The handlers of the rows read, in order of name.
+    private IReadOnlyList<CmsOption> HandlerOptions =>
+        [.. deliveries.Select(delivery => delivery.Handler).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Select(name => new CmsOption(name, name))];
+
+    private string ConfirmTitle => L[$"Jobs.Confirm.{asked?.Change ?? Change.Retry}Title"];
+
+    private string Question => asked switch
+    {
+        { Change: Change.Retry, Delivery: { } delivery } => L["Jobs.Confirm.RetryText", delivery.EventType, delivery.Handler],
+        { Change: Change.Remove, Delivery: { } delivery } => L["Jobs.Confirm.RemoveText", delivery.EventType, delivery.Handler],
+        { Change: Change.Purge, Handler: var name } => L["Jobs.Confirm.PurgeText", name],
+        _ => "",
+    };
+
+    protected override Task OnInitializedAsync() => ReadAsync(1);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusMessage)
+        {
+            focusMessage = false;
+            await messageElement.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    // The first page replaces what is shown; a later one adds the rows not shown yet.
+    private async Task ReadAsync(int page)
+    {
+        state = JobSectionState.Loading;
+        try
+        {
+            var found = await Api.GetFailedDeliveriesAsync(page, Closing);
+            deliveries = page == 1 ? [.. found] : [.. deliveries, .. found.Where(delivery => deliveries.All(shown => shown.Id != delivery.Id))];
+            (read, more, state) = (page, found.Count == JobsApi.DeadLetterPageSize, JobSectionState.Ready);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (JobProblems.IsFailure(exception))
+        {
+            state = JobSectionState.Failed;
+        }
+    }
+
+    private void Ask(Change change, FailedDeliveryRecord delivery) => asked = (change, delivery, delivery.Handler);
+
+    private void AskPurge()
+    {
+        if (handler is { } name && !busy)
+        {
+            asked = (Change.Purge, null, name);
+        }
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (asked is not { } question || busy)
+        {
+            return;
+        }
+
+        (asked, busy) = (null, true);
+        try
+        {
+            switch (question)
+            {
+                case { Change: Change.Purge, Handler: var name }:
+                    var purged = await Api.PurgeDeliveriesAsync(name, Closing);
+                    deliveries.RemoveAll(delivery => delivery.Handler == name);
+                    (handler, message) = (null, purged.Removed == 1 ? L["Jobs.Events.PurgedOne", name] : L["Jobs.Events.Purged", purged.Removed, name]);
+                    break;
+                case { Change: Change.Retry, Delivery: { } delivery }:
+                    await Api.RetryDeliveryAsync(delivery.Id, Closing);
+                    Drop(delivery);
+                    message = L["Jobs.Events.Retried", delivery.EventType, delivery.Handler];
+                    break;
+                case { Delivery: { } delivery }:
+                    await Api.RemoveDeliveryAsync(delivery.Id, Closing);
+                    Drop(delivery);
+                    message = L["Jobs.Events.Removed", delivery.EventType, delivery.Handler];
+                    break;
+            }
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (JobProblems.Has(exception, JobProblems.DeliveryNotFound) && question.Delivery is { } gone)
+        {
+            Drop(gone);
+            message = L["Jobs.Events.Gone", gone.EventType, gone.Handler];
+        }
+        catch (Exception exception) when (JobProblems.Has(exception, JobProblems.DeliveryNotFailed) && question.Delivery is { } moved)
+        {
+            Drop(moved);
+            message = L["Jobs.Events.NotFailed", moved.EventType, moved.Handler];
+        }
+        catch (Exception exception) when (JobProblems.IsFailure(exception))
+        {
+            message = L["Jobs.Events.ChangeFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        // The row changed is gone, and its buttons with it, so focus goes to the result.
+        focusMessage = true;
+    }
+
+    // A handler that no longer has a row shown leaves the purge's choices.
+    private void Drop(FailedDeliveryRecord delivery)
+    {
+        deliveries.RemoveAll(shown => shown.Id == delivery.Id);
+        if (handler is { } name && deliveries.All(shown => shown.Handler != name))
+        {
+            handler = null;
+        }
+    }
+
+    // Two failed deliveries of one event to one handler are told apart by their time.
+    private string Which(FailedDeliveryRecord delivery) => L["Jobs.Events.Which", delivery.EventType, delivery.Handler, Formats.DateTime(delivery.OccurredAt)];
+}

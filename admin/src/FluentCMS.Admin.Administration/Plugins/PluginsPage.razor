@@ -1,5 +1,227 @@
-@* The plugins of the host and their enablement per site (spec 4.15). The page shows its heading until its issue writes it. *@
+@* The plugins of the host (spec 4.15, row 8.15): each with its version, SDK range and contributions, links to the pages of its
+   admin half, and a switch for each site where the caller holds plugins.manage, which GET /plugins lists. A switch in the
+   site the shell shows reads the shell's plugins again, so that the half's contributions follow without a reload. *@
 @page "/plugins"
+@implements IDisposable
+@using FluentCMS.Admin.Plugins
+@inject IManagementApi Api
+@inject AdminContext Context
+@inject AdminPluginCatalog Catalog
+@inject IAnnouncer Announcer
 @inject IStringLocalizer<PluginsResources> L
 
 <h1 tabindex="-1">@L["Plugins.Page.Heading"]</h1>
+<p>@L["Plugins.Page.Intro"]</p>
+<p><a href="system/plugins">@L["Plugins.Page.Problems"]</a></p>
+
+@if (state == State.Loading)
+{
+    <p role="status">@L["Plugins.Page.Loading"]</p>
+}
+else if (state == State.Failed)
+{
+    <p role="alert">@L["Plugins.Page.Failed"] <CmsButton OnClick="ReadAsync">@L["Plugins.Page.TryAgain"]</CmsButton></p>
+}
+else if (plugins.Count == 0)
+{
+    <p>@L["Plugins.Page.None"]</p>
+}
+else
+{
+    @foreach (var plugin in plugins)
+    {
+        <CmsCard @key="plugin.Name" Title="@plugin.Name">
+            <dl class="plugins-facts">
+                <dt>@L["Plugins.Entry.Version"]</dt>
+                <dd>@plugin.Version</dd>
+                <dt>@L["Plugins.Entry.SdkRange"]</dt>
+                <dd><code>@plugin.SdkRange</code></dd>
+                <dt>@L["Plugins.Entry.DependsOn"]</dt>
+                <dd>@List(plugin.DependsOn)</dd>
+                <dt>@L["Plugins.Entry.Here"]</dt>
+                <dd>@L[plugin.Enabled ? "Plugins.Entry.EnabledHere" : "Plugins.Entry.DisabledHere"]</dd>
+                <dt>@L["Plugins.Entry.FieldTypes"]</dt>
+                <dd>@List(plugin.Contributions.FieldTypes)</dd>
+                <dt>@L["Plugins.Entry.Permissions"]</dt>
+                <dd>@List(plugin.Contributions.Permissions)</dd>
+                <dt>@L["Plugins.Entry.Jobs"]</dt>
+                <dd>@List(plugin.Contributions.Jobs)</dd>
+                <dt>@L["Plugins.Entry.Tools"]</dt>
+                <dd>@List(plugin.Contributions.Tools)</dd>
+                <dt>@L["Plugins.Entry.Endpoints"]</dt>
+                <dd>
+                    @if (plugin.Contributions.Endpoints.Count == 0)
+                    {
+                        @L["Plugins.Entry.NoneListed"]
+                    }
+                    else
+                    {
+                        <details>
+                            <summary>@(plugin.Contributions.Endpoints.Count == 1 ? L["Plugins.Entry.EndpointOne"] : L["Plugins.Entry.EndpointCount", plugin.Contributions.Endpoints.Count])</summary>
+                            <ul class="plugins-endpoints">
+                                @foreach (var endpoint in plugin.Contributions.Endpoints)
+                                {
+                                    <li><code>@endpoint.Method @endpoint.Route</code></li>
+                                }
+                            </ul>
+                        </details>
+                    }
+                </dd>
+            </dl>
+
+            @if (Catalog.Halves.FirstOrDefault(half => half.Name == plugin.Name) is { } half)
+            {
+                <h3>@L["Plugins.Entry.AdminPages"]</h3>
+                @if (!plugin.Enabled)
+                {
+                    <p>@L["Plugins.Entry.AdminPagesDisabled"]</p>
+                }
+                else if (PagesOf(half) is { Count: > 0 } pages)
+                {
+                    <ul class="plugins-pages">
+                        @foreach (var (route, label) in pages)
+                        {
+                            <li @key="route"><a href="@route">@label</a></li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p>@L["Plugins.Entry.AdminPagesNone"]</p>
+                }
+            }
+
+            <fieldset class="plugins-sites">
+                <legend>@L["Plugins.Sites.Legend"]</legend>
+                @if (plugin.Sites.Count == 0)
+                {
+                    <p>@L["Plugins.Sites.None"]</p>
+                }
+                @foreach (var site in plugin.Sites)
+                {
+                    var key = (plugin.Name, site.SiteId);
+                    <CmsSwitch @key="site.SiteId"
+                               Label="@L["Plugins.Sites.Switch", SiteName(site)]"
+                               Value="@(pending.TryGetValue(key, out var wanted) ? wanted : site.Enabled)"
+                               Disabled="@pending.ContainsKey(key)"
+                               ValueChanged="@(value => SwitchAsync(plugin.Name, site, value))" />
+                }
+            </fieldset>
+            <p class="plugins-message">@messages.GetValueOrDefault(plugin.Name)</p>
+        </CmsCard>
+    }
+}
+
+@code {
+    private IReadOnlyList<PluginInfo> plugins = [];
+    private State state = State.Loading;
+    private readonly Dictionary<(string Plugin, Guid Site), bool> pending = [];
+    private readonly Dictionary<string, string> messages = new(StringComparer.Ordinal);
+    private readonly CancellationTokenSource closing = new();
+
+    private enum State
+    {
+        Loading,
+        Ready,
+        Failed,
+    }
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    protected override Task OnInitializedAsync() => ReadAsync();
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        state = State.Loading;
+        try
+        {
+            (plugins, state) = (await Api.GetPluginsAsync(Closing), State.Ready);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (PluginProblems.IsFailure(exception))
+        {
+            state = State.Failed;
+        }
+    }
+
+    // The switch shows the value asked for while the server answers, and the one it holds after a refusal.
+    private async Task SwitchAsync(string name, PluginSiteInfo site, bool enabled)
+    {
+        var key = (name, site.SiteId);
+        if (!pending.TryAdd(key, enabled))
+        {
+            return;
+        }
+
+        messages.Remove(name);
+        try
+        {
+            var answer = await Api.SetPluginEnabledAsync(name, site.SiteId, enabled, Closing);
+            var shown = answer.SiteId == Context.Site?.Id;
+            plugins = [.. plugins.Select(plugin => plugin.Name != name ? plugin : plugin with
+            {
+                Enabled = shown ? answer.Enabled : plugin.Enabled,
+                Sites = [.. plugin.Sites.Select(item => item.SiteId == answer.SiteId ? item with { Enabled = answer.Enabled } : item)],
+            })];
+            Say(name, L[answer.Enabled ? "Plugins.Sites.Enabled" : "Plugins.Sites.Disabled", name, SiteName(site)], AnnouncementPoliteness.Polite);
+            if (shown)
+            {
+                await Context.ReadPluginsAsync();
+            }
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (PluginProblems.IsForbidden(exception))
+        {
+            Say(name, L["Plugins.Sites.Forbidden", SiteName(site)], AnnouncementPoliteness.Assertive);
+        }
+        catch (Exception exception) when (PluginProblems.Has(exception, PluginProblems.PluginNotFound))
+        {
+            Say(name, L["Plugins.Sites.PluginGone", name], AnnouncementPoliteness.Assertive);
+        }
+        catch (Exception exception) when (PluginProblems.Has(exception, PluginProblems.SiteNotFound))
+        {
+            Say(name, L["Plugins.Sites.SiteGone", SiteName(site)], AnnouncementPoliteness.Assertive);
+        }
+        catch (Exception exception) when (PluginProblems.IsFailure(exception))
+        {
+            Say(name, L["Plugins.Sites.Failed", SiteName(site)], AnnouncementPoliteness.Assertive);
+        }
+        finally
+        {
+            pending.Remove(key);
+        }
+    }
+
+    private void Say(string plugin, string text, AnnouncementPoliteness politeness)
+    {
+        messages[plugin] = text;
+        Announcer.Announce(text, politeness);
+    }
+
+    // The pages of the half without a route parameter that the caller may open, each by the label of its menu item, else by
+    // its address. The gate of a half's page is the shell's, which shows it only where the plugin is enabled.
+    private List<(string Route, string Label)> PagesOf(AdminPluginManifest half) =>
+    [
+        .. half.Pages
+            .Where(page => !page.Route.Contains('{', StringComparison.Ordinal) && Context.Allows(page.Permission, page.InstanceOnly))
+            .Select(page => (Route: page.Route.TrimStart('/'), Label: half.MenuItems.FirstOrDefault(item => item.Route == page.Route) is { } item
+                ? item.LabelFor(System.Globalization.CultureInfo.CurrentUICulture)
+                : L["Plugins.Entry.PageAt", page.Route].Value))
+            .DistinctBy(page => page.Route),
+    ];
+
+    // A site by the name the shell knows it by, else by its slug, as for a site the user holds no role in.
+    private string SiteName(PluginSiteInfo site) => Context.Sites.FirstOrDefault(item => item.Id == site.SiteId)?.Name ?? site.Slug;
+
+    private string List(IReadOnlyList<string> items) => items.Count == 0 ? L["Plugins.Entry.NoneListed"] : string.Join(", ", items);
+}

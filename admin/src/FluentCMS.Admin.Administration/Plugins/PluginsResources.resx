@@ -15,4 +15,103 @@
   <data name="Plugins.Page.Heading" xml:space="preserve">
     <value>Plugins</value>
   </data>
+  <data name="Plugins.Page.Intro" xml:space="preserve">
+    <value>A plugin is enabled in every site until it is disabled in one. In a site where it is disabled it serves nothing, and its admin part does not show there.</value>
+  </data>
+  <data name="Plugins.Page.Problems" xml:space="preserve">
+    <value>Admin parts of plugins that this admin did not load</value>
+  </data>
+  <data name="Plugins.Page.Loading" xml:space="preserve">
+    <value>Loading the plugins…</value>
+  </data>
+  <data name="Plugins.Page.Failed" xml:space="preserve">
+    <value>The plugins could not be read.</value>
+  </data>
+  <data name="Plugins.Page.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Plugins.Page.None" xml:space="preserve">
+    <value>The host runs no plugin.</value>
+  </data>
+  <data name="Plugins.Entry.Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Plugins.Entry.SdkRange" xml:space="preserve">
+    <value>SDK range</value>
+  </data>
+  <data name="Plugins.Entry.DependsOn" xml:space="preserve">
+    <value>Depends on</value>
+  </data>
+  <data name="Plugins.Entry.Here" xml:space="preserve">
+    <value>In this site</value>
+  </data>
+  <data name="Plugins.Entry.EnabledHere" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="Plugins.Entry.DisabledHere" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="Plugins.Entry.FieldTypes" xml:space="preserve">
+    <value>Field types</value>
+  </data>
+  <data name="Plugins.Entry.Permissions" xml:space="preserve">
+    <value>Permissions</value>
+  </data>
+  <data name="Plugins.Entry.Jobs" xml:space="preserve">
+    <value>Jobs</value>
+  </data>
+  <data name="Plugins.Entry.Tools" xml:space="preserve">
+    <value>MCP tools</value>
+  </data>
+  <data name="Plugins.Entry.Endpoints" xml:space="preserve">
+    <value>Endpoints</value>
+  </data>
+  <data name="Plugins.Entry.EndpointOne" xml:space="preserve">
+    <value>1 endpoint</value>
+  </data>
+  <data name="Plugins.Entry.EndpointCount" xml:space="preserve">
+    <value>{0} endpoints</value>
+  </data>
+  <data name="Plugins.Entry.NoneListed" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Plugins.Entry.AdminPages" xml:space="preserve">
+    <value>Admin pages</value>
+  </data>
+  <data name="Plugins.Entry.AdminPagesDisabled" xml:space="preserve">
+    <value>Its admin pages show in a site where it is enabled.</value>
+  </data>
+  <data name="Plugins.Entry.AdminPagesNone" xml:space="preserve">
+    <value>None that you may open.</value>
+  </data>
+  <data name="Plugins.Entry.PageAt" xml:space="preserve">
+    <value>The page {0}</value>
+  </data>
+  <data name="Plugins.Sites.Legend" xml:space="preserve">
+    <value>Enabled in each site</value>
+  </data>
+  <data name="Plugins.Sites.None" xml:space="preserve">
+    <value>You may enable or disable it in no site.</value>
+  </data>
+  <data name="Plugins.Sites.Switch" xml:space="preserve">
+    <value>Enabled in {0}</value>
+  </data>
+  <data name="Plugins.Sites.Enabled" xml:space="preserve">
+    <value>{0} is enabled in {1}.</value>
+  </data>
+  <data name="Plugins.Sites.Disabled" xml:space="preserve">
+    <value>{0} is disabled in {1}.</value>
+  </data>
+  <data name="Plugins.Sites.Forbidden" xml:space="preserve">
+    <value>Not changed: you may no longer enable or disable plugins in {0}.</value>
+  </data>
+  <data name="Plugins.Sites.PluginGone" xml:space="preserve">
+    <value>Not changed: the host no longer runs {0}.</value>
+  </data>
+  <data name="Plugins.Sites.SiteGone" xml:space="preserve">
+    <value>Not changed: the site {0} no longer exists.</value>
+  </data>
+  <data name="Plugins.Sites.Failed" xml:space="preserve">
+    <value>Not changed in {0}: the server did not answer. Try again.</value>
+  </data>
 </root>

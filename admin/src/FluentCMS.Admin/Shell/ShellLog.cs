@@ -19,4 +19,7 @@ internal static partial class ShellLog
 
     [LoggerMessage(EventId = 24, EventName = "SitesNotRead", Level = LogLevel.Warning, Message = "The sites of the user could not be read again; the site switcher shows them as they were.")]
     public static partial void SitesNotRead(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 25, EventName = "PluginsNotRead", Level = LogLevel.Warning, Message = "The plugins of the site could not be read again; the admin shows their contributions as they were.")]
+    public static partial void PluginsNotRead(ILogger logger, Exception exception);
 }
