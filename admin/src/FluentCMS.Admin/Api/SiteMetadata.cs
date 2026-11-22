@@ -51,6 +51,15 @@ internal sealed class SiteMetadata(ManagementClient client, ICurrentSite current
         }
     }
 
+    // After a plugin was enabled or disabled in the site, which changes what the next read answers.
+    public void ForgetPlugins()
+    {
+        lock (_gate)
+        {
+            _plugins = null;
+        }
+    }
+
     // A read the shell gave up on, so that the next caller sends a new one.
     public void ForgetPending()
     {

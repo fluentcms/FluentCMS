@@ -271,6 +271,62 @@ public sealed class RecordListTests : AdminTestContext
     }
 
     [Fact]
+    public async Task ARefreshReadsThePageInPlaceAndOneThatFailsKeepsTheRows()
+    {
+        answer = _ => new([new($"Read {reads.Count}")], 1);
+        var list = RenderList();
+        list.WaitForAssertion(() => Names(list).ShouldBe(["Read 1"]));
+
+        (await list.InvokeAsync(() => list.Instance.RefreshAsync())).ShouldBeTrue();
+        list.WaitForAssertion(() => Names(list).ShouldBe(["Read 2"]));
+
+        answer = _ => throw new ApiProblemException(new ApiProblem { Status = 429, Code = "FCMS1001" });
+        (await list.InvokeAsync(() => list.Instance.RefreshAsync())).ShouldBeFalse();
+
+        Names(list).ShouldBe(["Read 2"]);
+        list.FindAll("[role=alert]").ShouldBeEmpty();
+    }
+
+    // As after rows went: the page the address names is past the end, so the last page shows, as a read of the user's does.
+    [Fact]
+    public async Task ARefreshOfAPageNowPastTheEndShowsTheLastPage()
+    {
+        Navigation.NavigateTo("users?page=2");
+        answer = query => query.Page == 2 ? new([new("Zed")], 30) : new([new("Ada")], 20);
+        var list = RenderList();
+        list.WaitForAssertion(() => Names(list).ShouldBe(["Zed"]));
+
+        answer = query => query.Page == 2 ? new([], 20) : new([new("Ada")], 20);
+        (await list.InvokeAsync(() => list.Instance.RefreshAsync())).ShouldBeFalse();
+
+        list.WaitForAssertion(() => Names(list).ShouldBe(["Ada"]));
+        Navigation.Uri.ShouldEndWith("/users");
+        reads[^1].Page.ShouldBe(1);
+    }
+    // As while the router waits for the next page: the address is that page's, which the list never writes.
+    [Fact]
+    public async Task ARefreshThatAnswersOnceTheAddressIsAnotherPathsIsDropped()
+    {
+        Navigation.NavigateTo("users?page=3");
+        var held = new TaskCompletionSource<RecordPage<Row>>();
+        var list = RenderList((query, _) =>
+        {
+            reads.Add(query);
+            return reads.Count == 1 ? Task.FromResult(new RecordPage<Row>([new("Zed")], 60)) : held.Task;
+        });
+        list.WaitForAssertion(() => Names(list).ShouldBe(["Zed"]));
+        Task<bool> refresh = Task.FromResult(true);
+        await list.InvokeAsync(() => { refresh = list.Instance.RefreshAsync(); });
+
+        Navigation.NavigateTo("roles");
+        held.SetResult(new([], 30));
+
+        (await list.InvokeAsync(() => refresh)).ShouldBeFalse();
+        Navigation.Uri.ShouldEndWith("/roles");
+        Names(list).ShouldBe(["Zed"]);
+        reads.Count.ShouldBe(2);
+    }
+    [Fact]
     public void AListThatIsNotSearchableHasNoSearchAndReadsNone()
     {
         Navigation.NavigateTo("jobs?q=ada");

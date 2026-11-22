@@ -43,6 +43,9 @@ internal sealed class AdminContext(
 
     private Task? _starting;
     private int _generation;
+
+    // The reads of ReadPluginsAsync, of which only the last one started applies.
+    private int _pluginReads;
     private Task _localeReads = Task.CompletedTask;
     private Task<IReadOnlyDictionary<string, MyAccessInfo>>? _localeAccess;
 
@@ -197,6 +200,35 @@ internal sealed class AdminContext(
         }
 
         Changed?.Invoke();
+    }
+
+    // After a plugin was enabled or disabled in the site shown (spec 4.15), so that its admin contributions follow without a
+    // reload. A read that fails, or that a switch, a change of locale or a later read overtook, changes nothing.
+    public async Task ReadPluginsAsync()
+    {
+        if (Status != ShellStatus.Ready)
+        {
+            return;
+        }
+
+        var (generation, read) = (_generation, ++_pluginReads);
+        metadata.ForgetPlugins();
+        IReadOnlyList<PluginInfo> installed;
+        try
+        {
+            installed = await metadata.GetPluginsAsync(CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)
+        {
+            ShellLog.PluginsNotRead(logger, exception);
+            return;
+        }
+
+        if (generation == _generation && read == _pluginReads)
+        {
+            Plugins = installed;
+            Changed?.Invoke();
+        }
     }
 
     private Task LeaveAsync(IReadOnlyList<MySiteInfo> mine)

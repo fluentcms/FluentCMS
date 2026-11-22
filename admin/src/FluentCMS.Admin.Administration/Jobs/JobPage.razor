@@ -1,0 +1,304 @@
+@* One job of the instance (spec 4.15): its state and its attempts, the last error of each, where an attempt abandoned past
+   its timeout is failed with FCMS2508; cancel of a pending job, which puts it among the dead letters, and retry of a
+   dead-lettered one. A running job, and a pending one that is due, is read again every five seconds at most while the page
+   shows (spec 2.7), and a change of its status is announced. A job the 30-day retention removed answers 404 and shows as
+   not found. *@
+@page "/jobs/{Id:guid}"
+@implements IDisposable
+@inject IManagementApi Api
+@inject AdminContext Context
+@inject FormatService Formats
+@inject TimeProvider Time
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<JobsResources> L
+
+<PageCrumb Text="@job?.Type" />
+<h1 tabindex="-1">@(job?.Type ?? L["Jobs.Job.Heading"])</h1>
+
+@if (state == State.Loading)
+{
+    <p role="status">@L["Jobs.Job.Loading"]</p>
+}
+else if (state == State.NotFound)
+{
+    <p>@L["Jobs.Job.NotFound"]</p>
+}
+else if (state == State.Failed || job is null)
+{
+    <p role="alert">@L["Jobs.Job.Failed"] <CmsButton OnClick="ReadAsync">@L["Jobs.Job.TryAgain"]</CmsButton></p>
+}
+else
+{
+    <dl class="jobs-facts">
+        <dt>@L["Jobs.List.Status"]</dt>
+        <dd>@JobTexts.Status(job.Status, L)</dd>
+        <dt>@L["Jobs.List.Queue"]</dt>
+        <dd>@job.Queue</dd>
+        <dt>@L["Jobs.Job.Site"]</dt>
+        <dd>@JobTexts.Site(job.SiteId, Context.Sites, L)</dd>
+        <dt>@L["Jobs.List.Attempts"]</dt>
+        <dd>@JobTexts.Attempts(job, L)</dd>
+        <dt>@L["Jobs.Job.Priority"]</dt>
+        <dd>@Formats.Number(job.Priority)</dd>
+        <dt>@L["Jobs.List.RunAt"]</dt>
+        <dd>@Formats.DateTime(job.RunAt)</dd>
+        <dt>@L["Jobs.List.Created"]</dt>
+        <dd>@Formats.DateTime(job.CreatedAt)</dd>
+        <dt>@L["Jobs.Job.Origin"]</dt>
+        <dd><code>@job.Origin</code></dd>
+        <dt>@L["Jobs.Job.Completed"]</dt>
+        <dd>@(job.CompletedAt is { } completed ? Formats.DateTime(completed) : L["Jobs.Job.NotCompleted"])</dd>
+        @if (job.LastError is { } error)
+        {
+            <dt>@L["Jobs.DeadJobs.LastError"]</dt>
+            <dd class="jobs-error">@JobTexts.Error(error, L)</dd>
+        }
+    </dl>
+
+    @if (following is not null)
+    {
+        <p>@L["Jobs.Job.Following"]</p>
+    }
+
+    @if (job.Status == "pending")
+    {
+        <CmsButton Disabled="@busy" OnClick="@(() => asking = true)">@L["Jobs.Job.Cancel"]</CmsButton>
+    }
+    else if (job.Status == "dead_lettered")
+    {
+        <CmsButton Disabled="@busy" OnClick="RetryAsync">@L["Jobs.Job.Retry"]</CmsButton>
+    }
+
+    <section aria-labelledby="job-history">
+        <h2 id="job-history">@L["Jobs.Job.History"]</h2>
+        @if (job.History.Count == 0)
+        {
+            <p>@L["Jobs.Job.NoAttempts"]</p>
+        }
+        else
+        {
+            <table class="jobs-history">
+                <thead>
+                    <tr>
+                        <th scope="col">@L["Jobs.Job.Attempt"]</th>
+                        <th scope="col">@L["Jobs.Job.Started"]</th>
+                        <th scope="col">@L["Jobs.Job.Finished"]</th>
+                        <th scope="col">@L["Jobs.Job.Outcome"]</th>
+                        <th scope="col">@L["Jobs.Job.Error"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var attempt in job.History)
+                    {
+                        <tr @key="attempt.Attempt">
+                            <th scope="row">@Formats.Number(attempt.Attempt)</th>
+                            <td>@Formats.DateTime(attempt.StartedAt)</td>
+                            <td>@(attempt.FinishedAt is { } finished ? Formats.DateTime(finished) : "")</td>
+                            <td>@JobTexts.Outcome(attempt.Outcome, L)</td>
+                            <td class="jobs-error">@JobTexts.Error(attempt.Error, L)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+<p class="jobs-message" tabindex="-1" @ref="messageElement">@message</p>
+<p><a href="jobs">@L["Jobs.Job.BackToList"]</a></p>
+
+<CmsDialog Title="@L["Jobs.Confirm.CancelTitle"]" Open="@asking" OpenChanged="@(open => asking = open)">
+    <ChildContent>
+        <p>@L["Jobs.Confirm.CancelText", job?.Type ?? ""]</p>
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="CancelAsync">@L["Jobs.Confirm.CancelJob"]</CmsButton>
+        <CmsButton OnClick="@(() => asking = false)">@L["Jobs.Confirm.Keep"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    private Guid? read;
+    private State state = State.Loading;
+    private JobDetailRecord? job;
+    private bool busy;
+    private bool asking;
+    private string? message;
+    private bool focusMessage;
+    private ElementReference messageElement;
+    private CancellationTokenSource? reading;
+    private CancellationTokenSource? following;
+
+    private enum State
+    {
+        Loading,
+        Ready,
+        NotFound,
+        Failed,
+    }
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    // The page is one instance for every id, so another id reads its job afresh.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (read != Id)
+        {
+            read = Id;
+            (job, message, asking) = (null, null, false);
+            await ReadAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusMessage)
+        {
+            focusMessage = false;
+            await messageElement.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        StopFollowing();
+        reading?.Cancel();
+        reading?.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        StopFollowing();
+        reading?.Cancel();
+        reading?.Dispose();
+        var current = reading = new CancellationTokenSource();
+        state = State.Loading;
+        try
+        {
+            Show(await Api.GetJobAsync(Id, current.Token));
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (JobProblems.Has(exception, JobProblems.JobNotFound))
+        {
+            (job, state) = (null, State.NotFound);
+        }
+        catch (Exception exception) when (JobProblems.IsFailure(exception))
+        {
+            (job, state) = (null, State.Failed);
+        }
+    }
+
+    private void Show(JobDetailRecord found)
+    {
+        (job, state) = (found, State.Ready);
+        if (following is null && JobTexts.Follows(found, Time.GetUtcNow()))
+        {
+            following = new CancellationTokenSource();
+            _ = FollowAsync(found.Id, following.Token);
+        }
+    }
+
+    private void StopFollowing()
+    {
+        following?.Cancel();
+        following?.Dispose();
+        following = null;
+    }
+
+    // One read each tick while the job is followed. A read that fails is tried again at the next tick; an answer that the job
+    // is gone ends the following and shows the job as not found.
+    private async Task FollowAsync(Guid id, CancellationToken cancellationToken)
+    {
+        while (job is { } shown && shown.Id == id && JobTexts.Follows(shown, Time.GetUtcNow()))
+        {
+            try
+            {
+                await Task.Delay(JobTexts.FollowEvery, Time, cancellationToken);
+                var found = await Api.GetJobAsync(id, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (found.Status != shown.Status)
+                {
+                    Announcer.Announce(L["Jobs.Job.StatusChanged", JobTexts.Status(found.Status, L)]);
+                }
+
+                job = found;
+                StateHasChanged();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception exception) when (JobProblems.Has(exception, JobProblems.JobNotFound))
+            {
+                (job, state) = (null, State.NotFound);
+                StateHasChanged();
+                break;
+            }
+            catch (Exception exception) when (JobProblems.IsFailure(exception))
+            {
+            }
+        }
+
+        if (!cancellationToken.IsCancellationRequested)
+        {
+            StopFollowing();
+            StateHasChanged();
+        }
+    }
+
+    private async Task CancelAsync()
+    {
+        asking = false;
+        await ChangeAsync(token => Api.CancelJobAsync(Id, token), "Jobs.Job.Cancelled", JobProblems.NotCancellable, "Jobs.Job.NotCancellable");
+    }
+
+    private Task RetryAsync() =>
+        ChangeAsync(token => Api.RetryJobAsync(Id, token), "Jobs.Job.Retried", JobProblems.NotDeadLettered, "Jobs.Job.NotDead");
+
+    // A change answers the job as it is after it. One the job's state no longer allows, as a job that started meanwhile, reads
+    // the job again; a job that is gone shows as not found.
+    private async Task ChangeAsync(Func<CancellationToken, Task<JobDetailRecord>> change, string done, string refusal, string refused)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        var token = reading?.Token ?? CancellationToken.None;
+        try
+        {
+            var changed = await change(token);
+            message = L[done];
+            StopFollowing();
+            Show(changed);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (JobProblems.Has(exception, JobProblems.JobNotFound))
+        {
+            StopFollowing();
+            (job, state, message) = (null, State.NotFound, L["Jobs.Job.Gone"]);
+        }
+        catch (Exception exception) when (JobProblems.Has(exception, refusal))
+        {
+            message = L[refused];
+            await ReadAsync();
+        }
+        catch (Exception exception) when (JobProblems.IsFailure(exception))
+        {
+            message = L["Jobs.Job.ChangeFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        // The button of the change goes with the status it was for, so focus goes to the result.
+        focusMessage = true;
+    }
+}

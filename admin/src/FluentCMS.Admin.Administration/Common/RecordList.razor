@@ -56,6 +56,7 @@ else
                  Items="@items"
                  OnRowActivated="@OnRowActivated"
                  RowLabel="@RowLabel"
+                 RowKey="@RowKey"
                  Loading="@loading"
                  TotalItems="@total"
                  RowOffset="@((long)(shown.Page - 1) * PageSize)">
@@ -123,6 +124,10 @@ else
 
     [Parameter]
     public Func<TItem, string?>? RowLabel { get; set; }
+
+    // The key of a row, which a page that reads its rows again gives, so that a row whose values changed keeps its element.
+    [Parameter]
+    public Func<TItem, object>? RowKey { get; set; }
 
     [Parameter]
     public EventCallback<TItem> OnRowActivated { get; set; }
@@ -208,6 +213,49 @@ else
 
         await ReadAddressAsync(again: true);
         StateHasChanged();
+    }
+
+    // Reads the page shown again in place, as a page that follows its rows does: the rows stay while it reads, and a read that
+    // fails keeps them and says nothing, so that the page tries again later. It reads nothing while a read is under way, while
+    // the list shows a problem, or while the address is another path's; false when it read nothing new.
+    public async Task<bool> RefreshAsync()
+    {
+        if (loading || problem is not null || PathOf(Navigation.Uri) != path)
+        {
+            return false;
+        }
+
+        reading?.Dispose();
+        var current = reading = new CancellationTokenSource();
+        try
+        {
+            var page = await Read(shown, current.Token);
+            // An answer that comes once the address is another path's, as while the router waits for the next page, is dropped.
+            if (Overtaken(current) || PathOf(Navigation.Uri) != path)
+            {
+                return false;
+            }
+
+            if (page.Items.Count == 0 && page.Total > 0 && shown.Page > PagesOf(page.Total))
+            {
+                // The page is past the end now, as after rows went, so the last page is shown, as a read the user starts does.
+                Navigation.NavigateTo(Address(shown.Search, PagesOf(page.Total)), replace: true);
+                return false;
+            }
+
+            (items, total) = (page.Items, page.Total);
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return false;
+        }
+
+        StateHasChanged();
+        return true;
     }
 
     // A change of the query string of this path reads again. The address of another path is another page's, or this page's
