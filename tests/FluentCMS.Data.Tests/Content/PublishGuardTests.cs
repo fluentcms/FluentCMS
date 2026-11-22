@@ -1,6 +1,7 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Providers;
@@ -226,6 +227,36 @@ public sealed class PublishGuardTests
         (await Should.ThrowAsync<HookRejectedException>(() => database.PublishAsync(Editor, id, "fr"))).Code.ShouldBe(ContentErrorCodes.DraftMovedByHook);
 
         database.Trace(id).ShouldBe(before);
+    }
+
+    // A write nested in a validator can leave a hook running, and no pipeline of the publish looks again before the guard.
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task APublishRefusedInAMarkedScopeKeepsTheTimeoutsCode(bool inAHook, bool hookSavedTheDraft)
+    {
+        var between = new Between();
+        using var database = inAHook ? WithHook(between) : WithoutHooks(between);
+        var id = await EnglishAndFrenchAsync(database);
+        between.Run = async services =>
+        {
+            if (hookSavedTheDraft)
+            {
+                await PatchAsAsync(services, "fr", id, new() { ["title"] = "Salut" }, 1);
+            }
+            else
+            {
+                await SharedChangeInEnglishAsync(services, database, id);
+            }
+
+            services.GetRequiredService<HookScopeGuard>().MarkLeftRunning("Left");
+        };
+
+        (await Should.ThrowAsync<HookRejectedException>(() => database.PublishAsync(Editor, id, "fr"))).Code.ShouldBe(ContentErrorCodes.HookTimedOut);
+
+        database.Document(id, "fr").PublishedVersion.ShouldBeNull();
     }
 
     // A caller's transaction ends unseen, so what an earlier one moved is no mark of this publish.

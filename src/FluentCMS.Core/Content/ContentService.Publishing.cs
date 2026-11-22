@@ -101,6 +101,9 @@ internal sealed partial class ContentService
     // and nothing a hook wrote past the swaps; one inside another transaction cannot, and reads them as that one sees them.
     private async Task<Exception> DraftMovedAsync(WriteScope write, Guid id, Document document, int movedBefore, bool ownsTransaction, CancellationToken cancellationToken)
     {
+        // A write nested in a validator can have left a hook running, which refuses the publish before either answer (FCMS2410).
+        hooks.ThrowIfLeftRunning();
+
         if (!_moved.Skip(movedBefore).Contains((id, document.Locale)))
         {
             if (ownsTransaction)
