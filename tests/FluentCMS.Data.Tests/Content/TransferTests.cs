@@ -124,6 +124,25 @@ public sealed class TransferTests : IDisposable
         Report(dry).ShouldBe(Report(real));
     }
 
+    // #3265: the package names en alone, and moves a shared field under fr, which the instance's entry has too.
+    [Fact]
+    public async Task AnImportThatMovesASharedFieldAdvancesTheLocalesThePackageDoesNotName()
+    {
+        var id = IdOf(await _source.CreateAsync(Admin, new() { ["title"] = "Hello", ["views"] = 1 }));
+        var target = Target();
+        await ImportAsync(target, await ExportAsync(_source));
+        await target.UpdateAsync(Admin, id, new ContentDocument { ["title"] = "Bonjour" }, 0, locale: "fr");
+        await _source.PatchAsync(Admin, id, new() { ["views"] = 2 }, 1);
+
+        await ImportAsync(target, await ExportAsync(_source), new TransferImportRequest { Overwrite = true });
+
+        var french = target.Versions(id).Where(version => version.Locale == "fr").ToList();
+        french.Select(version => version.Number).ShouldBe([1, 2]);
+        french[^1].Message.ShouldBe("Shared fields changed in en.");
+        (await target.GetAsync(Admin, id, locale: "fr"))!["views"].ShouldBe(2L);
+        await Should.ThrowAsync<VersionConflictException>(() => target.PatchAsync(Admin, id, new() { ["views"] = 3 }, 1, locale: "fr"));
+    }
+
     [Fact]
     public async Task AnEntryNewerInTheInstanceIsAConflictThatOverwriteSettles()
     {
