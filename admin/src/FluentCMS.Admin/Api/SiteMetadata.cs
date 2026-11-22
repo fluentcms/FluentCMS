@@ -42,6 +42,15 @@ internal sealed class SiteMetadata(ManagementClient client, ICurrentSite current
         return read.WaitAsync(cancellationToken);
     }
 
+    // A read in the site's default locale names no locale, so a new default locale of the site needs the schema read anew.
+    public void ForgetSchema()
+    {
+        lock (_gate)
+        {
+            _schema = null;
+        }
+    }
+
     private string? SwitchTo(string? site)
     {
         if (!string.Equals(site, _site, StringComparison.Ordinal))

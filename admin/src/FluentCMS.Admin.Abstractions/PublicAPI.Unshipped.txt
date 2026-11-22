@@ -592,6 +592,7 @@ FluentCMS.Admin.IAdminContext
 FluentCMS.Admin.IAdminContext.Access.get -> FluentCMS.Admin.IAdminAccess!
 FluentCMS.Admin.IAdminContext.Changed -> System.Action?
 FluentCMS.Admin.IAdminContext.ContentLocale.get -> string?
+FluentCMS.Admin.IAdminContext.ReadSitesAsync(System.Guid? gone = null) -> System.Threading.Tasks.Task!
 FluentCMS.Admin.IAdminContext.Site.get -> FluentCMS.Admin.Api.MySiteInfo?
 FluentCMS.Admin.IAdminContext.User.get -> FluentCMS.Admin.Api.MeResponse?
 FluentCMS.Admin.IAdminOverlays
