@@ -5,7 +5,9 @@
    read: a 403 of the list is shown as the answer. *@
 @typeparam TItem where TItem : notnull
 @implements IDisposable
+@using System.Reflection
 @using FluentCMS.Admin.Content
+@using FluentCMS.Admin.Plugins
 @inject NavigationManager Navigation
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<CommonResources> L
@@ -73,6 +75,8 @@ else
     private string? path;
     private RecordQuery shown = new(null, 1, 0);
     private bool read;
+    private bool reloadPending;
+    private Type? page;
     private string? searchText;
     private IReadOnlyList<TItem> items = [];
     private long total;
@@ -123,6 +127,10 @@ else
     [Parameter]
     public EventCallback<TItem> OnRowActivated { get; set; }
 
+    // The route data the shell draws the page with; none outside the shell, where every render at another path reads.
+    [CascadingParameter]
+    private RouteData? DrawnWith { get; set; }
+
     // A failed read: the problem the API answered, or none when it did not answer.
     private sealed record Failure(ApiProblem? Problem);
 
@@ -133,7 +141,9 @@ else
     protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
 
     // A page that shows the list at two addresses, as /x/{Id}, is one instance for both, so the list reads afresh when the
-    // page renders it at another path: its rows, page and filters are those of the address before.
+    // router draws the page at another path: its rows, page and filters are those of the address before. The page drawn
+    // before a navigation the router waits for stays while the address is already the next page's, so a render of the list
+    // then is not at a route of its page, and reads nothing.
     protected override async Task OnParametersSetAsync()
     {
         if (Filters.FirstOrDefault(name => name is "q" or "page") is { } taken)
@@ -142,11 +152,20 @@ else
         }
 
         var current = PathOf(Navigation.Uri);
-        if (current != path)
+        if (current != path && AtRouteOfPage())
         {
             path = current;
             await ReadAddressAsync(again: true);
         }
+    }
+
+    // The router hands the page before a new route data too while it waits, so the address is held to the routes of the
+    // list's page. The route data of the next page reaches the list as well, before the list is gone.
+    private bool AtRouteOfPage()
+    {
+        page ??= DrawnWith?.PageType;
+        return page is null || (DrawnWith?.PageType == page
+            && page.GetCustomAttributes<RouteAttribute>().Any(route => AdminPluginRoutes.Matches(route.Template, Navigation.ToBaseRelativePath(Navigation.Uri))));
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -177,9 +196,16 @@ else
         Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(new Dictionary<string, object?> { [name] = string.IsNullOrEmpty(value) ? null : value, ["page"] = null }));
     }
 
-    // Reads the page the address names again, as after the page changed a record.
+    // Reads the page the address names again, as after the page changed a record. While the address is another path's, as
+    // while the router waits for the next page, the read waits for the list's own address.
     public async Task ReloadAsync()
     {
+        if (PathOf(Navigation.Uri) != path)
+        {
+            reloadPending = true;
+            return;
+        }
+
         await ReadAddressAsync(again: true);
         StateHasChanged();
     }
@@ -207,10 +233,12 @@ else
             Filters = Filters.Select(name => (Name: name, Value: ValueOf(query, name))).Where(filter => filter.Value is { Length: > 0 })
                 .ToDictionary(filter => filter.Name, filter => filter.Value!, StringComparer.Ordinal),
         };
-        if (read && asked == shown && !again)
+        if (read && asked == shown && !again && !reloadPending)
         {
             return;
         }
+
+        reloadPending = false;
 
         var searched = read && asked with { Page = shown.Page } != shown;
         (shown, read, searchText) = (asked, true, asked.Search);
@@ -227,7 +255,7 @@ else
                 return;
             }
 
-            if (page.Items.Count == 0 && page.Total > 0 && asked.Page > PagesOf(page.Total))
+            if (page.Items.Count == 0 && page.Total > 0 && asked.Page > PagesOf(page.Total) && PathOf(Navigation.Uri) == path)
             {
                 // A page past the end, as after records were deleted: the last page instead, with the list still loading
                 // until that page is read.

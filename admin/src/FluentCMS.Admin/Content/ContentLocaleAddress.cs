@@ -25,9 +25,17 @@ internal sealed class ContentLocaleAddress(
     // The locale the page shows: null for the site's default.
     public string? Locale { get; private set; }
 
-    public async Task FollowAsync(string type, string? named)
+    // False when the address is no longer the page's own route once the locale is set, as while the router waits for the
+    // next page: the page then neither navigates nor reads.
+    public async Task<bool> FollowAsync(string type, string? named, Func<bool> atRoute)
     {
+        ArgumentNullException.ThrowIfNull(atRoute);
         await context.UseLocaleAsync(named);
+        if (!atRoute())
+        {
+            return false;
+        }
+
         if (named is null && context.ContentLocales.Count > 1 && context.Schema?.Types.FirstOrDefault(item => item.Name == type) is { Localized: true })
         {
             navigation.NavigateTo(navigation.GetUriWithQueryParameter("locale", context.ContentLocale), replace: true);
@@ -41,5 +49,7 @@ internal sealed class ContentLocaleAddress(
             announcer.Announce(localizer["Content.Locale.Switched", shown]);
             await document.FocusHeadingAsync();
         }
+
+        return atRoute();
     }
 }

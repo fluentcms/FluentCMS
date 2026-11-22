@@ -30,7 +30,12 @@
 }
 else
 {
-    <RouteView RouteData="@Page()" DefaultLayout="typeof(AdminLayout)" />
+    @* The route data the page is drawn with: a part of the page tells by the routes of its page whether the address is
+       still the page's, or the next page's while the router waits for it (RecordList). *@
+    var routed = Page();
+    <CascadingValue TValue="RouteData" Value="@routed">
+        <RouteView RouteData="@routed" DefaultLayout="typeof(AdminLayout)" />
+    </CascadingValue>
 }
 
 @code {

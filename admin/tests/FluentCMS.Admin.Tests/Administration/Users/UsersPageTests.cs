@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Bunit;
 using FluentCMS.Admin.Administration.Users;
 using FluentCMS.Admin.Localization;
+using FluentCMS.Admin.Plugins;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -215,5 +216,31 @@ public sealed class UsersPageTests : UsersTestContext
 
         app.WaitForAssertion(() => Message(app, "Pending invitations").ShouldBe("The invitation to sam@example.com is no longer pending: it was accepted, revoked or has expired."));
         Section(app, "Pending invitations").TextContent.ShouldContain("No invitation is waiting to be accepted.");
+    }
+
+    // The page draws the list again while the router waits for the first load of a half: the list reads nothing at the
+    // half's address, and reads once the address is its own again, when that navigation overtakes the wait (#3514).
+    [Fact]
+    public async Task AListDrawnAgainWhileTheRouterWaitsReadsNothingThereAndReadsOnItsReturn()
+    {
+        var sample = AdminPluginManifestJson.Read(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, AdminPluginManifest.FileName)));
+        Services.AddSingleton(new AdminPluginCatalog([sample with { Widgets = [] }], []));
+        Management.Plugins[MainSite] = [Plugin("reviews", enabled: true)];
+        Grant(["reviews.notes.manage"], "users.manage");
+        var app = Load("users?q=gra");
+        app.WaitForAssertion(() => Rows(app).Select(row => row[0]).ShouldBe(["grace"]));
+        var reads = UserQueries.Count;
+        var hold = Loader.Hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Navigation.NavigateTo("reviews");
+        app.WaitForAssertion(() => Loader.Loads.ShouldBe(2));
+
+        app.FindComponent<UsersPage>().Render();
+        await app.InvokeAsync(() => { });
+
+        UserQueries.Count.ShouldBe(reads);
+        Navigation.NavigateTo("users?q=ada");
+        app.WaitForAssertion(() => Rows(app).Select(row => row[0]).ShouldBe(["ada"]));
+        UserQueries[^1].ShouldBe("page=1&pageSize=25&search=ada");
+        hold.SetResult();
     }
 }
