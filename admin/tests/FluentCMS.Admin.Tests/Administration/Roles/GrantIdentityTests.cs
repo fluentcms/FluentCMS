@@ -240,6 +240,67 @@ public sealed class GrantIdentityTests
         narrowedDropped.ShouldBe(["content.article.update"]);
     }
 
+    // The user took away both grants of a permission and added one with other limits: which it changes cannot be told, so it
+    // holds only where the other change left both as read. Otherwise both stay taken away and the user's grant is named.
+    [Theory]
+    [InlineData("narrowed")]
+    [InlineData("removed")]
+    [InlineData("crossed")]
+    [InlineData("unchanged")]
+    public void AGrantAddedForSeveralTakenAwayHoldsOnlyWhereTheOtherChangeLeftThemAll(string other)
+    {
+        var first = new JsonObject { ["sites"] = new JsonArray("0193a1b2-0000-7000-8000-00000000a001") };
+        var second = new JsonObject { ["sites"] = new JsonArray("0193a1b2-0000-7000-8000-00000000a002") };
+        JsonObject In(JsonObject sites, string locale) => new() { ["sites"] = sites["sites"]!.DeepClone(), ["locales"] = new JsonArray(locale) };
+        var read = Read(Grant("content.article.update", first), Grant("content.article.update", second));
+        var mine = RoleDraft.From(read);
+        mine.Grants.RemoveRange(1, 2);
+        mine.Grants.Add(new GrantDraft("content.article.update", In(second, "en")));
+        if (other == "crossed")
+        {
+            mine.Grants.Add(new GrantDraft("content.article.update", In(first, "en")));
+        }
+
+        var current = other switch
+        {
+            "narrowed" => Read(Grant("content.article.update", first), Grant("content.article.update", In(second, "fr"))),
+            "removed" => Read(Grant("content.article.update", first)),
+            "crossed" => Read(Grant("content.article.update", In(first, "fr")), Grant("content.article.update", second)),
+            _ => read,
+        };
+
+        var (rebased, dropped) = RoleDraft.Rebase(read, mine, current);
+
+        string[] expected = other switch
+        {
+            "narrowed" => [GrantDraft.IdentityOf("content.article.update", In(second, "fr"))],
+            "removed" => [],
+            "crossed" => [GrantDraft.IdentityOf("content.article.update", In(first, "fr"))],
+            _ => [GrantDraft.IdentityOf("content.article.update", In(second, "en"))],
+        };
+        rebased.Grants.Skip(1).Select(grant => grant.Identity).ShouldBe(expected);
+        string[] named = other == "unchanged" ? [] : ["content.article.update"];
+        dropped.ShouldBe(named);
+    }
+
+    // A new grant of a permission whose grants the user kept is added beside them.
+    [Fact]
+    public void AGrantOfAPermissionTheUserKeptIsAdded()
+    {
+        var first = new JsonObject { ["sites"] = new JsonArray("0193a1b2-0000-7000-8000-00000000a001") };
+        var second = new JsonObject { ["sites"] = new JsonArray("0193a1b2-0000-7000-8000-00000000a002") };
+        var read = Read(Grant("content.article.update", first));
+        var mine = RoleDraft.From(read);
+        mine.Grants.Add(new GrantDraft("content.article.update", second.DeepClone().AsObject()));
+
+        var (rebased, dropped) = RoleDraft.Rebase(read, mine, Read(Grant("content.article.update", first)));
+
+        rebased.Grants.Skip(1).Select(grant => grant.Identity).ShouldBe([
+            GrantDraft.IdentityOf("content.article.update", first),
+            GrantDraft.IdentityOf("content.article.update", second)]);
+        dropped.ShouldBeEmpty();
+    }
+
     // The user took B away and changed A into B; the other change took A away. Neither is left, so the change is named.
     [Fact]
     public void AChangeTheMergeLeavesOutIsNamedThoughTheServerHadItsIdentity()
