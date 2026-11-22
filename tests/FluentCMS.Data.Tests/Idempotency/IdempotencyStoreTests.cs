@@ -1,4 +1,5 @@
 using FluentCMS.Content;
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -6,6 +7,7 @@ using FluentCMS.Data.Tests.Content;
 using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Jobs;
 using FluentCMS.Sites;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -103,6 +105,112 @@ public sealed class IdempotencyStoreTests : IDisposable
         await Store.CompleteAsync(second, Created);
         (await BeginAsync()).Stored!.Body.ShouldBe(Created.Body);
     }
+
+    // #3307: while the first request runs its lease is renewed, so a repeat long after the lease would have run out is still
+    // refused and nothing runs twice; once it stops, the lease runs out InProgressTimeout after the last renewal.
+    [Fact]
+    public async Task AHeldClaimIsRenewedSoARepeatPastTheLeaseIsStillRefused()
+    {
+        var claim = (await BeginAsync()).Claim!;
+        var others = _clock.Timers;
+
+        await using (Store.Hold(claim))
+        {
+            for (var turn = 0; turn < 6; turn++)
+            {
+                // The lease sets its next turn only once the renewal before has written, so the clock waits for it.
+                await TurnSetAsync(others);
+                _clock.Advance(TimeSpan.FromMinutes(5) / 3);
+            }
+
+            await TurnSetAsync(others);
+            Rows().Single().LeaseUntil.ShouldBe(_clock.GetUtcNow() + TimeSpan.FromMinutes(5));
+            (await RefusedAsync(() => BeginAsync())).ShouldBe(IdempotencyErrorCodes.InProgress);
+        }
+
+        _clock.Advance(TimeSpan.FromMinutes(4));
+        (await RefusedAsync(() => BeginAsync())).ShouldBe(IdempotencyErrorCodes.InProgress);
+        _clock.Advance(TimeSpan.FromMinutes(1));
+        (await BeginAsync()).Claim.ShouldNotBeNull().Owner.ShouldNotBe(claim.Owner);
+    }
+
+    [Fact]
+    public async Task AClaimThatAnsweredOrWasTakenOverIsNotRenewed()
+    {
+        var first = (await BeginAsync()).Claim!;
+        _clock.Advance(TimeSpan.FromMinutes(5));
+        var second = (await BeginAsync()).Claim!;
+
+        (await Store.RenewAsync(first, Token)).ShouldBeFalse();
+        (await Store.RenewAsync(second, Token)).ShouldBeTrue();
+
+        await Store.CompleteAsync(second, Created);
+        (await Store.RenewAsync(second, Token)).ShouldBeFalse();
+    }
+
+    // A claim a repeat took over, after renewals failed for a whole lease, is lost at the next turn, which cancels the
+    // request's work rather than leave it running beside the repeat.
+    [Fact]
+    public async Task ALeaseFindsItsClaimTakenOverAndIsLost()
+    {
+        var claim = (await BeginAsync()).Claim!;
+        var others = _clock.Timers;
+        await using var lease = Store.Hold(claim);
+        var lost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var heard = lease.Lost.Register(() => lost.TrySetResult());
+
+        using (var scope = _database.Database.NewScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<IdempotencyRow>()
+                .Where(row => row.Id == claim.Id)
+                .ExecuteUpdateAsync(set => set.SetProperty(row => row.Owner, Guid.NewGuid()), Token);
+        }
+
+        await TurnSetAsync(others);
+        _clock.Advance(TimeSpan.FromMinutes(5) / 3);
+
+        await lost.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        lease.Lost.IsCancellationRequested.ShouldBeTrue();
+    }
+
+    // The request whose claim is lost is cancelled: its work stops and it answers FCMS3142, rather than go on beside the
+    // repeat. On SQLite, which has one writer, neither the renewal nor a repeat's takeover writes while the request's own
+    // write transaction is open, so there the claim is lost only between its transactions.
+    [Fact]
+    public async Task ARequestWhoseClaimARepeatTookOverIsCancelledAndAnswersInProgress()
+    {
+        using var scope = _database.Database.NewScope();
+        var http = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        http.Request.Method = HttpMethods.Post;
+        http.Request.Path = "/api/management/v1/content/article";
+        http.Request.ContentType = "application/json";
+        http.Request.Body = new MemoryStream("{}"u8.ToArray());
+        http.Request.Headers[IdempotencyStore.Header] = "key-lost";
+        http.Features.Set(new ApiRequest(new OperationContext(Alice, Origin.Api, SiteA, "en", null, "c", _clock.GetUtcNow()), "en"));
+        var others = _clock.Timers;
+        var working = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var running = IdempotentRequests.RunAsync(http, async () =>
+        {
+            working.TrySetResult();
+            await Task.Delay(Timeout.Infinite, http.RequestAborted);
+            return Results.Ok();
+        });
+        await working.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+
+        using (var other = _database.Database.NewScope())
+        {
+            (await other.ServiceProvider.GetRequiredService<SystemDbContext>().Set<IdempotencyRow>()
+                .ExecuteUpdateAsync(set => set.SetProperty(row => row.Owner, Guid.NewGuid()), Token)).ShouldBe(1);
+        }
+
+        await TurnSetAsync(others);
+        _clock.Advance(TimeSpan.FromMinutes(5) / 3);
+
+        (await RefusedAsync(() => running.WaitAsync(TimeSpan.FromSeconds(30), Token))).ShouldBe(IdempotencyErrorCodes.InProgress);
+    }
+
+    private Task TurnSetAsync(int others) => _clock.WhenTimersAsync(others + 1).WaitAsync(TimeSpan.FromSeconds(30), Token);
 
     [Fact]
     public async Task OfManyRequestsThatSendOneKeyAtOnceOneRunsAndTheOthersAreRefused()

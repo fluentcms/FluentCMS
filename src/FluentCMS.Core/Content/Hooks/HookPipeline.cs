@@ -6,6 +6,8 @@ using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Telemetry;
 using FluentCMS.Hooks;
 using FluentCMS.Schema;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FluentCMS.Core.Content.Hooks;
 
@@ -16,13 +18,29 @@ namespace FluentCMS.Core.Content.Hooks;
 // The changed paths are those between previous and entry, computed again before each before hook so that a hook sees the
 // changes of the hooks before it; an operation that changes no field passes the stored state as previous.
 // Only before hooks change the entry: an after hook works on a copy. A hook of a plugin disabled in the operation's site does not run.
+// Each hook runs for FluentCms:Content:HookTimeout at most, since it holds the write's transaction, and on SQLite the
+// database's one writer: one that runs longer has its token cancelled and is no longer waited for, and the write fails with
+// FCMS2410 naming it and rolls back. A hook that ignores its token is left to end on its own, as an event handler is, still
+// holding the scope's services, and so is one whose caller is cancelled while it runs: the scope is then marked and writes
+// and commits nothing more (HookScopeGuard). A hook starts on the thread pool, so that one that blocks before its first
+// await is bounded too.
 public sealed class HookPipeline(IServiceProvider services)
 {
     private static readonly ConcurrentDictionary<Type, int> Orders = new();
 
+    private readonly HookScopeGuard _guard = services.GetService(typeof(HookScopeGuard)) as HookScopeGuard ?? new HookScopeGuard();
+    private readonly TimeProvider _time = services.GetService(typeof(TimeProvider)) as TimeProvider ?? TimeProvider.System;
+    private readonly ContentWriteOptions _options = services.GetService(typeof(ContentWriteOptions)) as ContentWriteOptions ?? new ContentWriteOptions();
+    private readonly ILogger _logger = (services.GetService(typeof(ILogger<HookPipeline>)) as ILogger) ?? NullLogger.Instance;
+
     // The hooks of a scope do not change, so each kind is resolved and ordered once per content class and scope, not on every
     // call. A hook registered as transient therefore lives as long as the scope, as a scoped one does.
     private readonly Dictionary<(HookKind Kind, Type? ClrType), List<BoundHook>> _resolved = [];
+
+    // A hook of this scope ran past its time or was left by its caller, and may still be running on the scope's services.
+    internal bool LeftRunning => _guard.LeftRunning;
+
+    internal void ThrowIfLeftRunning() => _guard.ThrowIfLeftRunning();
 
     public async ValueTask RunAsync(
         HookKind kind,
@@ -95,6 +113,7 @@ public sealed class HookPipeline(IServiceProvider services)
         foreach (var hook in hooks)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            _guard.ThrowIfLeftRunning();
             if (mutable && !first)
             {
                 session.RefreshChangedPaths();
@@ -102,10 +121,57 @@ public sealed class HookPipeline(IServiceProvider services)
 
             first = false;
 
-            await hook.InvokeAsync(session, mutable, cancellationToken);
+            await InvokeWithinTimeoutAsync(hook, kind, type, session, mutable, cancellationToken);
         }
 
+        // A write nested in the last hook may have left one running, whatever that hook made of the failure.
+        _guard.ThrowIfLeftRunning();
         return true;
+    }
+
+    private async Task InvokeWithinTimeoutAsync(BoundHook hook, HookKind kind, SchemaType type, Session session, bool mutable, CancellationToken cancellationToken)
+    {
+        using var timeout = new CancellationTokenSource(_options.HookTimeout, _time);
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+        var token = stop.Token;
+        var name = hook.ImplementationType.FullName ?? hook.ImplementationType.Name;
+        var started = _time.GetTimestamp();
+
+        // The token is also the work item's: a hook whose caller left before the pool got to it does not start.
+        var running = Task.Run(() => hook.InvokeAsync(session, mutable, token).AsTask(), token);
+        try
+        {
+            await running.WaitAsync(token);
+
+            // A hook that swallows the cancellation still ran past its time.
+            timeout.Token.ThrowIfCancellationRequested();
+        }
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            _guard.MarkLeftRunning(name);
+            ContentLog.HookTimedOut(_logger, kind, name, type.Name, _options.HookTimeout);
+            throw new HookRejectedException(ContentErrorCodes.HookTimedOut, $"The {kind} hook {name} did not end within {_options.HookTimeout}; the write was refused and nothing of it was saved.");
+        }
+        finally
+        {
+            // Whatever made the caller leave, before its transaction and its catch blocks see that it did.
+            if (!running.IsCompleted)
+            {
+                _guard.MarkLeftRunning(name);
+            }
+
+            // What the hook does from here on is not waited for, and a failure of it is not left unobserved.
+            if (!running.IsCompletedSuccessfully)
+            {
+                _ = running.ContinueWith(static task => _ = task.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
+
+            var elapsed = _time.GetElapsedTime(started);
+            if (elapsed >= _options.SlowHookThreshold && elapsed < _options.HookTimeout)
+            {
+                ContentLog.SlowHook(_logger, kind, name, type.Name, elapsed);
+            }
+        }
     }
 
     private List<BoundHook> Resolve(HookKind kind, SchemaType type)

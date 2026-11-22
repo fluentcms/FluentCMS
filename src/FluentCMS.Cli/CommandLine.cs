@@ -561,11 +561,13 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         var webhooks = new Option<bool>("--webhooks") { Description = "Delivers the webhooks of what the import writes, which are otherwise not delivered." };
         var missingLocales = new Option<string>("--missing-locales") { Description = "refuse (the default) or skip: whether the locales the site does not allow refuse the import or are left out.", HelpName = "mode" };
         missingLocales.AcceptOnlyFromAmong("refuse", "skip");
+        var authors = new Option<string>("--authors") { Description = "keep (the default) or importer: whether the entries keep the authors of the package, or name whoever runs the import as the creator of what it creates and the updater of what it writes.", HelpName = "mode" };
+        authors.AcceptOnlyFromAmong("keep", "importer");
         var roles = new Option<bool>("--roles") { Description = "Imports the roles of the package too." };
         var json = new Option<bool>("--json") { Description = "Writes the report as the endpoint's last line of JSON." };
         var command = new Command("import", "Imports an export package into a site and prints the report; exits with 1 when it has a conflict or an error.")
         {
-            file, dryRun, site, types, overwrite, webhooks, missingLocales, roles, json,
+            file, dryRun, site, types, overwrite, webhooks, missingLocales, authors, roles, json,
         };
         var instance = InstanceOptions.AddTo(command);
         var project = ProjectOptions.AddTo(command);
@@ -580,7 +582,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
                     [
                         "import", path,
                         .. Flag(result, dryRun), .. Value(result, site), .. Value(result, types), .. Flag(result, overwrite), .. Flag(result, webhooks),
-                        .. Value(result, missingLocales), .. Flag(result, roles), .. Flag(result, json),
+                        .. Value(result, missingLocales), .. Value(result, authors), .. Flag(result, roles), .. Flag(result, json),
                     ],
                     output,
                     error,
@@ -591,6 +593,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
             AddQuery(query, "dryRun", result.GetValue(dryRun) ? "true" : null);
             AddQuery(query, "overwrite", result.GetValue(overwrite) ? "true" : null);
             AddQuery(query, "missingLocales", result.GetValue(missingLocales));
+            AddQuery(query, "authors", result.GetValue(authors));
             AddQuery(query, "webhooks", result.GetValue(webhooks) ? "true" : null);
             AddQuery(query, "roles", result.GetValue(roles) ? "true" : null);
             AddQuery(query, "types", Types(result.GetValue(types)) is { } names ? string.Join(',', names) : null);

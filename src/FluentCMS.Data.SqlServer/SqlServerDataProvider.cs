@@ -53,6 +53,26 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
     // EF's migrations lock is an application lock of the session, which ends with it.
     public Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
 
+    // A locking read, which READ_COMMITTED_SNAPSHOT leaves to the hints: shared locks do not block each other, and the
+    // exclusive one waits for them all. A lock that waited for a deletion finds no row.
+    public async Task<bool> LockSiteAsync(DbContext context, Guid site, bool exclusive, CancellationToken cancellationToken)
+    {
+        var rows = exclusive
+            ? await context.Database.SqlQuery<int>($"SELECT 1 AS [Value] FROM cms_site WITH (XLOCK, ROWLOCK, HOLDLOCK) WHERE id = {site}").ToListAsync(cancellationToken)
+            : await context.Database.SqlQuery<int>($"SELECT 1 AS [Value] FROM cms_site WITH (REPEATABLEREAD, ROWLOCK) WHERE id = {site}").ToListAsync(cancellationToken);
+        return rows.Count > 0;
+    }
+
+    // SNAPSHOT isolation, where the database allows it. The migrations turn on READ_COMMITTED_SNAPSHOT, whose reads are each
+    // a snapshot of their own statement; a whole transaction needs ALLOW_SNAPSHOT_ISOLATION, which an administrator turns on.
+    public async Task<IDbContextTransaction?> BeginSnapshotAsync(DbContext context, CancellationToken cancellationToken)
+    {
+        var state = await context.Database
+            .SqlQueryRaw<byte>("SELECT snapshot_isolation_state AS [Value] FROM sys.databases WHERE database_id = DB_ID()")
+            .ToListAsync(cancellationToken);
+        return state is [1] ? await context.Database.BeginTransactionAsync(IsolationLevel.Snapshot, cancellationToken) : null;
+    }
+
     // EF's sp_getapplock has no lock timeout, so its wait for another session ends at the command timeout with an error that
     // names nothing (#3192). An application lock of the session is taken again by the same session at once, so EF's own
     // request then succeeds, and its release leaves this one held until the handle releases it.

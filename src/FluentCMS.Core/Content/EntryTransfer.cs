@@ -4,6 +4,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace FluentCMS.Core.Content;
 
@@ -55,10 +56,19 @@ internal sealed class TransferImportMode
 }
 
 // Reads the entries of a type for an export, whole: hidden fields too, both states and every locale, outside the trash.
-// Whoever calls it has checked transfer.manage; it reads what no principal's limits apply to.
-internal sealed class EntryExport(EntryStore store)
+// Whoever calls it has checked transfer.manage; it reads what no principal's limits apply to. A batch of entries is read in
+// four queries, its document rows, shared rows, locale rows and references, so the queries grow with the batches.
+internal sealed class EntryExport(EntryStore store, CmsDbContext context, IDataProvider provider)
 {
     private const int Batch = 100;
+
+    private static readonly short[] BothStates = [ContentState.Draft, ContentState.Published];
+    private static readonly short[] PublishedState = [ContentState.Published];
+
+    // The reads of every type then see the database as it was at the first, where the provider gives a snapshot (see
+    // IDataProvider.BeginSnapshotAsync); null where it does not.
+    public Task<IDbContextTransaction?> BeginSnapshotAsync(CancellationToken cancellationToken) =>
+        provider.BeginSnapshotAsync(context, cancellationToken);
 
     public async IAsyncEnumerable<TransferEntry> ReadAsync(SchemaType type, SiteId site, bool publishedOnly, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -66,21 +76,18 @@ internal sealed class EntryExport(EntryStore store)
         var ids = (await store.EntryIdsAsync(type, site, publishedOnly, cancellationToken)).Order().ToList();
         foreach (var chunk in ids.Chunk(Batch))
         {
-            var rows = (await store.DocumentsOfAsync(type, chunk, cancellationToken))
-                .Where(row => type.Scope == ContentScope.Global || row.SiteId == site.Value)
-                .ToLookup(row => row.DocumentId);
+            var documents = (await store.DocumentsOfAsync(type, chunk, cancellationToken))
+                .Where(row => (type.Scope == ContentScope.Global || row.SiteId == site.Value) && (!publishedOnly || row.PublishedVersion is not null))
+                .ToList();
+            var stored = await store.ReadManyAsync(type, documents, publishedOnly ? PublishedState : BothStates, cancellationToken);
+            var rows = documents.ToLookup(row => row.DocumentId);
             foreach (var id in chunk)
             {
                 List<TransferEntryLocale> locales = [];
                 foreach (var row in rows[id])
                 {
-                    if (publishedOnly && row.PublishedVersion is null)
-                    {
-                        continue;
-                    }
-
-                    var published = row.PublishedVersion is null ? null : EntryJson.Fields(type, await store.ReadAsync(type, row, ContentState.Published, cancellationToken));
-                    var draft = publishedOnly ? null : EntryJson.Fields(type, await store.ReadAsync(type, row, ContentState.Draft, cancellationToken));
+                    var published = row.PublishedVersion is null ? null : EntryJson.Fields(type, stored[(row.DocumentId, row.Locale, ContentState.Published)]);
+                    var draft = publishedOnly ? null : EntryJson.Fields(type, stored[(row.DocumentId, row.Locale, ContentState.Draft)]);
                     locales.Add(new TransferEntryLocale(
                         row.Locale,
                         publishedOnly ? EntryStatus.Published : row.Status,
