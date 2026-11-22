@@ -199,6 +199,109 @@ public sealed class OutboxFailureTests
         }
     }
 
+    private sealed class OpenConnections : DbConnectionInterceptor
+    {
+        private int _count;
+
+        public int Count => Volatile.Read(ref _count);
+
+        public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData) => Interlocked.Increment(ref _count);
+
+        public override Task ConnectionOpenedAsync(DbConnection connection, ConnectionEndEventData eventData, CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _count);
+            return Task.CompletedTask;
+        }
+
+        public override void ConnectionClosed(DbConnection connection, ConnectionEndEventData eventData) => Interlocked.Decrement(ref _count);
+
+        public override Task ConnectionClosedAsync(DbConnection connection, ConnectionEndEventData eventData)
+        {
+            Interlocked.Decrement(ref _count);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class SecondOwner
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Told { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    private sealed class SecondOwnerOutbox(SecondOwner second) : IOutboxEventHandler<EntryDraftSavedEvent>
+    {
+        public async ValueTask HandleAsync(EntryDraftSavedEvent message, EventDelivery delivery, CancellationToken cancellationToken)
+        {
+            await using var told = cancellationToken.Register(() => second.Told.TrySetResult());
+            second.Entered.TrySetResult();
+            await second.Told.Task;
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+    }
+
+    // The writes that end a delivery and the reads of the drain, by kind, with what a test does before each runs.
+    private sealed class EndingWrites : DbCommandInterceptor
+    {
+        public const string Settle = "settle";
+        public const string Release = "release";
+        public const string Failure = "failure";
+        public const string Read = "read";
+
+        public ConcurrentQueue<string> Written { get; } = new();
+
+        // So that a write nothing waits for has left the database before the test deletes it.
+        public OpenConnections Connections { get; } = new();
+
+        public Func<string, CancellationToken, Task>? Writing { get; set; }
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("cms_outbox", StringComparison.Ordinal) && Writing is { } writing)
+            {
+                await writing(Read, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            return result;
+        }
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (KindOf(command) is { } kind && Writing is { } writing)
+            {
+                await writing(kind, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            return result;
+        }
+
+        public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (KindOf(command) is { } kind)
+            {
+                Written.Enqueue(kind);
+            }
+
+            return ValueTask.FromResult(result);
+        }
+
+        private static string? KindOf(DbCommand command)
+        {
+            var text = command.CommandText;
+            if (!text.StartsWith("UPDATE", StringComparison.Ordinal) || !text.Contains("cms_outbox", StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            return text.Contains(TestProvider.Quote("delivered_at"), StringComparison.Ordinal) ? Settle
+                : text.Contains(TestProvider.Quote("last_error"), StringComparison.Ordinal) ? Failure
+                : text.Contains($"{TestProvider.Quote("attempts")} - 1", StringComparison.Ordinal) ? Release
+                : null;
+        }
+    }
+
     // The time of day moved on by hand, with the timers of the system.
     private sealed class ShiftedClock : TimeProvider
     {
@@ -789,6 +892,373 @@ public sealed class OutboxFailureTests
         rows.ShouldAllBe(row => row.Status == OutboxStatus.Delivered && row.Attempts == 2);
     }
 
+    // The settle takes one of the three seconds of the stop, so the release has the two that are left.
+    [Fact]
+    public async Task TheWritesOfAStopShareTheReleaseTimeoutWithTheDeliveredRowsSettledFirst()
+    {
+        var seen = new Seen();
+        var writes = new EndingWrites();
+        var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var releasing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var stopping = new CancellationTokenSource();
+        StopAtTheSecondDelivery(seen, stopping);
+        writes.Writing = async (kind, token) =>
+        {
+            if (kind == EndingWrites.Settle)
+            {
+                clock.Advance(TimeSpan.FromSeconds(1));
+            }
+            else if (kind == EndingWrites.Release)
+            {
+                releasing.TrySetResult();
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            }
+        };
+        using var database = StoppingDatabase(seen, clock, logs, writes);
+        for (var index = 0; index < 4; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        var drain = DrainWithAsync(database.Database.Services, stopping.Token);
+        await Eventually.CompletesAsync(releasing.Task);
+        clock.Advance(TimeSpan.FromSeconds(2));
+        await Eventually.CompletesAsync(drain);
+        await Eventually.HoldsAsync(() => logs.Count("SettleFailed") == 3);
+
+        writes.Written.ShouldBe([EndingWrites.Settle]);
+        var rows = database.Rows();
+        rows[0].Status.ShouldBe(OutboxStatus.Delivered);
+        rows.Skip(1).ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 1 && row.LeaseOwner != null);
+
+        writes.Writing = null;
+        seen.Behavior = (_, _) => Task.CompletedTask;
+        clock.Advance(TimeSpan.FromMinutes(10));
+        (await DrainAsync(database.Database.Services)).ShouldBe(3);
+    }
+
+    // The writes block their threads and ignore their tokens, as SQLite does while it waits for the write lock.
+    [Fact]
+    public async Task AStopIsNotHeldPastTheReleaseTimeoutByWritesThatIgnoreTheirTokensAndTheirRowsAreDeliveredAgain()
+    {
+        var seen = new Seen();
+        var writes = new EndingWrites();
+        var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var settling = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var delivering = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var handler = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new ManualResetEventSlim();
+        using var stopping = new CancellationTokenSource();
+        seen.Behavior = (_, _) =>
+        {
+            if (seen.Calls.Count == 1)
+            {
+                return Task.CompletedTask;
+            }
+
+            delivering.TrySetResult();
+            return handler.Task;
+        };
+        writes.Writing = (kind, _) =>
+        {
+            if (kind is EndingWrites.Settle or EndingWrites.Release)
+            {
+                settling.TrySetResult();
+                gate.Wait(Token);
+            }
+
+            return Task.CompletedTask;
+        };
+        using var database = StoppingDatabase(seen, clock, logs, writes);
+        for (var index = 0; index < 4; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        try
+        {
+            var drain = DrainWithAsync(database.Database.Services, stopping.Token);
+            await Eventually.CompletesAsync(delivering.Task);
+            var cancelled = stopping.CancelAsync();
+            await Eventually.CompletesAsync(settling.Task);
+
+            // The host's own cancellation is not held by the write either.
+            await Eventually.CompletesAsync(cancelled);
+            clock.Advance(TimeSpan.FromSeconds(3));
+            await Eventually.CompletesAsync(drain);
+
+            // Logged once the settle is given up, so once its token is cancelled.
+            await Eventually.HoldsAsync(() => logs.Count("SettleFailed") > 0);
+        }
+        finally
+        {
+            gate.Set();
+            handler.TrySetResult();
+        }
+
+        await Eventually.HoldsAsync(() => logs.Count("SettleFailed") == 4 && writes.Connections.Count == 0);
+        writes.Written.ShouldBeEmpty();
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 1 && row.LeaseOwner != null);
+
+        writes.Writing = null;
+        seen.Behavior = (_, _) => Task.CompletedTask;
+        clock.Advance(TimeSpan.FromMinutes(10));
+        (await DrainAsync(database.Database.Services)).ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task AFailureBeingWrittenWhenTheHostStopsIsWrittenAfterTheDeliveredRowsAreSettled()
+    {
+        var seen = new Seen();
+        var writes = new EndingWrites();
+        var answer = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var stopping = new CancellationTokenSource();
+        seen.Behavior = (_, _) => seen.Calls.Count == 1 ? Task.CompletedTask : throw new InvalidOperationException("Down.");
+        writes.Writing = async (kind, token) =>
+        {
+            if (kind == EndingWrites.Failure && !stopping.IsCancellationRequested)
+            {
+                await stopping.CancelAsync();
+                await answer.Task.WaitAsync(token);
+            }
+        };
+        using var database = StoppingDatabase(seen, new ManualTimeProvider(JobFixture.Start), new RecordingLogs(), writes);
+        for (var index = 0; index < 3; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        var drain = DrainWithAsync(database.Database.Services, stopping.Token);
+        try
+        {
+            await Eventually.CompletesAsync(drain);
+        }
+        finally
+        {
+            // So that a drain that never gives the write up fails the test rather than hangs it.
+            answer.TrySetResult();
+            await drain;
+            await Eventually.HoldsAsync(() => writes.Connections.Count == 0);
+        }
+
+        writes.Written.ShouldBe([EndingWrites.Settle, EndingWrites.Failure, EndingWrites.Release]);
+        var rows = database.Rows();
+        rows[0].Status.ShouldBe(OutboxStatus.Delivered);
+        (rows[1].Status, rows[1].Attempts, rows[1].LeaseOwner).ShouldBe((OutboxStatus.Pending, 1, null));
+        rows[1].LastError!.ShouldContain("Down.");
+        (rows[2].Status, rows[2].Attempts, rows[2].LeaseOwner).ShouldBe((OutboxStatus.Pending, 0, null));
+    }
+
+    // With one attempt a row, the sweep fails every row that keeps its lease, so each has to be given back.
+    [Theory]
+    [InlineData(EndingWrites.Settle, true)]
+    [InlineData(EndingWrites.Settle, false)]
+    [InlineData(EndingWrites.Failure, true)]
+    public async Task ASlowWriteBeforeTheReleaseLeavesItItsTurnSoNoUntriedRowIsDeadLettered(string slow, bool cancellable)
+    {
+        var seen = new Seen();
+        var writes = new EndingWrites();
+        var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var writing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new ManualResetEventSlim();
+        using var stopping = new CancellationTokenSource();
+        if (slow == EndingWrites.Settle)
+        {
+            StopAtTheSecondDelivery(seen, stopping);
+        }
+        else
+        {
+            seen.Behavior = (_, _) => throw new InvalidOperationException("Down.");
+        }
+
+        writes.Writing = async (kind, token) =>
+        {
+            if (kind != slow)
+            {
+                return;
+            }
+
+            await stopping.CancelAsync();
+            writing.TrySetResult();
+            if (cancellable)
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            }
+            else
+            {
+                gate.Wait(Token);
+            }
+        };
+        using var database = StoppingDatabase(seen, clock, logs, writes, cms => cms.Events.Outbox.MaxAttempts = 1);
+        for (var index = 0; index < 4; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        try
+        {
+            var drain = DrainWithAsync(database.Database.Services, stopping.Token);
+            await Eventually.CompletesAsync(writing.Task);
+            clock.Advance(TimeSpan.FromSeconds(1.5));
+            await Eventually.CompletesAsync(drain);
+        }
+        finally
+        {
+            gate.Set();
+            clock.Advance(TimeSpan.FromSeconds(3));
+            await Eventually.HoldsAsync(() => writes.Connections.Count == 0);
+        }
+
+        writes.Written.ShouldBe([EndingWrites.Release]);
+
+        // The sweep writes a failure too.
+        writes.Writing = null;
+        clock.Advance(TimeSpan.FromMinutes(10));
+        await database.Database.Services.GetRequiredService<OutboxDrainer>().SweepAsync(Token);
+
+        var rows = database.Rows();
+        rows[0].Status.ShouldBe(OutboxStatus.Failed);
+        rows.Skip(1).ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 0 && row.LeaseOwner == null);
+
+        seen.Behavior = (_, _) => Task.CompletedTask;
+        (await DrainAsync(database.Database.Services)).ShouldBe(3);
+    }
+
+    // The first owner waits on its handler later than the second's is called, so a cancellation in turn would reach it first.
+    // Its settle has a thread of its own; its release, when a failure left it nothing to settle, writes where it was told.
+    [Theory]
+    [InlineData(EndingWrites.Settle)]
+    [InlineData(EndingWrites.Release)]
+    public async Task AnOwnerWhoseWriteIsHeldDoesNotKeepTheStopFromTheHandlerOfAnother(string held)
+    {
+        var seen = new Seen();
+        var second = new SecondOwner();
+        var writes = new EndingWrites();
+        var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var delivering = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var handler = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new ManualResetEventSlim();
+        using var stopping = new CancellationTokenSource();
+        seen.Behavior = async (_, _) =>
+        {
+            if (seen.Calls.Count == 1)
+            {
+                await second.Entered.Task;
+                if (held == EndingWrites.Release)
+                {
+                    throw new InvalidOperationException("Down.");
+                }
+
+                return;
+            }
+
+            delivering.TrySetResult();
+            await handler.Task;
+        };
+        writes.Writing = (kind, _) =>
+        {
+            if (kind == held)
+            {
+                gate.Wait(Token);
+            }
+
+            return Task.CompletedTask;
+        };
+        using var database = StoppingDatabase(seen, clock, logs, writes, cms =>
+        {
+            cms.Services.AddSingleton(second);
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, SecondOwnerOutbox>("second-owner");
+        });
+        database.Database.Services.GetRequiredService<OutboxDrainer>().OwnerOf = name => name;
+        for (var index = 0; index < 2; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        var drain = DrainWithAsync(database.Database.Services, stopping.Token);
+        Task? cancelled = null;
+        try
+        {
+            await Eventually.CompletesAsync(delivering.Task);
+            cancelled = stopping.CancelAsync();
+            await Eventually.CompletesAsync(second.Told.Task);
+        }
+        finally
+        {
+            gate.Set();
+            handler.TrySetResult();
+            second.Told.TrySetResult();
+            if (cancelled is not null)
+            {
+                await cancelled;
+            }
+
+            await Eventually.CompletesAsync(drain, () => clock.Advance(TimeSpan.FromSeconds(1)));
+            await Eventually.HoldsAsync(() => writes.Connections.Count == 0);
+        }
+    }
+
+    // As Npgsql's does, which opens a socket to cancel, the provider's callback of the cancellation blocks.
+    [Theory]
+    [InlineData(EndingWrites.Read)]
+    [InlineData(EndingWrites.Release)]
+    public async Task TheDrainReturnsAtTheEndOfAStopThoughTheCallbackOfAProvidersCancellationBlocks(string held)
+    {
+        var seen = new Seen();
+        var writes = new EndingWrites();
+        var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var holding = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var answer = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new ManualResetEventSlim();
+        using var stopping = new CancellationTokenSource();
+        StopAtTheSecondDelivery(seen, stopping);
+        using var database = StoppingDatabase(seen, clock, logs, writes);
+        for (var index = 0; index < 4; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        writes.Writing = async (kind, token) =>
+        {
+            if (kind == held)
+            {
+                await using var blocking = token.Register(() => gate.Wait(Token));
+                holding.TrySetResult();
+                await answer.Task;
+            }
+        };
+
+        Task? cancelled = null;
+        try
+        {
+            var drain = DrainWithAsync(database.Database.Services, stopping.Token);
+            await Eventually.CompletesAsync(holding.Task);
+            cancelled = stopping.CancelAsync();
+            await Eventually.CompletesAsync(cancelled);
+
+            // The clock's timers fire on the thread that moves it, which no callback may hold either.
+            var moved = Task.Run(() => clock.Advance(TimeSpan.FromSeconds(3)), Token);
+            await Eventually.CompletesAsync(moved);
+            await Eventually.CompletesAsync(drain, () => clock.Advance(TimeSpan.FromSeconds(1)));
+        }
+        finally
+        {
+            gate.Set();
+            answer.TrySetResult();
+            if (cancelled is not null)
+            {
+                await cancelled;
+            }
+
+            await Eventually.HoldsAsync(() => writes.Connections.Count == 0);
+        }
+    }
+
     [Fact]
     public async Task ARowWhoseHandlerThisInstanceDoesNotHaveWaitsWithoutUsingAnAttempt()
     {
@@ -973,6 +1443,29 @@ public sealed class OutboxFailureTests
 
         database.Rows().ShouldHaveSingleItem().Status.ShouldBe(OutboxStatus.Delivered);
     }
+
+    private static void StopAtTheSecondDelivery(Seen seen, CancellationTokenSource stopping) =>
+        seen.Behavior = (_, _) =>
+        {
+            if (seen.Calls.Count == 1)
+            {
+                return Task.CompletedTask;
+            }
+
+            stopping.Cancel();
+            throw new OperationCanceledException(stopping.Token);
+        };
+
+    // A host that gives a stop three seconds, on a clock that only the test moves.
+    private static ServiceDatabase StoppingDatabase(Seen seen, ManualTimeProvider clock, RecordingLogs logs, EndingWrites writes, Action<FluentCMS.Core.DependencyInjection.FluentCmsBuilder>? more = null) =>
+        new(EventRegistrations.With(seen, Fast(cms =>
+        {
+            cms.Jobs.Options.ReleaseTimeout = TimeSpan.FromSeconds(3);
+            cms.Services.AddSingleton<TimeProvider>(clock);
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(writes, writes.Connections));
+            more?.Invoke(cms);
+        })));
 
     private static Task<int> DrainWithAsync(IServiceProvider instance, CancellationToken token) =>
         instance.GetRequiredService<OutboxDrainer>().DrainAsync(token);
