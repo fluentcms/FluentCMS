@@ -6,6 +6,7 @@ using FluentCMS.Agents;
 using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Events;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
@@ -475,9 +476,12 @@ internal static class ConnectEndpoints
     // session outlives its cookie; an end the browser stops waiting for still ends them.
     private static async Task EndSignInAsync(HttpContext context, AuthenticateResult cookie, bool members)
     {
+        var userId = SignedInUserId(context, cookie, members);
         await context.RequestServices.GetRequiredService<UserSessions>()
-            .EndAsync(SignedInUserId(context, cookie, members), CmsSignInManager.ServerSession(cookie.Properties!), CancellationToken.None);
+            .EndAsync(userId, CmsSignInManager.ServerSession(cookie.Properties!), CancellationToken.None);
         await context.SignOutAsync(members ? MemberAuthentication.CookieScheme : IdentityConstants.ApplicationScheme);
+        await context.RequestServices.GetRequiredService<SessionEvents>()
+            .SignInEndedAsync(context, members, userId, cookie.Principal!, SessionEndReasons.SignedOut);
     }
 
     private static string? SignedInUserId(HttpContext context, AuthenticateResult cookie, bool members) => members

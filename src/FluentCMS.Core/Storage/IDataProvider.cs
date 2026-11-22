@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace FluentCMS.Core.Storage;
 
@@ -57,10 +58,29 @@ public interface IDataProvider
 
     // Holds the database while one process applies its streams, for a provider whose own migrations lock lets two processes
     // apply the same migration; disposing it lets the next go. Null where EF's lock is enough.
+    // It waits for another process's lock until it is free or the token is cancelled; the runner bounds and logs the wait.
     Task<IAsyncDisposable?> LockMigrationsAsync(CancellationToken cancellationToken) => Task.FromResult<IAsyncDisposable?>(null);
+
+    // Takes EF's migrations lock before EF does, in the session of the context's connection, which it opens and keeps open until
+    // the handle is disposed, for a provider whose lock EF waits for no longer than a command may run; EF then takes it again in
+    // the same session at once. It waits as LockMigrationsAsync does. Null where EF's own wait is enough, and for a database
+    // that does not exist yet, which EF creates.
+    Task<IAsyncDisposable?> TakeMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<IAsyncDisposable?>(null);
 
     // The time written in the row of __EFMigrationsLock while one holds EF's migrations lock, as the database keeps it, for a
     // provider whose lock is that row, which a process that stops while it migrates leaves behind. Null when no row holds
     // it, and always where the lock ends with the session or transaction that took it.
     Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken);
+
+    // Begins a transaction on the context for a long read, such as an export, whose reads all see the database as it was at
+    // the first of them, and that keeps no writer waiting. Null where the database gives none; each read then sees what was
+    // committed when it ran.
+    Task<IDbContextTransaction?> BeginSnapshotAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<IDbContextTransaction?>(null);
+
+    // Locks the row of a site in cms_site to the end of the transaction of the context, so that a write that adds an entry to
+    // the site and the deletion of the site wait for each other: shared for the writes, which do not wait for one another,
+    // and exclusive for the deletion. False when there is no such site. The default reads the row without a lock, which is
+    // enough where the database has one writer.
+    Task<bool> LockSiteAsync(DbContext context, Guid site, bool exclusive, CancellationToken cancellationToken) =>
+        context.Set<Entities.Site>().AnyAsync(row => row.Id == site, cancellationToken);
 }

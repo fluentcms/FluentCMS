@@ -63,7 +63,7 @@ internal sealed class EventAdministration(
             throw new ValidationException([new ValidationError("handler", ValidationErrorCodes.Required, "Name the handler whose failed deliveries are removed.")]);
         }
 
-        var removed = await OutboxPruneJob.DeleteAsync(context, row => row.Status == OutboxStatus.Failed && row.Handler == handler, options.PruneBatchSize, cancellationToken);
+        var removed = await OutboxPruneJob.DeleteAsync(context, OutboxPruneJob.FailedOf(handler), options.PruneBatchSize, cancellationToken);
         if (removed > 0)
         {
             var entry = new ActivityEntry("event_delivery.purged")

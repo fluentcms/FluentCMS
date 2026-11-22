@@ -209,6 +209,25 @@ public sealed class HostMapTests : IAsyncLifetime
         }
     }
 
+    // #3306: the requests that find the map expired at once share one read of the host names.
+    [Fact]
+    public async Task RequestsThatFindTheMapExpiredAtOnceReadItOnce()
+    {
+        var map = _other.Host.Services.GetRequiredService<SiteHostMap>();
+        var name = HostName();
+        (await map.ResolveAsync(name, Token)).ShouldBeNull();
+
+        _other.Host.Time.Advance(SiteHostMap.CacheDuration);
+        _other.HostReads.Hold();
+        var requests = Enumerable.Range(0, 20).Select(_ => Task.Run(async () => await map.ResolveAsync(name, Token))).ToList();
+        await _other.HostReads.Entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        await Task.Delay(200, Token);
+        _other.HostReads.Release();
+
+        (await Task.WhenAll(requests)).ShouldAllBe(site => site == null);
+        _other.HostReads.Count.ShouldBe(1);
+    }
+
     private async Task DeleteLeavingTheHostsAsync(Guid site)
     {
         await using var scope = _writer.Host.Services.CreateAsyncScope();
@@ -232,12 +251,15 @@ public sealed class HostMapTests : IAsyncLifetime
             {
                 cms.Events.AddHandler<SiteUpdatedEvent, Recorder>();
                 cms.Services.ConfigureDbContext<CmsDbContext>(options => options.AddInterceptors(SiteReads));
+                cms.Services.ConfigureDbContext<PluginDbContext<MultiSitePlugin>>(options => options.AddInterceptors(HostReads));
             });
         }
 
         public List<SiteUpdatedEvent> Updates { get; } = [];
 
         public SiteReads SiteReads { get; } = new();
+
+        public HeldReads HostReads { get; } = new("cms_multi_site_host");
     }
 
     // The commands of core's context that read cms_site, counted for one call and none that runs beside it.
@@ -280,6 +302,39 @@ public sealed class HostMapTests : IAsyncLifetime
         {
             updates.Add(message);
             return ValueTask.CompletedTask;
+        }
+    }
+
+    // Counts the reads of one table once held, and keeps each waiting until released, so that whatever reads it while one
+    // read is under way is seen.
+    private sealed class HeldReads(string table) : DbCommandInterceptor
+    {
+        private TaskCompletionSource? _release;
+        private int _count;
+
+        public TaskCompletionSource Entered { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int Count => Volatile.Read(ref _count);
+
+        public void Hold()
+        {
+            _count = 0;
+            Entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+
+        public void Release() => Interlocked.Exchange(ref _release, null)?.TrySetResult();
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (Volatile.Read(ref _release) is { } release && command.CommandText.Contains(table, StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref _count);
+                Entered.TrySetResult();
+                await release.Task;
+            }
+
+            return result;
         }
     }
 }

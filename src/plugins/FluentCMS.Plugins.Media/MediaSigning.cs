@@ -121,7 +121,7 @@ internal sealed class MediaSigning(
         {
             MediaLog.SigningKeyUnreadable(logger, exception);
             throw new InvalidOperationException(
-                $"The media signing key in {MediaModel.SigningKeyTable} was protected with a Data Protection key this instance does not have. Restore the key ring, set {MediaOptions.Section}:SigningKey, or delete the row to create a new key, which invalidates every signed URL.",
+                $"The media signing key in {MediaModel.SigningKeyTable} was protected with a Data Protection key this instance does not have. Restore the key ring, set {MediaOptions.Section}:SigningKey, or delete its row, the one with id {KeyId}, to create a new key, which invalidates every signed URL.",
                 exception);
         }
     }

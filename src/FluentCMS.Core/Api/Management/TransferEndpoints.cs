@@ -28,6 +28,7 @@ internal static class TransferEndpoints
     private static readonly string[] ZipTypes = [ZipType, "application/x-zip-compressed", "application/octet-stream"];
     private static readonly string[] Flags = ["true", "false"];
     private static readonly string[] MissingLocales = ["refuse", "skip"];
+    private static readonly string[] Authors = ["keep", "importer"];
 
     public static IServiceCollection AddManagementTransferApi(this IServiceCollection services) =>
         services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Management, Map);
@@ -45,6 +46,7 @@ internal static class TransferEndpoints
                 QueryParameter.OneOf("dryRun", Flags, "true runs every step of the import, the content hooks included, and writes nothing, so the report is the one the import would give; a hook that acts outside the database, such as one that calls another service, acts in a dry run too."),
                 QueryParameter.OneOf("overwrite", Flags, "true takes the package's copy of an entry that is newer in the instance, which is otherwise a conflict."),
                 QueryParameter.OneOf("missingLocales", MissingLocales, "skip leaves out the locales of the package that the site does not allow, which otherwise refuse the import."),
+                QueryParameter.OneOf("authors", Authors, "importer records the caller as the creator of the entries the import creates and as the updater of what it writes; keep, the default, keeps the authors of the package."),
                 QueryParameter.OneOf("webhooks", Flags, "true delivers the webhooks of what the import writes, which are otherwise not delivered."),
                 QueryParameter.OneOf("roles", Flags, "true imports the roles of the package too."),
                 QueryParameter.Text("types", "The content types to import, separated by commas; every type of the package when left out. A caller with transfer.manage in the site only names the types it may import: an export has a file for every global type, empty or not, and importing one needs transfer.manage for the instance."),
@@ -164,6 +166,7 @@ internal static class TransferEndpoints
             DryRun = Flag(request, "dryRun"),
             Overwrite = Flag(request, "overwrite"),
             SkipMissingLocales = ManagementQuery.Text(request, "missingLocales") is { } missing && Choice(missing, "missingLocales", MissingLocales) == "skip",
+            AuthorsFromImporter = ManagementQuery.Text(request, "authors") is { } authors && Choice(authors, "authors", Authors) == "importer",
             Webhooks = Flag(request, "webhooks"),
             Roles = Flag(request, "roles"),
             Types = ManagementQuery.Text(request, "types")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),

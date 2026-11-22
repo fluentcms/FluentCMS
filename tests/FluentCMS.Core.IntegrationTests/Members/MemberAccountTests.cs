@@ -648,6 +648,12 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
         (await fixture.RefreshAsync(tokens.Json["refresh_token"]!.GetValue<string>(), MemberFixture.DirectClientId)).Status.ShouldBe(HttpStatusCode.BadRequest);
         (await fixture.DirectLoginAsync(address, MemberFixture.NewPassword)).Status.ShouldBe(HttpStatusCode.OK);
 
+        // The end of its sessions is an activity row of the member, with no token in it (#3207).
+        var ended = (await fixture.ActivityAsync("member.sessions_ended", (await fixture.MemberIdAsync(address)).ToString("D"))).ShouldHaveSingleItem();
+        ended.ActorType.ShouldBe(PrincipalKind.Member);
+        JsonSerializer.Deserialize<Dictionary<string, string?>>(ended.Details!)!["reason"].ShouldBe(SessionEndReasons.PasswordChanged);
+        ended.Details!.ShouldNotContain(tokens.Json["refresh_token"]!.GetValue<string>());
+
         // The fifth wrong one locks the member out, and then even the right one is refused with the same answer.
         var next = await fixture.DirectLoginAsync(address, MemberFixture.NewPassword);
         using var again = fixture.Bearer(next.Json["access_token"]!.GetValue<string>());

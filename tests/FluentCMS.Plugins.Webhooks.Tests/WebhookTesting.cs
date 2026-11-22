@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Health;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -19,8 +20,9 @@ using Xunit;
 namespace FluentCMS.Plugins.Webhooks.Tests;
 
 // A host whose job runner has no workers, so that a test runs the outbox and the jobs itself, and the clock moves only
-// when the test moves it. Its maintenance runs once, at the start, so that no recurring job the moved clock made due joins
-// the jobs a test runs.
+// when the test moves it. The clock's timers stay real, so with a maintenance interval of a day the runner's maintenance
+// takes one turn, at the start, which fires the recurring jobs that are due when it reads the clock. A test that moves the
+// clock waits for that turn first (MaintainedAsync), or a late turn fires what the move made due, webhooks.queue among them.
 internal static class WebhookTesting
 {
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
@@ -59,15 +61,15 @@ internal static class WebhookTesting
 
     public static Guid Id(JsonNode node, string name = "id") => Guid.Parse(node[name]!.GetValue<string>());
 
-    // Rounds of the outbox and the due jobs until neither has anything left.
+    // Rounds of the outbox and the due jobs until neither has anything left. Counts the deliveries, as RunDueJobsAsync does.
     public static async Task<int> PumpAsync(FluentCmsTestHost host)
     {
         var jobs = 0;
         for (var round = 0; round < 20; round++)
         {
             var delivered = await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
-            var ran = await RunDueJobsAsync(host);
-            jobs += ran;
+            var (ran, counted) = await RunDueAsync(host, []);
+            jobs += counted;
             if (delivered == 0 && ran == 0)
             {
                 break;
@@ -77,23 +79,57 @@ internal static class WebhookTesting
         return jobs;
     }
 
-    public static async Task<int> RunDueJobsAsync(FluentCmsTestHost host)
+    // Runs every due job and counts the deliveries among them, or the jobs of the types given, so that a recurring job of
+    // core that is due does not change the count (#3409).
+    public static async Task<int> RunDueJobsAsync(FluentCmsTestHost host, params string[] types) => (await RunDueAsync(host, types)).Counted;
+
+    private static async Task<(int Ran, int Counted)> RunDueAsync(FluentCmsTestHost host, string[] types)
     {
-        var ran = 0;
+        string[] counting = types.Length > 0 ? types : [WebhookDeliveryJob.Type];
+        var (ran, counted) = (0, 0);
         while (true)
         {
             var round = 0;
             foreach (var queue in (string[])[JobRunnerOptions.DefaultQueue, WebhookDeliveryJob.Queue])
             {
-                round += await RunNextAsync(host, queue) ? 1 : 0;
+                if (await RunNextOfAsync(host, queue) is { } type)
+                {
+                    round++;
+                    counted += counting.Contains(type) ? 1 : 0;
+                }
             }
 
             if (round == 0)
             {
-                return ran;
+                return (ran, counted);
             }
 
             ran += round;
+        }
+    }
+
+    // Runs the next due job of the queue, if there is one, and gives its type.
+    private static async Task<string?> RunNextOfAsync(FluentCmsTestHost host, string queue)
+    {
+        if (await host.Services.GetRequiredService<JobStore>().ClaimAsync(queue, "test", Token) is not { } job)
+        {
+            return null;
+        }
+
+        await host.Services.GetRequiredService<JobExecutor>().RunAsync(job);
+        return job.Type;
+    }
+
+    // Completes when the maintenance turn at the start has ended. Its last step measures the queues, which leaves
+    // JobRunnerPulse.OldestPending with an entry for each queue of the options.
+    public static async Task MaintainedAsync(FluentCmsTestHost host)
+    {
+        var pulse = host.Services.GetRequiredService<JobRunnerPulse>();
+        using var patience = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        patience.CancelAfter(Patience);
+        while (pulse.OldestPending.Count == 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), patience.Token);
         }
     }
 

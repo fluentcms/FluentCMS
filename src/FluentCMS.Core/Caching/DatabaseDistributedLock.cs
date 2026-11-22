@@ -1,3 +1,4 @@
+using System.Data.Common;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Providers;
@@ -10,7 +11,7 @@ namespace FluentCMS.Core.Caching;
 // The default IDistributedLock, on cms_lock. A holder has a lease that it renews while it holds the lock, so one that
 // stopped without releasing it blocks the others until the lease runs out. Every write is conditional on the row as the
 // writer expects it, so of two that try at once one wins; a wait reads the row and writes nothing while it is held.
-internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeProvider time, ILogger<DatabaseDistributedLock> logger) : IDistributedLock
+internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeProvider time, ILogger<DatabaseDistributedLock> logger, LeaseRenewalInterceptor renewals) : IDistributedLock
 {
     private static readonly TimeSpan FirstPoll = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan LongestPoll = TimeSpan.FromSeconds(1);
@@ -247,35 +248,98 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
                 .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null));
     }
 
+    // Inside a write transaction of the host as it commits, on its connection; null when the holder no longer has the lock,
+    // which its renewals then find.
+    private DateTimeOffset? RenewWithin(DbTransaction transaction, string name, string holder)
+    {
+        using var scope = scopes.CreateScope();
+        var until = StorageConventions.ToMicroseconds(time.GetUtcNow() + Lease);
+        var renewed = Joined(scope.ServiceProvider, transaction).Set<LockRow>()
+            .Where(row => row.Name == name && row.Owner == holder)
+            .ExecuteUpdate(row => row.SetProperty(column => column.LeaseUntil, until));
+        return renewed == 1 ? until : null;
+    }
+
+    private async Task<DateTimeOffset?> RenewWithinAsync(DbTransaction transaction, string name, string holder)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var until = StorageConventions.ToMicroseconds(time.GetUtcNow() + Lease);
+        var renewed = await Joined(scope.ServiceProvider, transaction).Set<LockRow>()
+            .Where(row => row.Name == name && row.Owner == holder)
+            .ExecuteUpdateAsync(row => row.SetProperty(column => column.LeaseUntil, until), CancellationToken.None);
+        return renewed == 1 ? until : null;
+    }
+
+    private static SystemDbContext Joined(IServiceProvider services, DbTransaction transaction)
+    {
+        var context = services.GetRequiredService<SystemDbContext>();
+        context.Database.SetDbConnection(transaction.Connection, contextOwnsConnection: false);
+        context.Database.UseTransaction(transaction);
+        return context;
+    }
+
     private ILogger Logger => logger;
+
+    private LeaseRenewalInterceptor Renewals => renewals;
 
     private DateTimeOffset Now() => time.GetUtcNow();
 
     private Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken) => Task.Delay(delay, time, cancellationToken);
 
-    private sealed class Handle : IDistributedLockHandle
+    internal sealed class Handle : IDistributedLockHandle
     {
         private readonly DatabaseDistributedLock _owner;
         private readonly string _holder;
         private readonly CancellationTokenSource _lost = new();
         private readonly CancellationTokenSource _stopping = new();
         private readonly Task _renewal;
-        private DateTimeOffset _leaseUntil;
+
+        // In UTC ticks, since the host's commits renew it as well as the renewal loop.
+        private long _leaseUntil;
         private int _disposed;
 
         public Handle(DatabaseDistributedLock owner, string name, string holder, DateTimeOffset leaseUntil)
         {
             _owner = owner;
             _holder = holder;
-            _leaseUntil = leaseUntil;
+            _leaseUntil = leaseUntil.UtcTicks;
             Name = name;
             Lost = _lost.Token;
+            _owner.Renewals.Add(this);
             _renewal = Task.Run(RenewAsync, CancellationToken.None);
         }
 
         public string Name { get; }
 
         public CancellationToken Lost { get; }
+
+        // Half the lease has passed, which the renewals every third of it leave only while they wait for the writer.
+        public bool RenewalDue => _owner.Now().UtcTicks >= Interlocked.Read(ref _leaseUntil) - _owner.Lease.Ticks / 2;
+
+        // A commit goes on whatever the renewal inside it does; the renewal loop tries again.
+        public void RenewWithin(DbTransaction transaction)
+        {
+            try
+            {
+                Renewed(_owner.RenewWithin(transaction, Name, _holder));
+            }
+            catch (Exception exception)
+            {
+                LockLog.RenewFailed(_owner.Logger, exception, Name);
+            }
+        }
+
+        public async Task RenewWithinAsync(DbTransaction transaction)
+        {
+            try
+            {
+                Renewed(await _owner.RenewWithinAsync(transaction, Name, _holder));
+            }
+            catch (Exception exception)
+            {
+                LockLog.RenewFailed(_owner.Logger, exception, Name);
+            }
+        }
 
         public async ValueTask DisposeAsync()
         {
@@ -284,6 +348,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
                 return;
             }
 
+            _owner.Renewals.Remove(this);
             await _stopping.CancelAsync();
             await _renewal;
 
@@ -340,7 +405,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
                         return;
                     }
 
-                    _leaseUntil = until.Value;
+                    Renewed(until);
                 }
                 catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
                 {
@@ -355,7 +420,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
                 catch (Exception exception)
                 {
                     LockLog.RenewFailed(_owner.Logger, exception, Name);
-                    if (_owner.Now() >= _leaseUntil)
+                    if (_owner.Now().UtcTicks >= Interlocked.Read(ref _leaseUntil))
                     {
                         await LoseAsync("its lease ran out");
                         return;
@@ -364,8 +429,17 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
             }
         }
 
+        private void Renewed(DateTimeOffset? until)
+        {
+            if (until is { } value)
+            {
+                Interlocked.Exchange(ref _leaseUntil, value.UtcTicks);
+            }
+        }
+
         private async Task LoseAsync(string reason)
         {
+            _owner.Renewals.Remove(this);
             LockLog.Lost(_owner.Logger, Name, reason);
             await _lost.CancelAsync();
         }

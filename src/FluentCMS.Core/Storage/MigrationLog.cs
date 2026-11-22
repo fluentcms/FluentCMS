@@ -16,6 +16,9 @@ internal static partial class MigrationLog
     [LoggerMessage(EventId = 9304, Level = LogLevel.Warning, Message = "{Key} is Auto, but schema sync runs only in Development on SQLite, or where the host allows it with AllowSchemaSyncOutsideDevelopment; the content stream applies instead.")]
     public static partial void SchemaSyncRefused(ILogger logger, string key);
 
-    [LoggerMessage(EventId = 9305, Level = LogLevel.Warning, Message = "The {Stream} stream waits for EF Core's migrations lock, the row of __EFMigrationsLock written at {Written}; this is logged once, and the wait fails after {Minutes} minutes; {Fix}.")]
-    public static partial void WaitingForMigrationsLock(ILogger logger, string stream, string written, double minutes, string fix);
+    [LoggerMessage(EventId = 9305, Level = LogLevel.Warning, Message = "The {Stream} stream waits for {Lock}; this is logged once, and the wait fails after {Minutes} minutes; {Fix}.")]
+    public static partial void WaitingForMigrationsLock(ILogger logger, string stream, string @lock, double minutes, string fix);
+
+    [LoggerMessage(EventId = 9306, Level = LogLevel.Warning, Message = "The {Stream} stream has applied its baseline {Baseline} but lacks the indexes {Indexes}, which a later build added to it. The host starts, and what they serve reads more rows; a preview does not upgrade a database, so recreate it (on SQLite, delete its file) and apply the migrations again to get them.")]
+    public static partial void BaselineIndexesMissing(ILogger logger, string stream, string baseline, string indexes);
 }

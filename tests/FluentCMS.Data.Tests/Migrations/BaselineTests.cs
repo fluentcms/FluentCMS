@@ -3,6 +3,7 @@ using FluentCMS.Core.Commands;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Plugins;
 using FluentCMS.Core.Storage;
+using FluentCMS.Data.Tests.Identity;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Plugins.AiAssist;
 using FluentCMS.Plugins.Mcp;
@@ -14,6 +15,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 
@@ -49,7 +51,7 @@ public sealed partial class BaselineTests : IDisposable
     private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name"), ("cms_media_asset", "owns_file"), ("cms_media_asset", "version"), ("cms_search_entry", "field"), ("cms_ai_usage", "principal_name")];
 
     // Indexes added the same way, by the prefix of their catalog lines.
-    private static readonly string[] IndexesAddedToTheBaseline = ["index:cms_media_asset.ix_cms_media_asset_site_owns_file:", "index:cms_webhooks_delivery.ix_cms_webhooks_delivery_queued:", "index:cms_job.ix_cms_job_status_completed:", "index:cms_outbox.ix_cms_outbox_failed:", "index:cms_outbox.ix_cms_outbox_handler_pending:"];
+    private static readonly string[] IndexesAddedToTheBaseline = ["index:cms_media_asset.ix_cms_media_asset_site_owns_file:", "index:cms_webhooks_delivery.ix_cms_webhooks_delivery_queued:", "index:cms_job.ix_cms_job_status_completed:", "index:cms_outbox.ix_cms_outbox_failed:", "index:cms_outbox.ix_cms_outbox_handler_pending:", "index:cms_outbox.ix_cms_outbox_failed_available_at:", "index:cms_outbox.ix_cms_outbox_failed_handler:"];
 
     // The keys, in order with their directions, and the filter of the core indexes added to the baseline, as every provider's
     // catalog line reads once quotes, brackets, parentheses, casts and spaces are taken out.
@@ -58,13 +60,24 @@ public sealed partial class BaselineTests : IDisposable
         ("index:cms_job.ix_cms_job_status_completed:", "status,completed_atdesc,id", null),
         ("index:cms_outbox.ix_cms_outbox_failed:", "sequencedesc,id", "status='failed'"),
         ("index:cms_outbox.ix_cms_outbox_handler_pending:", "handler,sequence,id", "status='pending'"),
+        ("index:cms_outbox.ix_cms_outbox_failed_available_at:", "available_at,attempts", "status='failed'"),
+        ("index:cms_outbox.ix_cms_outbox_failed_handler:", "handler", "status='failed'"),
     ];
 
     private static string Normalized(string line) =>
         new([.. line.Replace("::text", "", StringComparison.Ordinal).ToLowerInvariant().Where(character => character is not ('"' or '[' or ']' or '(' or ')' or ' ' or '`'))]);
 
-    // Indexes whose columns the baseline changed, each with a column the baseline's has and the chain's does not.
-    private static readonly (string Index, string Column)[] IndexesChangedInTheBaseline = [("index:cms_search_entry.ux_cms_search_entry_document:", "field")];
+    // Indexes the baseline changed, each with a column the baseline's has and the chain's does not, and the whole line of the
+    // baseline's on the provider of the run, so that its uniqueness and its other columns are held too.
+    private static readonly (string Index, string Column, string Line)[] IndexesChangedInTheBaseline =
+    [
+        ("index:cms_search_entry.ux_cms_search_entry_document:", "field", TestProvider.Name switch
+        {
+            TestProvider.Sqlite => "createuniqueindexux_cms_search_entry_documentoncms_search_entrydocument_id,locale,state,field",
+            TestProvider.PostgreSql => "createuniqueindexux_cms_search_entry_documentonpublic.cms_search_entryusingbtreedocument_id,locale,state,field",
+            _ => "nonclustered:unique=1:pk=0:constraint=0:filter=:keys=document_id,locale,state,field:include=",
+        }),
+    ];
 
     // The chain raised the stamp of the Author role when it changed that role's seeded grants, so that a cached grant was
     // read again; the baseline seeds every role at its first stamp.
@@ -321,6 +334,66 @@ public sealed partial class BaselineTests : IDisposable
         DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
     }
 
+    // An index folded into the baseline later, as ix_cms_job_status_completed (#3285), only makes what it serves read more
+    // rows, so a database without it starts and the index is named (#3407). One made by the baseline names none.
+    [Fact]
+    public async Task ADatabaseOfAnEarlierBuildOfTheBaselineThatLacksAnIndexStartsAndNamesIt()
+    {
+        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => Array.ForEach(Streams, stream => stream.Add(cms))))
+        {
+            await built.StartAsync(Token);
+            await built.StopAsync(Token);
+        }
+
+        // The start that makes the database compares no index, since its migrations are still pending when it checks.
+        var healthy = new CapturedLogs();
+        using (var untouched = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms =>
+        {
+            Array.ForEach(Streams, stream => stream.Add(cms));
+            cms.Services.AddSingleton<ILoggerProvider>(healthy);
+        }))
+        {
+            await untouched.StartAsync(Token);
+            await untouched.StopAsync(Token);
+        }
+
+        healthy.Messages.ShouldNotContain(message => message.Contains("but lacks the indexes", StringComparison.Ordinal));
+
+        const string index = "ix_cms_job_status_completed";
+        _database.Execute(TestProvider.IsSqlServer ? $"drop index {TestProvider.Quote(index)} on {TestProvider.Quote("cms_job")}" : $"drop index {TestProvider.Quote(index)}");
+        var logs = new CapturedLogs();
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.Services.AddSingleton<ILoggerProvider>(logs));
+
+        await host.StartAsync(Token);
+        await host.StopAsync(Token);
+
+        logs.Messages.ShouldContain(message => message.StartsWith($"The system stream has applied its baseline {BaselineOf<SystemDbContext>(host.Services)} but lacks the indexes {index}, which a later build", StringComparison.Ordinal));
+    }
+
+    // A unique index that is missing would let in rows the model refuses, so it is refused with the columns.
+    [Fact]
+    public async Task ADatabaseOfAnEarlierBuildOfTheBaselineThatLacksAUniqueIndexIsRefused()
+    {
+        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production))
+        {
+            await built.StartAsync(Token);
+            await built.StopAsync(Token);
+        }
+
+        const string index = "uq_cms_schedule_pending";
+        _database.Execute(TestProvider.IsSqlServer ? $"drop index {TestProvider.Quote(index)} on {TestProvider.Quote("cms_schedule")}" : $"drop index {TestProvider.Quote(index)}");
+        var before = DatabaseCatalog.Of(_database, historyRows: true);
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production);
+        var refusal = $"FCMS1308: stream system has applied its baseline {BaselineOf<SystemDbContext>(host.Services)} but lacks index {index}; " +
+            "nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
+
+        exception.Code.ShouldBe("FCMS1308");
+        exception.Message.ShouldBe(refusal);
+        DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
+    }
+
     private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
 
     private const string WhatToDo = "nothing was applied: the database was made by the migrations from before the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";
@@ -381,7 +454,7 @@ public sealed partial class BaselineTests : IDisposable
             result[at] = DefaultValue().Replace(result[at], "");
         }
 
-        foreach (var (index, column) in IndexesChangedInTheBaseline)
+        foreach (var (index, column, _) in IndexesChangedInTheBaseline)
         {
             result.ShouldContain(line => line.StartsWith(index, StringComparison.Ordinal) && !line.Contains(column, StringComparison.Ordinal), index);
             result.RemoveAll(line => line.StartsWith(index, StringComparison.Ordinal));
@@ -413,9 +486,9 @@ public sealed partial class BaselineTests : IDisposable
             catalog.Any(line => line.StartsWith(added, StringComparison.Ordinal)).ShouldBeTrue(added);
         }
 
-        foreach (var (index, column) in IndexesChangedInTheBaseline)
+        foreach (var (index, _, expected) in IndexesChangedInTheBaseline)
         {
-            catalog.ShouldContain(line => line.StartsWith(index, StringComparison.Ordinal) && line.Contains(column, StringComparison.Ordinal), index);
+            Normalized(catalog.Single(line => line.StartsWith(index, StringComparison.Ordinal))).ShouldBe(index + expected, index);
         }
 
         return [.. catalog.Where(line => !TablesAddedToTheBaseline.Any(table => OfTable(line, table)) && !ColumnsAddedToTheBaseline.Any(added => OfColumn(line, added.Table, added.Column)) && !IndexesAddedToTheBaseline.Any(added => line.StartsWith(added, StringComparison.Ordinal)) && !IndexesChangedInTheBaseline.Any(changed => line.StartsWith(changed.Index, StringComparison.Ordinal)))];

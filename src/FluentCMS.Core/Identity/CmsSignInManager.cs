@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Claims;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Identity.Sso;
 using FluentCMS.Events;
@@ -101,6 +102,8 @@ internal sealed class CmsSignInManager(
         else
         {
             await context.RequestServices.GetRequiredService<UserSessions>().EndAsync(previous, serverSession, CancellationToken.None);
+            await context.RequestServices.GetRequiredService<SessionEvents>().SignInEndedAsync(
+                context, scheme == MemberAuthentication.CookieScheme, previous, live.Principal!, SessionEndReasons.Replaced, bySystem: true);
         }
     }
 
@@ -190,7 +193,10 @@ internal sealed class CmsSignInManager(
         MarkSignIn(properties, time);
         if (claims.Exists(claim => claim.Type == Claims.AuthenticationMethodReference && claim.Value == TokenClaims.MultiFactor))
         {
-            await Context.RequestServices.GetRequiredService<UserSessions>().EndSingleFactorAsync(user.Id.ToString("D"), ServerSession(properties), CancellationToken.None);
+            if (await Context.RequestServices.GetRequiredService<UserSessions>().EndSingleFactorAsync(user.Id.ToString("D"), ServerSession(properties), CancellationToken.None) > 0)
+            {
+                await Context.RequestServices.GetRequiredService<SessionEvents>().SignInEndedAsync(Context, members: false, user.Id, user.UserName ?? "", SessionEndReasons.SecondFactor);
+            }
         }
 
         await base.SignInWithClaimsAsync(user, properties, claims);
