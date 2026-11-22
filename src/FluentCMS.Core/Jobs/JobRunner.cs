@@ -15,7 +15,7 @@ internal sealed class JobRunner(
     TimeProvider time,
     ILogger<JobRunner> logger) : IJobRunner, IDisposable
 {
-    private static readonly TimeSpan DisposeWait = TimeSpan.FromSeconds(5);
+    internal static readonly TimeSpan DisposeWait = TimeSpan.FromSeconds(5);
 
     private readonly CancellationTokenSource _stopping = new();
 

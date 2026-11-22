@@ -319,6 +319,56 @@ public sealed class SiteLocaleModel : IPluginModelContributor
     public void Configure(ModelBuilder modelBuilder) => modelBuilder.Entity<SampleNote>().ToTable("cms_site_locale");
 }
 
+// Its model gives the name the test sets to what the test names, on the test's own flow, and its own names to the rest.
+[FluentCmsPlugin("long", SdkRange = "[1.0.0,2.0.0)")]
+public sealed class LongNamePlugin : IPlugin
+{
+    public static readonly AsyncLocal<(string Named, string Name)> Naming = new();
+
+    public void ConfigureServices(IPluginServiceBuilder plugin) => plugin.AddModel<LongNameModel>();
+
+    public void Configure(IPluginAppBuilder app)
+    {
+    }
+}
+
+public sealed class LongNamedNote
+{
+    public Guid Id { get; set; }
+
+    public Guid? ParentId { get; set; }
+}
+
+public sealed class LongNameModel : IPluginModelContributor
+{
+    public void Configure(ModelBuilder modelBuilder)
+    {
+        var (named, given) = LongNamePlugin.Naming.Value;
+        string Name(string what, string otherwise) => named == what ? given : otherwise;
+
+        modelBuilder.Entity<LongNamedNote>(note =>
+        {
+            note.ToTable(Name("table", "cms_long_note"), table =>
+            {
+                table.HasCheckConstraint(Name("check constraint", "ck_cms_long_note_parent"), "parent_id <> id");
+                if (named == "table column")
+                {
+                    table.Property(item => item.ParentId).HasColumnName(given);
+                }
+            });
+            note.HasKey(item => item.Id).HasName(Name("key", "pk_cms_long_note"));
+            note.Property(item => item.Id).HasColumnName("id");
+            note.Property(item => item.ParentId).HasColumnName(Name("column", "parent_id"));
+            note.HasOne<LongNamedNote>().WithMany().HasForeignKey(item => item.ParentId).HasConstraintName(Name("foreign key", "fk_cms_long_note_parent"));
+            note.HasIndex(item => item.ParentId).HasDatabaseName(Name("index", "ix_cms_long_note_parent"));
+            note.HasIndex(item => new { item.Id, item.ParentId }, Name("named index", "ix_cms_long_note_id_parent"));
+
+            // Named by EF: IX_cms_long_note_parent_id_id, or after the table and the column the test names.
+            note.HasIndex(item => new { item.ParentId, item.Id });
+        });
+    }
+}
+
 [FluentCmsPlugin("required", SdkRange = "[1.0.0,2.0.0)")]
 public sealed class RequiredReferencePlugin : IPlugin
 {

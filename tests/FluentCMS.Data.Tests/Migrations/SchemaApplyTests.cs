@@ -154,6 +154,33 @@ public sealed partial class SchemaApplyTests : IDisposable
         }
     }
 
+    // The content model cannot declare an index with an expression key, so schema apply keeps one made by hand, as it did
+    // while the PostgreSQL reader did not list it, and still drops one of plain columns that the model lacks (#3530).
+    [Fact]
+    public async Task AnIndexOfAnExpressionMadeByHandIsKeptAndOneOfColumnsIsDropped()
+    {
+        Assert.SkipWhen(TestProvider.IsSqlServer, "SQL Server indexes no expression.");
+        await MigrateAndApplyAsync(ArticleSchemas.Titled);
+        _database.Execute("create index ix_hand_lower on cms_article (lower(title))");
+        _database.Execute("create index ix_hand_title on cms_article (title)");
+
+        var (exitCode, output, error) = await RunAsync(ArticleSchemas.Titled, "schema", "apply");
+
+        exitCode.ShouldBe(0, error);
+        output.ShouldContain("  drop index ix_hand_title from table cms_article");
+        output.ShouldNotContain("ix_hand_lower");
+        (await RunAsync(ArticleSchemas.Titled, "schema", "apply")).Output.ShouldStartWith("Nothing to apply;");
+
+        using var host = Host(ArticleSchemas.Titled);
+        using var scope = host.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        await context.Database.OpenConnectionAsync(Token);
+        var database = await scope.ServiceProvider.GetRequiredService<IDataProvider>().SchemaReader.ReadAsync(context.Database.GetDbConnection(), Token);
+        var indexes = database.Tables["cms_article"].Indexes.Select(index => index.Name).ToList();
+        indexes.ShouldContain("ix_hand_lower");
+        indexes.ShouldNotContain("ix_hand_title");
+    }
+
     // The column is renamed and then altered. SQLite's text has no length, so there only its nullability changes.
     [Fact]
     public async Task ARenamedFieldWhoseColumnAlsoChangesKeepsItsValues()

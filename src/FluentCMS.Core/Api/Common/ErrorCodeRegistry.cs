@@ -102,6 +102,7 @@ public static class ErrorCodeRegistry
         Startup(PluginErrorCodes.RequiredFieldReference, "Required field reference"),
         Startup(PluginErrorCodes.InvalidProtectedResource, "Invalid protected resource"),
         Startup(PluginErrorCodes.InvalidFieldTypeName, "Invalid field type name"),
+        Startup(PluginErrorCodes.NameTooLong, "Plugin storage name too long"),
         new(PluginErrorCodes.PluginDisabled, StatusCodes.Status404NotFound, "Plugin not enabled"),
         new(PluginErrorCodes.PluginNotFound, StatusCodes.Status404NotFound, "Plugin not found"),
 

@@ -424,7 +424,9 @@ internal sealed partial class ContentSchemaDiff
             }
         }
 
-        foreach (var extra in existing.Indexes.Where(index => !wanted.Any(other => Same(other.Name, index.Name))))
+        // An index with a key that is an expression is not one the content model can declare, so it was made by hand and is
+        // kept, as it was while the PostgreSQL reader did not list it (#3530).
+        foreach (var extra in existing.Indexes.Where(index => !wanted.Any(other => Same(other.Name, index.Name)) && !index.Columns.Contains("")))
         {
             var description = $"drop index {extra.Name} from table {table}";
             _notApplied.Add(description);
