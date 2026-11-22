@@ -80,6 +80,10 @@ internal sealed record TransferImportRequest
 
     public bool SkipMissingLocales { get; init; }
 
+    // authors=importer: the caller is recorded as the creator of what the import creates and as the updater of what it
+    // writes, in place of the authors of the package, which the instance may not have or which own-entries rules key on.
+    public bool AuthorsFromImporter { get; init; }
+
     public bool Webhooks { get; init; }
 
     public bool Roles { get; init; }

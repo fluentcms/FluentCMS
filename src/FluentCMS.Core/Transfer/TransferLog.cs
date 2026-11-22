@@ -31,4 +31,7 @@ internal static partial class TransferLog
 
     [LoggerMessage(EventId = 9188, Level = LogLevel.Warning, Message = "{Code}: import into site {Site} stopped at a bound of its package: {Detail}")]
     public static partial void ImportRefused(ILogger logger, string code, Guid site, string detail);
+
+    [LoggerMessage(EventId = 9189, Level = LogLevel.Warning, Message = "Export of site {Site} reads its entries without a snapshot, which the database does not give (on SQL Server, ALLOW_SNAPSHOT_ISOLATION is off); a save during the export may be in it in part.")]
+    public static partial void ExportWithoutSnapshot(ILogger logger, Guid site);
 }

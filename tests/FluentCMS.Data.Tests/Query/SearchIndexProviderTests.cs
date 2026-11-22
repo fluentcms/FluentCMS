@@ -29,7 +29,8 @@ public sealed class SearchIndexProviderTests : IDisposable
             .Localized()
             .Field("title", "text", field => field.Required().Localizable().Searchable())
             .Field("body", "richText", field => field.Localizable().Searchable())
-            .Field("notes", "text"))
+            .Field("notes", "text")
+            .Field("internal", "text", field => field.Searchable().Hidden()))
         .AddCollection("tag", type => type.Scope(ContentScope.Global).Field("name", "text", field => field.Searchable()))
         .Build();
 
@@ -161,6 +162,46 @@ public sealed class SearchIndexProviderTests : IDisposable
         (await FindAsync("quarterly")).ShouldBe([article]);
     }
 
+    // A field that was searchable and is hidden now, whose rows stay until the entry is written again: they match for no
+    // caller, whether the request names the field or not.
+    [Fact]
+    public async Task TheRowsOfASearchableFieldThatIsNowHiddenNeverMatch()
+    {
+        await MigrateAsync();
+        var article = await CreateAsync("Quarterly report", "Merger talks", publish: true);
+        await DrainAsync();
+        await AddStaleRowsAsync(article, "internal");
+
+        (await FindAsync("stale")).ShouldBeEmpty();
+        (await MatchAsync("stale", fields: null)).ShouldBeEmpty();
+        (await MatchAsync("stale", ["internal"])).ShouldBeEmpty();
+        (await MatchAsync("stale", ["title", "internal"])).ShouldBeEmpty();
+        (await FindAsync("quarterly")).ShouldBe([article]);
+    }
+
+    // The rows of a field that is not searchable any more are deleted by the next rebuild, and by the next write of the entry.
+    [Fact]
+    public async Task ARebuildAndTheNextWriteOfAnEntryDeleteTheRowsOfAFieldNoLongerSearchable()
+    {
+        await MigrateAsync();
+        var article = await CreateAsync("Quarterly report", "Merger talks", publish: true);
+        await DrainAsync();
+        var fields = (await RowsAsync()).Select(row => row.Field).ToList();
+        fields.Count.ShouldBe(4);
+
+        await AddStaleRowsAsync(article, "notes", "internal");
+        (await RowsAsync()).Count.ShouldBe(8);
+        await RebuildAsync();
+        (await RowsAsync()).Select(row => row.Field).ShouldBe(fields, ignoreOrder: true);
+
+        await AddStaleRowsAsync(article, "notes", "internal");
+        (await RowsAsync()).Count.ShouldBe(8);
+        await ChangeTitleAsync(article, "Annual report");
+        await DrainAsync();
+        (await RowsAsync()).Select(row => row.Field).ShouldBe(fields, ignoreOrder: true);
+        (await FindAsync("annual", QueryStatus.Draft)).ShouldBe([article]);
+    }
+
     // More matches than the limit: the most recently indexed are listed and counted, and the list says it was cut (#3302).
     [Fact]
     public async Task AListWithMoreMatchesThanTheLimitSaysItsSearchWasCut()
@@ -283,6 +324,29 @@ public sealed class SearchIndexProviderTests : IDisposable
 
         return id;
     });
+
+    private async Task ChangeTitleAsync(Guid id, string title) => await AsSystemAsync(async content =>
+    {
+        var current = await content.GetAsync("article", id, new GetOptions { Status = QueryStatus.Draft, Locale = "en" }, Token);
+        await content.PatchAsync("article", id, new ContentDocument { ["title"] = title }, (int)current!["version"]!, Token);
+        return true;
+    });
+
+    // A row of the entry in each state for each field, as an index of before the field stopped being searched holds it.
+    private async Task AddStaleRowsAsync(Guid article, params string[] fields)
+    {
+        await using var scope = _host.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<SearchPlugin>>();
+        foreach (var field in fields)
+        {
+            foreach (var state in new[] { SearchStates.Draft, SearchStates.Published })
+            {
+                database.Add(new SearchEntry { DocumentId = article, Locale = "en", State = state, Type = "article", SiteId = DefaultSite.Id, Field = field, Text = "stale", UpdatedAt = DateTimeOffset.UnixEpoch });
+            }
+        }
+
+        await database.SaveChangesAsync(Token);
+    }
 
     private async Task<List<Guid>> FindAsync(string text, QueryStatus status = QueryStatus.Published) => await AsSystemAsync(async content =>
     {

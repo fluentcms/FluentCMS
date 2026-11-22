@@ -1,4 +1,5 @@
 using FluentCMS.Content;
+using FluentCMS.Events;
 using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Core.Identity.Members;
@@ -38,6 +39,6 @@ internal sealed class MemberLogins(MemberManager members, MemberOptions options,
         }
 
         MemberViews.Check(await members.RemoveLoginsAsync(member, removed));
-        await sessions.RevokeAllAsync(member.Id, cancellationToken);
+        await sessions.RevokeAllAsync(member, SessionEndReasons.LoginRemoved, cancellationToken);
     }
 }

@@ -1933,6 +1933,7 @@ FluentCMS.Plugins.IPluginServiceBuilder.AddMcpTools<TProvider>() -> FluentCMS.Pl
 FluentCMS.Plugins.IPluginServiceBuilder.AddProviderSlot<TSlot, TDefault>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddJob<TJob, TPayload>(string! type) -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddJob<TJob, TPayload>(string! type, System.TimeSpan? attemptTimeout) -> FluentCMS.Plugins.IPluginServiceBuilder!
+FluentCMS.Plugins.IPluginServiceBuilder.AddJob<TJob, TPayload>(string! type, System.TimeSpan? attemptTimeout, bool resumable) -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddTransferContributor<TContributor>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginState
 FluentCMS.Plugins.IPluginState.IsEnabledAsync(string! plugin, FluentCMS.Sites.SiteId site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
@@ -3975,3 +3976,52 @@ FluentCMS.Agents.IMcpClients.RemoveUnusedAsync(System.DateTimeOffset neverUsedBe
 FluentCMS.Agents.IMcpClients.RemoveOpenApprovedAsync(System.DateTimeOffset? registeredFrom, System.DateTimeOffset? registeredBefore, int limit, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
 FluentCMS.Agents.McpClientRegistrationPolicy.MaxConsentsPerUser.get -> int
 FluentCMS.Agents.McpClientRegistrationPolicy.MaxConsentsPerUser.init -> void
+FluentCMS.Events.UserSessionsEndedEvent
+FluentCMS.Events.UserSessionsEndedEvent.Deconstruct(out System.Guid UserId, out string! UserName, out string! Reason, out System.Guid? SessionId) -> void
+FluentCMS.Events.UserSessionsEndedEvent.Equals(FluentCMS.Events.UserSessionsEndedEvent? other) -> bool
+FluentCMS.Events.UserSessionsEndedEvent.Reason.get -> string!
+FluentCMS.Events.UserSessionsEndedEvent.Reason.init -> void
+FluentCMS.Events.UserSessionsEndedEvent.SessionId.get -> System.Guid?
+FluentCMS.Events.UserSessionsEndedEvent.SessionId.init -> void
+FluentCMS.Events.UserSessionsEndedEvent.UserId.get -> System.Guid
+FluentCMS.Events.UserSessionsEndedEvent.UserId.init -> void
+FluentCMS.Events.UserSessionsEndedEvent.UserName.get -> string!
+FluentCMS.Events.UserSessionsEndedEvent.UserName.init -> void
+FluentCMS.Events.UserSessionsEndedEvent.UserSessionsEndedEvent(System.Guid UserId, string! UserName, string! Reason, System.Guid? SessionId) -> void
+override FluentCMS.Events.UserSessionsEndedEvent.<Clone>$() -> FluentCMS.Events.UserSessionsEndedEvent!
+override FluentCMS.Events.UserSessionsEndedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.UserSessionsEndedEvent.GetHashCode() -> int
+override FluentCMS.Events.UserSessionsEndedEvent.ToString() -> string!
+override sealed FluentCMS.Events.UserSessionsEndedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+static FluentCMS.Events.UserSessionsEndedEvent.operator !=(FluentCMS.Events.UserSessionsEndedEvent? left, FluentCMS.Events.UserSessionsEndedEvent? right) -> bool
+static FluentCMS.Events.UserSessionsEndedEvent.operator ==(FluentCMS.Events.UserSessionsEndedEvent? left, FluentCMS.Events.UserSessionsEndedEvent? right) -> bool
+FluentCMS.Events.MemberSessionsEndedEvent
+FluentCMS.Events.MemberSessionsEndedEvent.Deconstruct(out System.Guid MemberId, out string! Email, out string! Reason, out System.Guid? SessionId) -> void
+FluentCMS.Events.MemberSessionsEndedEvent.Email.get -> string!
+FluentCMS.Events.MemberSessionsEndedEvent.Email.init -> void
+FluentCMS.Events.MemberSessionsEndedEvent.Equals(FluentCMS.Events.MemberSessionsEndedEvent? other) -> bool
+FluentCMS.Events.MemberSessionsEndedEvent.MemberId.get -> System.Guid
+FluentCMS.Events.MemberSessionsEndedEvent.MemberId.init -> void
+FluentCMS.Events.MemberSessionsEndedEvent.MemberSessionsEndedEvent(System.Guid MemberId, string! Email, string! Reason, System.Guid? SessionId) -> void
+FluentCMS.Events.MemberSessionsEndedEvent.Reason.get -> string!
+FluentCMS.Events.MemberSessionsEndedEvent.Reason.init -> void
+FluentCMS.Events.MemberSessionsEndedEvent.SessionId.get -> System.Guid?
+FluentCMS.Events.MemberSessionsEndedEvent.SessionId.init -> void
+override FluentCMS.Events.MemberSessionsEndedEvent.<Clone>$() -> FluentCMS.Events.MemberSessionsEndedEvent!
+override FluentCMS.Events.MemberSessionsEndedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberSessionsEndedEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberSessionsEndedEvent.ToString() -> string!
+override sealed FluentCMS.Events.MemberSessionsEndedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+static FluentCMS.Events.MemberSessionsEndedEvent.operator !=(FluentCMS.Events.MemberSessionsEndedEvent? left, FluentCMS.Events.MemberSessionsEndedEvent? right) -> bool
+static FluentCMS.Events.MemberSessionsEndedEvent.operator ==(FluentCMS.Events.MemberSessionsEndedEvent? left, FluentCMS.Events.MemberSessionsEndedEvent? right) -> bool
+FluentCMS.Events.SessionEndReasons
+const FluentCMS.Events.SessionEndReasons.Deactivated = "deactivated" -> string!
+const FluentCMS.Events.SessionEndReasons.Deleted = "deleted" -> string!
+const FluentCMS.Events.SessionEndReasons.LoginRemoved = "login_removed" -> string!
+const FluentCMS.Events.SessionEndReasons.PasswordChanged = "password_changed" -> string!
+const FluentCMS.Events.SessionEndReasons.RemoteSignOut = "remote_sign_out" -> string!
+const FluentCMS.Events.SessionEndReasons.Replaced = "replaced" -> string!
+const FluentCMS.Events.SessionEndReasons.Revoked = "revoked" -> string!
+const FluentCMS.Events.SessionEndReasons.SecondFactor = "second_factor" -> string!
+const FluentCMS.Events.SessionEndReasons.SecurityChanged = "security_changed" -> string!
+const FluentCMS.Events.SessionEndReasons.SignedOut = "signed_out" -> string!

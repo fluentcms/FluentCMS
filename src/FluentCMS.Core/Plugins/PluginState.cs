@@ -17,14 +17,17 @@ internal sealed record PluginEndpointMetadata(string Plugin);
 // Which plugins are disabled in which site, and the gate that keeps a disabled plugin's endpoints, hooks, handlers and jobs
 // from running there. The rows of cms_plugin_site are read whole and kept for every reader of this instance for CacheDuration;
 // a write through PluginAdministration drops them at once, and another instance sees it when its copy expires. A host
-// without plugins reads nothing.
+// without plugins reads nothing. The readers that find the copy expired or dropped at once share one read of the rows.
 internal sealed class PluginState(PluginRegistry registry, IServiceScopeFactory scopes, TimeProvider time) : IPluginState
 {
     public static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);
 
     private static readonly FrozenSet<string> None = FrozenSet<string>.Empty;
 
+    private readonly Lock _gate = new();
     private Snapshot? _snapshot;
+    private Task<Snapshot>? _reading;
+    private long _readingGeneration;
     private long _generation;
 
     public async ValueTask<bool> IsEnabledAsync(string plugin, SiteId site, CancellationToken cancellationToken = default)
@@ -90,19 +93,40 @@ internal sealed class PluginState(PluginRegistry registry, IServiceScopeFactory 
             return snapshot.Disabled;
         }
 
+        // One read for every reader that finds the copy out of date at once, on a scope of its own and with no reader's
+        // token, so that one that goes away does not fail the others. A read begun before a write is not shared after it.
+        Task<Snapshot> reading;
+        lock (_gate)
+        {
+            if (_reading is null || _reading.IsCompleted || _readingGeneration != generation)
+            {
+                _readingGeneration = generation;
+                _reading = ReadAsync(generation);
+            }
+
+            reading = _reading;
+        }
+
+        return (await reading.WaitAsync(cancellationToken)).Disabled;
+    }
+
+    private async Task<Snapshot> ReadAsync(long generation)
+    {
+        await Task.Yield();
         await using var scope = scopes.CreateAsyncScope();
         var rows = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<PluginSiteRow>().AsNoTracking()
             .Where(row => !row.Enabled)
             .Select(row => new { row.SiteId, row.Plugin })
-            .ToListAsync(cancellationToken);
+            .ToListAsync(CancellationToken.None);
 
         var disabled = rows
             .GroupBy(row => row.SiteId)
             .ToFrozenDictionary(group => group.Key, group => group.Select(row => row.Plugin).ToFrozenSet(StringComparer.Ordinal));
 
         // A write during the read leaves this copy a generation behind, so the next reader reads again.
-        Volatile.Write(ref _snapshot, new Snapshot(disabled, generation, time.GetUtcNow() + CacheDuration));
-        return disabled;
+        var snapshot = new Snapshot(disabled, generation, time.GetUtcNow() + CacheDuration);
+        Volatile.Write(ref _snapshot, snapshot);
+        return snapshot;
     }
 
     private sealed record Snapshot(FrozenDictionary<Guid, FrozenSet<string>> Disabled, long Generation, DateTimeOffset Expires);

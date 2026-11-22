@@ -27,6 +27,7 @@ internal sealed class MediaTransfer(
     MediaStorage storages,
     ISettings<MediaSettings> settings,
     IEventBus events,
+    IImageProcessor processor,
     ILogger<MediaTransfer> logger) : ITransferContributor
 {
     public const string FilesOption = "mediaFiles";
@@ -507,13 +508,13 @@ internal sealed class MediaTransfer(
 
     // The file of the package through the checks of an upload in the site of the import, with no limit of a request; null
     // when the package does not have it.
-    private static async Task<MediaService.Upload?> PackageFileAsync(ITransferImport context, Guid asset, string path, string name, MediaSettings rules, HashSet<string> taken, CancellationToken cancellationToken)
+    private async Task<MediaService.Upload?> PackageFileAsync(ITransferImport context, Guid asset, string path, string name, MediaSettings rules, HashSet<string> taken, CancellationToken cancellationToken)
     {
         Take(taken, "package/" + path, path, asset);
         MediaService.Upload? file = null;
         try
         {
-            await context.ReadAsync(path, async (stream, token) => file = await MediaService.PrepareAsync(name, stream, rules, long.MaxValue, long.MaxValue, token), cancellationToken);
+            await context.ReadAsync(path, async (stream, token) => file = await MediaService.PrepareAsync(name, stream, rules, long.MaxValue, long.MaxValue, processor, token), cancellationToken);
             return file;
         }
         catch
@@ -555,7 +556,7 @@ internal sealed class MediaTransfer(
             return null;
         }
 
-        await using var file = await MediaService.PrepareAsync(name, content, rules, long.MaxValue, long.MaxValue, cancellationToken);
+        await using var file = await MediaService.PrepareAsync(name, content, rules, long.MaxValue, long.MaxValue, processor, cancellationToken);
         if (!string.Equals(file.Received, line.Checksum, StringComparison.OrdinalIgnoreCase) || file.Checksum != file.Received)
         {
             throw Refused(MediaErrorCodes.TransferFileMissing, $"The file at {key} in the storage is not the file of the asset {line.Id:D} as the media settings of the site store it; export with {FilesOption}=true to bring it.");

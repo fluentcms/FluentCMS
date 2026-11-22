@@ -41,6 +41,8 @@ COPY --parents admin/src/plugins/*/*.csproj ./
 COPY src/FluentCMS.Host/FluentCMS.Host.csproj src/FluentCMS.Host/
 RUN dotnet restore src/FluentCMS.Host/FluentCMS.Host.csproj -a $TARGETARCH
 
+# The admin app publishes both as static files next to it, and the image holds them in its application folder.
+COPY LICENSE THIRD-PARTY-NOTICES.md ./
 COPY src/ src/
 COPY samples/Blog/ samples/Blog/
 COPY admin/src/ admin/src/
@@ -59,6 +61,7 @@ LABEL org.opencontainers.image.title="FluentCMS" \
       org.opencontainers.image.licenses="MIT"
 WORKDIR /app
 COPY --from=build /app .
+COPY --from=build /src/LICENSE /src/THIRD-PARTY-NOTICES.md ./
 COPY --from=build --chown=$APP_UID:$APP_UID /data /data
 
 # SQLite in the /data volume with no configuration. No Production refusal is lifted here, so a run with nothing else

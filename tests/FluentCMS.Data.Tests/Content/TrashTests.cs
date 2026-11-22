@@ -247,9 +247,9 @@ public sealed class TrashTests : IDisposable
         await _database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
         await _database.PublishAsync(Editor, id);
         await _database.PublishAsync(Editor, id, "fr");
-        await _database.PatchAsync(Editor, id, Titled("Hello again"), 1);
+        await _database.PatchAsync(Editor, id, Titled("Hello again"), 2);
         var ann = IdOf(await _database.CreateAsync(Editor, new() { ["name"] = "Ann" }, type: "author"));
-        await _database.PatchAsync(Editor, id, new() { ["author"] = ann }, 2);
+        await _database.PatchAsync(Editor, id, new() { ["author"] = ann }, 3);
         var other = IdOf(await _database.CreateAsync(Editor, Titled("Other")));
         _database.Held(id).ShouldNotBe(TrashDatabase.Nothing);
         _database.Versions(id).ShouldContain(version => version.StatusAfter == EntryStatus.Published);
@@ -419,7 +419,7 @@ public sealed class TrashTests : IDisposable
         });
         var id = IdOf(await database.CreateAsync(Editor, Titled("Hello")));
         await database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
-        await database.PatchAsync(Editor, id, Titled("Hello again"), 1);
+        await database.PatchAsync(Editor, id, Titled("Hello again"), 2);
         await database.DeleteAsync(Editor, id);
         var admin = WithRole(BuiltInRoles.SuperAdmin);
 
@@ -429,6 +429,6 @@ public sealed class TrashTests : IDisposable
         await database.PurgeAsync(admin, id);
 
         var heard = seen.Of<EntryPurgedEvent>().OrderBy(@event => @event.Locale, StringComparer.Ordinal).ToList();
-        heard.Select(@event => (@event.Type, @event.EntryId, @event.Locale, @event.Version)).ShouldBe([("article", id, "en", 2), ("article", id, "fr", 1)]);
+        heard.Select(@event => (@event.Type, @event.EntryId, @event.Locale, @event.Version)).ShouldBe([("article", id, "en", 3), ("article", id, "fr", 1)]);
     }
 }

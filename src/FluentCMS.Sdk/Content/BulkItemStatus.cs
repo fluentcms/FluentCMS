@@ -12,6 +12,9 @@ public enum BulkItemStatus
     /// <summary>The id was named earlier in the request, and the operation ran there.</summary>
     Duplicate = 2,
 
-    /// <summary>The request was cancelled before the operation ran, or while it ran and before it committed.</summary>
+    /// <summary>
+    /// The request was cancelled before the operation ran, or while it ran and before it committed, or a hook of an earlier entry
+    /// ran past its time or was left running, which stops the entries after it.
+    /// </summary>
     NotRun = 3,
 }

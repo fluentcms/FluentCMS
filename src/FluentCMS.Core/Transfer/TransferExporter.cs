@@ -122,21 +122,17 @@ internal sealed class TransferExporter(
             await WriteFileAsync(archive, TransferPackage.Manifest, stream => JsonSerializer.SerializeAsync(stream, manifest, TransferPackage.Json, token), token);
             await WriteFileAsync(archive, TransferPackage.Schema, stream => stream.WriteAsync(System.Text.Encoding.UTF8.GetBytes(snapshot.Json), token).AsTask(), token);
 
-            foreach (var type in run.Types)
+            // The entries of every type come from one snapshot, so that a save during the export changes nothing in the
+            // package and no reference points at an entry the package lacks. The settings, roles and contributors' files are
+            // read after it, each as it is then.
+            await using (var consistent = await entries.BeginSnapshotAsync(token))
             {
-                await WriteFileAsync(
-                    archive,
-                    TransferPackage.ContentPath(type.Name),
-                    async stream =>
-                    {
-                        await foreach (var entry in entries.ReadAsync(type, site, run.Request.PublishedOnly, token))
-                        {
-                            await JsonSerializer.SerializeAsync(stream, TransferLine.Of(entry), TransferPackage.Json, token);
-                            await stream.WriteAsync(TransferPackage.NewLine, token);
-                            count++;
-                        }
-                    },
-                    token);
+                if (consistent is null)
+                {
+                    TransferLog.ExportWithoutSnapshot(logger, site.Value);
+                }
+
+                await WriteContentAsync(archive, run, site, () => count++, token);
             }
 
             var documents = await settings.SiteDocumentsAsync(site, token);
@@ -167,6 +163,26 @@ internal sealed class TransferExporter(
 
         TransferLog.ExportFinished(logger, site.Value, count);
         await WriteActivityAsync(run, count);
+    }
+
+    private async Task WriteContentAsync(ZipArchive archive, TransferExportRun run, SiteId site, Action counted, CancellationToken cancellationToken)
+    {
+        foreach (var type in run.Types)
+        {
+            await WriteFileAsync(
+                archive,
+                TransferPackage.ContentPath(type.Name),
+                async stream =>
+                {
+                    await foreach (var entry in entries.ReadAsync(type, site, run.Request.PublishedOnly, cancellationToken))
+                    {
+                        await JsonSerializer.SerializeAsync(stream, TransferLine.Of(entry), TransferPackage.Json, cancellationToken);
+                        await stream.WriteAsync(TransferPackage.NewLine, cancellationToken);
+                        counted();
+                    }
+                },
+                cancellationToken);
+        }
     }
 
     private static string Version =>

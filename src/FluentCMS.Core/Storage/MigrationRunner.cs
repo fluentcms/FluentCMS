@@ -423,6 +423,7 @@ public sealed class MigrationRunner(
     internal async Task RefuseEarlierBaselineAsync(CancellationToken cancellationToken = default)
     {
         var refused = new List<string>();
+        var slow = new List<(string Stream, string Baseline, string Indexes)>();
         DatabaseSchema? database = null;
         foreach (var stream in SystemAndPlugins)
         {
@@ -436,10 +437,18 @@ public sealed class MigrationRunner(
             }
 
             database ??= await ReadDatabaseAsync(context, cancellationToken);
-            var missing = MissingFrom(database, context.GetService<IDesignTimeModel>().Model);
+            var model = context.GetService<IDesignTimeModel>().Model;
+            var indexes = IndexesMissingFrom(database, model);
+            var missing = MissingFrom(database, model);
+            missing.AddRange(indexes.Where(index => index.IsUnique).Select(index => $"index {index.Name}"));
             if (missing.Count > 0)
             {
                 refused.Add($"stream {stream.Name} has applied its baseline {baseline} but lacks {string.Join(", ", missing)}");
+            }
+
+            if (indexes.Where(index => !index.IsUnique).Select(index => index.Name).ToList() is { Count: > 0 } slower)
+            {
+                slow.Add((stream.Name, baseline, string.Join(", ", slower)));
             }
         }
 
@@ -449,6 +458,43 @@ public sealed class MigrationRunner(
                 StorageErrorCodes.EarlierBaseline,
                 $"{string.Join("; ", refused)}; nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again");
         }
+
+        foreach (var (name, baseline, indexes) in slow)
+        {
+            MigrationLog.BaselineIndexesMissing(logger, name, baseline, indexes);
+        }
+    }
+
+    // An index of the model the database lacks on a table it has. A missing unique index would let rows in that the model
+    // refuses, so it is refused with the columns; any other only makes what it serves read more rows, so the host starts with
+    // a warning rather than be refused for it (#3407). Adding it to the database would take a migration, which a preview
+    // does not have.
+    private static List<(string Name, bool IsUnique)> IndexesMissingFrom(DatabaseSchema database, IModel model)
+    {
+        var missing = new List<(string Name, bool IsUnique)>();
+        var tables = model.GetEntityTypes()
+            .Where(entity => entity.GetViewName() is null && !entity.IsTableExcludedFromMigrations() && entity.GetTableName() is not null)
+            .GroupBy(entity => entity.GetTableName()!, StringComparer.Ordinal);
+        foreach (var table in tables)
+        {
+            if (table.Key == StorageNames.SchemaHistory || !database.Tables.TryGetValue(table.Key, out var found))
+            {
+                continue;
+            }
+
+            var store = StoreObjectIdentifier.Table(table.Key, table.First().GetSchema());
+            foreach (var index in table.SelectMany(entity => entity.GetIndexes()))
+            {
+                if (index.GetDatabaseName(store) is { } name
+                    && !found.Indexes.Any(existing => string.Equals(existing.Name, name, StringComparison.OrdinalIgnoreCase))
+                    && !missing.Any(other => other.Name == name))
+                {
+                    missing.Add((name, index.IsUnique));
+                }
+            }
+        }
+
+        return [.. missing.OrderBy(index => index.Name, StringComparer.Ordinal)];
     }
 
     // A table of the model the database lacks, or a column of one it has, as table.column. The columns of the schema history
@@ -522,10 +568,12 @@ public sealed class MigrationRunner(
 
     private async Task<IReadOnlyList<StreamMigration>> ApplyAsync(IEnumerable<Stream> streams, CancellationToken cancellationToken)
     {
+        Stream[] ordered = [.. streams];
+
         // Taken before the pending migrations are read, so that a process that waited finds what the other applied.
-        await using var held = await provider.LockMigrationsAsync(cancellationToken);
+        await using var held = await WaitForSessionLockAsync(provider.LockMigrationsAsync, ordered[0].Name, DatabaseMigrationsLock, cancellationToken);
         var applied = new List<StreamMigration>();
-        foreach (var stream in streams)
+        foreach (var stream in ordered)
         {
             await using var scope = scopes.CreateAsyncScope();
             var context = stream.ResolveContext(scope.ServiceProvider);
@@ -538,6 +586,7 @@ public sealed class MigrationRunner(
             }
 
             await WaitForMigrationsLockAsync(context, stream.Name, cancellationToken);
+            await using var taken = await WaitForSessionLockAsync(token => provider.TakeMigrationsLockAsync(context, token), stream.Name, EfApplicationLock, cancellationToken);
             MigrationLog.ApplyingStream(logger, pending.Count, stream.Name);
             using var recorder = AppliedMigrations.Record(context.GetService<IMigrator>());
             await context.Database.MigrateAsync(cancellationToken);
@@ -560,17 +609,16 @@ public sealed class MigrationRunner(
         {
             // Before the bound, so that a wait that ends in the timeout has always logged it.
             var waited = _time.GetElapsedTime(started);
+            var row = $"EF Core's migrations lock, the row of __EFMigrationsLock written at {written}";
             if (!logged && waited >= MigrationsLockWaitLogged)
             {
-                MigrationLog.WaitingForMigrationsLock(logger, stream, written, MigrationsLockWait.TotalMinutes, MigrationsLockFix);
+                MigrationLog.WaitingForMigrationsLock(logger, stream, row, MigrationsLockWait.TotalMinutes, MigrationsLockFix);
                 logged = true;
             }
 
             if (waited >= MigrationsLockWait)
             {
-                throw new TimeoutException(
-                    $"EF Core's migrations lock, the row of __EFMigrationsLock written at {written}, was not released within " +
-                    $"{MigrationsLockWait.TotalMinutes:0} minutes, so the {stream} stream was not migrated; {MigrationsLockFix}.");
+                throw MigrationsLockTimeout(row, stream, MigrationsLockFix);
             }
 
             // Each read is logged by EF, so a wait that has been reported looks less often.
@@ -585,6 +633,59 @@ public sealed class MigrationRunner(
         "and no 'fluentcms migrate' runs on the database, then delete the row with DELETE FROM \"__EFMigrationsLock\" and run " +
         "again; a migration that rebuilds a table may have been partly applied, so if the next run fails on a table or column " +
         "that already exists, restore the backup taken before the upgrade; a migration without a rebuild rolls back whole";
+
+    private const string EfApplicationLock = "EF Core's migrations lock, the application lock __EFMigrationsLock that another session holds";
+
+    private const string DatabaseMigrationsLock = "the migrations lock of FluentCMS, which another session of the database holds";
+
+    private const string SessionLockFix =
+        "another process is applying migrations: a host that starts or a 'fluentcms migrate' holds this lock while it applies " +
+        "migrations, and the lock ends with its database session, so a process that stopped did not leave it behind; let that " +
+        "process finish and run again, and if it does not finish, find the session that holds the lock on the database server " +
+        "and what it runs";
+
+    private static TimeoutException MigrationsLockTimeout(string held, string stream, string fix, Exception? inner = null) => new(
+        $"{held}, was not released within {MigrationsLockWait.TotalMinutes:0} minutes, so the {stream} stream was not migrated; {fix}.", inner);
+
+    // EF waits for a lock that ends with its holder's session no longer than a command may run, 30 seconds by default, and its
+    // timeout names nothing, and the lock of a whole run has no bound at all. So a provider takes such a lock with no timeout of
+    // its own, and the runner bounds the wait as it bounds the wait for SQLite's row. A lock granted as the wait gives up is kept.
+    private async Task<IAsyncDisposable?> WaitForSessionLockAsync(
+        Func<CancellationToken, Task<IAsyncDisposable?>> take, string stream, string held, CancellationToken cancellationToken)
+    {
+        using var giveUp = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var taking = take(giveUp.Token);
+        var started = _time.GetTimestamp();
+        var poll = FirstMigrationsLockPoll;
+        var logged = false;
+        while (!taking.IsCompleted && !cancellationToken.IsCancellationRequested)
+        {
+            var waited = _time.GetElapsedTime(started);
+            if (!logged && waited >= MigrationsLockWaitLogged)
+            {
+                MigrationLog.WaitingForMigrationsLock(logger, stream, held, MigrationsLockWait.TotalMinutes, SessionLockFix);
+                logged = true;
+            }
+
+            if (waited >= MigrationsLockWait)
+            {
+                await giveUp.CancelAsync();
+                break;
+            }
+
+            await Task.WhenAny(taking, Task.Delay(poll, _time, cancellationToken));
+            poll = poll * 2 < LongestMigrationsLockPoll ? poll * 2 : LongestMigrationsLockPoll;
+        }
+
+        try
+        {
+            return await taking;
+        }
+        catch (Exception exception) when (giveUp.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            throw MigrationsLockTimeout(held, stream, SessionLockFix, exception);
+        }
+    }
 
     // With whether it recorded the schema history, which it does when it applied every change and, for a host that schema
     // apply serves, the history says none is lost.

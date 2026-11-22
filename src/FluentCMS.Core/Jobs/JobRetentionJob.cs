@@ -1,3 +1,4 @@
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Jobs;
@@ -15,9 +16,11 @@ internal sealed record JobRetentionPayload;
 // every finished job. A removed job does not come back, so the next batch is the next jobs due. Each batch removes the
 // attempts and the jobs in one transaction, and checks the conditions again in the delete, so that two instances running
 // at once remove a job once and a run after a failed one takes up where it stopped.
-internal sealed class JobRetentionJob(SystemDbContext context, JobRunnerOptions options, TimeProvider time, ILogger<JobRetentionJob> logger) : IJob<JobRetentionPayload>, IResumableJob
+internal sealed class JobRetentionJob(SystemDbContext context, ScheduleStore schedules, JobRunnerOptions options, TimeProvider time, ILogger<JobRetentionJob> logger) : IJob<JobRetentionPayload>, IResumableJob
 {
     public const string Type = "jobs.retention";
+
+    public const string ScheduleJobRemoved = "The job was dead-lettered and then removed by the job retention, so the schedule never ran.";
 
     public const string RecurringName = "jobs.retention";
 
@@ -51,12 +54,34 @@ internal sealed class JobRetentionJob(SystemDbContext context, JobRunnerOptions 
                 return removed;
             }
 
+            if (status == JobStatus.DeadLettered)
+            {
+                await FailSchedulesAsync(ids, before, cancellationToken);
+            }
+
             removed += await DeleteAsync(ids, status, before, cancellationToken);
 
             if (ids.Count < options.RetentionBatchSize)
             {
                 return removed;
             }
+        }
+    }
+
+    // A crash between the dead-lettering of a scheduled publish or unpublish and ScheduleDeadLetterHandler leaves its schedule
+    // pending. Once its job is gone nothing would run or close it, so it is failed before the job is removed. ScheduleStore
+    // writes through its own context, so this runs before the batch's transaction, which would hold SQLite's write lock.
+    private async Task FailSchedulesAsync(List<Guid> ids, DateTimeOffset before, CancellationToken cancellationToken)
+    {
+        var orphaned = await context.Set<ScheduleRow>().AsNoTracking()
+            .Where(row => row.Status == ScheduleRow.Pending && row.JobId != null && ids.Contains(row.JobId.Value)
+                && context.Set<Job>().Any(job => job.Id == row.JobId && job.Status == JobStatus.DeadLettered && job.CompletedAt < before))
+            .Select(row => row.JobId!.Value)
+            .ToListAsync(cancellationToken);
+
+        foreach (var job in orphaned)
+        {
+            await schedules.FailByJobAsync(job, time.GetUtcNow(), ScheduleJobRemoved, cancellationToken);
         }
     }
 

@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using FluentCMS.Activity;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Settings;
 using FluentCMS.Core.Storage;
@@ -56,7 +57,8 @@ internal sealed partial class SiteManager(
     ManagementAuthority authority,
     IEventBus bus,
     IOperationContextAccessor accessor,
-    IDataProvider provider)
+    IDataProvider provider,
+    EventBuffer events)
 {
     private const int SlugLength = 64;
     private const int NameLength = 128;
@@ -163,7 +165,13 @@ internal sealed partial class SiteManager(
 
     // The foreign keys delete the site's locales, its roles with their grants, its settings and its plugin rows. A site with documents stays, because
     // they would be left in a site that no longer exists; trashed ones count, since restoring one needs its site.
-    public async Task<Site> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    // The deletion waits for every write that is adding an entry to the site, and a later one finds no site (SiteRows).
+    // SiteDeletedEvent goes into the outbox in the same transaction, so that the plugins' cleanups of the site run even
+    // when the process stops right after the commit.
+    public Task<Site> DeleteAsync(Guid id, CancellationToken cancellationToken = default) => DeleteAsync(id, null, cancellationToken);
+
+    // With source, SiteDeletedEvent is raised with it, in the transaction of the deletion.
+    public async Task<Site> DeleteAsync(Guid id, EventSource? source, CancellationToken cancellationToken = default)
     {
         var site = await context.Set<Site>().AsNoTracking().FirstOrDefaultAsync(item => item.Id == id, cancellationToken)
             ?? throw new ValidationException([new ValidationError("site", SiteErrorCodes.SiteNotFound, $"There is no site {id}.")]);
@@ -173,14 +181,48 @@ internal sealed partial class SiteManager(
             throw new ValidationException([new ValidationError("site", SiteErrorCodes.DefaultSiteProtected, "The default site cannot be deleted.")]);
         }
 
-        if (await context.Documents.IgnoreQueryFilters().AnyAsync(document => document.SiteId == id, cancellationToken))
+        SiteDeletion outcome;
+        events.Open();
+        try
+        {
+            outcome = await SiteRows.DeleteAsync(
+                context,
+                provider,
+                id,
+                async () =>
+                {
+                    if (source is not null)
+                    {
+                        await bus.PublishAsync(new SiteDeletedEvent(site.Id, site.Slug) { Source = source }, cancellationToken);
+                        await events.StageAsync(context, cancellationToken);
+                    }
+                },
+                cancellationToken);
+        }
+        catch
+        {
+            events.Clear();
+            throw;
+        }
+        finally
+        {
+            events.Close();
+        }
+
+        settings.InvalidateSite(id);
+        sites.Invalidate();
+        if (outcome == SiteDeletion.NotFound)
+        {
+            throw new ValidationException([new ValidationError("site", SiteErrorCodes.SiteNotFound, $"There is no site {id}.")]);
+        }
+
+        if (outcome == SiteDeletion.HasContent)
         {
             throw new ValidationException([new ValidationError("site", SiteErrorCodes.SiteHasContent, $"The site '{site.Slug}' still has content. Delete it first.")]);
         }
 
-        await context.Set<Site>().Where(item => item.Id == id).ExecuteDeleteAsync(cancellationToken);
-        settings.InvalidateSite(id);
-        sites.Invalidate();
+        // After the commit; what goes wrong here does not undo the deletion, and the outbox delivers the event's rows.
+        await events.DispatchAsync(events.Take());
         return site;
     }
 

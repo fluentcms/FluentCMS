@@ -50,6 +50,7 @@ internal sealed class UserAdministration(
     SuperAdminGuard superAdmins,
     IdentityChanges changes,
     UserSessions sessions,
+    SessionEvents sessionEvents,
     UserLogins logins,
     IOperationContextAccessor accessor)
 {
@@ -246,7 +247,10 @@ internal sealed class UserAdministration(
     public async Task RevokeSessionAsync(Guid id, Guid sessionId, CancellationToken cancellationToken)
     {
         var user = await TargetAsync(id, cancellationToken);
-        if (!await sessions.RevokeAsync(user.Id, sessionId, cancellationToken))
+        if (!await sessionEvents.EndAsync(
+            () => sessions.RevokeAsync(user.Id, sessionId, cancellationToken),
+            new UserSessionsEndedEvent(user.Id, user.UserName ?? "", SessionEndReasons.Revoked, sessionId),
+            cancellationToken))
         {
             throw UserViews.SessionNotFound(sessionId);
         }

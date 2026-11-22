@@ -103,7 +103,7 @@ internal sealed class MemberAdministration(
         await RequireAsync(cancellationToken);
         var member = await FindAsync(id);
         MemberViews.Check(await members.DeactivateAsync(member));
-        await sessions.RevokeAllAsync(member.Id, cancellationToken);
+        await sessions.RevokeAllAsync(member, SessionEndReasons.Deactivated, cancellationToken);
         return await InfoAsync(member, cancellationToken);
     }
 
@@ -121,7 +121,7 @@ internal sealed class MemberAdministration(
         await RequireAsync(cancellationToken);
         var member = await FindAsync(id);
         MemberViews.Check(await members.DeleteAsync(member));
-        await sessions.RevokeAllAsync(id, cancellationToken);
+        await sessions.RevokeAllAsync(member, SessionEndReasons.Deleted, cancellationToken);
     }
 
     public async Task<IReadOnlyList<UserSession>> SessionsAsync(Guid id, CancellationToken cancellationToken)
@@ -135,7 +135,7 @@ internal sealed class MemberAdministration(
     {
         await RequireAsync(cancellationToken);
         var member = await FindAsync(id);
-        if (!await sessions.RevokeAsync(member.Id, sessionId, cancellationToken))
+        if (!await sessions.RevokeAsync(member, sessionId, cancellationToken))
         {
             throw UserViews.SessionNotFound(sessionId);
         }

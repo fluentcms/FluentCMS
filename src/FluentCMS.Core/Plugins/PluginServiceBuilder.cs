@@ -230,9 +230,12 @@ internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, RegisteredPlugi
     }
 
     public IPluginServiceBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout)
+        where TJob : class, IJob<TPayload> => AddJob<TJob, TPayload>(type, attemptTimeout, resumable: false);
+
+    public IPluginServiceBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout, bool resumable)
         where TJob : class, IJob<TPayload>
     {
-        cms.Jobs.AddJob<TJob, TPayload>(type, attemptTimeout);
+        cms.Jobs.AddJob<TJob, TPayload>(type, attemptTimeout, resumable);
         contributions.AddJob(plugin, type);
         return this;
     }

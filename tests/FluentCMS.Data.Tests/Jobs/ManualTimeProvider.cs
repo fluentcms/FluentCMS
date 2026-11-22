@@ -6,6 +6,7 @@ internal sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
 {
     private readonly Lock _lock = new();
     private readonly List<ManualTimer> _timers = [];
+    private readonly List<(int Count, TaskCompletionSource Set)> _waiting = [];
     private DateTimeOffset _now = start;
 
     public override long TimestampFrequency => TimeSpan.TicksPerSecond;
@@ -19,6 +20,43 @@ internal sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
     }
 
     public override long GetTimestamp() => GetUtcNow().UtcTicks;
+
+    // The timers set and not yet fired.
+    public int Timers
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _timers.Count;
+            }
+        }
+    }
+
+    // Completes once at least count timers are set, so that a test moves the clock only after the timer it means to fire.
+    public Task WhenTimersAsync(int count)
+    {
+        lock (_lock)
+        {
+            if (_timers.Count >= count)
+            {
+                return Task.CompletedTask;
+            }
+
+            var set = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _waiting.Add((count, set));
+            return set.Task;
+        }
+    }
+
+    private void TimerSet()
+    {
+        foreach (var waiting in _waiting.Where(waiting => _timers.Count >= waiting.Count).ToList())
+        {
+            _waiting.Remove(waiting);
+            waiting.Set.TrySetResult();
+        }
+    }
 
     public void Advance(TimeSpan by)
     {
@@ -89,6 +127,7 @@ internal sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
 
                 DueAt = clock._now + dueTime;
                 clock._timers.Add(this);
+                clock.TimerSet();
                 return true;
             }
         }

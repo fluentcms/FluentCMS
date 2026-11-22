@@ -16,7 +16,7 @@ internal sealed record FieldVisit(SchemaType Owner, SchemaField Field, string Pa
 // Required, RequiredWhen, length, range, pattern and select options, for every visible field, recursing into
 // components, blocks and the data of inline blocks in rich text. A block or component instance is a dictionary keyed by
 // API field name (a block carries its block name under "type") or a CLR object whose public properties are the fields.
-internal sealed class DeclarativeValidator(SchemaModel model, ContentEntryMapper mapper)
+internal sealed class DeclarativeValidator(SchemaModel model, ContentEntryMapper mapper, int maxItems = ContentWriteOptions.DefaultMaxItems)
 {
     private const string TypeKey = "type";
     private const int MaxNestingDepth = 8;
@@ -78,20 +78,24 @@ internal sealed class DeclarativeValidator(SchemaModel model, ContentEntryMapper
     }
 
     // A text is limited in characters, to the storage default of its type when it declares no maximum; a multiple field,
-    // and blocks, in items.
-    private static void CheckLength(SchemaField field, string path, object? value, ValidationContext context)
+    // and blocks, in items, to FluentCms:Content:MaxItems when it declares none, so that a call of the SDK or an import,
+    // which no request body bounds, cannot store a list of any length.
+    private void CheckLength(SchemaField field, string path, object? value, ValidationContext context)
     {
         int length;
         string unit;
+        int? limit;
         if (IsList(field) && FieldValue.Items(value) is { } items)
         {
             length = items.Count();
             unit = "items";
+            limit = field.MaxLength ?? maxItems;
         }
         else if (!field.Multiple && value is string text)
         {
             length = text.Length;
             unit = "characters";
+            limit = FieldLengths.Max(field);
         }
         else
         {
@@ -103,7 +107,7 @@ internal sealed class DeclarativeValidator(SchemaModel model, ContentEntryMapper
             context.AddError(path, ValidationErrorCodes.MinLength, $"Must have at least {min} {unit}, has {length}.");
         }
 
-        if (FieldLengths.Max(field) is { } max && length > max)
+        if (limit is { } max && length > max)
         {
             context.AddError(path, ValidationErrorCodes.MaxLength, $"Must have at most {max} {unit}, has {length}.");
         }
