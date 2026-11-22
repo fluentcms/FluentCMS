@@ -79,6 +79,29 @@ public sealed class SiteMetadataTests
         harness.Server.Requests.Count.ShouldBe(2);
     }
 
+    // A read the shell gave up on goes on until the client's timeout; once forgotten, the next caller sends a new one rather
+    // than wait for it. A read that ended is kept.
+    [Fact]
+    public async Task APendingReadThatIsForgottenIsSentAgain()
+    {
+        using var harness = new ApiHarness();
+        harness.Server.Answer(HttpStatusCode.OK, Schema);
+        await harness.Metadata.GetSchemaAsync(Token);
+        harness.Server.Hold = new TaskCompletionSource().Task;
+        var hung = harness.Metadata.GetPluginsAsync(Token);
+        harness.Server.Requests.Count.ShouldBe(2);
+
+        harness.Metadata.ForgetPending();
+        harness.Server.Hold = null;
+        harness.Server.Answer(HttpStatusCode.OK, Plugins);
+        var plugins = await harness.Metadata.GetPluginsAsync(Token);
+        await harness.Metadata.GetSchemaAsync(Token);
+
+        plugins.ShouldBeEmpty();
+        hung.IsCompleted.ShouldBeFalse();
+        harness.Server.Requests.Select(request => request.Uri.AbsolutePath[19..]).ShouldBe(["schema", "plugins", "plugins"]);
+    }
+
     private static async Task ReadTwiceAsync(ApiHarness harness)
     {
         await harness.Metadata.GetSchemaAsync(Token);

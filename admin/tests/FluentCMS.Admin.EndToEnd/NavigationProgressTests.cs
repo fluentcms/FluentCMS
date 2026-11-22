@@ -17,8 +17,8 @@ public sealed class NavigationProgressTests(EndToEndHost host) : BrowserTest(hos
 
     private static readonly Regex MediaHalf = new(@"/_framework/FluentCMS\.Plugins\.Media\.Admin(\.[0-9a-z]+)?\.wasm\z", RegexOptions.CultureInvariant);
 
-    // Past the shell's limit for the reads of a new content locale, 45 s, and short of the client's 100 s per attempt.
-    private static readonly LocatorAssertionsToBeVisibleOptions PastTheLimit = new() { Timeout = 80_000 };
+    // Past the shell's limit for the reads of a new content locale, 75 s, and short of the client's 100 s per attempt.
+    private static readonly LocatorAssertionsToBeVisibleOptions PastTheLimit = new() { Timeout = 95_000 };
 
     [Fact]
     public async Task AReloadOfAnAdministrationRouteShowsTheShellAndALoadingStateBeforeThePage()

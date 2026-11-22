@@ -1,6 +1,7 @@
 using Bunit;
 using FluentCMS.Admin.Plugins;
 using FluentCMS.Admin.Shell;
+using FluentCMS.Admin.Tests.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -118,12 +119,13 @@ public sealed class NavigationProgressTests : AdministrationTestContext
         app.FindComponent<AdminLayout>().Instance.ShouldBeSameAs(layout);
     }
 
-    // The limit runs on a clock a thousand times faster, which the client's timeout of each attempt does not read: the read
-    // is still held when the message shows, and Try again reads the locale's access again.
+    // The limit runs on a clock the test moves, which the client's timeout of each attempt does not read: the read is still
+    // held when the message shows, and Try again reads the locale's access again.
     [Fact]
     public async Task AReadOfANewLocalesAccessThatHangsEndsInAMessageWithARetryBeforeTheClientsTimeout()
     {
-        Services.AddSingleton<TimeProvider>(new FastTime());
+        var time = new MovableTime();
+        Services.AddSingleton<TimeProvider>(time);
         Management.AddLocale(MainSite, "fr", 1);
         Grant(["roles.manage"]);
         Management.LocaleAccess[(MainSite, "fr")] = Management.Access[MainSite].DeepClone().AsObject();
@@ -135,6 +137,10 @@ public sealed class NavigationProgressTests : AdministrationTestContext
         var reads = Management.Count("me/access");
 
         Navigation.NavigateTo("roles?locale=fr");
+        app.WaitForAssertion(() => Management.Count("me/access").ShouldBeGreaterThan(reads));
+        await app.InvokeAsync(() => time.Advance(AdminContext.LocaleReadLimit - TimeSpan.FromSeconds(1)));
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        await app.InvokeAsync(() => time.Advance(TimeSpan.FromSeconds(1)));
 
         app.WaitForAssertion(() => Heading(app).ShouldBe("The admin could not load"));
         Context.Status.ShouldBe(ShellStatus.Failed);
@@ -150,11 +156,13 @@ public sealed class NavigationProgressTests : AdministrationTestContext
     }
 
     // The same limit holds when the content locale changes without a navigation, as when the site no longer has it enabled
-    // and the shell goes back to the site's default.
+    // and the shell goes back to the site's default. The schema read it gave up on goes on until the client's timeout, and
+    // Try again, which reads the site in that same default locale, sends a new one rather than wait for it.
     [Fact]
-    public async Task AReadOfTheDefaultLocalesAccessThatHangsAfterTheLocaleIsDisabledEndsInAMessage()
+    public async Task AReadOfTheDefaultLocalesSchemaThatHangsAfterTheLocaleIsDisabledEndsInAMessageAndTryAgainReadsAnew()
     {
-        Services.AddSingleton<TimeProvider>(new FastTime());
+        var time = new MovableTime();
+        Services.AddSingleton<TimeProvider>(time);
         Management.AddLocale(MainSite, "fr", 1);
         Grant(["roles.manage"]);
         Management.LocaleAccess[(MainSite, "fr")] = Management.Access[MainSite].DeepClone().AsObject();
@@ -163,16 +171,28 @@ public sealed class NavigationProgressTests : AdministrationTestContext
         app.WaitForAssertion(() => Context.ContentLocale.ShouldBe("fr"));
         Management.Sites[0]!["locales"]!.AsArray()[1]!["enabled"] = false;
         var hung = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        Management.HoldPath = path => path.EndsWith("/me/access", StringComparison.Ordinal) ? hung.Task : null;
+        var holding = true;
+        Management.HoldPath = path => holding && path.EndsWith("/schema", StringComparison.Ordinal) ? hung.Task : null;
+        var schemas = Management.Count("schema");
 
-        await app.InvokeAsync(() => Context.ReadSitesAsync());
+        var reading = app.InvokeAsync(() => Context.ReadSitesAsync());
+        app.WaitForAssertion(() => Management.Count("schema").ShouldBeGreaterThan(schemas));
+        await app.InvokeAsync(() => time.Advance(AdminContext.LocaleReadLimit));
+        await reading;
 
         app.WaitForAssertion(() => Heading(app).ShouldBe("The admin could not load"));
         Context.Status.ShouldBe(ShellStatus.Failed);
         hung.Task.IsCompleted.ShouldBeFalse();
+        holding = false;
+        schemas = Management.Count("schema");
+
+        app.FindAll("main fluent-button").Single(button => button.TextContent.Trim() == "Try again").Click();
+
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/roles"));
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Management.Count("schema").ShouldBeGreaterThan(schemas);
         await app.InvokeAsync(hung.SetResult);
     }
-
     private static bool Shows(IRenderedComponent<AdminApp> app, string route) =>
         route == "reviews" ? app.FindAll("main .cms-card").Count > 0 : Shown(app) == "/" + route;
 
@@ -181,14 +201,5 @@ public sealed class NavigationProgressTests : AdministrationTestContext
         var sample = AdminPluginManifestJson.Read(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, AdminPluginManifest.FileName)));
         Services.AddSingleton(new AdminPluginCatalog([sample with { Widgets = [] }], []));
         Management.Plugins[MainSite] = [Plugin("reviews", enabled: true)];
-    }
-
-    // Every timer of the clock fires a thousand times sooner.
-    private sealed class FastTime : TimeProvider
-    {
-        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>
-            System.CreateTimer(callback, state, Faster(dueTime), Faster(period));
-
-        private static TimeSpan Faster(TimeSpan span) => span == Timeout.InfiniteTimeSpan || span <= TimeSpan.Zero ? span : span / 1000;
     }
 }
