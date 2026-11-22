@@ -16,4 +16,7 @@ internal static partial class ShellLog
 
     [LoggerMessage(EventId = 23, EventName = "AdministrationNotLoaded", Level = LogLevel.Error, Message = "The assembly of the administration pages could not be loaded.")]
     public static partial void AdministrationNotLoaded(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 24, EventName = "SitesNotRead", Level = LogLevel.Warning, Message = "The sites of the user could not be read again; the site switcher shows them as they were.")]
+    public static partial void SitesNotRead(ILogger logger, Exception exception);
 }

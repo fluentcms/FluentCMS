@@ -282,7 +282,8 @@ public static class AdminPluginManifestJson
     ReadCommentHandling = JsonCommentHandling.Skip,
     AllowTrailingCommas = true,
     RespectNullableAnnotations = true,
-    WriteIndented = true)]
+    WriteIndented = true,
+    GenerationMode = JsonSourceGenerationMode.Metadata)]
 [JsonSerializable(typeof(AdminPluginManifest))]
 [JsonSerializable(typeof(IReadOnlyList<AdminPluginManifest>))]
 internal sealed partial class AdminPluginManifestJsonContext : JsonSerializerContext

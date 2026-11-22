@@ -1,0 +1,130 @@
+@* The sessions of a member (spec 4.15): a row is a sign-in through a client, and ending it stops that sign-in at its next
+   request. *@
+@implements IDisposable
+@inject IManagementApi Api
+@inject FormatService Formats
+@inject IStringLocalizer<MembersResources> L
+
+<CmsCard Title="@L["Members.Sessions.Heading"]">
+    @if (state == MemberSectionState.Loading)
+    {
+        <p role="status">@L["Members.Sessions.Loading"]</p>
+    }
+    else if (state == MemberSectionState.Failed)
+    {
+        <p role="alert">@L["Members.Sessions.Failed"] <CmsButton OnClick="ReadAsync">@L["Members.Sessions.TryAgain"]</CmsButton></p>
+    }
+    else if (sessions.Count == 0)
+    {
+        <p>@L["Members.Sessions.None"]</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var session in sessions)
+            {
+                <li @key="session.Id">
+                    @(session.CreatedAt is { } created ? L["Members.Sessions.Started", Name(session), Formats.DateTime(created)] : Name(session))
+                    <CmsButton Disabled="@busy" OnClick="@(() => EndAsync(session))">
+                        @L["Members.Sessions.End"]<span class="cms-visually-hidden">@Which(session)</span>
+                    </CmsButton>
+                </li>
+            }
+        </ul>
+    }
+    <p class="members-message" tabindex="-1" @ref="messageElement">@message</p>
+</CmsCard>
+
+@code {
+    private IReadOnlyList<MemberSessionRecord> sessions = [];
+    private MemberSectionState state = MemberSectionState.Loading;
+    private string? message;
+    private bool busy;
+    private bool focusMessage;
+    private ElementReference messageElement;
+    private readonly CancellationTokenSource closing = new();
+
+    // A call made once the component is gone, as the read after a change, is cancelled before it starts.
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    [Parameter, EditorRequired]
+    public Guid MemberId { get; set; }
+
+    protected override Task OnInitializedAsync() => ReadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusMessage)
+        {
+            focusMessage = false;
+            await messageElement.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        state = MemberSectionState.Loading;
+        try
+        {
+            sessions = await Api.GetMemberSessionsAsync(MemberId, Closing);
+            state = MemberSectionState.Ready;
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            state = MemberSectionState.Failed;
+        }
+    }
+
+    private async Task EndAsync(MemberSessionRecord session)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            await Api.RevokeMemberSessionAsync(MemberId, session.Id, Closing);
+            message = L["Members.Sessions.Ended", Name(session)];
+            await ReadAsync();
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.SessionNotFound))
+        {
+            message = L["Members.Sessions.AlreadyEnded"];
+            await ReadAsync();
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            message = L["Members.Sessions.EndFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        // The row ended is gone, and its button with it, so focus goes to the result.
+        focusMessage = true;
+    }
+
+    private string Name(MemberSessionRecord session) => session.ClientName ?? session.ClientId ?? L["Members.Sessions.UnknownApp"];
+
+    // Two sign-ins of one app are told apart by their time.
+    private string Which(MemberSessionRecord session) => session.CreatedAt is { } created
+        ? L["Members.Sessions.EndWhichStarted", Name(session), Formats.DateTime(created)]
+        : L["Members.Sessions.EndWhich", Name(session)];
+}

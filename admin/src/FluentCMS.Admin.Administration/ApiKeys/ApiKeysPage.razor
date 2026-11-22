@@ -1,5 +1,58 @@
-@* The API keys the caller may manage (spec 4.15). The page shows its heading until its issue writes it. *@
+@* The API keys the caller may manage (spec 4.15): apikeys.manage for the instance lists every key, and in a site the keys
+   bound to sites where the caller holds it, as the server decides. GET /api-keys answers every such key at once, so the
+   search, by name or prefix, and the pages are the list's own. A key opens at /api-keys/{id}. *@
 @page "/api-keys"
+@inject IManagementApi Api
+@inject AdminContext Context
+@inject FormatService Formats
+@inject TimeProvider Time
+@inject NavigationManager Navigation
 @inject IStringLocalizer<ApiKeysResources> L
 
 <h1 tabindex="-1">@L["ApiKeys.Page.Heading"]</h1>
+<p>@L["ApiKeys.Page.Intro"]</p>
+<p><a href="api-keys/new">@L["ApiKeys.Page.New"]</a></p>
+
+<RecordList TItem="ApiKeyInfo"
+            Label="@L["ApiKeys.Page.Heading"]"
+            Read="ReadAsync"
+            SearchLabel="@L["ApiKeys.Page.Search"]"
+            EmptyText="@L["ApiKeys.Page.Empty"]"
+            NoMatchText="@L["ApiKeys.Page.NoMatch"]"
+            RowLabel="@(key => key.Name)"
+            OnRowActivated="Open">
+    <Columns>
+        <CmsDataGridColumn TItem="ApiKeyInfo" Title="@L["ApiKeys.Column.Name"]">
+            <a href="@ApiKeyRoutes.Key(context.Id)">@context.Name</a>
+        </CmsDataGridColumn>
+        <CmsDataGridColumn TItem="ApiKeyInfo" Title="@L["ApiKeys.Column.Class"]" Value="@(key => L[$"ApiKeys.Class.{key.Class}"])" />
+        <CmsDataGridColumn TItem="ApiKeyInfo" Title="@L["ApiKeys.Column.Prefix"]">
+            <code>@context.KeyPrefix</code>
+        </CmsDataGridColumn>
+        <CmsDataGridColumn TItem="ApiKeyInfo" Title="@L["ApiKeys.Column.Role"]" Value="@(key => ApiKeyTexts.Role(key, roles, Context.Sites, L))" />
+        <CmsDataGridColumn TItem="ApiKeyInfo" Title="@L["ApiKeys.Column.Sites"]" Value="@(key => ApiKeyTexts.Sites(key, Context.Sites, L))" />
+        <CmsDataGridColumn TItem="ApiKeyInfo" Title="@L["ApiKeys.Column.Status"]" Value="@(key => ApiKeyTexts.Status(key, Time.GetUtcNow(), Formats, L))" />
+        <CmsDataGridColumn TItem="ApiKeyInfo" Title="@L["ApiKeys.Column.LastUsed"]" Value="@(key => key.LastUsedAt is { } used ? Formats.DateTime(used) : L["ApiKeys.LastUsed.Never"])" />
+    </Columns>
+</RecordList>
+
+@code {
+    // Read once, for the names of the keys' roles; a caller who may read no role sees each named as such.
+    private IReadOnlyList<RoleSummary>? roles;
+
+    private async Task<RecordPage<ApiKeyInfo>> ReadAsync(RecordQuery query, CancellationToken cancellationToken)
+    {
+        var keys = await Api.GetApiKeysAsync(cancellationToken);
+        roles ??= await ApiKeyTexts.RolesAsync(Api, cancellationToken);
+        var found = keys
+            .Where(key => query.Search is not { } search
+                || key.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase)
+                || key.KeyPrefix.Contains(search, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(key => key.Revoked)
+            .ThenByDescending(key => key.CreatedAt)
+            .ToList();
+        return new RecordPage<ApiKeyInfo>([.. found.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)], found.Count);
+    }
+
+    private void Open(ApiKeyInfo key) => Navigation.NavigateTo(ApiKeyRoutes.Key(key.Id));
+}
