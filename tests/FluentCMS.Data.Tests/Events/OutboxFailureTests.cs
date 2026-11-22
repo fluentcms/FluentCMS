@@ -1244,7 +1244,7 @@ public sealed class OutboxFailureTests
             // The clock's timers fire on the thread that moves it, which no callback may hold either.
             var moved = Task.Run(() => clock.Advance(TimeSpan.FromSeconds(3)), Token);
             await Eventually.CompletesAsync(moved);
-            await Eventually.CompletesAsync(drain);
+            await Eventually.CompletesAsync(drain, () => clock.Advance(TimeSpan.FromSeconds(1)));
         }
         finally
         {

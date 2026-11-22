@@ -555,7 +555,7 @@ public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<P
                 else
                 {
                     await stopping.CancelAsync();
-                    cancellationToken.ThrowIfCancellationRequested();
+                    stopping.Token.ThrowIfCancellationRequested();
                 }
             }
 
