@@ -1013,6 +1013,7 @@ public sealed class OutboxFailureTests
     {
         var seen = new Seen();
         var writes = new EndingWrites();
+        var answer = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var stopping = new CancellationTokenSource();
         seen.Behavior = (_, _) => seen.Calls.Count == 1 ? Task.CompletedTask : throw new InvalidOperationException("Down.");
         writes.Writing = async (kind, token) =>
@@ -1020,7 +1021,7 @@ public sealed class OutboxFailureTests
             if (kind == EndingWrites.Failure && !stopping.IsCancellationRequested)
             {
                 await stopping.CancelAsync();
-                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+                await answer.Task.WaitAsync(token);
             }
         };
         using var database = StoppingDatabase(seen, new ManualTimeProvider(JobFixture.Start), new RecordingLogs(), writes);
@@ -1029,7 +1030,18 @@ public sealed class OutboxFailureTests
             await database.CreateAsync(Editor, Titled($"T{index}"));
         }
 
-        await DrainWithAsync(database.Database.Services, stopping.Token);
+        var drain = DrainWithAsync(database.Database.Services, stopping.Token);
+        try
+        {
+            await Eventually.CompletesAsync(drain);
+        }
+        finally
+        {
+            // So that a drain that never gives the write up fails the test rather than hangs it.
+            answer.TrySetResult();
+            await drain;
+            await Eventually.HoldsAsync(() => writes.Connections.Count == 0);
+        }
 
         writes.Written.ShouldBe([EndingWrites.Settle, EndingWrites.Failure, EndingWrites.Release]);
         var rows = database.Rows();
