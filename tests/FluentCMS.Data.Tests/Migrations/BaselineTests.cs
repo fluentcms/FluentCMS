@@ -170,6 +170,22 @@ public sealed partial class BaselineTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task TheShapeCheckFailsForAnIndexOfTheRightNameOnTheWrongKey()
+    {
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production);
+        await host.Services.GetRequiredService<MigrationRunner>().MigrateAsync(Token);
+        var (index, keys, _) = AddedIndexShapes.Single(shape => shape.Index == "index:cms_outbox.ix_cms_outbox_failed_handler:");
+        DefinitionOf(DatabaseCatalog.Of(_database, historyRows: false), index).ShouldContain(keys);
+
+        var name = TestProvider.Quote("ix_cms_outbox_failed_handler");
+        var table = TestProvider.Quote("cms_outbox");
+        _database.Execute(TestProvider.IsSqlServer ? $"drop index {name} on {table}" : $"drop index {name}");
+        _database.Execute($"create index {name} on {table} ({TestProvider.Quote("sequence")}) where {TestProvider.Quote("status")} = 'failed'");
+
+        DefinitionOf(DatabaseCatalog.Of(_database, historyRows: false), index).ShouldNotContain(keys);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -287,22 +303,6 @@ public sealed partial class BaselineTests : IDisposable
         exitCode.ShouldBe(1);
         error.ShouldBe(refusal + Environment.NewLine);
         DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
-    }
-
-    [Fact]
-    public async Task TheShapeCheckFailsForAnIndexOfTheRightNameOnTheWrongKey()
-    {
-        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production);
-        await host.Services.GetRequiredService<MigrationRunner>().MigrateAsync(Token);
-        var (index, keys, _) = AddedIndexShapes.Single(shape => shape.Index == "index:cms_outbox.ix_cms_outbox_failed_handler:");
-        DefinitionOf(DatabaseCatalog.Of(_database, historyRows: false), index).ShouldContain(keys);
-
-        var name = TestProvider.Quote("ix_cms_outbox_failed_handler");
-        var table = TestProvider.Quote("cms_outbox");
-        _database.Execute(TestProvider.IsSqlServer ? $"drop index {name} on {table}" : $"drop index {name}");
-        _database.Execute($"create index {name} on {table} ({TestProvider.Quote("sequence")}) where {TestProvider.Quote("status")} = 'failed'");
-
-        DefinitionOf(DatabaseCatalog.Of(_database, historyRows: false), index).ShouldNotContain(keys);
     }
 
     // The same for a plugin stream: a media database of a build before owns_file (#3133).

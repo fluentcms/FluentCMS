@@ -958,8 +958,7 @@ public sealed class OutboxFailureTests
         using var stopping = new CancellationTokenSource();
         seen.Behavior = (_, _) => seen.Calls.Count == 1 ? Task.CompletedTask : throw new InvalidOperationException("Down.");
         writes.Writing = (kind, _) => kind == EndingWrites.Failure ? stopping.CancelAsync() : Task.CompletedTask;
-        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
-            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(writes)))));
+        using var database = StoppingDatabase(seen, new ManualTimeProvider(JobFixture.Start), new RecordingLogs(), writes);
         for (var index = 0; index < 3; index++)
         {
             await database.CreateAsync(Editor, Titled($"T{index}"));
