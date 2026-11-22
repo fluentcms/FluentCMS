@@ -219,8 +219,8 @@ public sealed class AdministrationGateTests : AdministrationTestContext
     }
 
     // The access of a content locale is read when the address names it; the gate of an area's route waits for it, and the
-    // page before stays meanwhile, with nothing that says the next one is on its way (#3446), so that the page is neither
-    // shown nor read with what the locale before allowed.
+    // page before stays meanwhile, under the layout's loading state (#3446), so that the page is neither shown nor read with
+    // what the locale before allowed.
     [Fact]
     public void AnAreasRouteThatNamesAnotherContentLocaleWaitsForItsAccess()
     {

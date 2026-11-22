@@ -94,8 +94,8 @@ public sealed class AdministrationNavigationTests : AdministrationTestContext
     }
 
     // While the access of the shell's content locale is not read, what the gate would decide with the access of the locale
-    // before is held: the page before stays, here for good, as the read never answers, although the caller holds both areas
-    // for the instance in the locale before.
+    // before is held: the page before stays, under the layout's loading state, as long as the read does not answer, although
+    // the caller holds both areas for the instance in the locale before.
     [Fact]
     public async Task WhileTheAccessOfTheContentLocaleIsUnreadThePageBeforeStays()
     {
@@ -119,6 +119,7 @@ public sealed class AdministrationNavigationTests : AdministrationTestContext
         Context.AccessCurrent.ShouldBeFalse();
         pages.ShouldNotContain(typeof(UsersPage));
         Shown(app).ShouldBe("/roles");
+        Loading(app).ShouldBe("Loading the page…");
 
         // Let the read end, so that nothing waits once the test is over.
         never.SetResult();

@@ -78,6 +78,9 @@ internal sealed class ScriptedServer : HttpMessageHandler
 
     public List<SentRequest> Requests { get; } = [];
 
+    // While set, a request waits for it before it takes its answer.
+    public Task? Hold { get; set; }
+
     public ScriptedServer Answer(HttpStatusCode status, string? json = null, string mediaType = "application/json", Action<HttpResponseMessage>? configure = null)
     {
         _answers.Enqueue(() =>
@@ -103,6 +106,11 @@ internal sealed class ScriptedServer : HttpMessageHandler
             .ToDictionary(header => header.Key, header => string.Join(",", header.Value), StringComparer.OrdinalIgnoreCase);
         var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
         Requests.Add(new SentRequest(request.Method, request.RequestUri!, headers, body));
+        if (Hold is { } hold)
+        {
+            await hold.WaitAsync(cancellationToken);
+        }
+
         if (_answers.Count == 0)
         {
             throw new InvalidOperationException($"No answer is queued for {request.Method} {request.RequestUri}.");

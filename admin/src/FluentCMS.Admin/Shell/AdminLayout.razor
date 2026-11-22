@@ -14,6 +14,7 @@
 @inject NavigationManager Navigation
 @inject DocumentInterop Document
 @inject FormDrafts Drafts
+@inject NavigationProgress Progress
 
 <a class="skip-link" href="#main" @onclick="SkipToMainAsync" @onclick:preventDefault>@L["Shell.Layout.SkipToContent"]</a>
 <div class="shell">
@@ -52,6 +53,11 @@
                 @if (Context.SchemaRefused)
                 {
                     <p class="shell-notice"><CmsIcon Name="CmsIconName.Info" />@L["Shell.Layout.NoSchema"]</p>
+                }
+                @* A navigation that waits for what its page needs: the page before stays below until the next one is drawn. *@
+                @if (Progress.Waiting)
+                {
+                    <p class="shell-notice" role="status">@L["Shell.Layout.LoadingPage"]</p>
                 }
                 <ShellBreadcrumbs />
                 @Body
@@ -96,6 +102,7 @@
     {
         Session.Changed += OnSessionChanged;
         Context.Changed += OnContextChanged;
+        Progress.Changed += OnContextChanged;
         Drafts.TrackedChanged += OnTrackedChanged;
         closesDrawer = Navigation.RegisterLocationChangingHandler(CloseDrawer);
         Navigation.LocationChanged += OnLocationChanged;
@@ -109,6 +116,7 @@
     {
         Session.Changed -= OnSessionChanged;
         Context.Changed -= OnContextChanged;
+        Progress.Changed -= OnContextChanged;
         Drafts.TrackedChanged -= OnTrackedChanged;
         Navigation.LocationChanged -= OnLocationChanged;
         closesDrawer?.Dispose();

@@ -3,6 +3,7 @@ using Bunit;
 using Bunit.TestDoubles;
 using FluentCMS.Admin.Administration.Users;
 using FluentCMS.Admin.Components;
+using FluentCMS.Admin.Content;
 using FluentCMS.Admin.Plugins;
 using FluentCMS.Admin.Plugins.Sample;
 using FluentCMS.Admin.Tests.Administration;
@@ -154,7 +155,7 @@ public sealed class ContentNavigationTests : AdministrationTestContext
     }
 
     // The first visit of the route in this page load, whose load of the administration assembly or of the half the router
-    // waits for: the address is already the route's while the content page stays drawn.
+    // waits for: the address is already the route's while the content page stays drawn, under the layout's loading state.
     // With a held read of the access, the visit starts while that read waits, which then answers.
     private async Task<TaskCompletionSource> HeldVisitAsync(IRenderedComponent<AdminApp> app, string route, TaskCompletionSource? access = null)
     {
@@ -171,6 +172,8 @@ public sealed class ContentNavigationTests : AdministrationTestContext
 
         Loader.Loads.ShouldBe(1);
         await DrainAsync(app);
+        Loading(app).ShouldBe("Loading the page…");
+        app.FindComponent<RouteView>().Instance.RouteData.PageType.ShouldBeOneOf(typeof(ContentListPage), typeof(ContentEntryPage));
         return hold;
     }
 

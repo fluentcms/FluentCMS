@@ -116,9 +116,11 @@ public sealed class RolesPageTests : RolesTestContext
 
         Context.ContentLocale.ShouldBe("fr");
         app.FindComponent<RouteView>().Instance.RouteData.PageType.ShouldBe(typeof(RolesPage));
+        Loading(app).ShouldNotBeNull();
         Management.Count("roles").ShouldBe(reads);
         hold.SetResult();
         app.WaitForAssertion(() => app.FindComponent<RouteView>().Instance.RouteData.PageType.ShouldNotBe(typeof(RolesPage)));
+        Loading(app).ShouldBeNull();
         Management.Count("roles").ShouldBe(reads);
 
         Navigation.NavigateTo("roles?q=public&locale=en");

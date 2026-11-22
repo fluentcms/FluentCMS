@@ -165,6 +165,9 @@
   <data name="Shell.Layout.Loading" xml:space="preserve">
     <value>Loading the admin…</value>
   </data>
+  <data name="Shell.Layout.LoadingPage" xml:space="preserve">
+    <value>Loading the page…</value>
+  </data>
   <data name="Shell.Layout.NoSchema" xml:space="preserve">
     <value>Your roles in this site do not let you read its content types, so none are listed.</value>
   </data>
