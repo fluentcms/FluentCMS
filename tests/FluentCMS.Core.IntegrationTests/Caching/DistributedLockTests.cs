@@ -24,8 +24,19 @@ public sealed class DistributedLockTests : IAsyncDisposable
     private const string Name = "tests:lock";
     private const string Crashed = "crashed-host/1/0123456789abcdef0123456789abcdef";
 
+    // Work whose commit the database refuses: a deferred foreign key that nothing satisfies by then.
+    private const string Unsatisfied = """
+        CREATE TABLE tests_parent (id INTEGER PRIMARY KEY);
+        CREATE TABLE tests_child (parent INTEGER REFERENCES tests_parent (id) DEFERRABLE INITIALLY DEFERRED);
+        INSERT INTO tests_child (parent) VALUES (1);
+        """;
+
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
+
+    // A lease whose renewals, every third of it on the real clock, never come while a test runs: only what the test does
+    // renews it, and its time passes on the clock the test moves.
+    private static readonly TimeSpan OutOfReach = TimeSpan.FromDays(1);
 
     private readonly DirectoryInfo _directory = Directory.CreateTempSubdirectory("fluentcms-lock-");
     private readonly string _file;
@@ -512,18 +523,15 @@ public sealed class DistributedLockTests : IAsyncDisposable
     {
         var clock = new ControllableTimeProvider();
         var logs = new LogCapture();
-        var held = await Lock(_first, clock, TimeSpan.FromMinutes(2), renewals: new LeaseRenewalInterceptor()).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        var held = await Lock(_first, clock, OutOfReach, renewals: new LeaseRenewalInterceptor()).TryAcquireAsync(Name, TimeSpan.Zero, Token);
         held.ShouldNotBeNull();
         var holder = (await RowAsync(_first)).Owner;
 
-        // Its renewals come every 40 seconds of the real clock, so none comes while the waiter waits. A try whose BEGIN waited
-        // for the hosts' work at startup adds a second.
-        clock.Advance(TimeSpan.FromMinutes(2) + TimeSpan.FromSeconds(1));
-        var watch = Stopwatch.StartNew();
+        // A try whose BEGIN waited for the hosts' work at startup adds a second, so the wait has the suite's patience.
+        clock.Advance(OutOfReach + TimeSpan.FromSeconds(1));
         await using var taken = await Lock(_second, clock, TimeSpan.FromSeconds(30), logs).TryAcquireAsync(Name, Patience, Token);
 
         taken.ShouldNotBeNull();
-        watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(20));
         var takeOver = logs.Entries.ShouldHaveSingleItem();
         takeOver.EventId.Id.ShouldBe(LockLog.LeaseTakenOverId);
         takeOver.State["Holder"].ShouldBe(holder);
@@ -538,22 +546,134 @@ public sealed class DistributedLockTests : IAsyncDisposable
     {
         var clock = new ControllableTimeProvider();
         var renewals = new LeaseRenewalInterceptor();
-        await using var held = await Lock(_first, clock, TimeSpan.FromSeconds(30), renewals: renewals).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        await using var held = await Lock(_first, clock, OutOfReach, renewals: renewals).TryAcquireAsync(Name, TimeSpan.Zero, Token);
         held.ShouldNotBeNull();
         var taken = (await RowAsync(_first)).LeaseUntil;
 
-        clock.Advance(TimeSpan.FromSeconds(14));
+        clock.Advance(OutOfReach / 2 - TimeSpan.FromSeconds(1));
         await CommitAsync(_first, renewals);
         (await RowAsync(_first)).LeaseUntil.ShouldBe(taken);
 
         clock.Advance(TimeSpan.FromSeconds(2));
         await CommitAsync(_first, renewals);
-        (await RowAsync(_first)).LeaseUntil.ShouldBe(clock.GetUtcNow() + TimeSpan.FromSeconds(30));
+        (await RowAsync(_first)).LeaseUntil.ShouldBe(clock.GetUtcNow() + OutOfReach);
 
-        clock.Advance(TimeSpan.FromSeconds(16));
+        clock.Advance(OutOfReach / 2 + TimeSpan.FromSeconds(1));
         Commit(_first, renewals);
-        (await RowAsync(_first)).LeaseUntil.ShouldBe(clock.GetUtcNow() + TimeSpan.FromSeconds(30));
+        (await RowAsync(_first)).LeaseUntil.ShouldBe(clock.GetUtcNow() + OutOfReach);
         held.Lost.IsCancellationRequested.ShouldBeFalse();
+    }
+
+    // A commit that fails rolls the renewal inside it back, so the row keeps its lease and the handle does not take it for
+    // renewed: the next commit renews it. Before, the handle did, and nothing renewed the row for half a lease.
+    [Fact]
+    public async Task ACommitThatFailsLeavesTheLeaseForTheNextCommitToRenew()
+    {
+        var clock = new ControllableTimeProvider();
+        var renewals = new LeaseRenewalInterceptor();
+        await using var held = await Lock(_first, clock, OutOfReach, renewals: renewals).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        held.ShouldNotBeNull();
+        var taken = (await RowAsync(_first)).LeaseUntil;
+
+        clock.Advance(OutOfReach / 2 + TimeSpan.FromSeconds(1));
+        await FailToCommitAsync(_first, renewals);
+        FailToCommit(_first, renewals);
+        (await RowAsync(_first)).LeaseUntil.ShouldBe(taken);
+
+        await CommitAsync(_first, renewals);
+        (await RowAsync(_first)).LeaseUntil.ShouldBe(clock.GetUtcNow() + OutOfReach);
+        held.Lost.IsCancellationRequested.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ARenewalThatFailsInsideACommitIsLoggedAndTheCommitGoesOn()
+    {
+        var clock = new ControllableTimeProvider();
+        var logs = new LogCapture();
+        var renewals = new LeaseRenewalInterceptor();
+        var failing = new FailingRenewals(Name);
+        await using var host = Watched(new FluentCmsTestHost().UseSqlite(_file), failing);
+        await using var held = await Lock(host, clock, OutOfReach, logs, renewals).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        held.ShouldNotBeNull();
+        var taken = (await RowAsync(host)).LeaseUntil;
+
+        clock.Advance(OutOfReach / 2 + TimeSpan.FromSeconds(1));
+        failing.On = true;
+        await CommitAsync(host, renewals);
+        Commit(host, renewals);
+        failing.On = false;
+
+        logs.Entries.Select(entry => entry.EventId.Id).ShouldBe([LockLog.RenewFailedId, LockLog.RenewFailedId]);
+        (await WorkAsync(host)).ShouldBe(2);
+        (await RowAsync(host)).LeaseUntil.ShouldBe(taken);
+        held.Lost.IsCancellationRequested.ShouldBeFalse();
+
+        // The handle did not take the lease for renewed either.
+        await CommitAsync(host, renewals);
+        (await RowAsync(host)).LeaseUntil.ShouldBe(clock.GetUtcNow() + OutOfReach);
+    }
+
+    // Another holder took the lock between two transactions of the holder's work. The renewal inside the next commit finds
+    // the row another's, and the holder is told when that commit is through, where the loop's next renewal is a third of the
+    // lease away. The callbacks on Lost run apart from the commit: one that waits for it sees it through, and one that
+    // throws fails nothing.
+    [Fact]
+    public async Task AHolderIsToldWhenARenewalInsideACommitFindsThatAnotherTookTheLock()
+    {
+        var clock = new ControllableTimeProvider();
+        var logs = new LogCapture();
+        var renewals = new LeaseRenewalInterceptor();
+        var held = await Lock(_first, clock, OutOfReach, logs, renewals).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        held.ShouldNotBeNull();
+        await using (var scope = _first.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<LockRow>()
+                .Where(row => row.Name == Name)
+                .ExecuteUpdateAsync(row => row.SetProperty(column => column.Owner, Crashed), Token);
+        }
+
+        // Registered last, the callback that waits runs first.
+        using var committed = new ManualResetEventSlim();
+        var sawTheCommit = false;
+        var lost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var told = held.Lost.Register(() => lost.TrySetResult());
+        using var waits = held.Lost.Register(() =>
+        {
+            sawTheCommit = committed.Wait(Patience);
+            throw new InvalidOperationException("A callback of the lock's caller.");
+        });
+
+        clock.Advance(OutOfReach / 2 + TimeSpan.FromSeconds(1));
+        await CommitAsync(_first, renewals);
+        committed.Set();
+        await lost.Task.WaitAsync(Patience, Token);
+
+        sawTheCommit.ShouldBeTrue();
+        (await WorkAsync(_first)).ShouldBe(1);
+        await held.DisposeAsync();
+        logs.Entries.ShouldHaveSingleItem().EventId.Id.ShouldBe(LockLog.LostId);
+        (await RowAsync(_first)).Owner.ShouldBe(Crashed);
+    }
+
+    // What a commit does that read the handle as held just before it was disposed: its renewal finds the row released,
+    // which is no loss, and the source of Lost is disposed.
+    [Fact]
+    public async Task ARenewalInsideACommitThatFindsTheLockReleasedByItsOwnHandleTellsNoLoss()
+    {
+        var clock = new ControllableTimeProvider();
+        var logs = new LogCapture();
+        var renewals = new LeaseRenewalInterceptor();
+        var held = await Lock(_first, clock, OutOfReach, logs, renewals).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        held.ShouldNotBeNull();
+        await held.DisposeAsync();
+
+        renewals.Add((DatabaseDistributedLock.Handle)held);
+        clock.Advance(OutOfReach / 2 + TimeSpan.FromSeconds(1));
+        await CommitAsync(_first, renewals);
+
+        (await WorkAsync(_first)).ShouldBe(1);
+        held.Lost.IsCancellationRequested.ShouldBeFalse();
+        logs.Entries.ShouldBeEmpty();
     }
 
     [Fact]
@@ -661,6 +781,31 @@ public sealed class DistributedLockTests : IAsyncDisposable
         context.Add(new LockRow { Name = $"tests:work:{Guid.NewGuid():N}" });
         context.SaveChanges();
         work.Commit();
+    }
+
+    private static async Task FailToCommitAsync(FluentCmsTestHost host, LeaseRenewalInterceptor renewals)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        await using var context = Renewing(scope.ServiceProvider, renewals);
+        await using var work = await context.Database.BeginTransactionAsync(Token);
+        await context.Database.ExecuteSqlRawAsync(Unsatisfied, Token);
+        (await Should.ThrowAsync<SqliteException>(() => work.CommitAsync(Token))).Message.ShouldContain("FOREIGN KEY");
+    }
+
+    private static void FailToCommit(FluentCmsTestHost host, LeaseRenewalInterceptor renewals)
+    {
+        using var scope = host.Services.CreateScope();
+        using var context = Renewing(scope.ServiceProvider, renewals);
+        using var work = context.Database.BeginTransaction();
+        context.Database.ExecuteSqlRaw(Unsatisfied);
+        Should.Throw<SqliteException>(work.Commit).Message.ShouldContain("FOREIGN KEY");
+    }
+
+    // The transactions of the work that committed.
+    private static async Task<int> WorkAsync(FluentCmsTestHost host)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<LockRow>().CountAsync(row => row.Name.StartsWith("tests:work:"), Token);
     }
 
     private static SystemDbContext Renewing(IServiceProvider services, LeaseRenewalInterceptor renewals) =>
@@ -782,6 +927,38 @@ public sealed class DistributedLockTests : IAsyncDisposable
             }
 
             return ValueTask.FromResult(result);
+        }
+    }
+
+    // Fails the renewals of one lock while a test has it on: the updates of its row, which its release is too.
+    private sealed class FailingRenewals(string name) : DbCommandInterceptor
+    {
+        private volatile bool _on;
+
+        public bool On
+        {
+            get => _on;
+            set => _on = value;
+        }
+
+        public override InterceptionResult<int> NonQueryExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<int> result)
+        {
+            Fail(command);
+            return result;
+        }
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            Fail(command);
+            return ValueTask.FromResult(result);
+        }
+
+        private void Fail(DbCommand command)
+        {
+            if (On && command.CommandText.Contains("UPDATE \"cms_lock\"", StringComparison.Ordinal) && command.Parameters.Cast<DbParameter>().Any(parameter => Equals(parameter.Value, name)))
+            {
+                throw new InvalidOperationException("The renewal failed.");
+            }
         }
     }
 
