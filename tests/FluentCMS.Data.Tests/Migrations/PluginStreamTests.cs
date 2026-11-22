@@ -1,4 +1,5 @@
 using System.Reflection;
+using FluentCMS.Core.Caching;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
@@ -12,6 +13,7 @@ using FluentCMS.Plugins.MultiSite;
 using FluentCMS.Plugins.Search;
 using FluentCMS.Plugins.Webhooks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -67,6 +69,29 @@ public sealed class PluginStreamTests : IDisposable
             ids.ShouldNotBeEmpty(stream.Name);
             _database.ReadStrings($"select \"MigrationId\" from {stream.HistoryTable}").ShouldBe(ids, ignoreOrder: true, stream.Name);
             ReadEveryTable(stream.Context(scope.ServiceProvider));
+        }
+    }
+
+    // A lock the host holds is renewed inside the commits of its contexts, a plugin's as the content and system ones, where
+    // the database has one writer, and of none elsewhere, where a renewal waits only for the lock's row.
+    [Fact]
+    public void EveryContextOfAHostRenewsItsLocksAsItCommitsOnlyWhereTheDatabaseHasOneWriter()
+    {
+        using var services = _database.CreateServices(ArticleSchemas.Titled, cms => Array.ForEach(Streams, stream => stream.Add(cms)));
+        using var scope = services.CreateScope();
+        var renewals = services.GetRequiredService<LeaseRenewalInterceptor>();
+        var oneWriter = services.GetRequiredService<IDataProvider>().HasOneWriter;
+
+        DbContext[] contexts =
+        [
+            scope.ServiceProvider.GetRequiredService<CmsDbContext>(),
+            scope.ServiceProvider.GetRequiredService<SystemDbContext>(),
+            .. Streams.Select(stream => stream.Context(scope.ServiceProvider)),
+        ];
+        foreach (var context in contexts)
+        {
+            var interceptors = context.GetService<IDbContextOptions>().FindExtension<CoreOptionsExtension>()?.Interceptors ?? [];
+            interceptors.Contains(renewals).ShouldBe(oneWriter, context.GetType().ToString());
         }
     }
 
