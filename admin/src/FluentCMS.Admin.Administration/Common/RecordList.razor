@@ -237,7 +237,7 @@ else
 
             if (page.Items.Count == 0 && page.Total > 0 && shown.Page > PagesOf(page.Total))
             {
-                // The page is past the end now, as after rows went, so the last page is shown, as a read of the user's goes.
+                // The page is past the end now, as after rows went, so the last page is shown, as a read the user starts does.
                 Navigation.NavigateTo(Address(shown.Search, PagesOf(page.Total)), replace: true);
                 return false;
             }
