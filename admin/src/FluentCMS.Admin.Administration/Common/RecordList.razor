@@ -230,7 +230,8 @@ else
         try
         {
             var page = await Read(shown, current.Token);
-            if (Overtaken(current))
+            // An answer that comes once the address is another path's, as while the router waits for the next page, is dropped.
+            if (Overtaken(current) || PathOf(Navigation.Uri) != path)
             {
                 return false;
             }

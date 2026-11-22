@@ -303,6 +303,29 @@ public sealed class RecordListTests : AdminTestContext
         Navigation.Uri.ShouldEndWith("/users");
         reads[^1].Page.ShouldBe(1);
     }
+    // As while the router waits for the next page: the address is that page's, which the list never writes.
+    [Fact]
+    public async Task ARefreshThatAnswersOnceTheAddressIsAnotherPathsIsDropped()
+    {
+        Navigation.NavigateTo("users?page=3");
+        var held = new TaskCompletionSource<RecordPage<Row>>();
+        var list = RenderList((query, _) =>
+        {
+            reads.Add(query);
+            return reads.Count == 1 ? Task.FromResult(new RecordPage<Row>([new("Zed")], 60)) : held.Task;
+        });
+        list.WaitForAssertion(() => Names(list).ShouldBe(["Zed"]));
+        Task<bool> refresh = Task.FromResult(true);
+        await list.InvokeAsync(() => { refresh = list.Instance.RefreshAsync(); });
+
+        Navigation.NavigateTo("roles");
+        held.SetResult(new([], 30));
+
+        (await list.InvokeAsync(() => refresh)).ShouldBeFalse();
+        Navigation.Uri.ShouldEndWith("/roles");
+        Names(list).ShouldBe(["Zed"]);
+        reads.Count.ShouldBe(2);
+    }
     [Fact]
     public void AListThatIsNotSearchableHasNoSearchAndReadsNone()
     {
