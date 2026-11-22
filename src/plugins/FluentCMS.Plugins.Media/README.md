@@ -11,7 +11,7 @@ The instance's options are in `FluentCms:Media`:
 | `Library` | `Shared` | `Shared`: every site reads and writes one library, that of the default site. `PerSite`: each site keeps its own assets, folders and presets (see below). |
 | `Local:Root` | `App_Data/media` | The directory of the local storage, under the content root unless it is absolute. |
 | `MaxRequestBodySize` | `268435456` | The largest upload request, in bytes. A site's `MaxRequestSize` above it is cut to it. |
-| `RequireSignedUrls` | `true` | `false` serves unsigned transform URLs, for a setup where every client is trusted. The startup report lists `media-unsigned-urls` in Production. |
+| `RequireSignedUrls` | `true` | `false` serves unsigned transform URLs, for a setup where every client is trusted. The startup report lists `media-unsigned-urls` outside Development. |
 | `SigningKey` | none | The base64 of at least 32 bytes that signs transform URLs. Left out, the plugin generates one key (see below). |
 | `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image and of the original file and the thumbnail of a public asset. |
 | `DeletedRetention` | `30.00:00:00` | How long a deleted asset keeps its file and its row before the daily cleanup purges them, as far as no other asset names the file (see the delete below). |
@@ -46,7 +46,7 @@ A type comes from the first bytes of the file, never from its name or `Content-T
 
 ## Local storage in Production
 
-The local disk is allowed in Production, and the startup report lists `media-local-storage` there. The files live on the machine of the instance, so:
+The local disk is allowed outside Development, and the startup report lists `media-local-storage` there. The files live on the machine of the instance, so:
 
 - every instance of a deployment needs `Local:Root` on one shared volume;
 - backups must include that directory, beside the database;

@@ -327,6 +327,20 @@ public sealed class MediaFileTests
         await Should.ThrowAsync<ArgumentException>(() => storage.WriteAsync(key, new MemoryStream([1]), Token));
     }
 
+    [Theory]
+    [InlineData("Production", true)]
+    [InlineData("Staging", true)]
+    [InlineData("Development", false)]
+    public void TheLocalDiskAndUnsignedUrlsAreReportedOutsideDevelopment(string environment, bool reported)
+    {
+        var options = Options.Create(new MediaOptions { RequireSignedUrls = false });
+        var source = new MediaInsecureDefaults(Storage(Path.GetTempPath()), new TestEnvironment { EnvironmentName = environment }, options);
+
+        var ids = source.GetInsecureDefaults().Select(item => item.Id).ToList();
+
+        ids.ShouldBe(reported ? [MediaInsecureDefaults.LocalStorage, MediaInsecureDefaults.UnsignedUrls] : []);
+    }
+
     private static LocalFileStorage Storage(string root) =>
         new(Options.Create(new MediaOptions { Local = new LocalStorageOptions { Root = root } }), new TestEnvironment());
 

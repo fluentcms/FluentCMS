@@ -67,14 +67,14 @@ internal sealed class McpClientRegistrationPolicySource(ISettings<McpSettings> s
 }
 
 // Open registration lets anyone on the network make a client that users can sign in through at once, so the startup
-// report lists it in Production. The report is made once per start, so a change of the setting shows at the next one.
+// report lists it outside Development. The report is made once per start, so a change of the setting shows at the next one.
 internal sealed class McpInsecureDefaults(IServiceScopeFactory scopes, IHostEnvironment environment) : IInsecureDefaultSource
 {
     public const string OpenClientRegistration = "mcp-open-client-registration";
 
     public IEnumerable<InsecureDefault> GetInsecureDefaults()
     {
-        if (!environment.IsProduction())
+        if (environment.IsDevelopment())
         {
             yield break;
         }
@@ -86,7 +86,7 @@ internal sealed class McpInsecureDefaults(IServiceScopeFactory scopes, IHostEnvi
             yield return new InsecureDefault
             {
                 Id = OpenClientRegistration,
-                Message = "The setting mcp.clientRegistration is open in Production, so any MCP client that reaches /connect/register is approved at once with the default role. Set it to approval unless every client that can reach the instance is trusted.",
+                Message = "The setting mcp.clientRegistration is open outside Development, so any MCP client that reaches /connect/register is approved at once with the default role. Set it to approval unless every client that can reach the instance is trusted.",
             };
         }
     }

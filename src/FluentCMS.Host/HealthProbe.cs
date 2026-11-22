@@ -33,17 +33,25 @@ internal static class HealthProbe
         }
     }
 
-    // ASPNETCORE_URLS wins over ASPNETCORE_HTTP_PORTS in Kestrel, so it does here too; the host reads both as urls and
-    // http_ports, which is also where a JSON file puts them.
+    // Kestrel:Endpoints wins over urls, which wins over http_ports, as in Kestrel; ASPNETCORE_URLS and ASPNETCORE_HTTP_PORTS
+    // reach the host as urls and http_ports, which is also where a JSON file puts them.
     private static string Port(IConfiguration configuration)
     {
-        var url = Split(configuration["urls"]).FirstOrDefault(value => value.StartsWith("http://", StringComparison.OrdinalIgnoreCase));
-        if (url is not null && Uri.TryCreate(url.Replace("://+", "://localhost", StringComparison.Ordinal).Replace("://*", "://localhost", StringComparison.Ordinal), UriKind.Absolute, out var uri))
+        var endpoints = configuration.GetSection("Kestrel:Endpoints").GetChildren().Select(endpoint => endpoint["Url"]);
+        if (FirstHttpPort(endpoints) is { } endpointPort)
         {
-            return uri.Port.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return endpointPort;
         }
 
-        return Split(configuration["http_ports"]).FirstOrDefault() ?? "8080";
+        return FirstHttpPort(Split(configuration["urls"])) ?? Split(configuration["http_ports"]).FirstOrDefault() ?? "8080";
+    }
+
+    private static string? FirstHttpPort(IEnumerable<string?> urls)
+    {
+        var url = urls.FirstOrDefault(value => value?.StartsWith("http://", StringComparison.OrdinalIgnoreCase) == true);
+        return url is not null && Uri.TryCreate(url.Replace("://+", "://localhost", StringComparison.Ordinal).Replace("://*", "://localhost", StringComparison.Ordinal), UriKind.Absolute, out var uri)
+            ? uri.Port.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : null;
     }
 
     private static string[] Split(string? value) =>

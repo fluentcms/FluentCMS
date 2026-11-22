@@ -114,7 +114,7 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
     [InlineData("cms.example.com;localhost", false)]
     [InlineData("*", true)]
     [InlineData("cms.example.com;*", true)]
-    public async Task AllowedHostsIsReportedInProductionOnlyWhenItAcceptsAnyHost(string allowedHosts, bool reported)
+    public async Task AllowedHostsIsReportedOnlyWhenItAcceptsAnyHost(string allowedHosts, bool reported)
     {
         var app = await StartAsync(Environments.Production, new Dictionary<string, string?> { ["AllowedHosts"] = allowedHosts });
 
@@ -131,20 +131,29 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
     }
 
     [Fact]
-    public async Task AllowedHostsIsNotReportedOutsideProduction()
+    public async Task TheRedirectAndAllowedHostsAreReportedInStagingAndNotInDevelopment()
     {
-        var app = await StartAsync(Environments.Staging);
+        var staging = await StartAsync(Environments.Staging);
+        var development = await StartAsync(Environments.Development);
 
-        app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("allowed-hosts-any");
+        var inStaging = staging.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ToList();
+        inStaging.ShouldContain("https-redirection-off");
+        inStaging.ShouldContain("allowed-hosts-any");
+        var inDevelopment = development.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ToList();
+        inDevelopment.ShouldNotContain("https-redirection-off");
+        inDevelopment.ShouldNotContain("allowed-hosts-any");
     }
 
     [Fact]
-    public async Task TheDirectLoginOfMembersIsReportedInProductionAsTheLessSecureWayIn()
+    public async Task TheDirectLoginOfMembersIsReportedOutsideDevelopmentAsTheLessSecureWayIn()
     {
         var on = await StartAsync(Environments.Production, new Dictionary<string, string?> { ["FluentCms:Members:AllowDirectLogin"] = "true" });
         var insecure = on.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Single(item => item.Id == "member-direct-login");
         insecure.Message.ShouldContain("FluentCms:Members:AllowDirectLogin");
         insecure.Message.ShouldContain("less secure");
+
+        var staging = await StartAsync(Environments.Staging, new Dictionary<string, string?> { ["FluentCms:Members:AllowDirectLogin"] = "true" });
+        staging.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldContain("member-direct-login");
 
         var off = await StartAsync(Environments.Production);
         off.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("member-direct-login");
@@ -161,8 +170,9 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
     [InlineData("Production", "Logging:LogLevel:AspNet.Security.OAuth.Apple", true, true)]
     [InlineData("Production", "Logging:LogLevel:AspNet.Security.OAuth.Apple.Internal.DefaultAppleClientSecretGenerator", true, true)]
     [InlineData("Production", "Logging:LogLevel:AspNet.Security.OAuth.Apple", false, false)]
+    [InlineData("Staging", "Logging:LogLevel:AspNet.Security.OAuth.Apple", true, true)]
     [InlineData("Development", "Logging:LogLevel:AspNet.Security.OAuth.Apple", true, false)]
-    public async Task TheAppleCategoryBelowInformationIsReportedInProduction(string environment, string level, bool apple, bool reported)
+    public async Task TheAppleCategoryBelowInformationIsReportedOutsideDevelopment(string environment, string level, bool apple, bool reported)
     {
         var settings = new Dictionary<string, string?> { [level] = "Trace" };
         if (apple)
@@ -196,8 +206,9 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
     [InlineData("Production", true, false, true)]
     [InlineData("Production", false, false, false)]
     [InlineData("Production", true, true, false)]
-    [InlineData("Staging", true, false, false)]
-    public async Task TheMemberMailLimitInTheInMemoryCacheIsReportedInProductionWhileMailGoesOut(string environment, bool smtp, bool sharedCache, bool reported)
+    [InlineData("Staging", true, false, true)]
+    [InlineData("Development", true, false, false)]
+    public async Task TheMemberMailLimitInTheInMemoryCacheIsReportedOutsideDevelopmentWhileMailGoesOut(string environment, bool smtp, bool sharedCache, bool reported)
     {
         var settings = new Dictionary<string, string?>();
         if (smtp)

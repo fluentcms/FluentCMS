@@ -327,6 +327,7 @@ public sealed class HttpProtectionHardeningTests(CmsWebHosts hosts) : IClassFixt
     [Fact]
     public async Task TheHostedPageConventionGivesAPageMappedElsewhereTheHeadersAndTheAuthLimit()
     {
+        using var counter = new RefusalCounter();
         var client = await Start(Limits(auth: 2));
 
         using var first = await Send(client, "/page");
@@ -337,6 +338,7 @@ public sealed class HttpProtectionHardeningTests(CmsWebHosts hosts) : IClassFixt
         first.Headers.GetValues("X-Content-Type-Options").ShouldBe(["nosniff"]);
         Header(first, "RateLimit-Limit").ShouldBe("2");
         refused.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        counter.Policies.ShouldContain("auth");
     }
 
     [Theory]

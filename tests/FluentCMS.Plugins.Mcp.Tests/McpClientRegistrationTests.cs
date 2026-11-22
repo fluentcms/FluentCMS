@@ -494,21 +494,24 @@ public sealed class McpClientRegistrationTests(McpClientFixture fixture) : IClas
     }
 
     [Fact]
-    public async Task TheStartupReportListsOpenRegistrationInProductionOnly()
+    public async Task TheStartupReportListsOpenRegistrationOutsideDevelopment()
     {
         var host = fixture.Host;
         var scopes = host.Services.GetRequiredService<IServiceScopeFactory>();
         var production = new McpInsecureDefaults(scopes, new Environment(Environments.Production));
+        var staging = new McpInsecureDefaults(scopes, new Environment(Environments.Staging));
         var development = new McpInsecureDefaults(scopes, new Environment(Environments.Development));
 
         await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
         var open = production.GetInsecureDefaults().ToList();
+        var openInStaging = staging.GetInsecureDefaults().ToList();
         var openInDevelopment = development.GetInsecureDefaults().ToList();
         await SetPolicyAsync(host, McpClientRegistrationMode.Approval);
         var approval = production.GetInsecureDefaults().ToList();
 
         open.ShouldHaveSingleItem().Id.ShouldBe("mcp-open-client-registration");
         open[0].Message.ShouldContain("mcp.clientRegistration");
+        openInStaging.ShouldHaveSingleItem().Id.ShouldBe("mcp-open-client-registration");
         openInDevelopment.ShouldBeEmpty();
         approval.ShouldBeEmpty();
         host.Services.GetServices<IInsecureDefaultSource>().OfType<McpInsecureDefaults>().ShouldHaveSingleItem();
