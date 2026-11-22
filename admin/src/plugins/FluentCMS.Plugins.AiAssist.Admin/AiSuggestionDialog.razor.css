@@ -1,0 +1,12 @@
+.ai-suggestion {
+    min-block-size: 4rem;
+    white-space: pre-wrap;
+}
+
+.ai-panel-note {
+    color: var(--cms-color-text-muted);
+}
+
+.ai-panel-problem {
+    color: var(--cms-color-error);
+}

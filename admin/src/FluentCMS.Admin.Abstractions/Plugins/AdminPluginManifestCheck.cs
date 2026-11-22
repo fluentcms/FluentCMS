@@ -288,7 +288,12 @@ public static class AdminPluginManifestCheck
             if (type.GetCustomAttribute<FieldActionAttribute>() is { } fieldAction)
             {
                 Require<FieldActionBase>(type, $"field action '{fieldAction.Name}'", problems);
-                fieldActions.Add(new AdminManifestFieldAction { Type = name, Name = fieldAction.Name, FieldTypes = fieldAction.FieldTypes, Permission = fieldAction.Permission });
+                if (fieldAction.FieldsFrom is { } from && !FieldActionSource.TryParse(from, out _, out _))
+                {
+                    problems.Add($"field action '{fieldAction.Name}' of {name}: FieldsFrom '{from}' is not a read of the Management API and a member of its answer, such as ai/fields#fields");
+                }
+
+                fieldActions.Add(new AdminManifestFieldAction { Type = name, Name = fieldAction.Name, FieldTypes = fieldAction.FieldTypes, Permission = fieldAction.Permission, FieldsFrom = fieldAction.FieldsFrom });
             }
 
             if (type.GetCustomAttribute<DashboardWidgetAttribute>() is { } widget)
@@ -455,7 +460,7 @@ public static class AdminPluginManifestCheck
         .. Present(manifest.BulkActions).Select(action => new Item("bulk action", action.Type, "name", action.Name,
             [("contentTypes", Text(action.ContentTypes)), ("permission", action.Permission)])),
         .. Present(manifest.FieldActions).Select(action => new Item("field action", action.Type, "name", action.Name,
-            [("fieldTypes", Text(action.FieldTypes)), ("permission", action.Permission)])),
+            [("fieldTypes", Text(action.FieldTypes)), ("permission", action.Permission), ("fieldsFrom", action.FieldsFrom)])),
         .. Present(manifest.Widgets).Select(widget => new Item("widget", widget.Type, "title", widget.Title,
             [("size", ManifestNames.Of(widget.Size)), ("permission", widget.Permission), ("role", widget.Role)])),
         .. Present(manifest.Services).Select(service => new Item("service", service.Type, "service", service.Service, [])),

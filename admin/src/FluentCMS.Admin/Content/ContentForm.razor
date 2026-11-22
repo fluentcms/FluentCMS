@@ -31,6 +31,7 @@
 @inject DocumentInterop Document
 @inject AdminConfiguration Configuration
 @inject IStringLocalizer<AdminResources> L
+@inject FieldActionOffers FieldOffers
 
 <div class="content-form-layout" data-preview="@(PreviewShown ? (previewWidth == ContentPreview.Full ? "full" : "beside") : null)" data-width="@(PreviewShown ? previewWidth : null)">
     <div class="content-form">
@@ -324,8 +325,15 @@
 
     private sealed record ConflictRow(SchemaFieldDescription Field, bool ChangedByUser);
 
+    private static readonly IReadOnlyDictionary<string, IReadOnlyList<PluginFieldAction>> Empty = new Dictionary<string, IReadOnlyList<PluginFieldAction>>();
+
     private readonly Dictionary<string, FieldEditorBase> editors = new(StringComparer.Ordinal);
     private FormState state;
+
+    // The actions of the admin halves on each field, by its name (spec 5.1), and the reads of their fields, which a load or the
+    // end of the form cancels.
+    private IReadOnlyDictionary<string, IReadOnlyList<PluginFieldAction>> fieldActions = Empty;
+    private CancellationTokenSource? offering;
     private SchemaTypeDescription? type;
     private TypeAccessInfo? access;
     private IReadOnlyList<FormTab> tabs = [];
@@ -526,6 +534,7 @@
     {
         disposed = true;
         generation++;
+        StopOffering();
         tracking?.Dispose();
         leaveAnswer?.TrySetResult(false);
         leaveGuard?.Dispose();
@@ -536,6 +545,13 @@
     }
 
     protected override void OnInitialized() => leaveGuard = Navigation.RegisterLocationChangingHandler(OnLocationChanging);
+
+    private void StopOffering()
+    {
+        offering?.Cancel();
+        offering?.Dispose();
+        offering = null;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -635,14 +651,51 @@
         }
     }
 
+    // The actions of the halves for a form the caller may save, at once for those whose fields are known, and for the others
+    // once their FieldsFrom answers, which the form does not wait for (spec 5.1).
+    private void OfferFieldActions(int current, SchemaTypeDescription found)
+    {
+        if (!MaySave)
+        {
+            return;
+        }
+
+        fieldActions = FieldOffers.Known(found);
+        if (FieldOffers.Reads(found))
+        {
+            _ = ReadFieldActionsAsync(current, found, site, locale, offering!.Token);
+        }
+    }
+
+    private async Task ReadFieldActionsAsync(int current, SchemaTypeDescription found, string? inSite, string? inLocale, CancellationToken cancellationToken)
+    {
+        IReadOnlyDictionary<string, IReadOnlyList<PluginFieldAction>> offered;
+        try
+        {
+            offered = await FieldOffers.ReadAsync(found, inSite, inLocale, cancellationToken);
+        }
+        catch (Exception exception) when (exception is OperationCanceledException or ObjectDisposedException)
+        {
+            return;
+        }
+
+        if (current == generation && !disposed)
+        {
+            fieldActions = offered;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
     private async Task LoadAsync()
     {
         var current = ++generation;
+        StopOffering();
+        offering = new CancellationTokenSource();
         tracking?.Dispose();
         tracking = null;
         state = FormState.Loading;
         focusPanelHeading = InPanel;
-        (type, access, tabs, tabbed, read, entryId, activeTab) = (null, null, [], [], null, null, null);
+        (type, access, tabs, tabbed, read, entryId, activeTab, fieldActions) = (null, null, [], [], null, null, null, Empty);
         (restored, done, saveFailure, pendingCreate, publishTried) = (false, null, null, null, false);
         (warnings, confirming) = ([], null);
         (conflict, conflictOpen, comparing, historyOpen) = (null, false, false, false);
@@ -707,6 +760,7 @@
             if (current == generation)
             {
                 state = FormState.Ready;
+                OfferFieldActions(current, found);
             }
         }
         catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.NotFound && current == generation)
@@ -932,6 +986,17 @@
         && (entryId is null ? access!.CreatableFields : access!.UpdatableFields).Contains(field.Name, StringComparer.Ordinal);
 
     private bool Shows(SchemaFieldDescription field) => FormConditions.Shows(field, fields);
+
+    // The field as the draft holds it now, for an action of a half, which reads it and changes nothing.
+    private Actions.FieldActionContext ActionContext(SchemaFieldDescription field) => new()
+    {
+        Type = type!,
+        Field = field,
+        Value = fields[field.Name],
+        Document = new System.Collections.ObjectModel.ReadOnlyDictionary<string, JsonNode?>(fields),
+        EntryId = entryId,
+        ContentLocale = type!.Localized ? ContentCode : null,
+    };
 
     private void Change(SchemaFieldDescription field, JsonNode? value)
     {
@@ -1607,6 +1672,10 @@
         {
             <div class="@(compare is null ? "content-form-field" : "content-form-field content-form-field-compared") content-form-span-@ContentFormLayout.Span(field)" data-field="@field.Name" @key="field.Name">
                 @Editor(field)
+                @if (Changeable(field) && fieldActions.GetValueOrDefault(field.Name) is { } actions)
+                {
+                    <FieldActionMenu @key="generation" Actions="@([.. actions.Select(action => (action.Half, action.Declared))])" FieldLabel="@FieldEditorBase.LabelOf(field)" Context="@(() => ActionContext(field))" OnResult="@(value => Change(field, value))" />
+                }
                 @if (compare is { } other)
                 {
                     <div class="content-form-compare" lang="@other.Locale">

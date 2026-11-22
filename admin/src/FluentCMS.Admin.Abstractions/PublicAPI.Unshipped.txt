@@ -102,6 +102,12 @@ FluentCMS.Admin.Api.ApiContent
 FluentCMS.Admin.Api.ApiContent.ApiContent(string! mediaType, System.ReadOnlyMemory<byte> bytes) -> void
 FluentCMS.Admin.Api.ApiContent.Bytes.get -> System.ReadOnlyMemory<byte>
 FluentCMS.Admin.Api.ApiContent.MediaType.get -> string!
+FluentCMS.Admin.Api.ApiEvent
+FluentCMS.Admin.Api.ApiEvent.ApiEvent(string! name, string! data) -> void
+FluentCMS.Admin.Api.ApiEvent.Data.get -> string!
+FluentCMS.Admin.Api.ApiEvent.Name.get -> string!
+FluentCMS.Admin.Api.IManagementEvents
+FluentCMS.Admin.Api.IManagementEvents.ReadAsync(FluentCMS.Admin.Api.ApiRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<FluentCMS.Admin.Api.ApiEvent!>!
 FluentCMS.Admin.Api.ApiRequest
 FluentCMS.Admin.Api.ApiRequest.ApiRequest(System.Net.Http.HttpMethod! method, string! path) -> void
 FluentCMS.Admin.Api.ApiRequest.Body.get -> System.Text.Json.Nodes.JsonNode?
@@ -708,6 +714,8 @@ FluentCMS.Admin.Plugins.AdminManifestFieldAction.AdminManifestFieldAction() -> v
 FluentCMS.Admin.Plugins.AdminManifestFieldAction.Equals(FluentCMS.Admin.Plugins.AdminManifestFieldAction? other) -> bool
 FluentCMS.Admin.Plugins.AdminManifestFieldAction.FieldTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
 FluentCMS.Admin.Plugins.AdminManifestFieldAction.FieldTypes.init -> void
+FluentCMS.Admin.Plugins.AdminManifestFieldAction.FieldsFrom.get -> string?
+FluentCMS.Admin.Plugins.AdminManifestFieldAction.FieldsFrom.init -> void
 FluentCMS.Admin.Plugins.AdminManifestFieldAction.Name.get -> string!
 FluentCMS.Admin.Plugins.AdminManifestFieldAction.Name.init -> void
 FluentCMS.Admin.Plugins.AdminManifestFieldAction.Permission.get -> string?
@@ -881,6 +889,8 @@ FluentCMS.Admin.Plugins.FieldActionAttribute.FieldTypes.set -> void
 FluentCMS.Admin.Plugins.FieldActionAttribute.Name.get -> string!
 FluentCMS.Admin.Plugins.FieldActionAttribute.Permission.get -> string?
 FluentCMS.Admin.Plugins.FieldActionAttribute.Permission.set -> void
+FluentCMS.Admin.Plugins.FieldActionAttribute.FieldsFrom.get -> string?
+FluentCMS.Admin.Plugins.FieldActionAttribute.FieldsFrom.set -> void
 FluentCMS.Admin.Plugins.FieldEditorAttribute
 FluentCMS.Admin.Plugins.FieldEditorAttribute.FieldEditorAttribute(string! fieldType) -> void
 FluentCMS.Admin.Plugins.FieldEditorAttribute.FieldType.get -> string!

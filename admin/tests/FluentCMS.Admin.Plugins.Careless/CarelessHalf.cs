@@ -26,7 +26,7 @@ public sealed class CarelessMenuItem;
 
 [EntryAction("careless")]
 [BulkAction("careless")]
-[FieldAction("careless")]
+[FieldAction("careless", FieldsFrom = "../ai/fields#fields")]
 [AdminService(typeof(IDisposable))]
 public sealed class CarelessAction;
 
@@ -39,7 +39,9 @@ public sealed class CarelessAction;
 [AdminPage("/system/notes/new", Permission = "notes.create")]
 public sealed class CarelessNote;
 
+// Its FieldsFrom passes ApiRequest, but the client cannot resolve file:x under the Management API.
 [AdminPage("/careless/item")]
 [AdminMenuItem("Careless.Item", Route = "/careless/items")]
+[FieldAction("twin", FieldsFrom = "file:x#fields")]
 [AdminService(typeof(IDisposable))]
 public sealed class CarelessTwin;
