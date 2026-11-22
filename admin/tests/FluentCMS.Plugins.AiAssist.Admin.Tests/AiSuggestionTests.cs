@@ -208,4 +208,21 @@ public sealed class AiSuggestionTests : AiTestContext
         Server.Assets[hero]["alt"]!.GetValue<string>().ShouldBe("A ship at sea.");
         Server.Requests.Where(request => request.Method == HttpMethod.Patch).Select(request => request.IfMatch).ShouldBe(["\"3\"", "\"4\""]);
     }
+
+    // The asset is read again in the form's locale, as it was read first, whatever locale the first answer named.
+    [Fact]
+    public void AnAssetChangedSinceItWasReadIsReadAgainInTheLocaleOfTheFirstRead()
+    {
+        var hero = Server.AddImage("hero.png", alt: "Old");
+        Server.AnsweredLocale = _ => null;
+        var (_, panel) = Run(new AssetAltTextAction(Overlays, Texts), Context("hero", new JsonObject { ["hero"] = hero.ToString("D") }, locale: "fr"));
+        Server.Done("A ship at sea.");
+        panel.WaitForAssertion(() => Buttons(panel).ShouldContain("Accept"));
+        Server.Assets[hero]["version"] = 4;
+
+        Button(panel, "Accept").Click();
+
+        panel.WaitForAssertion(() => panel.Find(".ai-panel-problem strong").TextContent.ShouldBe("The alt text of hero.png was changed since it was read. Accept again to replace it."));
+        Server.Requests.Where(request => request.Method == HttpMethod.Get && request.Path == $"media/{hero:D}").Select(request => request.Locale).ShouldBe(["fr", "fr"]);
+    }
 }

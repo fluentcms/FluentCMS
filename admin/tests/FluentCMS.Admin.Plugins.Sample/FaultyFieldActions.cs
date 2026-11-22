@@ -59,3 +59,21 @@ public sealed class HeldFieldAction : FieldActionBase
         return FieldActionResult.Replace(System.Text.Json.Nodes.JsonValue.Create("late"));
     }
 }
+
+// Throws ObjectDisposedException when the test releases it, as an action that used something of a form that went would.
+public sealed class DisposedFieldAction : FieldActionBase
+{
+    public static TaskCompletionSource Release { get; set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    // Set as the action throws.
+    public static TaskCompletionSource Thrown { get; set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public override string Label => "Disposed";
+
+    public override async Task<FieldActionResult> RunAsync(FieldActionContext context, CancellationToken cancellationToken)
+    {
+        await Release.Task;
+        Thrown.TrySetResult();
+        throw new ObjectDisposedException("form");
+    }
+}

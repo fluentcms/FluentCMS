@@ -326,6 +326,8 @@ public sealed class AdminPluginManifestTests
             $"page '/careless/item' of {Types}CarelessTwin: the component has no @page of that route, so the router cannot find it",
             $"page '/careless/item' of {Types}CarelessTwin: the route is not /system or below it",
             $"menu item 'Careless.Item' of {Types}CarelessTwin: the component declares no [AdminPage] of its Route '/careless/items'",
+            $"field action 'twin' of {Types}CarelessTwin: the class does not derive from FieldActionBase",
+            $"field action 'twin' of {Types}CarelessTwin: FieldsFrom 'file:x#fields' is not a read of the Management API and a member of its answer, such as ai/fields#fields",
             $"service 'System.IDisposable' of {Types}CarelessTwin: the class does not implement it",
             $"service 'System.IDisposable' is declared more than once: by {Types}CarelessAction and {Types}CarelessTwin",
         ]);

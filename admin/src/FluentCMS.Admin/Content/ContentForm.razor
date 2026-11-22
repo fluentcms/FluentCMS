@@ -660,8 +660,8 @@
             return;
         }
 
-        fieldActions = FieldOffers.Known(found, site, locale);
-        if (FieldOffers.Reads(found, site, locale))
+        fieldActions = FieldOffers.Known(found);
+        if (FieldOffers.Reads(found))
         {
             _ = ReadFieldActionsAsync(current, found, site, locale, offering!.Token);
         }

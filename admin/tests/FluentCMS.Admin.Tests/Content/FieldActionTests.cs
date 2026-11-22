@@ -3,8 +3,10 @@ using System.Reflection;
 using System.Text.Json.Nodes;
 using AngleSharp.Dom;
 using Bunit;
+using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Content;
+using FluentCMS.Admin.Fields;
 using FluentCMS.Admin.Plugins;
 using FluentCMS.Admin.Plugins.Sample;
 using FluentCMS.Admin.Shell;
@@ -12,6 +14,8 @@ using FluentCMS.Admin.Tests.Shell;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.FluentUI.AspNetCore.Components;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Admin.Tests.Shell.FakeManagementServer;
@@ -29,7 +33,7 @@ public sealed class FieldActionTests : AdminTestContext
 
     private readonly FakeContent _content;
     private readonly SampleLoader _loader = new();
-    private readonly List<(string Query, string? Locale)> _fieldReads = [];
+    private readonly List<(string Query, string? Site, string? Locale)> _fieldReads = [];
     private readonly Guid _review;
     private readonly Guid _other;
 
@@ -127,6 +131,7 @@ public sealed class FieldActionTests : AdminTestContext
 
         app.WaitForAssertion(() => Wrapper(app, "title").QuerySelector(".field-actions-list").ShouldBeNull());
         Toggle(app, "title").GetAttribute("aria-expanded").ShouldBe("false");
+        app.WaitForAssertion(() => Focused().ShouldBe(ToggleReference(app, "Title")));
     }
 
     [Theory]
@@ -141,6 +146,7 @@ public sealed class FieldActionTests : AdminTestContext
         _fieldReads.ShouldBeEmpty();
     }
 
+    // Read once for the form, whichever of its fields the action is on.
     [Fact]
     public void FieldsFromNamesTheFieldsBeforeTheHalfLoadsAndIsReadOnce()
     {
@@ -177,10 +183,10 @@ public sealed class FieldActionTests : AdminTestContext
         Toggles(app).ShouldBe(["body"]);
     }
 
-    // The form shows at once, and adds the actions FieldsFrom gates once the read answers; the answer is kept for the site
-    // and locale, so the next form does not read it again.
+    // The form shows at once, and adds the actions FieldsFrom gates once the read answers. Nothing is kept: the next entry
+    // reads again, so that what the site opted in since is offered without a reload.
     [Fact]
-    public void TheFormDoesNotWaitForFieldsFromAndTheAnswerIsKeptForTheSession()
+    public void TheFormDoesNotWaitForFieldsFromAndReadsItAgainForTheNextEntry()
     {
         var held = new TaskCompletionSource();
         Management.HoldPath = path => path.StartsWith(FieldsPath, StringComparison.Ordinal) ? held.Task : null;
@@ -191,10 +197,72 @@ public sealed class FieldActionTests : AdminTestContext
         held.SetResult();
         app.WaitForAssertion(() => Toggles(app).ShouldBe(["body"]));
 
-        Services.GetRequiredService<NavigationManager>().NavigateTo($"content/review/{_other:D}");
+        FieldsResponse = () => Json(new JsonObject { ["fields"] = new JsonObject { ["review"] = new JsonArray("title") } });
+        Navigate($"content/review/{_other:D}");
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("poor"));
+        app.WaitForAssertion(() => Toggles(app).ShouldBe(["title"]));
+        _fieldReads.Count.ShouldBe(2);
+    }
+
+    // A read of the entry before, held until the next entry has its own answer, never offers its answer there: the load of
+    // the next entry cancels it.
+    [Fact]
+    public async Task AFieldsFromReadOfTheEntryBeforeNeverReachesTheNextEntry()
+    {
+        var held = HoldFirstFieldsRead();
+        var app = LoadReview(Reviews with { FieldActions = [Declared("ShoutAction", "shout", fieldsFrom: Fields + "#fields")] });
+        Toggles(app).ShouldBeEmpty();
+
+        Navigate($"content/review/{_other:D}");
         app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("poor"));
         app.WaitForAssertion(() => Toggles(app).ShouldBe(["body"]));
+        held.SetResult();
+        await SettledAsync(app);
+
         _fieldReads.ShouldHaveSingleItem();
+        Toggles(app).ShouldBe(["body"]);
+    }
+
+    // The same across the end of the form: a read of a form that went never reaches the next form.
+    [Fact]
+    public async Task AFieldsFromReadOfAFormThatWentNeverReachesTheNextForm()
+    {
+        var held = HoldFirstFieldsRead();
+        var app = LoadReview(Reviews with { FieldActions = [Declared("ShoutAction", "shout", fieldsFrom: Fields + "#fields")] });
+        Toggles(app).ShouldBeEmpty();
+
+        Navigate("content/review");
+        app.WaitForAssertion(() => app.FindComponents<ContentForm>().ShouldBeEmpty());
+        Navigate($"content/review/{_other:D}");
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("poor"));
+        app.WaitForAssertion(() => Toggles(app).ShouldBe(["body"]));
+        held.SetResult();
+        await SettledAsync(app);
+
+        _fieldReads.ShouldHaveSingleItem();
+        Toggles(app).ShouldBe(["body"]);
+    }
+
+    // The form reads FieldsFrom again in the locale it shows next, and in its site.
+    [Fact]
+    public void ALocaleSwitchReadsFieldsFromAgainInTheNewLocale()
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        var review = Type("review", fields: [Field("title"), Field("body", "longText"), Field("rating", "integer")]);
+        review["localized"] = true;
+        Management.SetTypes(MainSite, review);
+        _content.Add("review", new JsonObject { ["title"] = "génial", ["body"] = "Un bel endroit.", ["rating"] = 4 }, id: _review, locale: "fr");
+
+        var app = LoadReview(Reviews with { FieldActions = [Declared("ShoutAction", "shout", fieldsFrom: Fields + "#fields")] });
+        app.WaitForAssertion(() => Toggles(app).ShouldBe(["body"]));
+        FieldsResponse = () => Json(new JsonObject { ["fields"] = new JsonObject { ["review"] = new JsonArray("title") } });
+
+        Navigate($"content/review/{_review:D}?locale=fr");
+
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("génial"));
+        app.WaitForAssertion(() => Toggles(app).ShouldBe(["title"]));
+        // The site's default locale goes as none, as the form's own reads send it.
+        _fieldReads.Select(read => (read.Site, read.Locale)).ShouldBe([(MainSite.ToString("D"), null), (MainSite.ToString("D"), "fr")]);
     }
 
     [Fact]
@@ -208,19 +276,24 @@ public sealed class FieldActionTests : AdminTestContext
         _fieldReads.ShouldBeEmpty();
     }
 
-    // A source the client would refuse, as one that leads out of the Management API, offers the action on no field, and the
-    // form works without it.
+    // A source the client would refuse, as one that leads out of the Management API or does not resolve under it, or one with
+    // a dot segment, offers the action on no field and is never sent; the form works without it.
     [Theory]
     [InlineData("../reviews/fields#fields")]
     [InlineData("reviews/%2E%2E/../x#fields")]
+    [InlineData("file:x#fields")]
     public void AFieldsFromTheClientWouldRefuseOffersNothingAndTheFormStillWorks(string fieldsFrom)
     {
+        var log = new OffersLog();
+        Services.AddSingleton<ILogger<FieldActionOffers>>(log);
+
         var app = LoadReview(Reviews with { FieldActions = [Declared("ShoutAction", "shout", fieldsFrom: fieldsFrom), Declared("ClearFieldAction", "clear")] });
 
         app.WaitForAssertion(() => Toggles(app).ShouldBe(["title", "body"]));
         Open(app, "title");
         app.WaitForAssertion(() => ActionButtons(app, "title").ShouldBe(["Clear"]));
-        _fieldReads.ShouldBeEmpty();
+        Management.Requests.Select(request => request.Path).Distinct().ShouldBeSubsetOf(["me", "me/sites", "me/preferences", "me/access", "plugins", "schema", $"content/review/{_review:D}"]);
+        log.Lines.ShouldBeEmpty();
     }
 
     // The result of an action asked on one entry never reaches the next entry the form shows.
@@ -274,7 +347,77 @@ public sealed class FieldActionTests : AdminTestContext
         Toggle(app, "title").KeyDown(new KeyboardEventArgs { Key = "Escape" });
 
         app.WaitForAssertion(() => Wrapper(app, "title").QuerySelector(".field-actions-list").ShouldBeNull());
+        app.WaitForAssertion(() => Focused().ShouldBe(ToggleReference(app, "Title")));
     }
+
+    // The list's loading text is announced once, by the shell's live region and not by a region of the list's own, and not
+    // again when the list opens a second time.
+    [Fact]
+    public void TheLoadingOfTheActionsIsAnnouncedOnce()
+    {
+        var loaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _loader.Gate = loaded.Task;
+        var app = LoadReview(Reviews);
+
+        Open(app, "title");
+
+        app.WaitForAssertion(() => Wrapper(app, "title").QuerySelector(".field-actions-list p")!.TextContent.ShouldBe("Loading the actions…"));
+        app.WaitForAssertion(() => LiveRegionsSaying(app, "Loading the actions…").ShouldBe(1));
+        loaded.SetResult();
+        app.WaitForAssertion(() => ActionButtons(app, "title").ShouldBe(["Shout"]));
+
+        Open(app, "title");
+        app.WaitForAssertion(() => Wrapper(app, "title").QuerySelector(".field-actions-list").ShouldBeNull());
+        Open(app, "title");
+        app.WaitForAssertion(() => ActionButtons(app, "title").ShouldBe(["Shout"]));
+        Announced(app).Count(text => text == "Loading the actions…").ShouldBe(1);
+    }
+
+    // An action that throws ObjectDisposedException once its menu went with the entry was stopped, not failed: nothing of it
+    // is shown or announced.
+    [Fact]
+    public async Task AnActionThatFindsItsFormGoneIsNotAFailure()
+    {
+        DisposedFieldAction.Release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        DisposedFieldAction.Thrown = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var app = LoadReview(Reviews with { FieldActions = [Declared("DisposedFieldAction", "disposed")] });
+        Open(app, "title");
+        app.WaitForAssertion(() => ActionButtons(app, "title").ShouldBe(["Disposed"]));
+        ActionButton(app, "title", "Disposed").Click();
+
+        Navigate($"content/review/{_other:D}");
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("poor"));
+        DisposedFieldAction.Release.SetResult();
+        await DisposedFieldAction.Thrown.Task.WaitAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // The menu's continuation after the action is posted to the renderer, which these calls let run first.
+        await app.InvokeAsync(() => { });
+        await app.InvokeAsync(() => { });
+        Announced(app).ShouldNotContain("The action failed. The browser's console has the cause.");
+    }
+
+    // The shape a field action's value must have for the field: a field of several takes an array of values of its type, and
+    // a number field a number.
+    [Theory]
+    [InlineData("text", false, "\"a\"", true)]
+    [InlineData("text", false, "[\"a\"]", false)]
+    [InlineData("text", true, "[\"a\", \"b\"]", true)]
+    [InlineData("text", true, "\"a\"", false)]
+    [InlineData("text", true, "[\"a\", 1]", false)]
+    [InlineData("text", true, "[\"a\", null]", false)]
+    [InlineData("integer", false, "4", true)]
+    [InlineData("integer", false, "\"4\"", false)]
+    [InlineData("integer", true, "[4, 5]", true)]
+    [InlineData("integer", true, "4", false)]
+    [InlineData("decimal", false, "4.5", true)]
+    [InlineData("decimal", false, "\"4.5\"", false)]
+    [InlineData("decimal", false, "true", false)]
+    [InlineData("boolean", false, "false", true)]
+    [InlineData("boolean", false, "\"false\"", false)]
+    [InlineData("relation", false, "{ \"id\": 1 }", true)]
+    [InlineData("integer", false, "null", true)]
+    public void AValueFitsAFieldOnlyInTheShapeOfItsType(string type, bool multiple, string json, bool fits) =>
+        FieldValues.Fits(new SchemaFieldDescription { Name = "value", Type = type, Multiple = multiple, Validation = new() }, JsonNode.Parse(json)).ShouldBe(fits);
 
     private static AdminPluginManifest Reviews => AdminPluginManifestJson.Read(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, AdminPluginManifest.FileName)));
 
@@ -283,9 +426,47 @@ public sealed class FieldActionTests : AdminTestContext
 
     private HttpResponseMessage FieldsAnswer(HttpRequestMessage request)
     {
-        _fieldReads.Add((request.RequestUri!.Query, request.Headers.TryGetValues("X-Cms-Locale", out var locales) ? locales.Single() : null));
+        lock (_fieldReads)
+        {
+            _fieldReads.Add((request.RequestUri!.Query, Header(request, "X-Cms-Site"), Header(request, "X-Cms-Locale")));
+        }
+
         return FieldsResponse();
+
+        static string? Header(HttpRequestMessage request, string name) => request.Headers.TryGetValues(name, out var values) ? values.Single() : null;
     }
+
+    // Holds the first read of FieldsFrom until the test completes the task; the first read to answer opts body in, a later
+    // one title.
+    private TaskCompletionSource HoldFirstFieldsRead()
+    {
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reads = 0;
+        Management.HoldPath = path => path.StartsWith(FieldsPath, StringComparison.Ordinal) && Interlocked.Increment(ref reads) == 1 ? held.Task : null;
+        FieldsResponse = () => Json(new JsonObject { ["fields"] = new JsonObject { ["review"] = new JsonArray(_fieldReads.Count == 1 ? "body" : "title") } });
+        return held;
+    }
+
+    // Lets a released read answer, unless it was cancelled, and the form render what it gives.
+    private async Task SettledAsync(IRenderedComponent<AdminApp> app)
+    {
+        SpinWait.SpinUntil(() => _fieldReads.Count > 1, TimeSpan.FromSeconds(1));
+        await app.InvokeAsync(() => { });
+        await app.InvokeAsync(() => { });
+    }
+
+    private void Navigate(string route) => Services.GetRequiredService<NavigationManager>().NavigateTo(route);
+
+    private string? Focused() =>
+        JSInterop.Invocations.Where(call => call.Identifier == "Blazor._internal.domWrapper.focus").Select(call => call.Arguments[0]).LastOrDefault() is ElementReference element ? element.Id : null;
+
+    // The element of the button that shows and hides the actions of the field with the label.
+    private static string ToggleReference(IRenderedComponent<AdminApp> app, string label) =>
+        app.FindComponents<FieldActionMenu>().Single(menu => menu.Instance.FieldLabel == label).FindComponents<CmsButton>()[0].FindComponent<FluentButton>().Instance.Element.Id;
+
+    // The live regions whose text holds the text: each would read it out.
+    private static int LiveRegionsSaying(IRenderedComponent<AdminApp> app, string text) =>
+        app.FindAll("[role=status], [role=alert], [aria-live]").Count(region => region.TextContent.Contains(text, StringComparison.Ordinal));
 
     private IRenderedComponent<AdminApp> LoadReview(AdminPluginManifest half, bool permitted = true, bool enabled = true)
     {
@@ -298,7 +479,7 @@ public sealed class FieldActionTests : AdminTestContext
 
         Management.Plugins[MainSite] = [Plugin("reviews", enabled)];
         Start();
-        Services.GetRequiredService<NavigationManager>().NavigateTo($"content/review/{_review:D}");
+        Navigate($"content/review/{_review:D}");
         var app = Render<AdminApp>();
         app.WaitForAssertion(() => Services.GetRequiredService<AdminContext>().Status.ShouldBe(ShellStatus.Ready));
         app.WaitForAssertion(() => Input(app, "title"));
@@ -342,10 +523,33 @@ public sealed class FieldActionTests : AdminTestContext
 
         public int Loads => _loads;
 
-        public Task<Assembly> LoadAsync(string assemblyName, CancellationToken cancellationToken)
+        // Ends a load when it ends; at once by default.
+        public Task Gate { get; set; } = Task.CompletedTask;
+
+        public async Task<Assembly> LoadAsync(string assemblyName, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref _loads);
-            return Task.FromResult(typeof(ReviewsAdminPlugin).Assembly);
+            await Gate.WaitAsync(cancellationToken);
+            return typeof(ReviewsAdminPlugin).Assembly;
+        }
+    }
+
+    // What the form's reads of FieldsFrom log.
+    private sealed class OffersLog : ILogger<FieldActionOffers>
+    {
+        public List<string> Lines { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            lock (Lines)
+            {
+                Lines.Add(formatter(state, exception));
+            }
         }
     }
 }

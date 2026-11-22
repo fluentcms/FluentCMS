@@ -181,6 +181,9 @@ internal sealed class FakeAiServer : IManagementApi, IManagementEvents
 
     public ApiProblem? UsageRefusal { get; set; }
 
+    // The locale a read of an asset answers, from the locale it asked for: by default that one, else en.
+    public Func<string?, string?> AnsweredLocale { get; set; } = asked => asked ?? "en";
+
     public void Delta(string text) => Events.Writer.TryWrite(new ApiEvent("delta", new JsonObject { ["text"] = text }.ToJsonString()));
 
     public void Done(JsonNode suggestion) =>
@@ -225,7 +228,7 @@ internal sealed class FakeAiServer : IManagementApi, IManagementEvents
         if (path.StartsWith("media/", StringComparison.Ordinal) && Guid.TryParse(path["media/".Length..], out var id) && Assets.TryGetValue(id, out var asset))
         {
             var read = asset.DeepClone().AsObject();
-            read["locale"] = request.Locale ?? "en";
+            read["locale"] = AnsweredLocale(request.Locale);
             return Task.FromResult(new ApiResponse<T>(HttpStatusCode.OK, $"\"{asset["version"]}\"", read.Deserialize(answer)!));
         }
 

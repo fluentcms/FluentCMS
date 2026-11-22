@@ -30,7 +30,9 @@ public sealed class CarelessMenuItem;
 [AdminService(typeof(IDisposable))]
 public sealed class CarelessAction;
 
+// Its FieldsFrom passes ApiRequest, but the client cannot resolve file:x under the Management API.
 [AdminPage("/careless/item")]
 [AdminMenuItem("Careless.Item", Route = "/careless/items")]
+[FieldAction("twin", FieldsFrom = "file:x#fields")]
 [AdminService(typeof(IDisposable))]
 public sealed class CarelessTwin;

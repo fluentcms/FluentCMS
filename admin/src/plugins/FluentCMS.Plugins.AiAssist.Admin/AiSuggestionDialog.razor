@@ -298,13 +298,14 @@
         }
     }
 
-    // The asset changed since it was read: the next accept is over the version read now, which shows its alt text.
+    // The asset changed since it was read: the next accept is over the version read now, in the locale of the first read,
+    // which shows its alt text.
     private async Task ReadAgainAsync(AiMediaAsset stale)
     {
         Shown shown;
         try
         {
-            var current = await Ai.AssetAsync(stale.Id, stale.Locale, token);
+            var current = await Ai.AssetAsync(stale.Id, Request.Locale, token);
             images = [.. images!.Select(asset => asset.Id == current.Id ? current : asset)];
             shown = new Shown(L["Ai.Panel.AltChanged", current.Name], string.IsNullOrWhiteSpace(current.Alt) ? null : L["Ai.Panel.AltNow", current.Alt].Value);
         }

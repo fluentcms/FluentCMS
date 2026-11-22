@@ -6,33 +6,36 @@ using Microsoft.Extensions.Logging;
 namespace FluentCMS.Admin.Content;
 
 // The field actions a form offers on each field of its type (spec 5.1): those of the enabled halves whose permission the user
-// holds, for the field's type, and for an action that names FieldsFrom only on the fields its answer names. An answer is read
-// once per site and locale in the session and kept; a read that fails, or a FieldsFrom the client would refuse, offers its
-// actions on no field. No half is loaded here.
+// holds, for the field's type, and for an action that names FieldsFrom only on the fields its answer names. The form reads
+// each FieldsFrom once each time it loads, for all its fields, and keeps nothing: the site's settings or the caller's grants
+// may have changed since. A read that fails, or a FieldsFrom the client would refuse, offers its actions on no field. No half
+// is loaded here.
 internal sealed class FieldActionOffers(AdminPlugins plugins, IManagementApi api, ILogger<FieldActionOffers> logger)
 {
     private static readonly IReadOnlyDictionary<string, IReadOnlyList<PluginFieldAction>> None = new Dictionary<string, IReadOnlyList<PluginFieldAction>>();
 
-    private readonly Dictionary<(string? Site, string? Locale, string Path), JsonNode?> _answers = [];
+    // The client's root, against which a FieldsFrom is resolved as the client resolves the path it sends.
+    private static readonly Uri Root = new("https://admin.invalid/api/management/v1/");
 
-    // What the form offers before its reads answer: the actions without FieldsFrom, and those whose answer is kept.
-    public IReadOnlyDictionary<string, IReadOnlyList<PluginFieldAction>> Known(SchemaTypeDescription type, string? site, string? locale) =>
-        Offered(type, site, locale, Declared(type));
+    // What the form offers before its reads answer: the actions without FieldsFrom.
+    public IReadOnlyDictionary<string, IReadOnlyList<PluginFieldAction>> Known(SchemaTypeDescription type) =>
+        Offered(type, Declared(type), new Dictionary<string, JsonNode?>());
 
-    // Whether a FieldsFrom of the type's actions is not read yet in the site and locale.
-    public bool Reads(SchemaTypeDescription type, string? site, string? locale) =>
-        Paths(Declared(type)).Any(path => !_answers.ContainsKey((site, locale, path)));
+    // Whether the type's actions name a FieldsFrom to read.
+    public bool Reads(SchemaTypeDescription type) => Paths(Declared(type)).Any();
 
-    // Reads what is not kept yet, each path once, and answers the actions of every field. A cancellation is the caller's.
+    // Reads each FieldsFrom of the type's actions once, in the site and locale, and answers the actions of every field. A
+    // cancellation is the caller's.
     public async Task<IReadOnlyDictionary<string, IReadOnlyList<PluginFieldAction>>> ReadAsync(SchemaTypeDescription type, string? site, string? locale, CancellationToken cancellationToken)
     {
         var declared = Declared(type);
-        foreach (var path in Paths(declared).Where(path => !_answers.ContainsKey((site, locale, path))))
+        var answers = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
+        foreach (var path in Paths(declared))
         {
             var request = new ApiRequest(HttpMethod.Get, path) { Site = site, NoSite = site is null, Locale = locale, NoLocale = locale is null };
             try
             {
-                _answers[(site, locale, path)] = (await api.SendAsync(request, ManagementJsonContext.Default.JsonNode, cancellationToken)).Value;
+                answers[path] = (await api.SendAsync(request, ManagementJsonContext.Default.JsonNode, cancellationToken)).Value;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -46,7 +49,7 @@ internal sealed class FieldActionOffers(AdminPlugins plugins, IManagementApi api
             }
         }
 
-        return Offered(type, site, locale, declared);
+        return Offered(type, declared, answers);
     }
 
     private Dictionary<string, IReadOnlyList<PluginFieldAction>> Declared(SchemaTypeDescription type) =>
@@ -55,10 +58,10 @@ internal sealed class FieldActionOffers(AdminPlugins plugins, IManagementApi api
     private static IEnumerable<string> Paths(Dictionary<string, IReadOnlyList<PluginFieldAction>> declared) =>
         declared.Values.SelectMany(actions => actions).Select(Source).OfType<(string Path, string Member)>().Select(source => source.Path).Distinct(StringComparer.Ordinal);
 
-    private IReadOnlyDictionary<string, IReadOnlyList<PluginFieldAction>> Offered(SchemaTypeDescription type, string? site, string? locale, Dictionary<string, IReadOnlyList<PluginFieldAction>> declared)
+    private static IReadOnlyDictionary<string, IReadOnlyList<PluginFieldAction>> Offered(SchemaTypeDescription type, Dictionary<string, IReadOnlyList<PluginFieldAction>> declared, Dictionary<string, JsonNode?> answers)
     {
         var offered = declared
-            .Select(pair => (Field: pair.Key, Actions: (IReadOnlyList<PluginFieldAction>)[.. pair.Value.Where(action => Offers(action, type.Name, pair.Key, site, locale))]))
+            .Select(pair => (Field: pair.Key, Actions: (IReadOnlyList<PluginFieldAction>)[.. pair.Value.Where(action => Offers(action, type.Name, pair.Key, answers))]))
             .Where(pair => pair.Actions.Count > 0)
             .ToDictionary(pair => pair.Field, pair => pair.Actions, StringComparer.Ordinal);
         return offered.Count == 0 ? None : offered;
@@ -68,14 +71,14 @@ internal sealed class FieldActionOffers(AdminPlugins plugins, IManagementApi api
         action.Declared.FieldsFrom is { } from && Split(from) is { } source ? source : null;
 
     // A FieldsFrom that does not read offers the action on no field, as a read that fails, or one not answered yet.
-    private bool Offers(PluginFieldAction action, string type, string field, string? site, string? locale)
+    private static bool Offers(PluginFieldAction action, string type, string field, Dictionary<string, JsonNode?> answers)
     {
         if (action.Declared.FieldsFrom is null)
         {
             return true;
         }
 
-        if (Source(action) is not { } source || _answers.GetValueOrDefault((site, locale, source.Path)) is not JsonObject answer)
+        if (Source(action) is not { } source || answers.GetValueOrDefault(source.Path) is not JsonObject answer)
         {
             return false;
         }
@@ -88,8 +91,8 @@ internal sealed class FieldActionOffers(AdminPlugins plugins, IManagementApi api
         };
     }
 
-    // As FieldActionSource of the contract, which the manifest check holds a half to: a path the client takes, with no dot
-    // segment, then '#' and a member.
+    // As FieldActionSource of the contract, which the manifest check holds a half to: a path the client takes and resolves
+    // under its root, with no dot segment, then '#' and a member.
     private static (string Path, string Member)? Split(string value)
     {
         var hash = value.LastIndexOf('#');
@@ -109,6 +112,12 @@ internal sealed class FieldActionOffers(AdminPlugins plugins, IManagementApi api
             _ = new ApiRequest(HttpMethod.Get, path);
         }
         catch (ArgumentException)
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(Root, path, out var target) || !Root.IsBaseOf(target)
+            || !string.Equals(target.GetLeftPart(UriPartial.Authority), Root.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase))
         {
             return null;
         }
