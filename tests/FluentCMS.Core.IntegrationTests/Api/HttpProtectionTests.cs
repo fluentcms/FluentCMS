@@ -10,6 +10,7 @@ using FluentCMS.Core.IntegrationTests.Testing;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
+using FluentCMS.Plugins;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
 using Microsoft.AspNetCore.Builder;
@@ -105,6 +106,57 @@ public sealed class HttpProtectionTests(CmsWebHosts hosts) : IClassFixture<CmsWe
         (await Status(client, DeliveryPath, plain)).ShouldBe(HttpStatusCode.OK);
         (await Status(client, DeliveryPath, plain)).ShouldBe(HttpStatusCode.OK);
         (await Status(client, DeliveryPath, plain)).ShouldBe(HttpStatusCode.TooManyRequests);
+    }
+
+    // Each limit that refuses counts under its own policy name in fluentcms.rate_limit.refused.
+    [Theory]
+    [InlineData("delivery", DeliveryPath)]
+    [InlineData("management", ManagementPath)]
+    [InlineData("caller", "/api/delivery/v1/caller")]
+    public async Task AnEndpointLimitThatRefusesCountsUnderItsPolicy(string policy, string path)
+    {
+        using var counter = new RefusalCounter();
+        var client = await Start(Limits(delivery: 1, management: 1, auth: 1));
+
+        (await Status(client, path, ("X-Test-Ip", "10.0.0.7"), ("X-Test-Sub", "refused-sub"))).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, path, ("X-Test-Ip", "10.0.0.7"), ("X-Test-Sub", "refused-sub"))).ShouldBe(HttpStatusCode.TooManyRequests);
+
+        counter.Policies.ShouldContain(policy);
+    }
+
+    [Fact]
+    public async Task TheLimitBeforeAuthenticationCountsUnderPreAuthAndTheAuthLimitOfConnectUnderAuth()
+    {
+        using var counter = new RefusalCounter();
+        var settings = Limits(auth: 1);
+        settings["FluentCms:RateLimits:PreAuth:PermitLimit"] = "2";
+        settings["FluentCms:RateLimits:Delivery:MaxKeyLimit"] = "2";
+        settings["FluentCms:RateLimits:Delivery:PermitLimit"] = "2";
+        var client = await Start(settings);
+
+        (await Status(client, ConnectPath, ("X-Test-Ip", "10.0.0.8"))).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, ConnectPath, ("X-Test-Ip", "10.0.0.8"))).ShouldBe(HttpStatusCode.TooManyRequests);
+        counter.Policies.ShouldContain("auth");
+
+        (await Status(client, DeliveryPath, ("X-Test-Ip", "10.0.0.9"))).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, DeliveryPath, ("X-Test-Ip", "10.0.0.9"))).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, DeliveryPath, ("X-Test-Ip", "10.0.0.9"))).ShouldBe(HttpStatusCode.TooManyRequests);
+
+        counter.Policies.ShouldContain("pre-auth");
+    }
+
+    [Fact]
+    public async Task TheHealthLimitThatRefusesCountsUnderHealth()
+    {
+        using var counter = new RefusalCounter();
+        var settings = Limits();
+        settings["FluentCms:RateLimits:Health:PermitLimit"] = "1";
+        var client = await Start(settings);
+
+        (await Status(client, "/health/probe", ("X-Test-Ip", "10.0.0.10"))).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, "/health/probe", ("X-Test-Ip", "10.0.0.10"))).ShouldBe(HttpStatusCode.TooManyRequests);
+
+        counter.Policies.ShouldContain("health");
     }
 
     [Fact]
@@ -617,6 +669,7 @@ public sealed class HttpProtectionTests(CmsWebHosts hosts) : IClassFixture<CmsWe
                     builder.Services.AddFluentCmsEndpoints(group, routes =>
                     {
                         routes.MapGet("/probe", () => "ok");
+                        routes.MapGet("/caller", () => "ok").RequireCallerRateLimit();
                         routes.MapGet("/cached", (HttpContext context) =>
                         {
                             context.Response.Headers.CacheControl = "private, max-age=5";

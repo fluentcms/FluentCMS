@@ -32,6 +32,7 @@ public static class FluentCmsTelemetry
         public const string Result = "fluentcms.result";
         public const string Code = "fluentcms.code";
         public const string Handler = "fluentcms.handler";
+        public const string Policy = "fluentcms.policy";
     }
 
     public static class Instruments
@@ -42,6 +43,7 @@ public static class FluentCmsTelemetry
         public const string CacheRequests = "fluentcms.cache.requests";
         public const string CacheHitRatio = "fluentcms.cache.hit_ratio";
         public const string ApiKeysRefused = "fluentcms.api_keys.refused";
+        public const string RateLimitRefused = "fluentcms.rate_limit.refused";
         public const string EventHandlerDuration = "fluentcms.event.handler.duration";
         public const string JobOldestPendingAge = "fluentcms.job.oldest_pending_age";
         public const string JobsAbandoned = "fluentcms.job.abandoned";
@@ -68,6 +70,9 @@ public static class FluentCmsTelemetry
 
     internal static readonly Counter<long> ApiKeysRefused = Meter.CreateCounter<long>(
         Instruments.ApiKeysRefused, "{request}", "Requests whose API key was refused, by the FCMS code of the reason: wrong, expired, revoked, or sent with another credential.");
+
+    internal static readonly Counter<long> RateLimitRefused = Meter.CreateCounter<long>(
+        Instruments.RateLimitRefused, "{request}", "Requests a rate limit refused with a 429, by the policy that refused it: pre-auth, auth, health, delivery, management or caller.");
 
     // Reports hits / (hits + misses) per cache since the process started. A cache that nothing has looked up reports nothing.
     internal static readonly ObservableGauge<double> CacheHitRatio = Meter.CreateObservableGauge(

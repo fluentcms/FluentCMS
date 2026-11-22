@@ -73,7 +73,7 @@ The policy is the settings area `mcp`, changed with `PUT /api/management/v1/sett
 | `maxConsentsPerUser` | `20` | How many clients the `open` policy approved one user may keep by consenting. A consent that would keep one more is refused. |
 
 - **`approval`**: a registration creates a pending client. The authorize endpoint refuses it with a hosted error page that says it waits for approval, and no token is issued until an administrator approves it with a role.
-- **`open`**: a registration is approved at once with `defaultClientRole`. While that is unset or names no role, the client waits for approval instead. The startup report lists `mcp-open-client-registration` in Production. Use it only where every client that reaches the instance is trusted: `registrationsPerHour` is counted per address, so a few addresses can hold `maxClients` with clients nobody uses for as long as they go on registering. Such clients are gone `neverUsedClientHours` after they stop, and an administrator removes them at once ([Managing clients](#managing-clients)).
+- **`open`**: a registration is approved at once with `defaultClientRole`. While that is unset or names no role, the client waits for approval instead. The startup report lists `mcp-open-client-registration` outside Development. Use it only where every client that reaches the instance is trusted: `registrationsPerHour` is counted per address, so a few addresses can hold `maxClients` with clients nobody uses for as long as they go on registering. Such clients are gone `neverUsedClientHours` after they stop, and an administrator removes them at once ([Managing clients](#managing-clients)).
 - **`off`**: `/connect/register` answers 404 and the discovery document does not name it.
 
 ### The role of a client

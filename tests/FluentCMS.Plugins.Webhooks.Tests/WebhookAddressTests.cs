@@ -143,13 +143,14 @@ public sealed class WebhookAddressTests(GuardedWebhookFixture hosts) : IClassFix
     }
 
     [Fact]
-    public void AllowingPrivateNetworksIsAnInsecureDefaultInProductionOnly()
+    public void AllowingPrivateNetworksIsAnInsecureDefaultOutsideDevelopment()
     {
         static IEnumerable<string> Reported(string environment, bool allow) =>
             new WebhookInsecureDefaults(Options.Create(new WebhooksOptions { AllowPrivateNetworks = allow }), new Environment(environment))
                 .GetInsecureDefaults().Select(item => item.Id);
 
         Reported(Environments.Production, allow: true).ShouldBe([WebhookInsecureDefaults.PrivateNetworks]);
+        Reported(Environments.Staging, allow: true).ShouldBe([WebhookInsecureDefaults.PrivateNetworks]);
         Reported(Environments.Production, allow: false).ShouldBeEmpty();
         Reported(Environments.Development, allow: true).ShouldBeEmpty();
     }

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.RateLimiting;
+using FluentCMS.Core.Telemetry;
 using FluentCMS.Plugins;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
@@ -14,6 +15,8 @@ internal static class RateLimitPolicyNames
     public const string Management = "management";
     public const string Auth = "auth";
     public const string Caller = PluginRateLimits.CallerPolicy;
+    public const string PreAuth = "pre-auth";
+    public const string Health = "health";
 }
 
 // One policy of the ASP.NET Core rate limiter, a token bucket per caller. Responses carry the IETF draft fields
@@ -32,8 +35,9 @@ internal abstract class FluentCmsRateLimitPolicy : IRateLimiterPolicy<string>
     private readonly Func<string, RateLimiter> _createDefault;
     private readonly Func<object, Task> _writeHeaders;
 
-    protected FluentCmsRateLimitPolicy(int defaultLimit, TimeProvider time, bool reportsHeaders = true)
+    protected FluentCmsRateLimitPolicy(string name, int defaultLimit, TimeProvider time, bool reportsHeaders = true)
     {
+        Name = name;
         DefaultLimit = defaultLimit;
         _time = time;
         _reportsHeaders = reportsHeaders;
@@ -41,7 +45,9 @@ internal abstract class FluentCmsRateLimitPolicy : IRateLimiterPolicy<string>
         _writeHeaders = WriteHeaders;
     }
 
-    public Func<OnRejectedContext, CancellationToken, ValueTask>? OnRejected => RejectAsync;
+    public Func<OnRejectedContext, CancellationToken, ValueTask>? OnRejected => (context, cancellationToken) => RejectAsync(context, Name, cancellationToken);
+
+    protected string Name { get; }
 
     protected int DefaultLimit { get; }
 
@@ -99,8 +105,10 @@ internal abstract class FluentCmsRateLimitPolicy : IRateLimiterPolicy<string>
         return Task.CompletedTask;
     }
 
-    private async ValueTask RejectAsync(OnRejectedContext context, CancellationToken cancellationToken)
+    // Counted under the policy that refused, which a caller policy names as its own, since it borrows this one's answer.
+    internal static async ValueTask RejectAsync(OnRejectedContext context, string policy, CancellationToken cancellationToken)
     {
+        FluentCmsTelemetry.RateLimitRefused.Add(1, new KeyValuePair<string, object?>(FluentCmsTelemetry.Tags.Policy, policy));
         var http = context.HttpContext;
 
         // The bucket that refused the request says when the next one is let through.
@@ -116,7 +124,7 @@ internal abstract class FluentCmsRateLimitPolicy : IRateLimiterPolicy<string>
     }
 }
 
-internal sealed class DeliveryRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(options.Delivery.PermitLimit, time)
+internal sealed class DeliveryRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(RateLimitPolicyNames.Delivery, options.Delivery.PermitLimit, time)
 {
     protected override (string Key, int Limit) Partition(HttpContext context)
     {
@@ -131,7 +139,7 @@ internal sealed class DeliveryRateLimitPolicy(RateLimitOptions options, TimeProv
     }
 }
 
-internal sealed class ManagementRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(options.Management.PermitLimit, time)
+internal sealed class ManagementRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(RateLimitPolicyNames.Management, options.Management.PermitLimit, time)
 {
     protected override (string Key, int Limit) Partition(HttpContext context) =>
         ApiCaller.Of(context).Subject is { } subject ? ("sub:" + subject, DefaultLimit) : (Address(context), DefaultLimit);
@@ -142,25 +150,25 @@ internal sealed class ManagementRateLimitPolicy(RateLimitOptions options, TimePr
 // endpoint's own, since the rate limiter keeps them per policy.
 internal sealed class CallerRateLimitPolicy(DeliveryRateLimitPolicy delivery, ManagementRateLimitPolicy management) : IRateLimiterPolicy<string>
 {
-    public Func<OnRejectedContext, CancellationToken, ValueTask>? OnRejected => delivery.OnRejected;
+    public Func<OnRejectedContext, CancellationToken, ValueTask>? OnRejected => (context, cancellationToken) => FluentCmsRateLimitPolicy.RejectAsync(context, RateLimitPolicyNames.Caller, cancellationToken);
 
     public RateLimitPartition<string> GetPartition(HttpContext httpContext) =>
         ApiCaller.Of(httpContext).Manages ? management.GetPartition(httpContext) : delivery.GetPartition(httpContext);
 }
 
-internal sealed class AuthRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(options.Auth.PermitLimit, time)
+internal sealed class AuthRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(RateLimitPolicyNames.Auth, options.Auth.PermitLimit, time)
 {
     protected override (string Key, int Limit) Partition(HttpContext context) => (Address(context), DefaultLimit);
 }
 
 // The coarse limit that runs before authentication; it adds no headers, since the policy of the endpoint adds its own.
-internal sealed class PreAuthRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(options.PreAuth.PermitLimit, time, reportsHeaders: false)
+internal sealed class PreAuthRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(RateLimitPolicyNames.PreAuth, options.PreAuth.PermitLimit, time, reportsHeaders: false)
 {
     protected override (string Key, int Limit) Partition(HttpContext context) => (Address(context), DefaultLimit);
 }
 
 // The probes' own partition of the check before authentication, with no headers either.
-internal sealed class HealthRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(options.Health.PermitLimit, time, reportsHeaders: false)
+internal sealed class HealthRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(RateLimitPolicyNames.Health, options.Health.PermitLimit, time, reportsHeaders: false)
 {
     protected override (string Key, int Limit) Partition(HttpContext context) => (Address(context), DefaultLimit);
 }
