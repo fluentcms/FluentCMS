@@ -13,7 +13,7 @@ internal static partial class EventLog
     [LoggerMessage(EventId = 9602, Level = LogLevel.Error, Message = "Outbox delivery {Id} to {Handler} is out of attempts after {Attempt}: {Error}")]
     public static partial void DeliveryGaveUp(ILogger logger, Guid id, string handler, int attempt, string error);
 
-    [LoggerMessage(EventId = 9603, Level = LogLevel.Warning, Message = "Could not write the outcome of outbox delivery {Id}; it is delivered again when its lease ends.")]
+    [LoggerMessage(EventId = 9603, Level = LogLevel.Warning, Message = "Could not write the outcome of outbox delivery {Id}, or gave the write up, which may still land; if it does not, the delivery keeps its lease and is tried again when the lease ends, or left as failed if that was its last attempt.")]
     public static partial void SettleFailed(ILogger logger, Exception exception, Guid id);
 
     [LoggerMessage(EventId = 9604, Level = LogLevel.Warning, Message = "Could not ask for the outbox to be drained; the next sweep of the outbox delivers what was recorded.")]

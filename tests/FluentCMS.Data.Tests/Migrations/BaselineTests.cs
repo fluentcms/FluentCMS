@@ -71,6 +71,42 @@ public sealed partial class BaselineTests : IDisposable
         return Normalized(line.Replace(index[(index.IndexOf('.', StringComparison.Ordinal) + 1)..^1], "", StringComparison.Ordinal));
     }
 
+    // The whole key list of an index, and what it includes after it, so that a key too many or an included column fails the
+    // comparison as a wrong key does. SQLite and PostgreSQL list the keys in the parentheses after the table, and SQL Server
+    // in fields of its own.
+    private static string KeysOf(List<string> catalog, string index)
+    {
+        var line = catalog.Single(item => item.StartsWith(index, StringComparison.Ordinal))[index.Length..];
+        string keys;
+        string included;
+        if (TestProvider.IsSqlServer)
+        {
+            var fields = SqlServerKeys().Match(line);
+            keys = fields.Groups["keys"].Value;
+            included = fields.Groups["include"].Value;
+        }
+        else
+        {
+            var start = line.IndexOf('(', line.IndexOf(" ON ", StringComparison.OrdinalIgnoreCase));
+            var end = start + 1;
+            for (var depth = 1; depth > 0; end++)
+            {
+                depth += line[end] switch { '(' => 1, ')' => -1, _ => 0 };
+            }
+
+            keys = line[(start + 1)..(end - 1)];
+            included = Include().Match(line[end..]).Groups["columns"].Value;
+        }
+
+        return Normalized(keys) + (included.Length == 0 ? "" : $"include:{Normalized(included)}");
+    }
+
+    [GeneratedRegex(":keys=(?<keys>[^:]*):include=(?<include>.*)$")]
+    private static partial Regex SqlServerKeys();
+
+    [GeneratedRegex(@"^\s*INCLUDE\s*\((?<columns>[^)]*)\)", RegexOptions.IgnoreCase)]
+    private static partial Regex Include();
+
     private static string Normalized(string line) =>
         new([.. line.Replace("::text", "", StringComparison.Ordinal).ToLowerInvariant().Where(character => character is not ('"' or '[' or ']' or '(' or ')' or ' ' or '`'))]);
 
@@ -144,8 +180,8 @@ public sealed partial class BaselineTests : IDisposable
         var all = DatabaseCatalog.Of(baseline, historyRows: false);
         foreach (var (index, keys, filter) in AddedIndexShapes)
         {
+            KeysOf(all, index).ShouldBe(keys, index);
             var line = DefinitionOf(all, index);
-            line.ShouldContain(keys, Case.Sensitive, index);
             if (filter is null)
             {
                 line.ShouldNotContain("status='", Case.Sensitive, index);
@@ -172,20 +208,27 @@ public sealed partial class BaselineTests : IDisposable
         }
     }
 
-    [Fact]
-    public async Task TheShapeCheckFailsForAnIndexOfTheRightNameOnTheWrongKey()
+    // An index of that name on another key, on the right key with one more after it, and on another key with the right one
+    // included, which SQLite cannot make.
+    [Theory]
+    [InlineData("sequence", null)]
+    [InlineData("handler,sequence", null)]
+    [InlineData("sequence", "handler")]
+    public async Task TheShapeCheckFailsForAnIndexOfTheRightNameOnOtherKeys(string columns, string? include)
     {
+        Assert.SkipWhen(include is not null && TestProvider.IsSqlite, "SQLite has no included columns.");
         using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production);
         await host.Services.GetRequiredService<MigrationRunner>().MigrateAsync(Token);
         var (index, keys, _) = AddedIndexShapes.Single(shape => shape.Index == "index:cms_outbox.ix_cms_outbox_failed_handler:");
-        DefinitionOf(DatabaseCatalog.Of(_database, historyRows: false), index).ShouldContain(keys);
+        KeysOf(DatabaseCatalog.Of(_database, historyRows: false), index).ShouldBe(keys);
 
         var name = TestProvider.Quote("ix_cms_outbox_failed_handler");
         var table = TestProvider.Quote("cms_outbox");
+        string Quoted(string list) => string.Join(", ", list.Split(',').Select(TestProvider.Quote));
         _database.Execute(TestProvider.IsSqlServer ? $"drop index {name} on {table}" : $"drop index {name}");
-        _database.Execute($"create index {name} on {table} ({TestProvider.Quote("sequence")}) where {TestProvider.Quote("status")} = 'failed'");
+        _database.Execute($"create index {name} on {table} ({Quoted(columns)}){(include is null ? "" : $" include ({Quoted(include)})")} where {TestProvider.Quote("status")} = 'failed'");
 
-        DefinitionOf(DatabaseCatalog.Of(_database, historyRows: false), index).ShouldNotContain(keys);
+        KeysOf(DatabaseCatalog.Of(_database, historyRows: false), index).ShouldNotBe(keys);
     }
 
     [Theory]
