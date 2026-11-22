@@ -15,4 +15,268 @@
   <data name="Roles.Page.Heading" xml:space="preserve">
     <value>Roles</value>
   </data>
+  <data name="Roles.List.New" xml:space="preserve">
+    <value>New role</value>
+  </data>
+  <data name="Roles.List.Search" xml:space="preserve">
+    <value>Search roles by name</value>
+  </data>
+  <data name="Roles.List.Empty" xml:space="preserve">
+    <value>There is no role you manage here.</value>
+  </data>
+  <data name="Roles.List.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Roles.List.Site" xml:space="preserve">
+    <value>Site</value>
+  </data>
+  <data name="Roles.List.Kind" xml:space="preserve">
+    <value>Kind</value>
+  </data>
+  <data name="Roles.List.Description" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="Roles.List.EverySite" xml:space="preserve">
+    <value>Every site</value>
+  </data>
+  <data name="Roles.List.Public" xml:space="preserve">
+    <value>Public, read without signing in</value>
+  </data>
+  <data name="Roles.List.BuiltIn" xml:space="preserve">
+    <value>Built in</value>
+  </data>
+  <data name="Roles.List.Custom" xml:space="preserve">
+    <value>Made by an administrator</value>
+  </data>
+  <data name="Roles.Source.core" xml:space="preserve">
+    <value>Core</value>
+  </data>
+  <data name="Roles.Source.content" xml:space="preserve">
+    <value>Content types</value>
+  </data>
+  <data name="Roles.Source.plugin" xml:space="preserve">
+    <value>Plugins</value>
+  </data>
+  <data name="Roles.Source.settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Roles.Grants.Heading" xml:space="preserve">
+    <value>Grants</value>
+  </data>
+  <data name="Roles.Grants.None" xml:space="preserve">
+    <value>This role grants nothing.</value>
+  </data>
+  <data name="Roles.Grants.OfPlugin" xml:space="preserve">
+    <value>Plugin: {0}</value>
+  </data>
+  <data name="Roles.Grants.EverythingDescribed" xml:space="preserve">
+    <value>Every permission, also those of plugins and content types added later.</value>
+  </data>
+  <data name="Roles.Grants.Matches" xml:space="preserve">
+    <value>Matches {0} permissions of the catalogue.</value>
+  </data>
+  <data name="Roles.Grants.MatchesOne" xml:space="preserve">
+    <value>Matches 1 permission of the catalogue.</value>
+  </data>
+  <data name="Roles.Grants.NotInCatalogue" xml:space="preserve">
+    <value>Not in the catalogue of this instance.</value>
+  </data>
+  <data name="Roles.Grants.NotHeld" xml:space="preserve">
+    <value>Not among your permissions</value>
+  </data>
+  <data name="Roles.Grants.NotHeldNote" xml:space="preserve">
+    <value>A grant marked as not among your permissions is one your access does not show you hold where this role applies. The server refuses a role that grants more than you hold.</value>
+  </data>
+  <data name="Roles.Grants.Refused" xml:space="preserve">
+    <value>The server refused this grant.</value>
+  </data>
+  <data name="Roles.Grants.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Roles.Grants.RemoveWhich" xml:space="preserve">
+    <value> the grant {0}</value>
+  </data>
+  <data name="Roles.Grants.Removed" xml:space="preserve">
+    <value>The grant {0} was removed. Save the role to keep the change.</value>
+  </data>
+  <data name="Roles.Grants.Source" xml:space="preserve">
+    <value>Kind of permission</value>
+  </data>
+  <data name="Roles.Grants.Permission" xml:space="preserve">
+    <value>Permission or pattern</value>
+  </data>
+  <data name="Roles.Grants.Choose" xml:space="preserve">
+    <value>Choose a permission</value>
+  </data>
+  <data name="Roles.Grants.Add" xml:space="preserve">
+    <value>Add the grant</value>
+  </data>
+  <data name="Roles.Grants.Added" xml:space="preserve">
+    <value>The grant {0} was added. Save the role to keep it.</value>
+  </data>
+  <data name="Roles.Grants.AlreadyGranted" xml:space="preserve">
+    <value>The role already grants {0}.</value>
+  </data>
+  <data name="Roles.Grants.Option" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="Roles.Grants.OptionOfPlugin" xml:space="preserve">
+    <value>{0} (plugin {1})</value>
+  </data>
+  <data name="Roles.Grants.OptionNotHeld" xml:space="preserve">
+    <value>{0} (not among your permissions)</value>
+  </data>
+  <data name="Roles.Constraints.Label" xml:space="preserve">
+    <value>Limited to:</value>
+  </data>
+  <data name="Roles.Constraints.Sites" xml:space="preserve">
+    <value>Sites</value>
+  </data>
+  <data name="Roles.Constraints.Locales" xml:space="preserve">
+    <value>Locales</value>
+  </data>
+  <data name="Roles.Constraints.Fields" xml:space="preserve">
+    <value>Fields</value>
+  </data>
+  <data name="Roles.Constraints.RowRule" xml:space="preserve">
+    <value>Row rule</value>
+  </data>
+  <data name="Roles.Constraints.Resources" xml:space="preserve">
+    <value>Resources</value>
+  </data>
+  <data name="Roles.Editor.Loading" xml:space="preserve">
+    <value>Reading the role…</value>
+  </data>
+  <data name="Roles.Editor.Failed" xml:space="preserve">
+    <value>The role could not be read.</value>
+  </data>
+  <data name="Roles.Editor.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Roles.Editor.NotFound" xml:space="preserve">
+    <value>Role not found</value>
+  </data>
+  <data name="Roles.Editor.NotFoundNote" xml:space="preserve">
+    <value>There is no such role, or your roles do not let you read it.</value>
+  </data>
+  <data name="Roles.Editor.NotManaged" xml:space="preserve">
+    <value>Role not managed here</value>
+  </data>
+  <data name="Roles.Editor.NotManagedNote" xml:space="preserve">
+    <value>You manage the roles of the site you are in, and this role is one of another site or of every site.</value>
+  </data>
+  <data name="Roles.Editor.BackToList" xml:space="preserve">
+    <value>Back to the roles</value>
+  </data>
+  <data name="Roles.Editor.Heading" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="Roles.Editor.NewHeading" xml:space="preserve">
+    <value>New role</value>
+  </data>
+  <data name="Roles.Editor.PublicNotice" xml:space="preserve">
+    <value>This is the Public role of the site: anyone who has not signed in reads what it grants, through the Delivery API.</value>
+  </data>
+  <data name="Roles.Editor.PublicEverySite" xml:space="preserve">
+    <value>This is the Public role of every site without one of its own: anyone who has not signed in reads what it grants there, through the Delivery API.</value>
+  </data>
+  <data name="Roles.Editor.Details" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="Roles.Editor.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Roles.Editor.BuiltInName" xml:space="preserve">
+    <value>A built-in role keeps its name.</value>
+  </data>
+  <data name="Roles.Editor.Description" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="Roles.Editor.Site" xml:space="preserve">
+    <value>Site</value>
+  </data>
+  <data name="Roles.Editor.SiteHelp" xml:space="preserve">
+    <value>A role of a site grants only in that site, and a role of every site grants in each. The site of a role cannot be changed once it is made.</value>
+  </data>
+  <data name="Roles.Editor.EverySite" xml:space="preserve">
+    <value>Every site</value>
+  </data>
+  <data name="Roles.Editor.RequireTwoFactor" xml:space="preserve">
+    <value>Its holders sign in with a second factor</value>
+  </data>
+  <data name="Roles.Editor.SuperAdminNote" xml:space="preserve">
+    <value>Super Admin holds every permission. Of it, only whether its holders sign in with a second factor can be changed.</value>
+  </data>
+  <data name="Roles.Editor.Create" xml:space="preserve">
+    <value>Create the role</value>
+  </data>
+  <data name="Roles.Editor.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Roles.Editor.Delete" xml:space="preserve">
+    <value>Delete the role</value>
+  </data>
+  <data name="Roles.Editor.DeleteQuestion" xml:space="preserve">
+    <value>Delete the role {0}? This cannot be undone.</value>
+  </data>
+  <data name="Roles.Editor.DeleteConfirm" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Roles.Editor.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Roles.Editor.NothingDeleted" xml:space="preserve">
+    <value>Nothing was deleted.</value>
+  </data>
+  <data name="Roles.Editor.Deleted" xml:space="preserve">
+    <value>The role {0} was deleted.</value>
+  </data>
+  <data name="Roles.Editor.Created" xml:space="preserve">
+    <value>The role {0} was created.</value>
+  </data>
+  <data name="Roles.Editor.Saved" xml:space="preserve">
+    <value>The role was saved.</value>
+  </data>
+  <data name="Roles.Editor.NotSaved" xml:space="preserve">
+    <value>The role was not saved. Check the fields marked.</value>
+  </data>
+  <data name="Roles.Editor.NameRequired" xml:space="preserve">
+    <value>A role has a name.</value>
+  </data>
+  <data name="Roles.Editor.NameRefused" xml:space="preserve">
+    <value>Another role has this name where this one applies, or a built-in role keeps its name.</value>
+  </data>
+  <data name="Roles.Editor.DescriptionRefused" xml:space="preserve">
+    <value>A description has at most 512 characters.</value>
+  </data>
+  <data name="Roles.Editor.GrantsRefused" xml:space="preserve">
+    <value>The role was not saved: the server refused the grants marked.</value>
+  </data>
+  <data name="Roles.Editor.Changed" xml:space="preserve">
+    <value>Someone saved a change of this role while you edited it. The role was read again, with your changes kept on it: check it and save again.</value>
+  </data>
+  <data name="Roles.Editor.ChangedNotRead" xml:space="preserve">
+    <value>Someone saved a change of this role while you edited it, and it could not be read again. Your changes are kept; save again.</value>
+  </data>
+  <data name="Roles.Editor.Gone" xml:space="preserve">
+    <value>This role no longer exists.</value>
+  </data>
+  <data name="Roles.Editor.Fixed" xml:space="preserve">
+    <value>A built-in role cannot be deleted, and of Super Admin only whether its holders sign in with a second factor can be changed.</value>
+  </data>
+  <data name="Roles.Editor.LastSuperAdmin" xml:space="preserve">
+    <value>This change would leave no active Super Admin, so it was refused.</value>
+  </data>
+  <data name="Roles.Editor.AboveReach" xml:space="preserve">
+    <value>{0} grants more than your roles hold, before or after this change, so you may not make, change or delete it.</value>
+  </data>
+  <data name="Roles.Editor.InUse" xml:space="preserve">
+    <value>This role is still held by users, by API keys that are not revoked or by member groups. Take it from them first.</value>
+  </data>
+  <data name="Roles.Editor.SaveFailed" xml:space="preserve">
+    <value>The role could not be saved. Try again.</value>
+  </data>
+  <data name="Roles.Editor.DeleteFailed" xml:space="preserve">
+    <value>The role could not be deleted. Try again.</value>
+  </data>
 </root>

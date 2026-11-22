@@ -127,6 +127,12 @@ internal sealed class AdminPlugins(
         ArgumentNullException.ThrowIfNull(routeData);
         if (routeData.PageType.Assembly == administration.Loaded)
         {
+            // An open page is drawn as a page of the admin's own is.
+            if (AdministrationAreas.IsOpen(routeData.PageType))
+            {
+                return PluginPageGate.None;
+            }
+
             return AdministrationAreas.OfPage(routeData.PageType) is not { } area ? PluginPageGate.NotFound
                 : context.Allows(area) ? PluginPageGate.Allowed : PluginPageGate.NoAccess;
         }
@@ -148,6 +154,11 @@ internal sealed class AdminPlugins(
 
     public PluginPageGate Gate(string route)
     {
+        if (AdministrationAreas.IsOpen(route))
+        {
+            return PluginPageGate.Allowed;
+        }
+
         if (AdministrationAreas.OfRoute(route) is { } area)
         {
             return context.Allows(area) ? PluginPageGate.Allowed : PluginPageGate.NoAccess;
@@ -166,19 +177,30 @@ internal sealed class AdminPlugins(
         return context.Allows(page.Permission, page.InstanceOnly) ? PluginPageGate.Allowed : PluginPageGate.NoAccess;
     }
 
-    // Whether the last load of what shows the route failed: the half of the route, or the administration assembly.
+    // Whether the last load of what shows the route failed: the half of the route, or the administration assembly for a route
+    // of an area or an open one.
     public bool LoadFailed(string route) =>
-        AdministrationAreas.OfRoute(route) is not null ? administration.Failed : catalog.HalfOfRoute(route) is { } half && LoadFailed(half);
+        AdministrationAreas.OfRoute(route) is not null || AdministrationAreas.IsOpen(route) ? administration.Failed
+            : catalog.HalfOfRoute(route) is { } half && LoadFailed(half);
 
     // The router's OnNavigateAsync: a page of a half loads the half, and a page of an area of administration its assembly,
-    // once the shell knows the site, if the user may see it. A navigation tries a failed load again. What the user sees is
-    // decided by the gate of the page the router renders, which does not trust that a route is rendered only once this ends.
+    // once the shell knows the site, if the user may see it; an open page of that assembly loads it at once. A navigation
+    // tries a failed load again. What the user sees is decided by the gate of the page the router renders, which does not
+    // trust that a route is rendered only once this ends.
     public async Task NavigateAsync(string route, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(route);
         _failed.Clear();
         administration.TryAgain();
         _navigated = null;
+        if (AdministrationAreas.IsOpen(route))
+        {
+            // An open page of the assembly needs neither the site nor a permission.
+            await administration.TryLoadAsync(cancellationToken);
+            AddAdministration();
+            return;
+        }
+
         if (AdministrationAreas.OfRoute(route) is not null)
         {
             if (administration.Loaded is null)
@@ -198,12 +220,7 @@ internal sealed class AdminPlugins(
                 await administration.TryLoadAsync(cancellationToken);
             }
 
-            // Also the assembly of a load that ended after the navigation that started it was overtaken.
-            if (administration.Loaded is { } assembly && !Assemblies.Contains(assembly))
-            {
-                Assemblies.Add(assembly);
-            }
-
+            AddAdministration();
             return;
         }
 
@@ -227,6 +244,16 @@ internal sealed class AdminPlugins(
         if (gate == PluginPageGate.Allowed && !IsLoaded(half))
         {
             await TryLoadAsync(half, cancellationToken);
+        }
+    }
+
+    // The administration assembly, once loaded, for the router to search: also the assembly of a load that ended after the
+    // navigation that started it was overtaken.
+    private void AddAdministration()
+    {
+        if (administration.Loaded is { } assembly && !Assemblies.Contains(assembly))
+        {
+            Assemblies.Add(assembly);
         }
     }
 

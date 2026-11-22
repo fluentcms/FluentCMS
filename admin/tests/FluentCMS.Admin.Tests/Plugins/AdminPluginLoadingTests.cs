@@ -284,7 +284,6 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
     {
         loader.Gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var app = Load(enabled: true);
-        var configured = ReviewsAdminPlugin.Configured;
 
         // On the renderer's dispatcher, as a component asks, so that no wait of the test holds their continuations.
         Task<IMediaPicker?> picker = null!;
@@ -301,7 +300,7 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         (await editor).ShouldNotBeNull();
         app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"));
         loader.Loads.ShouldBe(1);
-        (ReviewsAdminPlugin.Configured - configured).ShouldBe(1);
+        ReviewsAdminPlugin.ConfiguredFor(Services.GetRequiredService<ListFilterRegistry>()).ShouldBe(1);
     }
 
     [Fact]
@@ -317,7 +316,7 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         await Should.ThrowAsync<InvalidOperationException>(services.FindAsync<IMediaPicker>(Token).AsTask());
         loader.Loads.ShouldBe(1);
 
-        Navigation.NavigateTo("system/components");
+        Navigation.NavigateTo("system/plugins");
 
         (await services.FindAsync<IMediaPicker>(Token)).ShouldBeOfType<SampleMediaPicker>();
         loader.Loads.ShouldBe(2);

@@ -1,0 +1,82 @@
+@* The settings page an admin half declares with [SettingsPage(area)], in place of the generated one (spec 5.1). The area
+   page shows it only while AdminPlugins.Shows allows it; its class is loaded with AdminPlugins.ComponentAsync and checked
+   before it is rendered, as a half's page is, since no error boundary catches a component the renderer cannot create. A
+   half that does not load, or a page that fails the check or throws, leaves an error here and nothing else. *@
+@implements IDisposable
+@using System.Diagnostics.CodeAnalysis
+@using Microsoft.Extensions.Logging
+@inject AdminPlugins Plugins
+@inject IStringLocalizer<SettingsResources> L
+@inject ILogger<SettingsHalfPage> Logger
+
+@if (failed)
+{
+    @Failure
+}
+else if (type is null)
+{
+    <p role="status">@L["Settings.Half.Loading"]</p>
+}
+else
+{
+    <ErrorBoundary>
+        <ChildContent>@Component</ChildContent>
+        <ErrorContent>@Failure</ErrorContent>
+    </ErrorBoundary>
+}
+
+@code {
+    private readonly CancellationTokenSource cancellation = new();
+
+    private Type? type;
+
+    private bool failed;
+
+    [Parameter, EditorRequired]
+    public AdminPluginManifest Half { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public AdminManifestSettingsPage Page { get; set; } = null!;
+
+    private RenderFragment Failure => @<div class="settings-problem" role="alert"><p>@L["Settings.Half.Failed", Half.Name]</p></div>;
+
+    private RenderFragment Component => Render;
+
+    [UnconditionalSuppressMessage("Trimming", "IL2077", Justification = "An admin half is loaded lazily and kept whole by the app's partial trimming (spec 2.6).")]
+    private void Render(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+    {
+        builder.OpenComponent(0, type!);
+        builder.CloseComponent();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var loaded = await Plugins.ComponentAsync(Half, Page.Type, cancellation.Token);
+            if (Plugins.ProblemOf(loaded) is not null)
+            {
+                failed = true;
+                return;
+            }
+
+            type = loaded;
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+#pragma warning disable CA1031 // Whatever stops the half's page from loading, the admin goes on without it.
+        catch (Exception exception)
+#pragma warning restore CA1031
+        {
+            SettingsLog.PageFailed(Logger, Half.Name, Page.Type, exception);
+            failed = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        cancellation.Cancel();
+        cancellation.Dispose();
+    }
+}
