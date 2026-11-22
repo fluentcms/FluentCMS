@@ -24,10 +24,12 @@ public abstract class RolesTestContext : AdministrationTestContext
 
     private int created;
 
+    internal static readonly string PressKit = "0193a1b2-0000-7000-8000-0000000000f1";
+
     protected RolesTestContext()
     {
         Management.AddSite(Shop, "Shop", "shop");
-        Management.SetTypes(MainSite, Type("article"));
+        Management.SetTypes(MainSite, Type("article", fields: [Shell.FakeManagementServer.Field("title"), Shell.FakeManagementServer.Field("body"), Shell.FakeManagementServer.Field("summary")]));
         var media = Plugin("media", enabled: true);
         media["contributions"]!["permissions"] = new JsonArray("media.read");
         Management.Plugins[MainSite].Add(media);
@@ -50,7 +52,7 @@ public abstract class RolesTestContext : AdministrationTestContext
                 ["rowRule"] = "own-entries",
                 ["resources"] = new JsonArray("folder-1", "folder-2"),
             }),
-            Grant("media.read", new JsonObject { ["resources"] = new JsonArray("0193a1b2-0000-7000-8000-0000000000f1") })),
+            Grant("media.read", new JsonObject { ["resources"] = new JsonArray(PressKit) })),
         Role(MainPublic, MainSite, "Public", builtIn: true),
         Role(ShopEditors, Shop, "Shop editors", builtIn: false, Grant("content.*.read")),
     ];
@@ -66,6 +68,17 @@ public abstract class RolesTestContext : AdministrationTestContext
         Permission("media.read", "Read media.", "plugin"),
         Permission("settings.media.manage", "Change the media settings.", "settings"),
     ];
+
+    // GET /permissions/row-rules: a rule for every type, one for articles and one for pages.
+    internal JsonArray RowRules { get; } =
+    [
+        new JsonObject { ["name"] = "own-entries", ["typeNames"] = null },
+        new JsonObject { ["name"] = "in-review", ["typeNames"] = new JsonArray("article") },
+        new JsonObject { ["name"] = "own-pages", ["typeNames"] = new JsonArray("page") },
+    ];
+
+    // GET /media/folders of the main site.
+    internal JsonArray Folders { get; } = [new JsonObject { ["id"] = PressKit, ["parentId"] = null, ["name"] = "Press kit" }];
 
     // The body of every write, by method.
     internal List<(HttpMethod Method, string Path, JsonObject? Body)> Writes { get; } = [];
@@ -132,6 +145,16 @@ public abstract class RolesTestContext : AdministrationTestContext
         if (path == "permissions")
         {
             return Json(new JsonObject { ["items"] = Permissions.DeepClone() });
+        }
+
+        if (path == "permissions/row-rules")
+        {
+            return Json(new JsonObject { ["items"] = RowRules.DeepClone() });
+        }
+
+        if (path == "media/folders")
+        {
+            return Json(new JsonObject { ["items"] = Folders.DeepClone() });
         }
 
         if (segments[0] != "roles")

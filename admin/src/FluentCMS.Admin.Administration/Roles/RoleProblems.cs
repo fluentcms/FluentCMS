@@ -36,10 +36,12 @@ internal static class RoleProblems
     // A 403 of the Management API carries FCMS3103; one without it, as a proxy's, is a failure only.
     public static bool IsAboveReach(Exception exception) => Has(exception, Forbidden);
 
-    // The index of the grant each refusal of a grant is on, from its path grants[i]...
-    public static IEnumerable<int> RefusedGrants(Exception exception) =>
+    // Each refusal of a grant, whatever its code, by the grant's index and the path below it: grants[1].constraints.locales
+    // is (1, "constraints.locales"), grants[1] alone (1, ""). FCMS3042 is the grant's, FCMS2311 a locale that is not a
+    // language tag and FCMS2108 constraints the server cannot read.
+    public static IReadOnlyList<(int Index, string Path)> RefusedGrants(Exception exception) =>
         exception is ApiProblemException { Problem: var problem }
-            ? Errors(problem).Select(error => GrantIndex(error.Path)).OfType<int>().Distinct()
+            ? [.. Errors(problem).Select(error => GrantPath(error.Path)).OfType<(int, string)>().Distinct()]
             : [];
 
     public static bool OnPath(Exception exception, string code, string path) =>
@@ -48,7 +50,7 @@ internal static class RoleProblems
     // A problem without errors, as a 403's, may read as none at all.
     private static IReadOnlyList<ApiProblemError> Errors(ApiProblem problem) => problem.Errors ?? [];
 
-    private static int? GrantIndex(string? path)
+    private static (int, string)? GrantPath(string? path)
     {
         const string Prefix = "grants[";
         if (path is null || !path.StartsWith(Prefix, StringComparison.Ordinal))
@@ -57,8 +59,12 @@ internal static class RoleProblems
         }
 
         var end = path.IndexOf(']', StringComparison.Ordinal);
-        return end > Prefix.Length && int.TryParse(path.AsSpan(Prefix.Length, end - Prefix.Length), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var index)
-            ? index
-            : null;
+        if (end <= Prefix.Length || !int.TryParse(path.AsSpan(Prefix.Length, end - Prefix.Length), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var index))
+        {
+            return null;
+        }
+
+        var below = path[(end + 1)..];
+        return (index, below.StartsWith('.') ? below[1..] : below);
     }
 }

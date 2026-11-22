@@ -45,6 +45,24 @@ public sealed record PermissionRecord
     public required string Source { get; init; }
 }
 
+// A row rule of GET /permissions/row-rules (#3417), which a grant's rowRule may name.
+public sealed record RowRuleRecord
+{
+    public required string Name { get; init; }
+
+    // The content types the rule is registered for, by name; null when it is registered for every type.
+    public IReadOnlyList<string>? TypeNames { get; init; }
+}
+
+// A media folder of GET /media/folders in the shell's site, by which the editor names the resources of a media grant
+// (decision record 0004).
+internal sealed record FolderRecord
+{
+    public required Guid Id { get; init; }
+
+    public required string Name { get; init; }
+}
+
 // The calls of the roles area (spec 4.15). Each write needs roles.manage where the role applies, and every grant the role had
 // and gets (FCMS3103).
 internal static class RolesApi
@@ -53,6 +71,19 @@ internal static class RolesApi
     {
         ArgumentNullException.ThrowIfNull(api);
         return (await api.SendAsync(new ApiRequest(HttpMethod.Get, "permissions"), RolesJsonContext.Default.ItemListPermissionRecord, cancellationToken)).Value.Items;
+    }
+
+    public static async Task<IReadOnlyList<RowRuleRecord>> GetRowRulesAsync(this IManagementApi api, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(api);
+        return (await api.SendAsync(new ApiRequest(HttpMethod.Get, "permissions/row-rules"), RolesJsonContext.Default.ItemListRowRuleRecord, cancellationToken)).Value.Items;
+    }
+
+    // A route of the media plugin: it lists the folders the caller reads, with media.read in the site.
+    public static async Task<IReadOnlyList<FolderRecord>> GetFoldersAsync(this IManagementApi api, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(api);
+        return (await api.SendAsync(new ApiRequest(HttpMethod.Get, "media/folders"), RolesJsonContext.Default.ItemListFolderRecord, cancellationToken)).Value.Items;
     }
 
     public static Task<RoleRecord> GetRoleAsync(this IManagementApi api, Guid id, CancellationToken cancellationToken) =>
@@ -80,4 +111,6 @@ internal static class RolesApi
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
 [JsonSerializable(typeof(RoleRecord))]
 [JsonSerializable(typeof(ItemList<PermissionRecord>))]
+[JsonSerializable(typeof(ItemList<RowRuleRecord>))]
+[JsonSerializable(typeof(ItemList<FolderRecord>))]
 internal sealed partial class RolesJsonContext : JsonSerializerContext;
