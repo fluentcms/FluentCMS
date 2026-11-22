@@ -34,16 +34,30 @@
         LoadFailed,
     }
 
+    // The route view keeps this page from one answer of the router to the next, so the address of each answer and, for a page
+    // the gate put this one in place of, whether the user lacks its permission, come as parameters: the heading follows them,
+    // and the layout is not made again.
+    [Parameter]
+    public string? Address { get; set; }
+
+    [Parameter]
+    public bool? NoAccess { get; set; }
+
     private PageState State
     {
         get
         {
+            if (NoAccess is { } denied)
+            {
+                return denied ? PageState.NoAccess : PageState.NotFound;
+            }
+
             if (Services.GetService<AdminPlugins>() is not { } plugins)
             {
                 return PageState.NotFound;
             }
 
-            var route = Navigation.ToBaseRelativePath(Navigation.Uri);
+            var route = Address ?? Navigation.ToBaseRelativePath(Navigation.Uri);
             return plugins.Gate(route) switch
             {
                 PluginPageGate.NoAccess => PageState.NoAccess,
@@ -75,7 +89,12 @@
         }
     }
 
-    private void OnContextChanged() => _ = InvokeAsync(NavigateAgainIfAllowed);
+    // The access read for a new content locale or site changes what the address answers, without a new answer of the router.
+    private void OnContextChanged() => _ = InvokeAsync(() =>
+    {
+        NavigateAgainIfAllowed();
+        StateHasChanged();
+    });
 
     // A half's page the router answered before the site allowed it is navigated to again, which loads the half (spec 2.6): on
     // render, as when the layout shows the page again after failed first reads or a site switch, and on a change of the
