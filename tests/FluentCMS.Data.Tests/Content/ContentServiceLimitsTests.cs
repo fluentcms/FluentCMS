@@ -139,9 +139,9 @@ public sealed class ContentServiceLimitsTests : IDisposable
 
         (await _database.PatchAsync(WithRole(role), id, new() { ["views"] = 6 }, 1, locale: "fr"))["views"].ShouldBe(6L);
 
-        // Adding a locale it does not cover leaves it unable to change what that locale will share too.
+        // Adding a locale it does not cover leaves it unable to change what that locale will share too. Adding it moved fr to 3.
         await _database.UpdateAsync(Editor, id, Titled("Salut"), 0, locale: "fr-CA");
-        await Should.ThrowAsync<ValidationException>(() => _database.PatchAsync(WithRole(role), id, new() { ["views"] = 7 }, 2, locale: "fr"));
+        await Should.ThrowAsync<ValidationException>(() => _database.PatchAsync(WithRole(role), id, new() { ["views"] = 7 }, 3, locale: "fr"));
     }
 
     [Fact]
@@ -294,7 +294,7 @@ public sealed class ContentServiceLimitsTests : IDisposable
         await database.PublishAsync(Editor, id);
         await database.PublishAsync(Editor, id, "fr");
 
-        await database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 1);
+        await database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 2);
 
         database.Read(context => context.Documents.AsNoTracking().Single(document => document.DocumentId == id && document.Locale == "fr").Status).ShouldBe(EntryStatus.Modified);
     }

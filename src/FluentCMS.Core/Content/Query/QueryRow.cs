@@ -44,4 +44,24 @@ internal static class QueryRows
                 .Where(row => EF.Property<short>(row.Localized, StorageNames.State) == EF.Constant(state)
                     && EF.Property<string>(row.Localized, StorageNames.Locale) == documentLocale);
     }
+
+    // A localized type's rows in any of these locales, each row with the locale row of its own locale.
+    public static IQueryable<QueryRow> Of(CmsDbContext context, SchemaType type, short state, IReadOnlyList<string> locales)
+    {
+        var codes = locales.ToArray();
+        return context.Rows(StorageNames.Table(type))
+            .Join(
+                context.Documents,
+                shared => EF.Property<Guid>(shared, StorageNames.DocumentId),
+                document => document.DocumentId,
+                (shared, document) => new QueryRow { Document = document, Shared = shared })
+            .Where(row => EF.Property<short>(row.Shared, StorageNames.State) == EF.Constant(state) && codes.Contains(row.Document.Locale))
+            .Join(
+                context.Rows(StorageNames.LocaleTable(type)),
+                row => row.Document.DocumentId,
+                localized => EF.Property<Guid>(localized, StorageNames.DocumentId),
+                (row, localized) => new QueryRow { Document = row.Document, Shared = row.Shared, Localized = localized })
+            .Where(row => EF.Property<short>(row.Localized, StorageNames.State) == EF.Constant(state)
+                && EF.Property<string>(row.Localized, StorageNames.Locale) == row.Document.Locale);
+    }
 }
