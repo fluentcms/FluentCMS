@@ -18,10 +18,12 @@ This preview holds each page with its heading only, the read of the roles with a
 
 Each area is a folder of its own: `Users/`, `Roles/`, `ApiKeys/`, `Members/`, `Sites/`, `Settings/`, `Plugins/`, `Jobs/` and `Diagnostics/`. Everything of an area stays in its folder, so that two areas share no file:
 
-- its pages, each at the area's route or below it, such as `/users/{Id:guid}`: the shell gates a page by the one area all its routes are in, and a page outside every area, or across two, is not shown. The `h1` of the area's first page is `{Area}.Page.Heading` of its resources, which the end-to-end tests know the page by; a page below it names the last item of its breadcrumbs by placing `<PageCrumb Text="..." />` with what it read;
+- its pages, each at the area's route or below it, such as `/users/{Id:guid}`: the shell gates a page by the one area all its routes are in, and a page with a route outside every area, or with routes in two areas, is not shown. The `h1` of the area's first page is `{Area}.Page.Heading` of its resources, which the end-to-end tests know the page by; a page below it names the last item of its breadcrumbs by placing `<PageCrumb Text="..." />` with what it read;
 - its typed calls over `IManagementApi`, its records and their source-generated `JsonSerializerContext`;
 - its resource file, `{Area}Resources.resx`, read through `IStringLocalizer<{Area}Resources>`, with keys `{Area}.{View}.{Text}`;
 - a `_Imports.razor` of its own for the namespaces only it needs.
+
+`Gallery/` holds the component gallery at `/system/components`, which is in no area: any signed-in user may open it, it has no sidebar entry, and it is here only so that it is not in the first download. Its route is one of `OpenRoutes` of `AdministrationAreas`, and its texts are in `GalleryResources.resx`.
 
 `Common/` holds what several areas use: `RoleReads` and `RoleSelect`, and `RecordList`, the frame of a list of records. A list with filters of its own names their query parameters in `Filters` (any but `q` and `page`), draws their controls itself, sets one with `SetFilter` and reads them from the `RecordQuery` its `Read` is given.
 

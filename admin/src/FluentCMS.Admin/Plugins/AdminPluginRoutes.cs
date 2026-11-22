@@ -9,14 +9,26 @@ internal static class AdminPluginRoutes
     {
         ArgumentNullException.ThrowIfNull(pages);
         ArgumentNullException.ThrowIfNull(route);
-        var end = route.IndexOfAny(['?', '#']);
-        var segments = (end < 0 ? route : route[..end]).Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.UnescapeDataString).ToArray();
+        var segments = SegmentsOf(route);
         return pages
             .Select(page => (Page: page, Literals: Literals(page.Route, segments)))
             .Where(match => match.Literals >= 0)
             .OrderByDescending(match => match.Literals)
             .Select(match => match.Page)
             .FirstOrDefault();
+    }
+
+    public static bool Matches(string template, string route)
+    {
+        ArgumentNullException.ThrowIfNull(template);
+        ArgumentNullException.ThrowIfNull(route);
+        return Literals(template, SegmentsOf(route)) >= 0;
+    }
+
+    private static string[] SegmentsOf(string route)
+    {
+        var end = route.IndexOfAny(['?', '#']);
+        return [.. (end < 0 ? route : route[..end]).Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.UnescapeDataString)];
     }
 
     // The number of literal segments of a template that matches, or -1.

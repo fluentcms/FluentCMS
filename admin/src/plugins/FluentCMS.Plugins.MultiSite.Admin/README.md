@@ -9,4 +9,4 @@ The admin half of the [FluentCMS](https://github.com/fluentcms/FluentCMS) multi-
 </ItemGroup>
 ```
 
-This preview holds the half's first page, `/multi-site/sites`, with its heading only. Section 5.6 of the [admin technical specification](https://github.com/fluentcms/FluentCMS/blob/main/docs/planning/admin-technical-spec.md) has the design.
+It adds two pages, each for a user who holds `sites.manage` for the instance, in a site where the multi-site plugin is enabled: `/multi-site/sites`, the sites of the instance, where a site is created and deleted, and `/multi-site/sites/{id}/hosts`, the host names of a site, where one is added, made primary and removed. A site's name and locales are changed on the admin's own sites page. Section 5.6 of the [admin technical specification](https://github.com/fluentcms/FluentCMS/blob/main/docs/planning/admin-technical-spec.md) has the design.

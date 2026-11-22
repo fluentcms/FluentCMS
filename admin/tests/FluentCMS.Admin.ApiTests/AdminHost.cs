@@ -120,6 +120,8 @@ internal sealed class AdminClient : IAccessTokenSource, ICurrentSite, IContentLo
 
     public IManagementApi Api => _scope.ServiceProvider.GetRequiredService<IManagementApi>();
 
+    public IManagementEvents Events => _scope.ServiceProvider.GetRequiredService<IManagementEvents>();
+
     public ManagementClient Client => _scope.ServiceProvider.GetRequiredService<ManagementClient>();
 
     public SiteMetadata Metadata => _scope.ServiceProvider.GetRequiredService<SiteMetadata>();

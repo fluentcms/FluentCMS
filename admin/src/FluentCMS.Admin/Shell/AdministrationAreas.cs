@@ -33,6 +33,10 @@ internal static class AdministrationAreas
         new("sites", "Administration.Menu.Sites", AdminMenuSection.Settings, 20, "sites.manage"),
     ];
 
+    // The routes of the assembly's pages that are in no area: any signed-in user may open them, they have no sidebar entry, and
+    // the assembly loads on their first visit as it does for an area's (#3354).
+    public static IReadOnlyList<string> OpenRoutes { get; } = ["system/components"];
+
     private static readonly ConcurrentDictionary<Type, AdministrationArea?> Pages = new();
 
     // The area of a page of the administration assembly: the one area every one of its route templates is in, or none when a
@@ -51,10 +55,30 @@ internal static class AdministrationAreas
     // matches.
     public static AdministrationArea? OfRoute(string route)
     {
-        ArgumentNullException.ThrowIfNull(route);
-        var end = route.IndexOfAny(['?', '#']);
-        var path = Uri.UnescapeDataString(end < 0 ? route : route[..end]).Trim('/');
+        var path = PathOf(route);
         return All.FirstOrDefault(area => path.StartsWith(area.Route, StringComparison.OrdinalIgnoreCase)
             && (path.Length == area.Route.Length || path[area.Route.Length] == '/'));
+    }
+
+    // Whether a route relative to the app's base is one of the open routes, in any case.
+    public static bool IsOpen(string route)
+    {
+        var path = PathOf(route);
+        return OpenRoutes.Any(open => string.Equals(path, open, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Whether a page of the administration assembly is an open one: every one of its route templates is an open route.
+    public static bool IsOpen(Type page)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        return page.GetCustomAttributes<RouteAttribute>(inherit: false).Select(route => route.Template).ToList() is [_, ..] templates
+            && templates.All(IsOpen);
+    }
+
+    private static string PathOf(string route)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+        var end = route.IndexOfAny(['?', '#']);
+        return Uri.UnescapeDataString(end < 0 ? route : route[..end]).Trim('/');
     }
 }

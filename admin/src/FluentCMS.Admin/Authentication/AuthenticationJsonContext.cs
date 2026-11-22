@@ -3,8 +3,12 @@ using System.Text.Json.Serialization;
 
 namespace FluentCMS.Admin.Authentication;
 
-// The records of the sign-in, in the snake_case names of OAuth and OpenID Connect, so that the app trims.
-[JsonSourceGenerationOptions(JsonSerializerDefaults.Web, PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower)]
+// The records of the sign-in, in the snake_case names of OAuth and OpenID Connect, so that the app trims; metadata only, as
+// the management records (#3354).
+[JsonSourceGenerationOptions(
+    JsonSerializerDefaults.Web,
+    PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
+    GenerationMode = JsonSourceGenerationMode.Metadata)]
 [JsonSerializable(typeof(OpenIdConfiguration))]
 [JsonSerializable(typeof(TokenAnswer))]
 [JsonSerializable(typeof(TokenError))]

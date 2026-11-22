@@ -15,4 +15,373 @@
   <data name="ApiKeys.Page.Heading" xml:space="preserve">
     <value>API keys</value>
   </data>
+  <data name="ApiKeys.Page.Intro" xml:space="preserve">
+    <value>A key lets a client call the API as the role it is bound to, in the sites, content types and addresses it is bound to.</value>
+  </data>
+  <data name="ApiKeys.Page.New" xml:space="preserve">
+    <value>New key</value>
+  </data>
+  <data name="ApiKeys.Page.Search" xml:space="preserve">
+    <value>Search by name or prefix</value>
+  </data>
+  <data name="ApiKeys.Page.Empty" xml:space="preserve">
+    <value>There is no key you manage yet.</value>
+  </data>
+  <data name="ApiKeys.Page.NoMatch" xml:space="preserve">
+    <value>No key matches the search.</value>
+  </data>
+  <data name="ApiKeys.Column.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="ApiKeys.Column.Class" xml:space="preserve">
+    <value>Class</value>
+  </data>
+  <data name="ApiKeys.Column.Prefix" xml:space="preserve">
+    <value>Prefix</value>
+  </data>
+  <data name="ApiKeys.Column.Role" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="ApiKeys.Column.Sites" xml:space="preserve">
+    <value>Sites</value>
+  </data>
+  <data name="ApiKeys.Column.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="ApiKeys.Column.LastUsed" xml:space="preserve">
+    <value>Last used</value>
+  </data>
+  <data name="ApiKeys.Class.delivery" xml:space="preserve">
+    <value>Delivery</value>
+  </data>
+  <data name="ApiKeys.Class.preview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="ApiKeys.Class.management" xml:space="preserve">
+    <value>Management</value>
+  </data>
+  <data name="ApiKeys.Sites.All" xml:space="preserve">
+    <value>Every site</value>
+  </data>
+  <data name="ApiKeys.Sites.Unknown" xml:space="preserve">
+    <value>A site you have no role in</value>
+  </data>
+  <data name="ApiKeys.Role.Unknown" xml:space="preserve">
+    <value>A role you may not read</value>
+  </data>
+  <data name="ApiKeys.Role.OfSite" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="ApiKeys.Status.Active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="ApiKeys.Status.Expires" xml:space="preserve">
+    <value>Expires {0}</value>
+  </data>
+  <data name="ApiKeys.Status.Expired" xml:space="preserve">
+    <value>Expired {0}</value>
+  </data>
+  <data name="ApiKeys.Status.Revoked" xml:space="preserve">
+    <value>Revoked {0}</value>
+  </data>
+  <data name="ApiKeys.Status.Overlap" xml:space="preserve">
+    <value>Replaced secret accepted until {0}</value>
+  </data>
+  <data name="ApiKeys.LastUsed.Never" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="ApiKeys.New.Heading" xml:space="preserve">
+    <value>New key</value>
+  </data>
+  <data name="ApiKeys.New.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="ApiKeys.New.NameHelp" xml:space="preserve">
+    <value>Tells the key apart in the list and in the activity log.</value>
+  </data>
+  <data name="ApiKeys.New.Class" xml:space="preserve">
+    <value>Class</value>
+  </data>
+  <data name="ApiKeys.New.ClassHelp" xml:space="preserve">
+    <value>A delivery key reads published content, a preview key reads drafts too, and a management key calls the Management API.</value>
+  </data>
+  <data name="ApiKeys.New.Role" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="ApiKeys.New.RoleHelp" xml:space="preserve">
+    <value>The key may do what this role grants within its sites and types. You may give it only a role whose every grant you hold.</value>
+  </data>
+  <data name="ApiKeys.New.Sites" xml:space="preserve">
+    <value>Sites</value>
+  </data>
+  <data name="ApiKeys.New.SitesHelp" xml:space="preserve">
+    <value>The sites the key reaches. You need apikeys.manage in each of them.</value>
+  </data>
+  <data name="ApiKeys.New.EverySite" xml:space="preserve">
+    <value>Every site, bound to none</value>
+  </data>
+  <data name="ApiKeys.New.Types" xml:space="preserve">
+    <value>Content types</value>
+  </data>
+  <data name="ApiKeys.New.TypesHelp" xml:space="preserve">
+    <value>Leave every type unticked for a key that reaches them all.</value>
+  </data>
+  <data name="ApiKeys.New.Expiry" xml:space="preserve">
+    <value>Expiry</value>
+  </data>
+  <data name="ApiKeys.New.ExpiryHelp" xml:space="preserve">
+    <value>Leave the date empty for a key that does not expire.</value>
+  </data>
+  <data name="ApiKeys.New.RateLimit" xml:space="preserve">
+    <value>Rate limit</value>
+  </data>
+  <data name="ApiKeys.New.RateLimitHelp" xml:space="preserve">
+    <value>Requests a minute. Leave it empty for the server's limit.</value>
+  </data>
+  <data name="ApiKeys.New.Addresses" xml:space="preserve">
+    <value>Allowed addresses</value>
+  </data>
+  <data name="ApiKeys.New.AddressesHelp" xml:space="preserve">
+    <value>One IP address or CIDR range a line, such as 203.0.113.0/24. Leave it empty for any address.</value>
+  </data>
+  <data name="ApiKeys.New.Create" xml:space="preserve">
+    <value>Create key</value>
+  </data>
+  <data name="ApiKeys.New.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="ApiKeys.New.Created" xml:space="preserve">
+    <value>The key {0} was created.</value>
+  </data>
+  <data name="ApiKeys.New.NameRequired" xml:space="preserve">
+    <value>Enter a name.</value>
+  </data>
+  <data name="ApiKeys.New.RoleRequired" xml:space="preserve">
+    <value>Choose a role.</value>
+  </data>
+  <data name="ApiKeys.New.Refused" xml:space="preserve">
+    <value>Your roles do not let you make this key. It needs apikeys.manage in each site it is bound to, or for the instance when it is bound to none, and every grant of its role as the key is bound.</value>
+  </data>
+  <data name="ApiKeys.New.Failed" xml:space="preserve">
+    <value>The key could not be created. Try again.</value>
+  </data>
+  <data name="ApiKeys.Expiry.Date" xml:space="preserve">
+    <value>Date</value>
+  </data>
+  <data name="ApiKeys.Expiry.Time" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="ApiKeys.Expiry.Zone" xml:space="preserve">
+    <value>In the time zone {0}.</value>
+  </data>
+  <data name="ApiKeys.Secret.CreatedTitle" xml:space="preserve">
+    <value>Copy the new key</value>
+  </data>
+  <data name="ApiKeys.Secret.RotatedTitle" xml:space="preserve">
+    <value>Copy the new secret</value>
+  </data>
+  <data name="ApiKeys.Secret.Label" xml:space="preserve">
+    <value>Secret</value>
+  </data>
+  <data name="ApiKeys.Secret.Text" xml:space="preserve">
+    <value>A client sends it with each request in the X-Api-Key header.</value>
+  </data>
+  <data name="ApiKeys.Key.Loading" xml:space="preserve">
+    <value>Reading the key…</value>
+  </data>
+  <data name="ApiKeys.Key.NotFound" xml:space="preserve">
+    <value>There is no such key, or it is not one you manage.</value>
+  </data>
+  <data name="ApiKeys.Key.BackToList" xml:space="preserve">
+    <value>Back to the API keys</value>
+  </data>
+  <data name="ApiKeys.Key.Failed" xml:space="preserve">
+    <value>The key could not be read.</value>
+  </data>
+  <data name="ApiKeys.Key.Forbidden" xml:space="preserve">
+    <value>Your roles do not let you manage keys in this site.</value>
+  </data>
+  <data name="ApiKeys.Key.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="ApiKeys.Key.Class" xml:space="preserve">
+    <value>Class</value>
+  </data>
+  <data name="ApiKeys.Key.Prefix" xml:space="preserve">
+    <value>Prefix</value>
+  </data>
+  <data name="ApiKeys.Key.Role" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="ApiKeys.Key.Sites" xml:space="preserve">
+    <value>Sites</value>
+  </data>
+  <data name="ApiKeys.Key.Types" xml:space="preserve">
+    <value>Content types</value>
+  </data>
+  <data name="ApiKeys.Key.AllTypes" xml:space="preserve">
+    <value>Every type</value>
+  </data>
+  <data name="ApiKeys.Key.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="ApiKeys.Key.Expires" xml:space="preserve">
+    <value>Expires</value>
+  </data>
+  <data name="ApiKeys.Key.NeverExpires" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="ApiKeys.Key.LastUsed" xml:space="preserve">
+    <value>Last used</value>
+  </data>
+  <data name="ApiKeys.Key.RateLimit" xml:space="preserve">
+    <value>Rate limit</value>
+  </data>
+  <data name="ApiKeys.Key.RateLimitValue" xml:space="preserve">
+    <value>{0} a minute</value>
+  </data>
+  <data name="ApiKeys.Key.RateLimitServer" xml:space="preserve">
+    <value>The server's limit</value>
+  </data>
+  <data name="ApiKeys.Key.Addresses" xml:space="preserve">
+    <value>Allowed addresses</value>
+  </data>
+  <data name="ApiKeys.Key.AnyAddress" xml:space="preserve">
+    <value>Any address</value>
+  </data>
+  <data name="ApiKeys.Key.Created" xml:space="preserve">
+    <value>Created</value>
+  </data>
+  <data name="ApiKeys.Key.RevokedNote" xml:space="preserve">
+    <value>This key is revoked and cannot be changed.</value>
+  </data>
+  <data name="ApiKeys.Key.RotateHeading" xml:space="preserve">
+    <value>Rotate</value>
+  </data>
+  <data name="ApiKeys.Key.RotateText" xml:space="preserve">
+    <value>A new secret replaces the key's secret. The replaced one is still accepted for the overlap, so that clients can change over.</value>
+  </data>
+  <data name="ApiKeys.Key.Overlap" xml:space="preserve">
+    <value>Overlap in hours</value>
+  </data>
+  <data name="ApiKeys.Key.OverlapHelp" xml:space="preserve">
+    <value>0 for none. Leave it empty for the longest the server allows.</value>
+  </data>
+  <data name="ApiKeys.Key.Rotate" xml:space="preserve">
+    <value>Rotate…</value>
+  </data>
+  <data name="ApiKeys.Key.AddressesHeading" xml:space="preserve">
+    <value>Allowed addresses</value>
+  </data>
+  <data name="ApiKeys.Key.SaveAddresses" xml:space="preserve">
+    <value>Save addresses</value>
+  </data>
+  <data name="ApiKeys.Key.AddressesSaved" xml:space="preserve">
+    <value>The allowed addresses were saved.</value>
+  </data>
+  <data name="ApiKeys.Key.ExpireHeading" xml:space="preserve">
+    <value>Expire</value>
+  </data>
+  <data name="ApiKeys.Key.ExpireText" xml:space="preserve">
+    <value>An expiry is only brought forward. Leave the date empty to expire the key now.</value>
+  </data>
+  <data name="ApiKeys.Key.Expire" xml:space="preserve">
+    <value>Expire…</value>
+  </data>
+  <data name="ApiKeys.Key.RevokeHeading" xml:space="preserve">
+    <value>Revoke</value>
+  </data>
+  <data name="ApiKeys.Key.RevokeText" xml:space="preserve">
+    <value>A revoked key is refused at once and stays in the list.</value>
+  </data>
+  <data name="ApiKeys.Key.Revoke" xml:space="preserve">
+    <value>Revoke…</value>
+  </data>
+  <data name="ApiKeys.Key.Rotated" xml:space="preserve">
+    <value>The key was rotated.</value>
+  </data>
+  <data name="ApiKeys.Key.ExpirySet" xml:space="preserve">
+    <value>The key's expiry was brought forward.</value>
+  </data>
+  <data name="ApiKeys.Key.Revoked" xml:space="preserve">
+    <value>The key was revoked.</value>
+  </data>
+  <data name="ApiKeys.Key.Refused" xml:space="preserve">
+    <value>Your roles do not hold every grant of this key's role as the key is bound, so you may not rotate, expire or revoke it or change its addresses.</value>
+  </data>
+  <data name="ApiKeys.Key.NotRotatable" xml:space="preserve">
+    <value>The key is revoked or expired, or it was changed at the same time. It has been read again.</value>
+  </data>
+  <data name="ApiKeys.Key.ActionFailed" xml:space="preserve">
+    <value>The change could not be made. Try again.</value>
+  </data>
+  <data name="ApiKeys.Confirm.RotateTitle" xml:space="preserve">
+    <value>Rotate {0}?</value>
+  </data>
+  <data name="ApiKeys.Confirm.RotateLongest" xml:space="preserve">
+    <value>Clients must change to the new secret. The replaced one is accepted for the longest overlap the server allows.</value>
+  </data>
+  <data name="ApiKeys.Confirm.RotateHours" xml:space="preserve">
+    <value>Clients must change to the new secret. The replaced one is accepted for {0} hours.</value>
+  </data>
+  <data name="ApiKeys.Confirm.RotateNone" xml:space="preserve">
+    <value>Clients must change to the new secret. The replaced one is refused at once.</value>
+  </data>
+  <data name="ApiKeys.Confirm.ExpireTitle" xml:space="preserve">
+    <value>Expire {0}?</value>
+  </data>
+  <data name="ApiKeys.Confirm.ExpireNow" xml:space="preserve">
+    <value>Clients are refused from now on.</value>
+  </data>
+  <data name="ApiKeys.Confirm.ExpireAt" xml:space="preserve">
+    <value>Clients are refused from {0}.</value>
+  </data>
+  <data name="ApiKeys.Confirm.RevokeTitle" xml:space="preserve">
+    <value>Revoke {0}?</value>
+  </data>
+  <data name="ApiKeys.Confirm.RevokeText" xml:space="preserve">
+    <value>Clients are refused at once, and the key cannot be used again.</value>
+  </data>
+  <data name="ApiKeys.Confirm.Rotate" xml:space="preserve">
+    <value>Rotate</value>
+  </data>
+  <data name="ApiKeys.Confirm.Expire" xml:space="preserve">
+    <value>Expire</value>
+  </data>
+  <data name="ApiKeys.Confirm.Revoke" xml:space="preserve">
+    <value>Revoke</value>
+  </data>
+  <data name="ApiKeys.Confirm.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="ApiKeys.Error.Name" xml:space="preserve">
+    <value>A name has 1 to 128 characters.</value>
+  </data>
+  <data name="ApiKeys.Error.UnknownRole" xml:space="preserve">
+    <value>The role no longer exists.</value>
+  </data>
+  <data name="ApiKeys.Error.Sites" xml:space="preserve">
+    <value>Choose at least one site.</value>
+  </data>
+  <data name="ApiKeys.Error.UnknownSite" xml:space="preserve">
+    <value>One of the sites no longer exists.</value>
+  </data>
+  <data name="ApiKeys.Error.UnknownType" xml:space="preserve">
+    <value>One of the content types no longer exists.</value>
+  </data>
+  <data name="ApiKeys.Error.ExpiryFuture" xml:space="preserve">
+    <value>A key expires in the future.</value>
+  </data>
+  <data name="ApiKeys.Error.ExpiryForward" xml:space="preserve">
+    <value>An expiry is only brought forward, to before the one the key has.</value>
+  </data>
+  <data name="ApiKeys.Error.RateLimit" xml:space="preserve">
+    <value>A rate limit is a whole number of requests a minute, at least 1.</value>
+  </data>
+  <data name="ApiKeys.Error.Address" xml:space="preserve">
+    <value>Each line is an IP address or a CIDR range, such as 203.0.113.0/24.</value>
+  </data>
+  <data name="ApiKeys.Error.Overlap" xml:space="preserve">
+    <value>The overlap is longer than the server allows, or below 0.</value>
+  </data>
 </root>

@@ -122,6 +122,97 @@ internal sealed class AdminContext(
         });
     }
 
+    // After a change of a site or its locales (spec 4.16), so that the switchers follow. The site shown takes its new name and
+    // locales; its access and schema are read again when its default locale changed, or when the content locale is no longer
+    // one it has enabled, which then goes back to the default. A site that is gone, as one deleted, is left for the default
+    // site, or the first, as a switch does. A read that fails, or that a switch or a change of locale overtook, changes nothing,
+    // but when the site shown is the one the caller says is gone: every read of that site would be refused (FCMS2301), so the
+    // shell fails, without that site in the switcher, and its Try again starts afresh, which reads the sites and takes the
+    // default site in place of the one the tab kept.
+    public async Task ReadSitesAsync(Guid? gone = null)
+    {
+        if (Status != ShellStatus.Ready)
+        {
+            return;
+        }
+
+        if (gone is { } deleted)
+        {
+            Sites = [.. Sites.Where(item => item.Id != deleted)];
+        }
+
+        var generation = _generation;
+        IReadOnlyList<MySiteInfo> mine;
+        try
+        {
+            mine = await client.GetMySitesAsync(CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)
+        {
+            ShellLog.SitesNotRead(logger, exception);
+            if (generation == _generation && gone is { } lost && Site?.Id == lost)
+            {
+                ++_generation;
+                Status = ShellStatus.Failed;
+                Changed?.Invoke();
+            }
+
+            return;
+        }
+
+        if (generation != _generation || Site is not { } shown)
+        {
+            return;
+        }
+
+        Sites = mine;
+        if (mine.FirstOrDefault(item => item.Id == shown.Id) is not { } same)
+        {
+            await LeaveAsync(mine);
+            return;
+        }
+
+        var (locale, enabled) = (site.ContentLocale, ContentLocales);
+        site.Current = same;
+        if (!enabled.SequenceEqual(ContentLocales, StringComparer.Ordinal))
+        {
+            _localeAccess = null;
+        }
+
+        var chosen = locale is null ? null : Chosen(locale);
+        var newDefault = !string.Equals(same.DefaultLocale, shown.DefaultLocale, StringComparison.Ordinal);
+        if (chosen != locale || newDefault)
+        {
+            if (newDefault)
+            {
+                metadata.ForgetSchema();
+            }
+
+            var next = ++_generation;
+            site.ContentLocale = chosen;
+            Changed?.Invoke();
+            await (_localeReads = RunAsync(next, () => SiteReadsAsync(next)));
+            return;
+        }
+
+        Changed?.Invoke();
+    }
+
+    private Task LeaveAsync(IReadOnlyList<MySiteInfo> mine)
+    {
+        if (mine.Count > 0)
+        {
+            return SwitchSiteAsync((mine.FirstOrDefault(item => item.IsDefault) ?? mine[0]).Id);
+        }
+
+        ++_generation;
+        (site.Current, site.ContentLocale, _localeAccess) = (null, null, null);
+        (AccessInfo, Schema, SchemaRefused, Plugins) = (null, null, false, []);
+        Status = ShellStatus.NoSite;
+        Changed?.Invoke();
+        return Task.CompletedTask;
+    }
+
     // The content locale an address names: one of the site's enabled locales, else the site's default; null keeps the one
     // there is. The access and the schema of the locale before stay until those of the new one are read, so a page awaits
     // this before it reads.

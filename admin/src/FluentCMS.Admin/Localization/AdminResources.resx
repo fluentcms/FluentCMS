@@ -105,324 +105,6 @@
   <data name="Home.Page.ComponentGallery" xml:space="preserve">
     <value>Component gallery</value>
   </data>
-  <data name="System.Components.Heading" xml:space="preserve">
-    <value>Component gallery</value>
-  </data>
-  <data name="System.Components.Theme" xml:space="preserve">
-    <value>Theme</value>
-  </data>
-  <data name="System.Components.ThemeSystem" xml:space="preserve">
-    <value>System</value>
-  </data>
-  <data name="System.Components.ThemeLight" xml:space="preserve">
-    <value>Light</value>
-  </data>
-  <data name="System.Components.ThemeDark" xml:space="preserve">
-    <value>Dark</value>
-  </data>
-  <data name="System.Components.RightToLeft" xml:space="preserve">
-    <value>Right to left</value>
-  </data>
-  <data name="System.Components.Buttons" xml:space="preserve">
-    <value>Buttons and icons</value>
-  </data>
-  <data name="System.Components.Save" xml:space="preserve">
-    <value>Save</value>
-  </data>
-  <data name="System.Components.Cancel" xml:space="preserve">
-    <value>Cancel</value>
-  </data>
-  <data name="System.Components.Add" xml:space="preserve">
-    <value>Add</value>
-  </data>
-  <data name="System.Components.Delete" xml:space="preserve">
-    <value>Delete</value>
-  </data>
-  <data name="System.Components.Disabled" xml:space="preserve">
-    <value>Disabled</value>
-  </data>
-  <data name="System.Components.IconAdd" xml:space="preserve">
-    <value>Add</value>
-  </data>
-  <data name="System.Components.IconDelete" xml:space="preserve">
-    <value>Delete</value>
-  </data>
-  <data name="System.Components.IconEdit" xml:space="preserve">
-    <value>Edit</value>
-  </data>
-  <data name="System.Components.IconSave" xml:space="preserve">
-    <value>Save</value>
-  </data>
-  <data name="System.Components.IconSearch" xml:space="preserve">
-    <value>Search</value>
-  </data>
-  <data name="System.Components.IconSettings" xml:space="preserve">
-    <value>Settings</value>
-  </data>
-  <data name="System.Components.IconDismiss" xml:space="preserve">
-    <value>Dismiss</value>
-  </data>
-  <data name="System.Components.IconMore" xml:space="preserve">
-    <value>More</value>
-  </data>
-  <data name="System.Components.IconUpload" xml:space="preserve">
-    <value>Upload</value>
-  </data>
-  <data name="System.Components.IconFolder" xml:space="preserve">
-    <value>Folder</value>
-  </data>
-  <data name="System.Components.IconDocument" xml:space="preserve">
-    <value>Document</value>
-  </data>
-  <data name="System.Components.IconImage" xml:space="preserve">
-    <value>Image</value>
-  </data>
-  <data name="System.Components.IconPerson" xml:space="preserve">
-    <value>Person</value>
-  </data>
-  <data name="System.Components.IconGlobe" xml:space="preserve">
-    <value>Globe</value>
-  </data>
-  <data name="System.Components.IconInfo" xml:space="preserve">
-    <value>Information</value>
-  </data>
-  <data name="System.Components.IconWarning" xml:space="preserve">
-    <value>Warning</value>
-  </data>
-  <data name="System.Components.IconCheckmark" xml:space="preserve">
-    <value>Checkmark</value>
-  </data>
-  <data name="System.Components.IconOpen" xml:space="preserve">
-    <value>Open</value>
-  </data>
-  <data name="System.Components.IconSun" xml:space="preserve">
-    <value>Sun</value>
-  </data>
-  <data name="System.Components.IconMoon" xml:space="preserve">
-    <value>Moon</value>
-  </data>
-  <data name="System.Components.IconNavigation" xml:space="preserve">
-    <value>Navigation</value>
-  </data>
-  <data name="System.Components.IconUp" xml:space="preserve">
-    <value>Up</value>
-  </data>
-  <data name="System.Components.IconDown" xml:space="preserve">
-    <value>Down</value>
-  </data>
-  <data name="System.Components.IconComment" xml:space="preserve">
-    <value>Comment</value>
-  </data>
-  <data name="System.Components.IconPlugin" xml:space="preserve">
-    <value>Plugin</value>
-  </data>
-  <data name="System.Components.Inputs" xml:space="preserve">
-    <value>Inputs and selects</value>
-  </data>
-  <data name="System.Components.Title" xml:space="preserve">
-    <value>Title</value>
-  </data>
-  <data name="System.Components.TitleHelp" xml:space="preserve">
-    <value>Shown in lists and in the browser tab.</value>
-  </data>
-  <data name="System.Components.SampleTitle" xml:space="preserve">
-    <value>Hello</value>
-  </data>
-  <data name="System.Components.Slug" xml:space="preserve">
-    <value>Slug</value>
-  </data>
-  <data name="System.Components.SlugRequired" xml:space="preserve">
-    <value>A slug is required.</value>
-  </data>
-  <data name="System.Components.Email" xml:space="preserve">
-    <value>Email</value>
-  </data>
-  <data name="System.Components.OneTimeCode" xml:space="preserve">
-    <value>Code from an authenticator app</value>
-  </data>
-  <data name="System.Components.Summary" xml:space="preserve">
-    <value>Summary</value>
-  </data>
-  <data name="System.Components.SummaryHelp" xml:space="preserve">
-    <value>Up to two sentences.</value>
-  </data>
-  <data name="System.Components.Status" xml:space="preserve">
-    <value>Status</value>
-  </data>
-  <data name="System.Components.StatusDraft" xml:space="preserve">
-    <value>Draft</value>
-  </data>
-  <data name="System.Components.StatusPublished" xml:space="preserve">
-    <value>Published</value>
-  </data>
-  <data name="System.Components.StatusArchived" xml:space="preserve">
-    <value>Archived</value>
-  </data>
-  <data name="System.Components.DateAndTime" xml:space="preserve">
-    <value>Date and time</value>
-  </data>
-  <data name="System.Components.PublishDate" xml:space="preserve">
-    <value>Publish date</value>
-  </data>
-  <data name="System.Components.PublishDateHelp" xml:space="preserve">
-    <value>Type the date or open the calendar.</value>
-  </data>
-  <data name="System.Components.PublishTime" xml:space="preserve">
-    <value>Publish time</value>
-  </data>
-  <data name="System.Components.Choices" xml:space="preserve">
-    <value>Checkboxes and switches</value>
-  </data>
-  <data name="System.Components.ShowInNavigation" xml:space="preserve">
-    <value>Show in navigation</value>
-  </data>
-  <data name="System.Components.AllowComments" xml:space="preserve">
-    <value>Allow comments</value>
-  </data>
-  <data name="System.Components.Overlays" xml:space="preserve">
-    <value>Dialogs, drawers and toasts</value>
-  </data>
-  <data name="System.Components.OpenDialog" xml:space="preserve">
-    <value>Open dialog</value>
-  </data>
-  <data name="System.Components.OpenDrawer" xml:space="preserve">
-    <value>Open drawer</value>
-  </data>
-  <data name="System.Components.ShowToast" xml:space="preserve">
-    <value>Show toast</value>
-  </data>
-  <data name="System.Components.Saved" xml:space="preserve">
-    <value>Saved.</value>
-  </data>
-  <data name="System.Components.DialogTitle" xml:space="preserve">
-    <value>Discard changes?</value>
-  </data>
-  <data name="System.Components.DialogText" xml:space="preserve">
-    <value>The entry has changes that are not saved.</value>
-  </data>
-  <data name="System.Components.Discard" xml:space="preserve">
-    <value>Discard</value>
-  </data>
-  <data name="System.Components.KeepEditing" xml:space="preserve">
-    <value>Keep editing</value>
-  </data>
-  <data name="System.Components.Filters" xml:space="preserve">
-    <value>Filters</value>
-  </data>
-  <data name="System.Components.Search" xml:space="preserve">
-    <value>Search</value>
-  </data>
-  <data name="System.Components.Apply" xml:space="preserve">
-    <value>Apply</value>
-  </data>
-  <data name="System.Components.MenusAndTabs" xml:space="preserve">
-    <value>Menus and tabs</value>
-  </data>
-  <data name="System.Components.Actions" xml:space="preserve">
-    <value>Actions</value>
-  </data>
-  <data name="System.Components.Edit" xml:space="preserve">
-    <value>Edit</value>
-  </data>
-  <data name="System.Components.Preview" xml:space="preserve">
-    <value>Preview</value>
-  </data>
-  <data name="System.Components.LastAction" xml:space="preserve">
-    <value>Last action: {0}</value>
-  </data>
-  <data name="System.Components.None" xml:space="preserve">
-    <value>none</value>
-  </data>
-  <data name="System.Components.ContentTab" xml:space="preserve">
-    <value>Content</value>
-  </data>
-  <data name="System.Components.ContentTabText" xml:space="preserve">
-    <value>The fields of the entry.</value>
-  </data>
-  <data name="System.Components.SeoTab" xml:space="preserve">
-    <value>SEO</value>
-  </data>
-  <data name="System.Components.SeoTabText" xml:space="preserve">
-    <value>Title and description for search engines.</value>
-  </data>
-  <data name="System.Components.HistoryTab" xml:space="preserve">
-    <value>History</value>
-  </data>
-  <data name="System.Components.HistoryTabText" xml:space="preserve">
-    <value>Earlier versions.</value>
-  </data>
-  <data name="System.Components.DataGrid" xml:space="preserve">
-    <value>Data grid</value>
-  </data>
-  <data name="System.Components.Articles" xml:space="preserve">
-    <value>Articles</value>
-  </data>
-  <data name="System.Components.Author" xml:space="preserve">
-    <value>Author</value>
-  </data>
-  <data name="System.Components.Updated" xml:space="preserve">
-    <value>Updated</value>
-  </data>
-  <data name="System.Components.SelectedRows" xml:space="preserve">
-    <value>Selected: {0}</value>
-  </data>
-  <data name="System.Components.Article1" xml:space="preserve">
-    <value>Getting started</value>
-  </data>
-  <data name="System.Components.Article2" xml:space="preserve">
-    <value>Content modelling</value>
-  </data>
-  <data name="System.Components.Article3" xml:space="preserve">
-    <value>Publishing workflow</value>
-  </data>
-  <data name="System.Components.Article4" xml:space="preserve">
-    <value>Media library</value>
-  </data>
-  <data name="System.Components.Author1" xml:space="preserve">
-    <value>Ana</value>
-  </data>
-  <data name="System.Components.Author2" xml:space="preserve">
-    <value>Bo</value>
-  </data>
-  <data name="System.Components.Author3" xml:space="preserve">
-    <value>Cy</value>
-  </data>
-  <data name="System.Components.Author4" xml:space="preserve">
-    <value>Dee</value>
-  </data>
-  <data name="System.Components.Tree" xml:space="preserve">
-    <value>Tree</value>
-  </data>
-  <data name="System.Components.Folders" xml:space="preserve">
-    <value>Folders</value>
-  </data>
-  <data name="System.Components.SelectedFolder" xml:space="preserve">
-    <value>Selected folder: {0}</value>
-  </data>
-  <data name="System.Components.FolderImages" xml:space="preserve">
-    <value>Images</value>
-  </data>
-  <data name="System.Components.FolderArchive" xml:space="preserve">
-    <value>Archive</value>
-  </data>
-  <data name="System.Components.FolderDocuments" xml:space="preserve">
-    <value>Documents</value>
-  </data>
-  <data name="System.Components.FolderLegal" xml:space="preserve">
-    <value>Legal</value>
-  </data>
-  <data name="System.Components.FolderVideo" xml:space="preserve">
-    <value>Video</value>
-  </data>
-  <data name="System.Components.FileDropZone" xml:space="preserve">
-    <value>File drop zone</value>
-  </data>
-  <data name="System.Components.UploadImages" xml:space="preserve">
-    <value>Upload images</value>
-  </data>
-  <data name="System.Components.FilesChosen" xml:space="preserve">
-    <value>Files chosen: {0}</value>
-  </data>
   <data name="Authentication.Gate.SigningIn" xml:space="preserve">
     <value>Signing in…</value>
   </data>
@@ -473,27 +155,6 @@
   </data>
   <data name="Authentication.Gate.MisconfiguredText" xml:space="preserve">
     <value>The server that answered is not the one the admin is configured to sign in with, or it does not offer what the admin needs. An administrator can check the authority in the configuration of the admin.</value>
-  </data>
-  <data name="System.Components.Navigation" xml:space="preserve">
-    <value>Navigation and breadcrumb</value>
-  </data>
-  <data name="System.Components.Trail" xml:space="preserve">
-    <value>Sample trail</value>
-  </data>
-  <data name="System.Components.SampleNavigation" xml:space="preserve">
-    <value>Sample</value>
-  </data>
-  <data name="System.Components.Pages" xml:space="preserve">
-    <value>Pages</value>
-  </data>
-  <data name="System.Components.Start" xml:space="preserve">
-    <value>Start page</value>
-  </data>
-  <data name="System.Components.ThisPage" xml:space="preserve">
-    <value>This page</value>
-  </data>
-  <data name="System.Components.Shared" xml:space="preserve">
-    <value>Shared</value>
   </data>
   <data name="Shell.Layout.OpenNavigation" xml:space="preserve">
     <value>Open the navigation</value>
@@ -1741,6 +1402,36 @@
   </data>
   <data name="Content.List.Selected" xml:space="preserve">
     <value>{0} selected.</value>
+  </data>
+  <data name="Content.FieldActions.Menu" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Content.FieldActions.Of" xml:space="preserve">
+    <value> for {0}</value>
+  </data>
+  <data name="Content.FieldActions.Label" xml:space="preserve">
+    <value>Actions for {0}</value>
+  </data>
+  <data name="Content.FieldActions.Loading" xml:space="preserve">
+    <value>Loading the actions…</value>
+  </data>
+  <data name="Content.FieldActions.LoadFailed" xml:space="preserve">
+    <value>The actions could not be loaded. Close the list and open it again to try again.</value>
+  </data>
+  <data name="Content.FieldActions.None" xml:space="preserve">
+    <value>No action applies to this field as it is now.</value>
+  </data>
+  <data name="Content.FieldActions.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Content.FieldActions.Changed" xml:space="preserve">
+    <value>{0} changed {1}. The change is not saved yet.</value>
+  </data>
+  <data name="Content.FieldActions.WrongValue" xml:space="preserve">
+    <value>The action gave a value this field does not take. The field is unchanged.</value>
+  </data>
+  <data name="Content.FieldActions.Failed" xml:space="preserve">
+    <value>The action failed. The browser's console has the cause.</value>
   </data>
   <data name="Content.Bulk.Menu" xml:space="preserve">
     <value>Actions</value>

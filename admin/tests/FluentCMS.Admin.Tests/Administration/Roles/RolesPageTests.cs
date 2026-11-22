@@ -1,8 +1,11 @@
 using System.Reflection;
 using Bunit;
 using FluentCMS.Admin.Administration.Roles;
+using FluentCMS.Admin.Plugins;
 using FluentCMS.Admin.Shell;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Admin.Tests.Shell.FakeManagementServer;
@@ -86,6 +89,74 @@ public sealed class RolesPageTests : RolesTestContext
         Navigation.NavigateTo("roles");
         app.WaitForAssertion(() => Rows(app).Length.ShouldBe(6));
         Management.Count("roles").ShouldBe(reads + 1);
+    }
+
+    // The first visit of a half's route in another content locale: the router waits for the half's load after the access of
+    // fr is read, and the roles page, still drawn, reads nothing for the half's address, as its search cleared (#3514). On its
+    // own route a change of the access still reads again.
+    [Fact]
+    public async Task AListAboutToBeReplacedDoesNotReadOnAChangeOfTheAccessWhileTheRouterWaits()
+    {
+        var sample = AdminPluginManifestJson.Read(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, AdminPluginManifest.FileName)));
+        Services.AddSingleton(new AdminPluginCatalog([sample with { Widgets = [] }], []));
+        Management.Plugins[MainSite] = [Plugin("reviews", enabled: true)];
+        Management.AddLocale(MainSite, "fr", 1);
+        var app = Open("roles?q=public", inSite: ["reviews.notes.manage"]);
+        Management.LocaleAccess[(MainSite, "fr")] = Management.Access[MainSite].DeepClone().AsObject();
+        app.WaitForAssertion(() => Rows(app).Length.ShouldBe(2));
+        var reads = Management.Count("roles");
+        var hold = Loader.Hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Navigation.NavigateTo("reviews?locale=fr");
+        app.WaitForAssertion(() => Loader.Loads.ShouldBe(2));
+        for (var turn = 0; turn < 3; turn++)
+        {
+            await app.InvokeAsync(() => { });
+        }
+
+        Context.ContentLocale.ShouldBe("fr");
+        app.FindComponent<RouteView>().Instance.RouteData.PageType.ShouldBe(typeof(RolesPage));
+        Management.Count("roles").ShouldBe(reads);
+        hold.SetResult();
+        app.WaitForAssertion(() => app.FindComponent<RouteView>().Instance.RouteData.PageType.ShouldNotBe(typeof(RolesPage)));
+        Management.Count("roles").ShouldBe(reads);
+
+        Navigation.NavigateTo("roles?q=public&locale=en");
+        app.WaitForAssertion(() => Context.ContentLocale.ShouldBe("en"));
+        app.WaitForAssertion(() => Rows(app).Length.ShouldBe(2));
+        reads = Management.Count("roles");
+
+        Navigation.NavigateTo("roles?q=public&locale=fr");
+
+        app.WaitForAssertion(() => Management.Count("roles").ShouldBeGreaterThan(reads));
+        app.WaitForAssertion(() => Rows(app).Length.ShouldBe(2));
+    }
+
+    // The same wait cancelled by a navigation back to the roles: the reload that waited for the list's own address reads
+    // there, with the access of fr.
+    [Fact]
+    public async Task AReloadThatWaitedForTheListsAddressReadsOnceTheAddressIsItsOwnAgain()
+    {
+        var sample = AdminPluginManifestJson.Read(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, AdminPluginManifest.FileName)));
+        Services.AddSingleton(new AdminPluginCatalog([sample with { Widgets = [] }], []));
+        Management.Plugins[MainSite] = [Plugin("reviews", enabled: true)];
+        Management.AddLocale(MainSite, "fr", 1);
+        var app = Open("roles?q=public", inSite: ["reviews.notes.manage"]);
+        Management.LocaleAccess[(MainSite, "fr")] = Management.Access[MainSite].DeepClone().AsObject();
+        app.WaitForAssertion(() => Rows(app).Length.ShouldBe(2));
+        var reads = Management.Count("roles");
+        var hold = Loader.Hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Navigation.NavigateTo("reviews?locale=fr");
+        app.WaitForAssertion(() => Loader.Loads.ShouldBe(2));
+        app.WaitForAssertion(() => Context.ContentLocale.ShouldBe("fr"));
+
+        Navigation.NavigateTo("roles?q=public&locale=fr");
+
+        app.WaitForAssertion(() => Management.Count("roles").ShouldBe(reads + 1));
+        app.WaitForAssertion(() => Rows(app).Length.ShouldBe(2));
+        hold.SetResult();
+        await app.InvokeAsync(() => { });
+        app.FindComponent<RouteView>().Instance.RouteData.PageType.ShouldBe(typeof(RolesPage));
     }
 
     [Fact]

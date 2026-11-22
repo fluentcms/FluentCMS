@@ -210,6 +210,9 @@ public sealed record AdminManifestFieldAction
 
     /// <summary>The permission a user needs to see the action, if it needs one.</summary>
     public string? Permission { get; init; }
+
+    /// <summary>The read whose answer names the fields the action is offered on; see <see cref="FieldActionAttribute.FieldsFrom"/>.</summary>
+    public string? FieldsFrom { get; init; }
 }
 
 /// <summary>A dashboard widget of an admin half, from <see cref="DashboardWidgetAttribute"/>.</summary>
@@ -282,7 +285,8 @@ public static class AdminPluginManifestJson
     ReadCommentHandling = JsonCommentHandling.Skip,
     AllowTrailingCommas = true,
     RespectNullableAnnotations = true,
-    WriteIndented = true)]
+    WriteIndented = true,
+    GenerationMode = JsonSourceGenerationMode.Metadata)]
 [JsonSerializable(typeof(AdminPluginManifest))]
 [JsonSerializable(typeof(IReadOnlyList<AdminPluginManifest>))]
 internal sealed partial class AdminPluginManifestJsonContext : JsonSerializerContext

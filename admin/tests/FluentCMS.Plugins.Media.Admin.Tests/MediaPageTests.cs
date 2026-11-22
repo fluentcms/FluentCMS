@@ -16,7 +16,7 @@ public sealed class MediaPageTests : MediaTestContext
         Library.AddFolder("Photos");
         Library.AddAsset("logo.png");
 
-        var cut = Render<MediaPage>();
+        var cut = RenderAt("");
 
         cut.WaitForAssertion(() => cut.FindAll(".media-tile").Count.ShouldBe(1));
         cut.Find("h1").TextContent.ShouldBe("Media");
@@ -49,7 +49,7 @@ public sealed class MediaPageTests : MediaTestContext
     {
         Admin.Grant(MediaPermissions.ManageFolders);
 
-        var cut = Render<MediaPage>();
+        var cut = RenderAt("");
 
         cut.WaitForAssertion(() => HasButton(cut, "New folder").ShouldBeTrue());
         HasButton(cut, "Rename folder").ShouldBeFalse();
@@ -70,7 +70,7 @@ public sealed class MediaPageTests : MediaTestContext
 
         Button(cut, "Grid view").Click();
         var navigation = Services.GetRequiredService<NavigationManager>();
-        cut.WaitForAssertion(() => navigation.Uri.ShouldBe($"http://localhost/?folder={photos:D}&tag=summer"));
+        cut.WaitForAssertion(() => navigation.Uri.ShouldBe($"http://localhost/media?folder={photos:D}&tag=summer"));
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public sealed class MediaPageTests : MediaTestContext
     {
         Admin.Grant(MediaPermissions.ManageFolders);
         var archive = Library.AddFolder("Archive");
-        var cut = Render<MediaPage>();
+        var cut = RenderAt("");
         cut.WaitForAssertion(() => HasButton(cut, "New folder").ShouldBeTrue());
 
         Button(cut, "New folder").Click();
@@ -120,7 +120,7 @@ public sealed class MediaPageTests : MediaTestContext
         Library.Assets.Clear();
         DeleteButton(inPhotos).Click();
         inPhotos.WaitForAssertion(() => Library.Folders.Count.ShouldBe(1));
-        inPhotos.WaitForAssertion(() => Services.GetRequiredService<NavigationManager>().Uri.ShouldBe($"http://localhost/?folder={archive:D}"));
+        inPhotos.WaitForAssertion(() => Services.GetRequiredService<NavigationManager>().Uri.ShouldBe($"http://localhost/media?folder={archive:D}"));
         Announcer.Messages.ShouldContain("Folder Pictures deleted.");
     }
 
@@ -133,7 +133,7 @@ public sealed class MediaPageTests : MediaTestContext
         var beach = Library.AddAsset("beach.png");
         Library.AddAsset("guide.pdf", mimeType: "application/pdf");
 
-        var cut = Render<MediaPage>();
+        var cut = RenderAt("");
         cut.WaitForAssertion(() => cut.FindAll(".media-tile-check").Count.ShouldBe(3));
         cut.FindAll("fluent-button").ShouldNotContain(button => button.TextContent.Contains("selected", StringComparison.Ordinal));
 
@@ -160,7 +160,7 @@ public sealed class MediaPageTests : MediaTestContext
         var beach = Library.AddAsset("beach.png");
         Library.RefuseMoveOf = beach;
 
-        var cut = Render<MediaPage>();
+        var cut = RenderAt("");
         cut.WaitForAssertion(() => cut.FindAll(".media-tile-check").Count.ShouldBe(2));
         cut.Find("input[aria-label='Select logo.png']").Change(true);
         cut.WaitForAssertion(() => HasButton(cut, "Move 1 selected").ShouldBeTrue());
@@ -181,7 +181,7 @@ public sealed class MediaPageTests : MediaTestContext
     public void OpeningAnAssetShowsItsDetail()
     {
         Library.AddAsset("logo.png", title: "Company logo");
-        var cut = Render<MediaPage>();
+        var cut = RenderAt("");
         cut.WaitForAssertion(() => cut.FindAll(".media-tile-open").Count.ShouldBe(1));
 
         cut.Find(".media-tile-open").Click();
@@ -194,9 +194,33 @@ public sealed class MediaPageTests : MediaTestContext
         facts.ShouldContain("2 KB");
     }
 
+    // While the router waits for the next page, as on the first visit of an area, the page drawn before gets the next
+    // address's query: it keeps its state and reads nothing, and a change of its own address is followed (#3514).
+    [Fact]
+    public void TheQueryOfAnotherRouteIsNotThePagesState()
+    {
+        var photos = Library.AddFolder("Photos");
+        Library.AddAsset("beach.jpg", photos);
+        var cut = RenderAt($"?folder={photos:D}");
+        cut.WaitForAssertion(() => cut.FindAll(".media-tile").Count.ShouldBe(1));
+        var reads = Library.Requests.Count(request => request.Path.StartsWith("media?", StringComparison.Ordinal));
+        var navigation = Services.GetRequiredService<NavigationManager>();
+
+        navigation.NavigateTo("users?q=ada");
+
+        cut.FindComponent<MediaBrowser>().Instance.State.Folder.ShouldBe(photos);
+        Library.Requests.Count(request => request.Path.StartsWith("media?", StringComparison.Ordinal)).ShouldBe(reads);
+
+        navigation.NavigateTo("media");
+
+        cut.WaitForAssertion(() => cut.FindComponent<MediaBrowser>().Instance.State.Folder.ShouldBeNull());
+        cut.WaitForAssertion(() => Library.Requests.Count(request => request.Path.StartsWith("media?", StringComparison.Ordinal)).ShouldBeGreaterThan(reads));
+    }
+
+    // The page at its own route, /media, with the query given.
     private IRenderedComponent<MediaPage> RenderAt(string query)
     {
-        Services.GetRequiredService<NavigationManager>().NavigateTo(query);
+        Services.GetRequiredService<NavigationManager>().NavigateTo("media" + query);
         return Render<MediaPage>();
     }
 

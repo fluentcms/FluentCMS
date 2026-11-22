@@ -78,6 +78,39 @@
   <data name="SelectNone" xml:space="preserve">
     <value>None</value>
   </data>
+  <data name="SecretOnce" xml:space="preserve">
+    <value>It is shown only now. Copy it and keep it somewhere safe before you close this.</value>
+  </data>
+  <data name="SecretHidden" xml:space="preserve">
+    <value>Hidden</value>
+  </data>
+  <data name="SecretShow" xml:space="preserve">
+    <value>Show</value>
+  </data>
+  <data name="SecretHide" xml:space="preserve">
+    <value>Hide</value>
+  </data>
+  <data name="SecretCopy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="SecretCopied" xml:space="preserve">
+    <value>Copied to the clipboard.</value>
+  </data>
+  <data name="SecretNotCopied" xml:space="preserve">
+    <value>The browser did not let it be copied. Show it, select it and copy it yourself.</value>
+  </data>
+  <data name="SecretDone" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="SecretLeaveQuestion" xml:space="preserve">
+    <value>Leave this page? The secret goes with it and cannot be shown again.</value>
+  </data>
+  <data name="SecretStay" xml:space="preserve">
+    <value>Stay</value>
+  </data>
+  <data name="SecretLeave" xml:space="preserve">
+    <value>Leave</value>
+  </data>
   <data name="Tabs_MoreItems" xml:space="preserve">
     <value>View {0} more tabs</value>
     <comment>A text of the library under the set, under the library's key.</comment>
