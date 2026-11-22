@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Hooks;
@@ -656,5 +657,95 @@ public class HookPipelineTests
         var nextScope = HookFixtures.Pipeline(services => services.AddTransient<IBeforeCreateHook<ContentDocument>>(_ => Count(new Default(log))));
         await HookFixtures.RunAsync(nextScope, HookKind.BeforeCreate, Doc());
         resolved["Default"].ShouldBe(2);
+    }
+
+    // #3307: a caller that leaves a running hook ends what the pipeline of the scope runs.
+    [Fact]
+    public async Task AHookItsCancelledCallerLeftEndsWhatThePipelineOfTheScopeRuns()
+    {
+        var left = new LeftHook();
+        var following = new Log();
+        var pipeline = HookFixtures.Pipeline(services => services
+            .AddSingleton(following)
+            .AddSingleton<IBeforeCreateHook<ContentDocument>>(left)
+            .AddSingleton<IBeforeUpdateHook<ContentDocument>, UpdateHook>());
+
+        await LeaveAsync(pipeline, left);
+        var refused = await Should.ThrowAsync<HookRejectedException>(() => HookFixtures.RunAsync(pipeline, HookKind.BeforeUpdate, Doc()).AsTask());
+
+        refused.Code.ShouldBe("FCMS2410");
+        refused.Message.ShouldContain(typeof(LeftHook).FullName!);
+        following.Entries.ShouldBeEmpty();
+        left.End.SetResult();
+    }
+
+    [Fact]
+    public async Task TheFailureOfAHookItsCallerLeftIsObserved()
+    {
+        var failure = new InvalidOperationException("The hook that was left failed.");
+        var unobserved = false;
+        void Heard(object? sender, UnobservedTaskExceptionEventArgs args) => unobserved |= args.Exception.InnerExceptions.Contains(failure);
+
+        TaskScheduler.UnobservedTaskException += Heard;
+        try
+        {
+            await LeaveAHookThatThenFailsAsync(failure);
+
+            // An unobserved failure is raised when its task is finalized.
+            for (var round = 0; round < 10; round++)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+        }
+        finally
+        {
+            TaskScheduler.UnobservedTaskException -= Heard;
+        }
+
+        unobserved.ShouldBeFalse();
+    }
+
+    // Apart, so that nothing of the test still refers to the task of the hook.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static async Task LeaveAHookThatThenFailsAsync(Exception failure)
+    {
+        var left = new LeftHook();
+        await LeaveAsync(HookFixtures.Pipeline(services => services.AddSingleton<IBeforeCreateHook<ContentDocument>>(left)), left);
+
+        // On the pool, where the hook's failure runs through to its task at once.
+        await Task.Run(() => left.End.SetException(failure), TestContext.Current.CancellationToken);
+    }
+
+    private static async Task LeaveAsync(HookPipeline pipeline, LeftHook left)
+    {
+        using var caller = new CancellationTokenSource();
+        var running = pipeline.RunAsync(HookKind.BeforeCreate, HookFixtures.ArticleType, HookFixtures.Operation, Doc(), null, caller.Token).AsTask();
+        await left.Entered.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        await caller.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => running);
+    }
+
+    // Ignores its token until the test ends it.
+    private sealed class LeftHook : IBeforeCreateHook<ContentDocument>
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource End { get; } = new();
+
+        public async ValueTask BeforeCreateAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            Entered.TrySetResult();
+            await End.Task;
+        }
+    }
+
+    private sealed class UpdateHook(Log log) : IBeforeUpdateHook<ContentDocument>
+    {
+        public ValueTask BeforeUpdateAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            log.Entries.Add("update");
+            return ValueTask.CompletedTask;
+        }
     }
 }

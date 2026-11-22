@@ -13,10 +13,12 @@ internal sealed class ImportCommand : HostCommand
     public const string Overwrite = "--overwrite";
     public const string Webhooks = "--webhooks";
     public const string MissingLocales = "--missing-locales";
+    public const string Authors = "--authors";
     public const string Roles = "--roles";
     public const string Json = "--json";
 
     private static readonly string[] MissingLocaleChoices = ["refuse", "skip"];
+    private static readonly string[] AuthorChoices = ["keep", "importer"];
 
     public override string Name => "import";
 
@@ -32,6 +34,7 @@ internal sealed class ImportCommand : HostCommand
         new(Overwrite, "Takes the package's copy of an entry that is newer in the instance, which is otherwise a conflict."),
         new(Webhooks, "Delivers the webhooks of what the import writes, which are otherwise not delivered."),
         new(MissingLocales, "refuse (the default) or skip: whether the locales the site does not allow refuse the import or are left out.", "mode"),
+        new(Authors, "keep (the default) or importer: whether the entries keep the authors of the package, or name whoever runs the import as the creator of what it creates and the updater of what it writes.", "mode"),
         new(Roles, "Imports the roles of the package too."),
         new(Json, "Writes the report as the endpoint's last line of JSON: {\"report\":{..}}."),
     ];
@@ -43,6 +46,12 @@ internal sealed class ImportCommand : HostCommand
         if (missing is not null && !MissingLocaleChoices.Contains(missing, StringComparer.Ordinal))
         {
             throw new CommandException(CommandErrorCodes.BadUsage, $"{MissingLocales} is refuse or skip", CommandExitCodes.BadUsage);
+        }
+
+        var authors = arguments.Value(Authors);
+        if (authors is not null && !AuthorChoices.Contains(authors, StringComparer.Ordinal))
+        {
+            throw new CommandException(CommandErrorCodes.BadUsage, $"{Authors} is keep or importer", CommandExitCodes.BadUsage);
         }
 
         var path = Path.GetFullPath(arguments.Positional[0]);
@@ -64,6 +73,7 @@ internal sealed class ImportCommand : HostCommand
                 DryRun = arguments.Has(DryRun),
                 Overwrite = arguments.Has(Overwrite),
                 SkipMissingLocales = missing == "skip",
+                AuthorsFromImporter = authors == "importer",
                 Webhooks = arguments.Has(Webhooks),
                 Roles = arguments.Has(Roles),
                 Types = TransferCommands.TypesOf(arguments),

@@ -149,11 +149,14 @@ public static class FluentCmsServiceCollectionExtensions
 
         services.AddSingleton<RoleVersionInterceptor>();
         services.AddSingleton<LeaseRenewalInterceptor>();
+        services.AddScoped<HookScopeGuard>();
 
         var contentMigrations = builder.ContentMigrationsAssembly ?? Assembly.GetEntryAssembly() ?? typeof(CmsDbContext).Assembly;
         var pluginModels = plugins.Contributions.Models;
         services.AddDbContext<CmsDbContext>((serviceProvider, options) =>
         {
+            // Ahead of the provider's interceptors, so that a refused write has begun no transaction and renewed no lease.
+            options.AddInterceptors(serviceProvider.GetRequiredService<HookScopeGuard>());
             ContentMigrations.Configure(options, provider, serviceProvider.GetRequiredService<SchemaModel>(), contentMigrations, pluginModels);
             options.AddInterceptors(serviceProvider.GetRequiredService<RoleVersionInterceptor>());
             LeaseRenewalInterceptor.AddTo(options, serviceProvider, provider);
@@ -240,6 +243,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddSingleton<EntryCanonicalizer>();
         services.TryAddSingleton<EntryComposer>();
         services.TryAddSingleton<ResponseRichText>();
+        services.AddFluentCmsOptions(ContentWriteOptions.Section, HostErrorCodes.InvalidOption, new ContentWriteOptions(), content => content.Validate());
         services.AddScoped<HookPipeline>();
         services.AddScoped<ValidationPipeline>();
         services.AddScoped<EntryStore>();

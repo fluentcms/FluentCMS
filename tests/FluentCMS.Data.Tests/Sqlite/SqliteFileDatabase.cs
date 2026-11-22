@@ -8,6 +8,7 @@ using FluentCMS.Data.Tests.Providers;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace FluentCMS.Data.Tests.Sqlite;
 
@@ -67,6 +68,10 @@ internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : TestDataba
         public bool HasOneWriter => inner.HasOneWriter;
 
         public Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => inner.ReadMigrationsLockAsync(context, cancellationToken);
+
+        public Task<IDbContextTransaction?> BeginSnapshotAsync(DbContext context, CancellationToken cancellationToken) => inner.BeginSnapshotAsync(context, cancellationToken);
+
+        public Task<bool> LockSiteAsync(DbContext context, Guid site, bool exclusive, CancellationToken cancellationToken) => ((IDataProvider)inner).LockSiteAsync(context, site, exclusive, cancellationToken);
 
         public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment) => inner.ContainsIgnoringCase(fragment);
 

@@ -413,6 +413,14 @@ internal sealed class TransferImporter(
                 continue;
             }
 
+            // A type that is not localized has one row, under the empty locale; a hand-made line may name others.
+            if (!localized && (read.Locales.Count != 1 || read.Locales[0].Locale.Length != 0))
+            {
+                var named = string.Join(", ", read.Locales.Select(locale => $"'{locale.Locale}'"));
+                report.Add(type, id, TransferOutcome.Error, TransferErrorCodes.InvalidItem, $"Line {at} names the locales {named}, but {type} is not localized: its entry has one locale, the empty one.");
+                continue;
+            }
+
             // The plan refused the locales of the manifest that the site does not allow, and a line may name others.
             List<string> refused = localized ? [.. read.Locales.Where(locale => Locale(locale, siteLocales) is null).Select(locale => locale.Locale)] : [];
             if (refused.Count > 0 && !run.Request.SkipMissingLocales)
@@ -454,7 +462,7 @@ internal sealed class TransferImporter(
         mode.Active = true;
         mode.DryRun = run.Request.DryRun;
         mode.Provided = provided;
-        return await scope.ServiceProvider.GetRequiredService<ContentService>().ImportAsync(type, entry, run.Request.Overwrite, cancellationToken);
+        return await scope.ServiceProvider.GetRequiredService<ContentService>().ImportAsync(type, entry, run.Request.Overwrite, run.Request.AuthorsFromImporter, cancellationToken);
     }
 
     // One item: what the instance refuses is reported with its code, and anything else is logged and reported too, so that

@@ -22,7 +22,9 @@ internal sealed partial class ContentService
 
     // Skipped when every locale of the package is in the instance as the package has it, a conflict when the instance's
     // copy of a locale is newer, unless overwrite. Anything else is written, and refused as any write would be.
-    internal async Task<TransferOutcome> ImportAsync(string typeName, TransferEntry entry, bool overwrite, CancellationToken cancellationToken)
+    // With authorsFromImporter the caller is the updater of each locale the import writes and the creator of each it creates;
+    // a locale the instance has keeps its own creator.
+    internal async Task<TransferOutcome> ImportAsync(string typeName, TransferEntry entry, bool overwrite, bool authorsFromImporter, CancellationToken cancellationToken)
     {
         using var span = Span("import", typeName);
 
@@ -68,7 +70,7 @@ internal sealed partial class ContentService
             await InTransactionAsync(
                 async () =>
                 {
-                    await WriteImportedAsync(type, entry, rows, cancellationToken);
+                    await WriteImportedAsync(type, entry, rows, authorsFromImporter, cancellationToken);
                     return importMode.DryRun ? throw new DryRunRollback() : true;
                 },
                 cancellationToken);
@@ -83,7 +85,7 @@ internal sealed partial class ContentService
 
     // The published states go first, each written as the draft and published, so that a locale whose draft has moved on is
     // then written again with its draft. A locale the package does not publish is unpublished.
-    private async Task WriteImportedAsync(SchemaType type, TransferEntry entry, List<Document> before, CancellationToken cancellationToken)
+    private async Task WriteImportedAsync(SchemaType type, TransferEntry entry, List<Document> before, bool authorsFromImporter, CancellationToken cancellationToken)
     {
         var named = entry.Locales.Select(locale => locale.Locale).ToHashSet(StringComparer.Ordinal);
         foreach (var locale in entry.Locales.Where(locale => locale.Published is not null))
@@ -109,6 +111,7 @@ internal sealed partial class ContentService
         }
 
         var written = await store.DocumentsAsync(type, entry.Id, Current().Site, trashed: false, cancellationToken);
+        var importer = Current().AuditPrincipal.Id;
         foreach (var locale in entry.Locales)
         {
             var row = written.Find(item => item.Locale == locale.Locale)!;
@@ -125,9 +128,9 @@ internal sealed partial class ContentService
                     draftVersion,
                     publishedVersion,
                     locale.CreatedAt,
-                    locale.CreatedBy,
+                    authorsFromImporter ? before.Find(item => item.Locale == row.Locale)?.CreatedBy ?? importer : locale.CreatedBy,
                     locale.UpdatedAt,
-                    locale.UpdatedBy,
+                    authorsFromImporter ? importer : locale.UpdatedBy,
                     publishedVersion is null ? null : locale.PublishedAt ?? row.PublishedAt,
                     locale.FirstPublishedAt ?? row.FirstPublishedAt),
                 cancellationToken);
