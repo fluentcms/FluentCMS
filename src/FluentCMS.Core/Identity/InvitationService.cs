@@ -103,7 +103,7 @@ internal sealed class InvitationService(
                 // expired one, which the list does not show, is ended unchecked. The expiry is compared here, as in the list.
                 var pending = await Pending(normalized).AsNoTracking().Select(row => new { row.Id, row.RoleIds, row.ExpiresAt }).ToListAsync(cancellationToken);
                 var live = pending.Where(row => row.ExpiresAt > now).ToList();
-                await roleService.RequireAssignableAsync([.. live.SelectMany(row => JsonSerializer.Deserialize<List<Guid>>(row.RoleIds) ?? [])], cancellationToken);
+                await RequireNowAsync([.. roles, .. live.SelectMany(row => JsonSerializer.Deserialize<List<Guid>>(row.RoleIds) ?? [])], cancellationToken);
                 List<Guid> ended = [.. pending.Select(row => row.Id)];
                 await Pending(normalized).Where(row => ended.Contains(row.Id)).ExecuteUpdateAsync(setters => setters.SetProperty(row => row.RevokedAt, now), cancellationToken);
                 context.Add(invitation);
@@ -149,25 +149,30 @@ internal sealed class InvitationService(
     }
 
     // False when no invitation with this id could still be accepted. Revoking one needs what sending it would, so a caller
-    // below its roles does not cancel it.
+    // below its roles does not cancel it; the check and the write are one transaction.
     public async Task<bool> RevokeAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await authority.RequireAsync(CorePermissions.UsersManage, site: null, cancellationToken);
 
-        var pending = await context.Set<Invitation>().AsNoTracking()
-            .FirstOrDefaultAsync(row => row.Id == id && row.AcceptedAt == null && row.RevokedAt == null, cancellationToken);
-        if (pending is null)
-        {
-            return false;
-        }
+        return await changes.RunAsync(
+            async () =>
+            {
+                var pending = await context.Set<Invitation>().AsNoTracking()
+                    .FirstOrDefaultAsync(row => row.Id == id && row.AcceptedAt == null && row.RevokedAt == null, cancellationToken);
+                if (pending is null)
+                {
+                    return false;
+                }
 
-        await roleService.RequireAssignableAsync(JsonSerializer.Deserialize<List<Guid>>(pending.RoleIds) ?? [], cancellationToken);
+                await RequireNowAsync(JsonSerializer.Deserialize<List<Guid>>(pending.RoleIds) ?? [], cancellationToken);
 
-        var now = time.GetUtcNow();
-        var revoked = await context.Set<Invitation>()
-            .Where(row => row.Id == id && row.AcceptedAt == null && row.RevokedAt == null)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.RevokedAt, now), cancellationToken);
-        return revoked == 1;
+                var now = time.GetUtcNow();
+                var revoked = await context.Set<Invitation>()
+                    .Where(row => row.Id == id && row.AcceptedAt == null && row.RevokedAt == null)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.RevokedAt, now), cancellationToken);
+                return revoked == 1;
+            },
+            cancellationToken);
     }
 
     // For the page that accepts it: whether the token is one that would be accepted now.
@@ -273,6 +278,26 @@ internal sealed class InvitationService(
                 return claimed == 1 ? IdentityResult.Success : Failed(IdentityErrorCodes.InvalidInvitation, "The invitation is not valid, or has been used.");
             },
             cancellationToken);
+    }
+
+    // users.manage and every grant of the roles, checked again in the transaction of the write with the caller's grants read
+    // there, not as the request resolved them before it, so that grants cut in between refuse it, as for a key change; a
+    // calling key is read again too (#3481).
+    private async Task RequireNowAsync(IReadOnlyCollection<Guid> roleIds, CancellationToken cancellationToken)
+    {
+        var operation = accessor.Current;
+        await keys.RequireCallerAsync(operation?.Principal, cancellationToken);
+
+        accessor.Current = operation is null ? null : operation with { };
+        try
+        {
+            await authority.RequireAsync(CorePermissions.UsersManage, site: null, cancellationToken);
+            await roleService.RequireAssignableAsync(roleIds, cancellationToken);
+        }
+        finally
+        {
+            accessor.Current = operation;
+        }
     }
 
     // An invitation is only as good as the credential that sent it: the user still active, the key not revoked or expired,

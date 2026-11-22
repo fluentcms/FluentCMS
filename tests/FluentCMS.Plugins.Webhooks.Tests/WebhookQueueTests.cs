@@ -2,9 +2,12 @@ using System.Collections.Concurrent;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Jobs;
+using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Events;
 using FluentCMS.Publishing;
 using FluentCMS.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -47,10 +50,10 @@ public sealed class WebhookQueueTests(WebhookFixture hosts) : IClassFixture<Webh
         await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Queued" }, Token)).Id, cancellationToken: Token);
         await DrainOutboxAsync(host);
 
-        (await RunNextAsync(host, JobRunnerOptions.DefaultQueue)).ShouldBeFalse("a delivery is not on the default queue");
+        (await DeliveriesOnTheDefaultQueueAsync(host)).ShouldBe(0, "a delivery is not on the default queue");
         (await RunNextAsync(host, WebhookDeliveryJob.Queue)).ShouldBeTrue();
         host.Time.Advance(TimeSpan.FromMinutes(1));
-        (await RunNextAsync(host, JobRunnerOptions.DefaultQueue)).ShouldBeFalse("nor is its retry");
+        (await DeliveriesOnTheDefaultQueueAsync(host)).ShouldBe(0, "nor is its retry");
         (await RunNextAsync(host, WebhookDeliveryJob.Queue)).ShouldBeTrue();
 
         var root = $"/api/management/v1/webhooks/{Id(webhook):D}";
@@ -60,7 +63,7 @@ public sealed class WebhookQueueTests(WebhookFixture hosts) : IClassFixture<Webh
         {
         }
 
-        (await RunNextAsync(host, JobRunnerOptions.DefaultQueue)).ShouldBeFalse("nor a redelivery or a ping");
+        (await DeliveriesOnTheDefaultQueueAsync(host)).ShouldBe(0, "nor a redelivery or a ping");
         (await RunNextAsync(host, WebhookDeliveryJob.Queue)).ShouldBeTrue();
         (await RunNextAsync(host, WebhookDeliveryJob.Queue)).ShouldBeTrue();
         receiver.Requests.Count.ShouldBe(4);
@@ -229,6 +232,15 @@ public sealed class WebhookQueueTests(WebhookFixture hosts) : IClassFixture<Webh
         slow.Release();
         await Task.WhenAll(first, second).WaitAsync(Patience, Token);
         (slow.Requests.Count, fast.Requests.Count).ShouldBe((1, 1));
+    }
+
+    // The delivery jobs ever put on the default queue. Whether that queue has a job due would also count a recurring job that
+    // the moved clock made due (#3409).
+    private static async Task<int> DeliveriesOnTheDefaultQueueAsync(FluentCmsTestHost host)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<Job>().AsNoTracking()
+            .CountAsync(job => job.Type == WebhookDeliveryJob.Type && job.Queue == JobRunnerOptions.DefaultQueue, Token);
     }
 
     private sealed class Published

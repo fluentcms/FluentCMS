@@ -1095,6 +1095,18 @@ namespace FluentCMS.Data.Sqlite.Migrations
                 filter: "status = 'failed'");
 
             migrationBuilder.CreateIndex(
+                name: "ix_cms_outbox_failed_available_at",
+                table: "cms_outbox",
+                columns: new[] { "available_at", "attempts" },
+                filter: "status = 'failed'");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_cms_outbox_failed_handler",
+                table: "cms_outbox",
+                column: "handler",
+                filter: "status = 'failed'");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_cms_outbox_pending",
                 table: "cms_outbox",
                 columns: new[] { "sequence", "id" },

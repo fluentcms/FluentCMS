@@ -148,6 +148,7 @@ public static class FluentCmsServiceCollectionExtensions
             settings.Descriptors.Select(descriptor => descriptor.Area)));
 
         services.AddSingleton<RoleVersionInterceptor>();
+        services.AddSingleton<LeaseRenewalInterceptor>();
 
         var contentMigrations = builder.ContentMigrationsAssembly ?? Assembly.GetEntryAssembly() ?? typeof(CmsDbContext).Assembly;
         var pluginModels = plugins.Contributions.Models;
@@ -155,12 +156,14 @@ public static class FluentCmsServiceCollectionExtensions
         {
             ContentMigrations.Configure(options, provider, serviceProvider.GetRequiredService<SchemaModel>(), contentMigrations, pluginModels);
             options.AddInterceptors(serviceProvider.GetRequiredService<RoleVersionInterceptor>());
+            LeaseRenewalInterceptor.AddTo(options, serviceProvider, provider);
         });
 
-        services.AddDbContext<SystemDbContext>(options =>
+        services.AddDbContext<SystemDbContext>((serviceProvider, options) =>
         {
             provider.ConfigureSystemMigrations(options);
             options.UseSystemModel(provider.Conventions);
+            LeaseRenewalInterceptor.AddTo(options, serviceProvider, provider);
         });
 
         services.AddLogging();

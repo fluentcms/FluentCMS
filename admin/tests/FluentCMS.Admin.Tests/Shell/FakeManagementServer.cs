@@ -282,20 +282,36 @@ internal sealed class FakeManagementServer : HttpMessageHandler
     }
 
     // A FluentCMS problem; with a path, the code is also that of its one validation error, as the server writes them.
-    public static HttpResponseMessage Problem(HttpStatusCode status, string code, string? path = null) =>
-        new(status)
+    // Without a path it has no errors member, as the server writes every problem but a validation one.
+    public static HttpResponseMessage Problem(HttpStatusCode status, string code, string? path = null)
+    {
+        var body = new JsonObject
         {
-            Content = new StringContent(
-                new JsonObject
-                {
-                    ["status"] = (int)status,
-                    ["code"] = code,
-                    ["title"] = "Problem",
-                    ["errors"] = path is null ? new JsonArray() : new JsonArray(new JsonObject { ["path"] = path, ["code"] = code, ["message"] = "Problem" }),
-                }.ToJsonString(),
-                Encoding.UTF8,
-                "application/problem+json"),
+            ["status"] = (int)status,
+            ["code"] = code,
+            ["title"] = "Problem",
         };
+        if (path is not null)
+        {
+            body["errors"] = new JsonArray(new JsonObject { ["path"] = path, ["code"] = code, ["message"] = "Problem" });
+        }
+
+        return ProblemOf(status, body);
+    }
+
+    // A problem with the members the server writes for one without a validation error (ProblemMapper.Known and Refused).
+    public static HttpResponseMessage ServerProblem(HttpStatusCode status, string code, string title, string detail) => ProblemOf(status, new JsonObject
+    {
+        ["type"] = $"urn:fluentcms:error:{code}",
+        ["title"] = title,
+        ["status"] = (int)status,
+        ["detail"] = detail,
+        ["code"] = code,
+        ["traceId"] = "0HNQ",
+    });
+
+    private static HttpResponseMessage ProblemOf(HttpStatusCode status, JsonObject body) =>
+        new(status) { Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/problem+json") };
 
     public static HttpResponseMessage NoContent() => new(HttpStatusCode.NoContent);
 

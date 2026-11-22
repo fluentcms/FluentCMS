@@ -10,6 +10,7 @@ using FluentCMS.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -463,6 +464,111 @@ public sealed class DistributedLockTests : IAsyncDisposable
         logs.Entries.ShouldNotContain(entry => entry.EventId.Id == LockLog.LeaseTakenOverId);
     }
 
+    // The holder's own work keeps the writer past the lease. When it commits, the waiter, which found the lease over, gets the
+    // writer, and the holder's renewal, a third of the lease of 30 seconds away on the real clock, does not try for it. The
+    // commit renewed the lease, so the waiter finds it held and keeps polling; before, its try a second on took it over.
+    [Fact]
+    public async Task AHolderKeepsTheLockWhenAWaiterGetsTheWriterFirstAtTheEndOfTheHoldersOwnWriteTransaction()
+    {
+        var clock = new ControllableTimeProvider();
+        var takes = new TakeSignals(Name);
+        var logs = new LogCapture();
+        await using var waiterHost = Watched(new FluentCmsTestHost().UseSqlite(_file), takes);
+        var waiter = Lock(waiterHost, clock, TimeSpan.FromSeconds(30), logs);
+        await using var held = await Lock(_first, clock, TimeSpan.FromSeconds(30)).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        held.ShouldNotBeNull();
+        var holder = (await RowAsync(_first)).Owner;
+
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        Task<IDistributedLockHandle?> waiting;
+        await using (var scope = _first.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+            await using var work = await context.Database.BeginTransactionAsync(Token);
+            context.Add(new LockRow { Name = "tests:work" });
+            await context.SaveChangesAsync(Token);
+
+            clock.Advance(TimeSpan.FromSeconds(31));
+            waiting = Task.Run(() => waiter.TryAcquireAsync(Name, Patience, stop.Token), Token);
+            await takes.Begins.NextAsync(1, Patience);
+            takes.Reads.Forget();
+            await work.CommitAsync(Token);
+        }
+
+        // The read inside the waiter's transaction and its polls 50, 150, 350, 750 and 1,550 milliseconds on.
+        await Task.WhenAny(waiting, takes.Reads.NextAsync(6, Patience));
+        waiting.IsCompleted.ShouldBeFalse("the waiter took the lock");
+        (await RowAsync(_first)).Owner.ShouldBe(holder);
+        await stop.CancelAsync();
+        (await CanceledAsync(waiting)).ShouldBeNull();
+        held.Lost.IsCancellationRequested.ShouldBeFalse();
+        logs.Entries.ShouldNotContain(entry => entry.EventId.Id == LockLog.LeaseTakenOverId);
+    }
+
+    // A holder that stopped renewing, and whose work commits no write transaction that would renew it, is taken over once its
+    // lease has run out and the try a second later finds it as it was.
+    [Fact]
+    public async Task AWaiterTakesOverTheLockOfAHolderThatStoppedRenewingWhileItsWorkCommitsNothing()
+    {
+        var clock = new ControllableTimeProvider();
+        var logs = new LogCapture();
+        var held = await Lock(_first, clock, TimeSpan.FromMinutes(2), renewals: new LeaseRenewalInterceptor()).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        held.ShouldNotBeNull();
+        var holder = (await RowAsync(_first)).Owner;
+
+        // Its renewals come every 40 seconds of the real clock, so none comes while the waiter waits. A try whose BEGIN waited
+        // for the hosts' work at startup adds a second.
+        clock.Advance(TimeSpan.FromMinutes(2) + TimeSpan.FromSeconds(1));
+        var watch = Stopwatch.StartNew();
+        await using var taken = await Lock(_second, clock, TimeSpan.FromSeconds(30), logs).TryAcquireAsync(Name, Patience, Token);
+
+        taken.ShouldNotBeNull();
+        watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(20));
+        var takeOver = logs.Entries.ShouldHaveSingleItem();
+        takeOver.EventId.Id.ShouldBe(LockLog.LeaseTakenOverId);
+        takeOver.State["Holder"].ShouldBe(holder);
+        await held.DisposeAsync();
+        (await RowAsync(_first)).Owner.ShouldNotBe(holder);
+    }
+
+    // The renewals every third of the lease leave half of it to pass only while they wait, so a commit renews it from then on,
+    // asynchronous or not, and a commit before writes nothing more.
+    [Fact]
+    public async Task AWriteTransactionOfTheHoldersWorkRenewsTheLeaseAsItCommitsOnceHalfOfItHasPassed()
+    {
+        var clock = new ControllableTimeProvider();
+        var renewals = new LeaseRenewalInterceptor();
+        await using var held = await Lock(_first, clock, TimeSpan.FromSeconds(30), renewals: renewals).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        held.ShouldNotBeNull();
+        var taken = (await RowAsync(_first)).LeaseUntil;
+
+        clock.Advance(TimeSpan.FromSeconds(14));
+        await CommitAsync(_first, renewals);
+        (await RowAsync(_first)).LeaseUntil.ShouldBe(taken);
+
+        clock.Advance(TimeSpan.FromSeconds(2));
+        await CommitAsync(_first, renewals);
+        (await RowAsync(_first)).LeaseUntil.ShouldBe(clock.GetUtcNow() + TimeSpan.FromSeconds(30));
+
+        clock.Advance(TimeSpan.FromSeconds(16));
+        Commit(_first, renewals);
+        (await RowAsync(_first)).LeaseUntil.ShouldBe(clock.GetUtcNow() + TimeSpan.FromSeconds(30));
+        held.Lost.IsCancellationRequested.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task TheContentAndSystemContextsOfAHostOnSqliteRenewItsLocksAsTheyCommit()
+    {
+        await using var scope = _first.Services.CreateAsyncScope();
+        var renewals = _first.Services.GetRequiredService<LeaseRenewalInterceptor>();
+
+        DbContext[] contexts = [scope.ServiceProvider.GetRequiredService<CmsDbContext>(), scope.ServiceProvider.GetRequiredService<SystemDbContext>()];
+        foreach (var context in contexts)
+        {
+            context.GetService<IDbContextOptions>().FindExtension<CoreOptionsExtension>()!.Interceptors!.ShouldContain(renewals);
+        }
+    }
+
     // The row is free, and another connection keeps the database's one writer for longer than the take waits.
     [Fact]
     public async Task AWaitThatTimesOutOnABusyDatabaseSaysSo()
@@ -518,24 +624,47 @@ public sealed class DistributedLockTests : IAsyncDisposable
     }
 
     // A lease of 300 milliseconds, renewed every 100, so that a test sees the renewals.
-    private static DatabaseDistributedLock ShortLease(FluentCmsTestHost host) => new(
-        host.Services.GetRequiredService<IServiceScopeFactory>(),
-        host.Time,
-        NullLogger<DatabaseDistributedLock>.Instance)
-    {
-        Lease = TimeSpan.FromMilliseconds(300),
-    };
+    private static DatabaseDistributedLock ShortLease(FluentCmsTestHost host) => Lock(host, host.Time, TimeSpan.FromMilliseconds(300));
 
     // A lease of 300 milliseconds on the real clock, renewed every 100, for a test whose time passes in SQLite's waits.
     private static DatabaseDistributedLock RealClockShortLease(FluentCmsTestHost host) => RealClockLease(host, TimeSpan.FromMilliseconds(300));
 
-    private static DatabaseDistributedLock RealClockLease(FluentCmsTestHost host, TimeSpan lease, LogCapture? logs = null) => new(
+    private static DatabaseDistributedLock RealClockLease(FluentCmsTestHost host, TimeSpan lease, LogCapture? logs = null) => Lock(host, TimeProvider.System, lease, logs);
+
+    // A lock of the host, whose write transactions renew what it holds as they commit; or, with renewals of its own, a lock
+    // that only the commits of the contexts a test gives them renew, apart from the host's work in the background.
+    private static DatabaseDistributedLock Lock(FluentCmsTestHost host, TimeProvider clock, TimeSpan lease, LogCapture? logs = null, LeaseRenewalInterceptor? renewals = null) => new(
         host.Services.GetRequiredService<IServiceScopeFactory>(),
-        TimeProvider.System,
-        logs is null ? NullLogger<DatabaseDistributedLock>.Instance : new Logger<DatabaseDistributedLock>(new LoggerFactory([logs])))
+        clock,
+        logs is null ? NullLogger<DatabaseDistributedLock>.Instance : new Logger<DatabaseDistributedLock>(new LoggerFactory([logs])),
+        renewals ?? host.Services.GetRequiredService<LeaseRenewalInterceptor>())
     {
         Lease = lease,
     };
+
+    // A write transaction of the work that holds a lock, on a context of the host with the renewals given.
+    private static async Task CommitAsync(FluentCmsTestHost host, LeaseRenewalInterceptor renewals)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        await using var context = Renewing(scope.ServiceProvider, renewals);
+        await using var work = await context.Database.BeginTransactionAsync(Token);
+        context.Add(new LockRow { Name = $"tests:work:{Guid.NewGuid():N}" });
+        await context.SaveChangesAsync(Token);
+        await work.CommitAsync(Token);
+    }
+
+    private static void Commit(FluentCmsTestHost host, LeaseRenewalInterceptor renewals)
+    {
+        using var scope = host.Services.CreateScope();
+        using var context = Renewing(scope.ServiceProvider, renewals);
+        using var work = context.Database.BeginTransaction();
+        context.Add(new LockRow { Name = $"tests:work:{Guid.NewGuid():N}" });
+        context.SaveChanges();
+        work.Commit();
+    }
+
+    private static SystemDbContext Renewing(IServiceProvider services, LeaseRenewalInterceptor renewals) =>
+        new(new DbContextOptionsBuilder<SystemDbContext>(services.GetRequiredService<DbContextOptions<SystemDbContext>>()).AddInterceptors(renewals).Options);
 
     // What a holder that stopped without releasing the lock leaves behind.
     private static async Task InsertAsync(FluentCmsTestHost host, string owner, DateTimeOffset leaseUntil)

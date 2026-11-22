@@ -160,9 +160,8 @@ internal sealed class MemberAccountService(
                     return reset.Succeeded && unproven.Count > 0 ? await members.RemoveLoginsAsync(member, unproven) : reset;
                 },
                 cancellationToken));
+            await sessions.RevokeAllAsync(member, SessionEndReasons.PasswordChanged, cancellationToken);
         }
-
-        await sessions.RevokeAllAsync(member.Id, cancellationToken);
     }
 
     public async Task<MemberProfile> MeAsync(CancellationToken cancellationToken) =>
@@ -212,7 +211,7 @@ internal sealed class MemberAccountService(
         }
 
         MemberViews.Check(changed);
-        await sessions.RevokeAllAsync(member.Id, cancellationToken);
+        await sessions.RevokeAllAsync(member, SessionEndReasons.PasswordChanged, cancellationToken);
     }
 
     public async Task<IReadOnlyList<MemberLogin>> MyLoginsAsync() =>

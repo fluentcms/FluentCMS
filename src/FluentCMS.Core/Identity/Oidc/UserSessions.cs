@@ -47,21 +47,22 @@ internal sealed class UserSessions(IOpenIddictAuthorizationManager authorization
 
     // The end of a server session of the user: every valid authorization of the user issued in it, with its tokens. The
     // user's other sessions, and a consent, which is no session's, stay. Without a session id, as for a sign-in from
-    // before sessions were marked, nothing ends here.
-    public Task EndAsync(string? userId, string? serverSession, CancellationToken cancellationToken = default) =>
+    // before sessions were marked, nothing ends here. Returns how many sessions ended.
+    public Task<int> EndAsync(string? userId, string? serverSession, CancellationToken cancellationToken = default) =>
         EndAsync(userId, serverSession, singleFactorOnly: false, cancellationToken);
 
     // A sign-in with the second factor in a server session ends what the session was issued without it (#3228), so that a
     // role that has come to require two-factor holds for the session's access tokens from then on, not only once they
     // expire. What was issued with the second factor stays, as do the user's other sessions.
     // A client with RequireConsent has its codes issued under the consent, so the session's tokens of it are found by the
-    // mark SingleFactorTokenHandler gives them and revoked on their own, the consent left.
-    public async Task EndSingleFactorAsync(string? userId, string? serverSession, CancellationToken cancellationToken = default)
+    // mark SingleFactorTokenHandler gives them and revoked on their own, the consent left. Returns how many sessions and
+    // tokens of consents ended.
+    public async Task<int> EndSingleFactorAsync(string? userId, string? serverSession, CancellationToken cancellationToken = default)
     {
-        await EndAsync(userId, serverSession, singleFactorOnly: true, cancellationToken);
+        var ended = await EndAsync(userId, serverSession, singleFactorOnly: true, cancellationToken);
         if (string.IsNullOrEmpty(serverSession) || !Guid.TryParse(userId, out var user))
         {
-            return;
+            return ended;
         }
 
         List<string> consents = [];
@@ -91,16 +92,18 @@ internal sealed class UserSessions(IOpenIddictAuthorizationManager authorization
 
             foreach (var token in marked)
             {
-                await tokens.TryRevokeAsync(token, cancellationToken);
+                ended += await tokens.TryRevokeAsync(token, cancellationToken) ? 1 : 0;
             }
         }
+
+        return ended;
     }
 
-    private async Task EndAsync(string? userId, string? serverSession, bool singleFactorOnly, CancellationToken cancellationToken)
+    private async Task<int> EndAsync(string? userId, string? serverSession, bool singleFactorOnly, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(serverSession) || !Guid.TryParse(userId, out var user))
         {
-            return;
+            return 0;
         }
 
         List<string> ids = [];
@@ -122,10 +125,13 @@ internal sealed class UserSessions(IOpenIddictAuthorizationManager authorization
             }
         }
 
+        var ended = 0;
         foreach (var id in ids)
         {
-            await RevokeAsync(user, Guid.Parse(id), cancellationToken);
+            ended += await RevokeAsync(user, Guid.Parse(id), cancellationToken) ? 1 : 0;
         }
+
+        return ended;
     }
 
     public async Task<IReadOnlyList<UserSession>> ListAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -159,8 +165,8 @@ internal sealed class UserSessions(IOpenIddictAuthorizationManager authorization
         return revoked;
     }
 
-    // Every valid session of the user, with its tokens, so that its access tokens stop at once too.
-    public async Task RevokeAllAsync(Guid userId, CancellationToken cancellationToken = default)
+    // Every valid session of the user, with its tokens, so that its access tokens stop at once too. Returns how many ended.
+    public async Task<int> RevokeAllAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         List<string> ids = [];
         await foreach (var authorization in authorizations.FindBySubjectAsync(userId.ToString("D"), cancellationToken))
@@ -172,10 +178,13 @@ internal sealed class UserSessions(IOpenIddictAuthorizationManager authorization
             }
         }
 
+        var ended = 0;
         foreach (var id in ids)
         {
-            await RevokeAsync(userId, Guid.Parse(id), cancellationToken);
+            ended += await RevokeAsync(userId, Guid.Parse(id), cancellationToken) ? 1 : 0;
         }
+
+        return ended;
     }
 
     private async Task<bool> HasLiveTokenAsync(object authorization, CancellationToken cancellationToken)

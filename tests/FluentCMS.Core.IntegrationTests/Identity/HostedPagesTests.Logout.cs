@@ -3,10 +3,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text.Json;
+using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.IntegrationTests.Management;
+using FluentCMS.Events;
 using FluentCMS.Testing;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -57,6 +59,17 @@ public sealed partial class HostedPagesTests
         (await MeAsync(_host, Text(tokens, "access_token"))).ShouldBe(HttpStatusCode.Unauthorized);
         (await RotatedAsync(_host, Text(other, "refresh_token"))).ShouldNotBeNullOrEmpty();
         (await MeAsync(_host, Text(other, "access_token"))).ShouldBe(HttpStatusCode.OK);
+
+        // The logout is an activity row of the user, with no token in it (#3207).
+        var ended = (await ActivityAsync(_host, "user.sessions_ended", count: 1, of: row => row.TargetId == editor.Id.ToString("D"))).ShouldHaveSingleItem();
+        ended.ActorType.ShouldBe(PrincipalKind.AdminUser);
+        ended.ActorId.ShouldBe(editor.Id);
+        ended.Origin.ShouldBe(Origin.Admin);
+        ended.SiteId.ShouldBeNull();
+        Details(ended)["reason"].ShouldBe(SessionEndReasons.SignedOut);
+        Details(ended)["session"].ShouldBeNull();
+        ended.Details!.ShouldNotContain(refreshToken);
+        ended.Details!.ShouldNotContain(Text(tokens, "access_token"));
     }
 
     [Fact]
@@ -154,6 +167,12 @@ public sealed partial class HostedPagesTests
         await SignInAsync(browser, other.Email);
         (await RefusedAsync(_host, Text(replaced, "refresh_token"))).ShouldBe("invalid_grant");
         Sid(await CodeFlowAsync(_host, browser)).ShouldNotBe(Sid(replaced));
+
+        // The first user's rows: its own logout, and the end of its sign-in by the system when the other signed in (#3207).
+        var ended = await ActivityAsync(_host, "user.sessions_ended", count: 2, of: row => row.TargetId == editor.Id.ToString("D"));
+        ended.Select(row => (row.ActorType, Details(row)["reason"])).ShouldBe(
+            [(PrincipalKind.AdminUser, SessionEndReasons.SignedOut), (PrincipalKind.System, SessionEndReasons.Replaced)], ignoreOrder: true);
+        (await ActivityAsync(_host, "user.sessions_ended", count: 0, of: row => row.TargetId == other.Id.ToString("D"))).ShouldBeEmpty();
     }
 
     [Fact]
@@ -396,6 +415,11 @@ public sealed partial class HostedPagesTests
 
         await SignOutAsync(browser);
         (await RefusedAsync(_host, Text(second, "refresh_token"))).ShouldBe("invalid_grant");
+
+        // The password change ended the session the code flow made, and the logout the one after it (#3207).
+        var ended = await ActivityAsync(_host, "user.sessions_ended", count: 2, of: row => row.TargetId == editor.Id.ToString("D"));
+        ended.Select(row => Details(row)["reason"]).ShouldBe([SessionEndReasons.PasswordChanged, SessionEndReasons.SignedOut], ignoreOrder: true);
+        ended.ShouldAllBe(row => !row.Details!.Contains(Text(first, "refresh_token")));
     }
 
     [Fact]

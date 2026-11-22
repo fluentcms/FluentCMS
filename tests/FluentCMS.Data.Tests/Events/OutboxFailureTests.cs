@@ -627,6 +627,42 @@ public sealed class OutboxFailureTests
         seen.Deliveries.ShouldHaveSingleItem().Attempt.ShouldBe(1);
     }
 
+    // Every hand-off of a batch that never starts is deferred, and the batch goes back with one write; a later drain delivers
+    // its rows in the order of their events.
+    [Fact]
+    public async Task ABatchWhoseHandOffsNeverStartIsGivenBackWithOneWriteAndDeliveredInOrderLater()
+    {
+        var seen = new Seen();
+        var claims = new OutboxTests.ClaimCounter();
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
+        {
+            cms.Events.Outbox.DeliveryTimeout = TimeSpan.FromMilliseconds(50);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(claims));
+        })));
+        for (var index = 0; index < 3; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        var drainer = database.Database.Services.GetRequiredService<OutboxDrainer>();
+        var held = new HeldHandOffs();
+        drainer.HandOff = held.HandOff;
+
+        (await drainer.DrainAsync(Token)).ShouldBe(0);
+
+        held.Count.ShouldBe(3);
+        claims.Claims.ShouldBe(1);
+        claims.Writes.ShouldBe(2);
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 0 && row.LeaseOwner == null);
+
+        await held.RunLateAsync();
+        drainer.HandOff = work => work();
+        (await drainer.DrainAsync(Token)).ShouldBe(3);
+
+        seen.Deliveries.Select(delivery => delivery.Key).ShouldBe(database.Rows().Select(row => row.Id));
+        seen.Deliveries.ShouldAllBe(delivery => delivery.Attempt == 1);
+    }
+
     [Fact]
     public async Task AHandOffTheHostStopsBeforeItStartsNeverCallsTheHandlerLate()
     {
@@ -672,6 +708,85 @@ public sealed class OutboxFailureTests
         seen.Calls.Count.ShouldBe(1);
         var rows = database.Rows();
         rows.ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 0 && row.LeaseOwner == null && row.LastError == null);
+    }
+
+    // The rows of a batch that a stopping host gives back go with one write, and the next drain delivers each of them, the one
+    // the host stopped included, in the order of their events.
+    [Fact]
+    public async Task ABatchTheHostStopsIsGivenBackWithOneWriteAndDeliveredInOrderByTheNextDrain()
+    {
+        var seen = new Seen();
+        var claims = new OutboxTests.ClaimCounter();
+        using var stopping = new CancellationTokenSource();
+        seen.Behavior = (_, _) =>
+        {
+            stopping.Cancel();
+            throw new OperationCanceledException(stopping.Token);
+        };
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(claims)))));
+        for (var index = 0; index < 4; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        await DrainWithAsync(database.Database.Services, stopping.Token);
+
+        claims.Claims.ShouldBe(1);
+        claims.Writes.ShouldBe(2);
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 0 && row.LeaseOwner == null);
+
+        seen.Behavior = (_, _) => Task.CompletedTask;
+        (await DrainAsync(database.Database.Services)).ShouldBe(4);
+
+        var rows = database.Rows();
+        seen.Deliveries.Skip(1).Select(delivery => delivery.Key).ShouldBe(rows.Select(row => row.Id));
+        seen.Deliveries.Skip(1).ShouldAllBe(delivery => delivery.Attempt == 1);
+        rows.ShouldAllBe(row => row.Status == OutboxStatus.Delivered);
+    }
+
+    // A release that fails leaves the batch leased by a claim of this instance, which is still running, so no delivery of it
+    // killed a process: once the lease ends, the batch is claimed again in one write and delivered in order.
+    [Fact]
+    public async Task ABatchWhoseReleaseFailedIsClaimedAgainByItsInstanceWithOneWrite()
+    {
+        var seen = new Seen();
+        var claims = new OutboxTests.ClaimCounter();
+        var faults = new JobFaults();
+        var logs = new RecordingLogs();
+        using var stopping = new CancellationTokenSource();
+        seen.Behavior = (_, _) =>
+        {
+            stopping.Cancel();
+            throw new OperationCanceledException(stopping.Token);
+        };
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
+        {
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(claims, faults));
+        })));
+        for (var index = 0; index < 3; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        faults.Fail(command => command.CommandText.StartsWith("UPDATE", StringComparison.Ordinal)
+            && command.CommandText.Contains($"{TestProvider.Quote("attempts")} - 1", StringComparison.Ordinal));
+        await DrainWithAsync(database.Database.Services, stopping.Token);
+        faults.Recover();
+
+        logs.Count("SettleFailed").ShouldBe(3);
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 1 && row.LeaseOwner != null);
+
+        seen.Behavior = (_, _) => Task.CompletedTask;
+        ExpireLeases(database);
+        var before = claims.Claims;
+        (await DrainAsync(database.Database.Services)).ShouldBe(3);
+
+        (claims.Claims - before).ShouldBe(1);
+        var rows = database.Rows();
+        seen.Deliveries.Skip(1).Select(delivery => delivery.Key).ShouldBe(rows.Select(row => row.Id));
+        rows.ShouldAllBe(row => row.Status == OutboxStatus.Delivered && row.Attempts == 2);
     }
 
     [Fact]

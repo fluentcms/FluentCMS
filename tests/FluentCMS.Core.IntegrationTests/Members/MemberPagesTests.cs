@@ -262,6 +262,12 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
         }
 
         (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, refreshToken)).ShouldBe(HttpStatusCode.BadRequest);
+
+        // The logout is an activity row of the member, with no token in it (#3207).
+        var ended = (await fixture.ActivityAsync("member.sessions_ended", (await fixture.MemberIdAsync(address)).ToString("D"))).ShouldHaveSingleItem();
+        ended.ActorType.ShouldBe(PrincipalKind.Member);
+        JsonSerializer.Deserialize<Dictionary<string, string?>>(ended.Details!)!["reason"].ShouldBe(SessionEndReasons.SignedOut);
+        ended.Details!.ShouldNotContain(refreshToken);
     }
 
     [Fact]

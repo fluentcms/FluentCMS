@@ -51,7 +51,7 @@ public sealed partial class BaselineTests : IDisposable
     private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name"), ("cms_media_asset", "owns_file"), ("cms_media_asset", "version"), ("cms_search_entry", "field"), ("cms_ai_usage", "principal_name")];
 
     // Indexes added the same way, by the prefix of their catalog lines.
-    private static readonly string[] IndexesAddedToTheBaseline = ["index:cms_media_asset.ix_cms_media_asset_site_owns_file:", "index:cms_webhooks_delivery.ix_cms_webhooks_delivery_queued:", "index:cms_job.ix_cms_job_status_completed:", "index:cms_outbox.ix_cms_outbox_failed:", "index:cms_outbox.ix_cms_outbox_handler_pending:"];
+    private static readonly string[] IndexesAddedToTheBaseline = ["index:cms_media_asset.ix_cms_media_asset_site_owns_file:", "index:cms_webhooks_delivery.ix_cms_webhooks_delivery_queued:", "index:cms_job.ix_cms_job_status_completed:", "index:cms_outbox.ix_cms_outbox_failed:", "index:cms_outbox.ix_cms_outbox_handler_pending:", "index:cms_outbox.ix_cms_outbox_failed_available_at:", "index:cms_outbox.ix_cms_outbox_failed_handler:"];
 
     // The keys, in order with their directions, and the filter of the core indexes added to the baseline, as every provider's
     // catalog line reads once quotes, brackets, parentheses, casts and spaces are taken out.
@@ -60,6 +60,8 @@ public sealed partial class BaselineTests : IDisposable
         ("index:cms_job.ix_cms_job_status_completed:", "status,completed_atdesc,id", null),
         ("index:cms_outbox.ix_cms_outbox_failed:", "sequencedesc,id", "status='failed'"),
         ("index:cms_outbox.ix_cms_outbox_handler_pending:", "handler,sequence,id", "status='pending'"),
+        ("index:cms_outbox.ix_cms_outbox_failed_available_at:", "available_at,attempts", "status='failed'"),
+        ("index:cms_outbox.ix_cms_outbox_failed_handler:", "handler", "status='failed'"),
     ];
 
     private static string Normalized(string line) =>
