@@ -3,6 +3,7 @@ using System.Diagnostics;
 using FluentCMS.Core.Caching;
 using FluentCMS.Core.IntegrationTests.Diagnostics;
 using FluentCMS.Core.IntegrationTests.Testing;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Providers;
@@ -696,6 +697,73 @@ public sealed class DistributedLockTests : IAsyncDisposable
         (await RowAsync(_first)).Owner.ShouldBe(Crashed);
     }
 
+    // A callback on Lost that does not return keeps the disposal of the handle waiting only as long as the job runner's
+    // disposal waits for its loops, which is logged (#3544). The source of Lost is not disposed under the callback, which can
+    // still use the token, and what it throws once it returns is logged as before. Before, the disposal waited for it.
+    [Fact]
+    public async Task ACallbackOnLostThatDoesNotReturnKeepsTheDisposalWaitingOnlyForItsBound()
+    {
+        var clock = new ControllableTimeProvider();
+        var bound = new HeldTimers(clock, JobRunner.DisposeWait);
+        var logs = new LogCapture();
+        var failed = new LoggedSignal(LockLog.LostCallbackFailedId);
+        var renewals = new LeaseRenewalInterceptor();
+        var locks = new DatabaseDistributedLock(
+            _first.Services.GetRequiredService<IServiceScopeFactory>(),
+            bound,
+            new Logger<DatabaseDistributedLock>(new LoggerFactory([logs, failed])),
+            renewals)
+        {
+            Lease = OutOfReach,
+        };
+        var held = await locks.TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        held.ShouldNotBeNull();
+        await using (var scope = _first.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<LockRow>()
+                .Where(row => row.Name == Name)
+                .ExecuteUpdateAsync(row => row.SetProperty(column => column.Owner, Crashed), Token);
+        }
+
+        var running = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var returning = new ManualResetEventSlim();
+        Exception? usingTheToken = null;
+        using var waits = held.Lost.Register(() =>
+        {
+            running.TrySetResult();
+            returning.Wait(Patience);
+            try
+            {
+                held.Lost.WaitHandle.WaitOne(0);
+            }
+            catch (ObjectDisposedException exception)
+            {
+                usingTheToken = exception;
+            }
+
+            throw new InvalidOperationException("A callback of the lock's caller.");
+        });
+
+        clock.Advance(OutOfReach / 2 + TimeSpan.FromSeconds(1));
+        await CommitAsync(_first, renewals);
+        await running.Task.WaitAsync(Patience, Token);
+
+        var disposing = held.DisposeAsync().AsTask();
+        var expire = await bound.Held.WaitAsync(Patience, Token);
+        disposing.IsCompleted.ShouldBeFalse();
+        expire();
+        await disposing.WaitAsync(Patience, Token);
+
+        logs.Entries.Select(entry => entry.EventId.Id).ShouldBe([LockLog.LostId, LockLog.LostCallbackSlowId]);
+        (await RowAsync(_first)).Owner.ShouldBe(Crashed);
+
+        returning.Set();
+        await failed.Logged.WaitAsync(Patience, Token);
+        usingTheToken.ShouldBeNull();
+        logs.Entries.Select(entry => entry.EventId.Id).ShouldBe([LockLog.LostId, LockLog.LostCallbackSlowId, LockLog.LostCallbackFailedId]);
+        logs.Entries[2].Exception.ShouldBeOfType<AggregateException>().InnerExceptions.ShouldHaveSingleItem().ShouldBeOfType<InvalidOperationException>();
+    }
+
     // What a commit does that read the handle as held just before it was disposed: its renewal finds the row released,
     // which is no loss, and the source of Lost is disposed.
     [Fact]
@@ -968,6 +1036,69 @@ public sealed class DistributedLockTests : IAsyncDisposable
             }
 
             return ValueTask.FromResult(result);
+        }
+    }
+
+    // The test's clock, whose first timer of the length given is held for the test to expire; the others run on the real
+    // clock, as the controllable one's do.
+    private sealed class HeldTimers(ControllableTimeProvider clock, TimeSpan length) : TimeProvider
+    {
+        private readonly TaskCompletionSource<Action> _held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // Completes, with what expires it, once the timer is set.
+        public Task<Action> Held => _held.Task;
+
+        public override TimeZoneInfo LocalTimeZone => clock.LocalTimeZone;
+
+        public override DateTimeOffset GetUtcNow() => clock.GetUtcNow();
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            if (dueTime != length || _held.Task.IsCompleted)
+            {
+                return base.CreateTimer(callback, state, dueTime, period);
+            }
+
+            _held.TrySetResult(() => callback(state));
+            return new Unscheduled();
+        }
+
+        private sealed class Unscheduled : ITimer
+        {
+            public bool Change(TimeSpan dueTime, TimeSpan period) => true;
+
+            public void Dispose()
+            {
+            }
+
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        }
+    }
+
+    // Completes once the lock logs the event given.
+    private sealed class LoggedSignal(int id) : ILoggerProvider, ILogger
+    {
+        private readonly TaskCompletionSource _logged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Logged => _logged.Task;
+
+        public ILogger CreateLogger(string categoryName) => this;
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (eventId.Id == id)
+            {
+                _logged.TrySetResult();
+            }
+        }
+
+        public void Dispose()
+        {
         }
     }
 

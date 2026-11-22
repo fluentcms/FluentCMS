@@ -13,6 +13,7 @@ public sealed record DatabaseTable(string Name, IReadOnlyList<DatabaseColumn> Co
 
 public sealed record DatabaseColumn(string Name, string StoreType, bool IsNullable);
 
+// The key columns in order; a key that is an expression has an empty name, which no column of a model has.
 public sealed record DatabaseIndex(string Name, IReadOnlyList<string> Columns, bool IsUnique, bool IsPartial);
 
 public sealed record DatabaseCheckConstraint(string Name, IReadOnlyList<string> Columns);

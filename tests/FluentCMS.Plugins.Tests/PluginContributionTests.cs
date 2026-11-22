@@ -133,6 +133,31 @@ public sealed class PluginContributionTests(PluginContributionFixture fixture) :
         Refused(cms => cms.AddPlugin<SiteTablePlugin>(), "FCMS1523", "'cms_site_locale'", "core");
     }
 
+    // PostgreSQL keeps the first 63 bytes of a name, so the baseline check would not find a longer one (#3533). Bytes, not
+    // characters: é takes two, so these names have 37 and 36 characters. With a column of 63 bytes, the index on it that
+    // EF names has a longer name, which EF cuts itself, so it is not refused.
+    [Theory]
+    [InlineData("table", "the table")]
+    [InlineData("column", "the column")]
+    [InlineData("key", "the key")]
+    [InlineData("foreign key", "the foreign key")]
+    [InlineData("index", "the index")]
+    [InlineData("named index", "the index")]
+    [InlineData("check constraint", "the check constraint")]
+    public void ANameOfAPluginsModelOverSixtyThreeBytesStopsTheHost(string named, string what)
+    {
+        var tooLong = "cms_long_" + new string('é', 28);
+        LongNamePlugin.Naming.Value = (named, tooLong);
+        Refused(cms => cms.AddPlugin<LongNamePlugin>(), "FCMS1529", "'long'", $"gives {what} of ", $"'{tooLong}'", "65 bytes", "at most 63");
+
+        LongNamePlugin.Naming.Value = (named, "cms_long_" + new string('é', 27));
+        new ServiceCollection().AddFluentCms(cms =>
+        {
+            cms.UseSqlite("Data Source=:memory:");
+            cms.AddPlugin<LongNamePlugin>();
+        });
+    }
+
     [Fact]
     public async Task AContentTypeWhoseTableAPluginMapsStopsTheHost()
     {

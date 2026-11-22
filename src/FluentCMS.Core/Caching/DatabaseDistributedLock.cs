@@ -1,4 +1,5 @@
 using System.Data.Common;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Providers;
@@ -285,6 +286,8 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
 
     private Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken) => Task.Delay(delay, time, cancellationToken);
 
+    private Task WaitAsync(Task task, TimeSpan timeout) => task.WaitAsync(timeout, time);
+
     // What a renewal inside a commit found, which counts once its transaction has committed: the end of the lease it wrote,
     // or none when the row is another holder's.
     internal readonly record struct Renewal(Handle Handle, DateTimeOffset? Until);
@@ -396,8 +399,21 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
                 LockLog.ReleaseFailed(_owner.Logger, exception, Name);
             }
 
-            await loss;
             _stopping.Dispose();
+
+            // A callback on Lost that does not return keeps the disposal waiting no longer than the job runner's disposal waits
+            // for its loops (#3544). The source of Lost is then disposed once the callbacks return, not under one still running.
+            try
+            {
+                await _owner.WaitAsync(loss, JobRunner.DisposeWait);
+            }
+            catch (TimeoutException)
+            {
+                LockLog.LostCallbackSlow(_owner.Logger, Name, JobRunner.DisposeWait);
+                _ = loss.ContinueWith(_ => _lost.Dispose(), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                return;
+            }
+
             _lost.Dispose();
         }
 
@@ -431,9 +447,12 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
 
                     waiting = false;
                     delay = interval;
+
+                    // The loop ends without waiting for the telling, so that a disposal, which waits for the loop, bounds
+                    // its wait for the callbacks itself.
                     if (until is null)
                     {
-                        await LoseAsync("another holder took it");
+                        _ = LoseAsync("another holder took it");
                         return;
                     }
 
@@ -446,7 +465,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
                 catch (ObjectDisposedException)
                 {
                     // The host's services are gone, so nothing renews or releases the lock any more.
-                    await LoseAsync("the host stopped");
+                    _ = LoseAsync("the host stopped");
                     return;
                 }
                 catch (Exception exception)
@@ -454,7 +473,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
                     LockLog.RenewFailed(_owner.Logger, exception, Name);
                     if (_owner.Now().UtcTicks >= Interlocked.Read(ref _leaseUntil))
                     {
-                        await LoseAsync("its lease ran out");
+                        _ = LoseAsync("its lease ran out");
                         return;
                     }
                 }
