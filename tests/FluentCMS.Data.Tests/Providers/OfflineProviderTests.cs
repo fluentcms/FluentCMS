@@ -1,6 +1,7 @@
 using System.Data.SqlTypes;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
+using FluentCMS.Core.Caching;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Storage;
@@ -8,6 +9,8 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.PostgreSql;
 using FluentCMS.Data.SqlServer;
+using FluentCMS.Plugins;
+using FluentCMS.Plugins.Media;
 using FluentCMS.Schema;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -390,6 +393,31 @@ public partial class OfflineProviderTests
 
         context.Add(new Document()).Entity.Id.Version.ShouldBe(7);
         ((Guid)context.Set<Dictionary<string, object>>("cms_post").Add(new Dictionary<string, object>()).Entity["id"]).Version.ShouldBe(7);
+    }
+
+    // A host renews the locks it holds inside the commits of its contexts only on a database with one writer. On these two a
+    // renewal waits only for the lock's row, so no context renews, a plugin's no more than the content and system ones.
+    [Fact]
+    public void NoContextOfAHostOnEitherProviderRenewsItsLocksAsItCommits()
+    {
+        using var postgreSql = Host(cms => cms.UsePostgreSql("Host=localhost;Database=never_opened").AddPlugin<MediaPlugin>(), null);
+        using var sqlServer = Host(cms => cms.UseSqlServer("Server=localhost;Database=never_opened").AddPlugin<MediaPlugin>(), null);
+
+        foreach (var services in new[] { postgreSql, sqlServer })
+        {
+            using var scope = services.CreateScope();
+            var renewals = services.GetRequiredService<LeaseRenewalInterceptor>();
+            DbContext[] contexts =
+            [
+                scope.ServiceProvider.GetRequiredService<CmsDbContext>(),
+                scope.ServiceProvider.GetRequiredService<SystemDbContext>(),
+                scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>(),
+            ];
+            foreach (var context in contexts)
+            {
+                (context.GetService<IDbContextOptions>().FindExtension<CoreOptionsExtension>()?.Interceptors ?? []).ShouldNotContain(renewals, context.GetType().ToString());
+            }
+        }
     }
 
     [Fact]

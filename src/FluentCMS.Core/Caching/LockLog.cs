@@ -12,6 +12,7 @@ internal static partial class LockLog
     public const int WentOnWithoutLockId = 9164;
     public const int RenewWaitingId = 9165;
     public const int TimedOutBusyId = 9166;
+    public const int LostCallbackFailedId = 9167;
 
     [LoggerMessage(EventId = LeaseTakenOverId, EventName = "LockLeaseTakenOver", Level = LogLevel.Warning, Message = "Took the lock {Name} after the lease of {Holder} ran out; that holder stopped without releasing it or, on a database with one writer, could not renew it behind other writes.")]
     public static partial void LeaseTakenOver(ILogger logger, string name, string holder);
@@ -33,4 +34,7 @@ internal static partial class LockLog
 
     [LoggerMessage(EventId = TimedOutBusyId, EventName = "LockTimedOutBusy", Level = LogLevel.Warning, Message = "The lock {Name} was not taken within {Timeout}, and the last try gave up waiting for another connection's write transaction; the database has one writer, so the lock may be free while that transaction lasts.")]
     public static partial void TimedOutBusy(ILogger logger, string name, TimeSpan timeout);
+
+    [LoggerMessage(EventId = LostCallbackFailedId, EventName = "LockLostCallbackFailed", Level = LogLevel.Warning, Message = "A callback that the holder of the lock {Name} registered on its Lost token failed; the lock is lost all the same, and the other callbacks ran.")]
+    public static partial void LostCallbackFailed(ILogger logger, Exception exception, string name);
 }

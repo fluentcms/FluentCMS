@@ -248,8 +248,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
                 .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null));
     }
 
-    // Inside a write transaction of the host as it commits, on its connection; null when the holder no longer has the lock,
-    // which its renewals then find.
+    // Inside a write transaction of the host as it commits, on its connection; null when the holder no longer has the lock.
     private DateTimeOffset? RenewWithin(DbTransaction transaction, string name, string holder)
     {
         using var scope = scopes.CreateScope();
@@ -286,17 +285,25 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
 
     private Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken) => Task.Delay(delay, time, cancellationToken);
 
+    // What a renewal inside a commit found, which counts once its transaction has committed: the end of the lease it wrote,
+    // or none when the row is another holder's.
+    internal readonly record struct Renewal(Handle Handle, DateTimeOffset? Until);
+
     internal sealed class Handle : IDistributedLockHandle
     {
         private readonly DatabaseDistributedLock _owner;
         private readonly string _holder;
         private readonly CancellationTokenSource _lost = new();
         private readonly CancellationTokenSource _stopping = new();
+        private readonly Lock _gate = new();
         private readonly Task _renewal;
 
         // In UTC ticks, since the host's commits renew it as well as the renewal loop.
         private long _leaseUntil;
         private int _disposed;
+
+        // The telling of a lost lock, under way or done, so that it is told once; DisposeAsync sets it so that none starts.
+        private Task? _loss;
 
         public Handle(DatabaseDistributedLock owner, string name, string holder, DateTimeOffset leaseUntil)
         {
@@ -316,28 +323,45 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
         // Half the lease has passed, which the renewals every third of it leave only while they wait for the writer.
         public bool RenewalDue => _owner.Now().UtcTicks >= Interlocked.Read(ref _leaseUntil) - _owner.Lease.Ticks / 2;
 
-        // A commit goes on whatever the renewal inside it does; the renewal loop tries again.
-        public void RenewWithin(DbTransaction transaction)
+        // A commit goes on whatever the renewal inside it does; the renewal loop tries again. What the renewal found is for
+        // Committed, since a commit that fails rolls the renewal back as well; null when the renewal itself failed.
+        public Renewal? RenewWithin(DbTransaction transaction)
         {
             try
             {
-                Renewed(_owner.RenewWithin(transaction, Name, _holder));
+                return new(this, _owner.RenewWithin(transaction, Name, _holder));
             }
             catch (Exception exception)
             {
                 LockLog.RenewFailed(_owner.Logger, exception, Name);
+                return null;
             }
         }
 
-        public async Task RenewWithinAsync(DbTransaction transaction)
+        public async Task<Renewal?> RenewWithinAsync(DbTransaction transaction)
         {
             try
             {
-                Renewed(await _owner.RenewWithinAsync(transaction, Name, _holder));
+                return new(this, await _owner.RenewWithinAsync(transaction, Name, _holder));
             }
             catch (Exception exception)
             {
                 LockLog.RenewFailed(_owner.Logger, exception, Name);
+                return null;
+            }
+        }
+
+        // The transaction of a renewal inside a commit has committed. A renewal that found the row another holder's tells the
+        // loss now, where the loop's next renewal can be a third of the lease away, and does not wait for the telling.
+        public void Committed(DateTimeOffset? until)
+        {
+            if (until is null)
+            {
+                _ = LoseAsync("another holder took it");
+            }
+            else
+            {
+                Renewed(until);
             }
         }
 
@@ -352,6 +376,13 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
             await _stopping.CancelAsync();
             await _renewal;
 
+            // No loss is told from here on: a commit that still has this handle finds the row released, not taken.
+            Task loss;
+            lock (_gate)
+            {
+                loss = _loss ??= Task.CompletedTask;
+            }
+
             // Conditional on the holder, so it changes nothing if another took the lock.
             try
             {
@@ -365,6 +396,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
                 LockLog.ReleaseFailed(_owner.Logger, exception, Name);
             }
 
+            await loss;
             _stopping.Dispose();
             _lost.Dispose();
         }
@@ -437,11 +469,29 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
             }
         }
 
-        private async Task LoseAsync(string reason)
+        // Told once, whether the renewal loop or a commit of the host found it first. CancelAsync runs the callbacks that
+        // callers registered on Lost on another thread, so a commit, which does not wait for them, is neither failed nor kept
+        // waiting by one. A callback that throws is its caller's: it is logged, and the lock is lost all the same.
+        private Task LoseAsync(string reason)
         {
-            _owner.Renewals.Remove(this);
-            LockLog.Lost(_owner.Logger, Name, reason);
-            await _lost.CancelAsync();
+            lock (_gate)
+            {
+                return _loss ??= TellAsync();
+            }
+
+            async Task TellAsync()
+            {
+                _owner.Renewals.Remove(this);
+                LockLog.Lost(_owner.Logger, Name, reason);
+                try
+                {
+                    await _lost.CancelAsync();
+                }
+                catch (AggregateException exception)
+                {
+                    LockLog.LostCallbackFailed(_owner.Logger, exception, Name);
+                }
+            }
         }
     }
 }
