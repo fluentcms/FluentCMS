@@ -1,3 +1,4 @@
+using System.Data.Common;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Health;
@@ -9,6 +10,7 @@ using FluentCMS.Data.Sqlite;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Jobs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -347,6 +349,102 @@ public sealed class JobRunnerTests : IDisposable
         gate.SetResult();
     }
 
+    // The job's await ends inside the cancellation, as with many a provider's, so its release is written there, and on SQLite
+    // that holds the thread for as long as the command waits for the lock. The stop neither waits for the cancellation nor
+    // starts the release's time after it (#3538). With no grace, the clock moves by the release's time alone.
+    [Fact]
+    public async Task AStopReturnsWithinTheReleaseTimeoutThoughAReleaseIsHeldAndItsJobIsTakenOverWhenTheLeaseEnds()
+    {
+        var options = new JobRunnerOptions();
+        using var held = new HeldRelease();
+        _fixture.Probe.Behavior = (_, context) => CancelledInline(context.CancellationToken);
+        var id = await _fixture.EnqueueAsync("running");
+        var instance = StopInstance(workers: 1, held);
+        var runner = instance.GetRequiredService<IJobRunner>();
+        await runner.StartAsync(Token);
+        await _fixture.FirstRunAsync(instance);
+        var waiting = await _fixture.EnqueueAsync("waiting");
+
+        held.Arm();
+        try
+        {
+            var stopping = runner.StopAsync(Token);
+            await Eventually.CompletesAsync(held.Holding.Task);
+            stopping.IsCompleted.ShouldBeFalse("the release has its time");
+
+            _fixture.Clock.Advance(options.ReleaseTimeout);
+            await Eventually.CompletesAsync(stopping);
+        }
+        finally
+        {
+            held.Gate.Set();
+        }
+
+        _fixture.Logs.Count(nameof(JobLog.StoppedWithRunningJobs)).ShouldBe(1);
+        await Eventually.HoldsAsync(() => _fixture.Logs.Count(nameof(JobLog.SettleFailed)) == 1);
+
+        var kept = _fixture.Job(id);
+        kept.Status.ShouldBe(JobStatus.Running);
+        kept.LeaseOwner.ShouldNotBeNull();
+        _fixture.ShouldHaveRecorded(id, (1, null));
+
+        _fixture.Clock.Advance(options.LeaseDuration + TimeSpan.FromTicks(1));
+        (await _fixture.Store.ClaimAsync(JobRunnerOptions.DefaultQueue, "next", Token)).ShouldNotBeNull().Id.ShouldBe(id);
+
+        _fixture.Job(waiting).Status.ShouldBe(JobStatus.Pending);
+        _fixture.Probe.RunsOf("waiting").ShouldBe(0);
+        _fixture.Probe.RunsOf("running").ShouldBe(1);
+    }
+
+    // Each worker's job is told of the stop on a thread of its own, so a cancellation that blocks, as a provider's callback
+    // can, does not keep the job of another worker, such as the outbox drain, from being told and writing its release. The
+    // blocking job starts last, so that one source for all would run its callback first.
+    [Fact]
+    public async Task ACancellationThatBlocksInOneWorkerDoesNotKeepTheJobOfAnotherFromItsRelease()
+    {
+        var options = new JobRunnerOptions();
+        var holding = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new ManualResetEventSlim();
+        _fixture.Probe.Behavior = (payload, context) =>
+        {
+            if (payload.Key == "blocking")
+            {
+                context.CancellationToken.Register(() =>
+                {
+                    holding.TrySetResult();
+                    gate.Wait(Token);
+                });
+            }
+
+            return CancelledInline(context.CancellationToken);
+        };
+
+        var told = await _fixture.EnqueueAsync("told");
+        var instance = StopInstance(workers: 2);
+        var runner = instance.GetRequiredService<IJobRunner>();
+        await runner.StartAsync(Token);
+        await _fixture.FirstRunAsync(instance);
+        var blocking = await _fixture.EnqueueAsync("blocking");
+        await Eventually.HoldsAsync(() => _fixture.Probe.RunsOf("blocking") == 1, () => instance.GetRequiredService<JobWake>().Signal(JobRunnerOptions.DefaultQueue));
+
+        try
+        {
+            var stopping = runner.StopAsync(Token);
+            await Eventually.CompletesAsync(holding.Task);
+            await Eventually.HoldsAsync(() => _fixture.Job(told).Status == JobStatus.Pending);
+            _fixture.ShouldHaveRecorded(told, (1, JobAttemptOutcome.Released));
+
+            _fixture.Clock.Advance(options.ReleaseTimeout);
+            await Eventually.CompletesAsync(stopping);
+        }
+        finally
+        {
+            gate.Set();
+        }
+
+        await Eventually.HoldsAsync(() => _fixture.Job(blocking).Status == JobStatus.Pending);
+    }
+
     [Fact]
     public async Task StoppingWithoutStartingDoesNothing() =>
         await ManualInstance().GetRequiredService<IJobRunner>().StopAsync(Token);
@@ -428,11 +526,76 @@ public sealed class JobRunnerTests : IDisposable
 
     private async Task StopAsync(IJobRunner runner) => await Eventually.CompletesAsync(runner.StopAsync(Token), WakeTheLoops);
 
+    private ServiceProvider StopInstance(int workers, HeldRelease? held = null) =>
+        _fixture.NewInstance(
+            configure: options =>
+            {
+                options.Queues[JobRunnerOptions.DefaultQueue] = workers;
+                options.ShutdownGracePeriod = TimeSpan.Zero;
+            },
+            cms: cms =>
+            {
+                if (held is not null)
+                {
+                    cms.Services.ConfigureDbContext<SystemDbContext>(context => context.AddInterceptors(held));
+                }
+            });
+
+    // Ends inside the cancellation of the token, with what awaits it, as the await of many a provider's command does.
+    private static Task CancelledInline(CancellationToken token)
+    {
+        var cancelled = new TaskCompletionSource();
+        token.Register(() => cancelled.TrySetCanceled(token));
+        return cancelled.Task;
+    }
+
     private static void InterlockedMax(ref int target, int value)
     {
         int seen;
         while (value > (seen = Volatile.Read(ref target)) && Interlocked.CompareExchange(ref target, value, seen) != seen)
         {
+        }
+    }
+
+    // Holds the first release once armed, blocking its thread as SQLite does while a command waits for a lock, and fails it
+    // when the gate opens, as a database out of reach would. Later releases go through.
+    private sealed class HeldRelease : DbCommandInterceptor, IDisposable
+    {
+        private int _armed;
+        private int _held;
+
+        public ManualResetEventSlim Gate { get; } = new();
+
+        public TaskCompletionSource Holding { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void Arm() => Volatile.Write(ref _armed, 1);
+
+        public void Dispose() => Gate.Dispose();
+
+        public override InterceptionResult<int> NonQueryExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<int> result)
+        {
+            Hold(command);
+            return result;
+        }
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            Hold(command);
+            return ValueTask.FromResult(result);
+        }
+
+        // A release gives the attempt back by raising max_attempts, which no other write of the runner does.
+        private void Hold(DbCommand command)
+        {
+            var text = command.CommandText.Replace("\"", "", StringComparison.Ordinal).Replace("[", "", StringComparison.Ordinal).Replace("]", "", StringComparison.Ordinal);
+            if (Volatile.Read(ref _armed) == 0 || !text.Contains("max_attempts + 1", StringComparison.OrdinalIgnoreCase) || Interlocked.Exchange(ref _held, 1) == 1)
+            {
+                return;
+            }
+
+            Holding.TrySetResult();
+            Gate.Wait(TestContext.Current.CancellationToken);
+            throw new InvalidOperationException("The database cannot be reached.");
         }
     }
 

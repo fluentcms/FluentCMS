@@ -18,7 +18,7 @@ internal static class McpClientSetup
 
         plugin
             .AddSettings<McpSettings>()
-            .AddJob<McpClientCleanupJob, McpClientCleanupPayload>(McpClientCleanupJob.Type)
+            .AddJob<McpClientCleanupJob, McpClientCleanupPayload>(McpClientCleanupJob.Type, McpClientCleanupJob.AttemptTimeout)
             .AddErrorCode(McpErrorCodes.ClientNotFound, 404, "MCP client not found")
             .AddErrorCode(McpErrorCodes.ClientNotPending, 409, "MCP client is not pending")
             .AddErrorCode(McpErrorCodes.ClientRoleRequired, 422, "MCP client role missing")

@@ -119,7 +119,7 @@ public sealed class WebhookRecoveryTests(WebhookFixture hosts) : IClassFixture<W
         receiver.Requests.ShouldHaveSingleItem().Body.ShouldBe(head.RequestBody);
     }
 
-    // A backlog of events more than 10 minutes old reaches a webhook with no claim in the last 10 minutes. The job of the
+    // A backlog of events at least 10 minutes old reaches a webhook with no claim in the last 10 minutes. The job of the
     // second event reads the queue after the head's job queued it and before that job claims it, so it finds the queue
     // stalled and enqueues a second job for the head. Each attempt is still sent once, in order (#3380).
     [Fact]

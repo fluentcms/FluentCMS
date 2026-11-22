@@ -43,6 +43,10 @@ internal sealed class WebhookDeliveryJob(
     // the send and the clocks of the other instances.
     public static readonly TimeSpan AbandonMargin = TimeSpan.FromMinutes(1);
 
+    // Past the longest send timeout the options allow, five minutes, and AbandonMargin, so that no send is cut off, and a job
+    // that hangs is cut off only once another job can take over its claim.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(10);
+
     public static JobOptions Options(Guid site) => new() { Queue = Queue, Site = new SiteId(site) };
 
     public async Task ExecuteAsync(WebhookAttempt attempt, JobContext context)

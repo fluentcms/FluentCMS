@@ -22,6 +22,10 @@ internal sealed class MediaVariantCleanupJob(PluginDbContext<MediaPlugin> databa
     public const string Schedule = "45 4 * * *";
     public const int BatchSize = 500;
 
+    // Deletes go one file at a time, so a large backlog can take hours. The job is registered resumable: each file and row
+    // goes on its own, so a run stopped at the limit has succeeded and the next run goes on with what is left.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromHours(1);
+
     public async Task ExecuteAsync(MediaVariantCleanupPayload payload, JobContext context)
     {
         var cancellationToken = context.CancellationToken;
