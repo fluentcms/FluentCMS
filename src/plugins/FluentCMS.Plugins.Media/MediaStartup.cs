@@ -1,15 +1,18 @@
 using FluentCMS.Jobs;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Plugins.Media;
 
 // Once the host has started, which is after the migrations: makes sure of the signing key, so that the instances that start
-// together share the one they create first, and stores the daily schedule of the variant cleanup. Each step is tried again
-// while the database is out of reach.
+// together share the one they create first, stores the daily schedule of the variant cleanup and starts the check of the
+// image sizes (MediaDimensionsJob) unless it was done or another start runs it. Each step is tried again while the database
+// is out of reach.
 internal sealed class MediaStartup(
     MediaSigning signing,
     IJobScheduler scheduler,
+    IServiceScopeFactory scopes,
     IHostApplicationLifetime lifetime,
     TimeProvider time,
     ILogger<MediaStartup> logger) : BackgroundService
@@ -34,6 +37,8 @@ internal sealed class MediaStartup(
 
         var keyReady = false;
         var scheduled = false;
+        var checking = false;
+        var start = new MediaDimensionsStart(scheduler, time);
         while (!stoppingToken.IsCancellationRequested)
         {
             if (!keyReady)
@@ -62,7 +67,21 @@ internal sealed class MediaStartup(
                 }
             }
 
-            if (keyReady && scheduled)
+            if (!checking)
+            {
+                try
+                {
+                    await using var scope = scopes.CreateAsyncScope();
+                    await start.RunAsync(scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>(), stoppingToken);
+                    checking = true;
+                }
+                catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
+                {
+                    MediaLog.DimensionsNotEnqueued(logger, exception);
+                }
+            }
+
+            if (keyReady && scheduled && checking)
             {
                 return;
             }
