@@ -638,6 +638,80 @@ public sealed class SchedulingTests : IDisposable
         _fixture.Schedules(id).Single().Status.ShouldBe(ScheduleRow.Pending);
     }
 
+    // A crash between the dead-lettering and its handler leaves the schedule pending, and the retention then removes its job.
+    [Fact]
+    public async Task APendingScheduleWhoseDeadLetteredJobIsPrunedEndsAsFailed()
+    {
+        var other = await _fixture.DraftAsync("Other");
+        var id = await _fixture.DraftAsync();
+        await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)));
+        await _fixture.ScheduleAsync(Editor, other, At(Start.AddHours(1)));
+        var job = _fixture.Schedules(id).Single().JobId!.Value;
+
+        DeadLetterPastTheRetention(_fixture, job);
+        await RunRetentionAsync(_fixture, Token);
+
+        _fixture.Jobs().ShouldNotContain(item => item.Id == job);
+        var row = _fixture.Schedules(id).Single();
+        row.Status.ShouldBe(ScheduleRow.Failed);
+        row.Error.ShouldBe(JobRetentionJob.ScheduleJobRemoved);
+        row.CompletedAt.ShouldBe(_fixture.Clock.GetUtcNow());
+        Database.Document(id).SchedulePublishAt.ShouldBeNull();
+        _fixture.Schedules(other).Single().Status.ShouldBe(ScheduleRow.Pending);
+        Database.Document(other).SchedulePublishAt.ShouldBe(Start.AddHours(1));
+    }
+
+    [Fact]
+    public async Task ARetentionCancelledAfterItFailedAScheduleStillClearsItsMirror()
+    {
+        var between = new CancelAfterTheClose();
+        using var fixture = new SchedulingFixture(more: cms => cms.Services.ConfigureDbContext<CmsDbContext>(options => options.AddInterceptors(between)));
+        var id = await fixture.DraftAsync();
+        await fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)));
+        var job = fixture.Schedules(id).Single().JobId!.Value;
+        DeadLetterPastTheRetention(fixture, job);
+        using var run = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        between.Run = run;
+
+        await Should.ThrowAsync<OperationCanceledException>(() => RunRetentionAsync(fixture, run.Token));
+
+        fixture.Schedules(id).Single().Status.ShouldBe(ScheduleRow.Failed);
+        fixture.Database.Document(id).SchedulePublishAt.ShouldBeNull("the schedule is no longer pending, so nothing else would clear it");
+        fixture.Jobs().ShouldContain(item => item.Id == job, "the next run removes it");
+    }
+
+    private static void DeadLetterPastTheRetention(SchedulingFixture fixture, Guid job)
+    {
+        fixture.Database.Read(context => context.Set<Job>().Where(item => item.Id == job).ExecuteUpdate(set => set
+            .SetProperty(item => item.Status, JobStatus.DeadLettered)
+            .SetProperty(item => item.CompletedAt, Start.AddHours(1))));
+        fixture.AdvanceTo(Start.AddHours(1) + new JobRunnerOptions().DeadLetteredRetention!.Value + TimeSpan.FromSeconds(1));
+    }
+
+    private static async Task RunRetentionAsync(SchedulingFixture fixture, CancellationToken token)
+    {
+        using var scope = fixture.Database.Database.NewScope();
+        var operation = new OperationContext(Principal.System, Origin.Job, SiteA, "en", null, "retention", fixture.Clock.GetUtcNow());
+        await scope.ServiceProvider.GetRequiredService<JobRetentionJob>().ExecuteAsync(new JobRetentionPayload(), new JobContext(Guid.CreateVersion7(), JobRetentionJob.Type, JobRunnerOptions.DefaultQueue, 1, 3, operation, token));
+    }
+
+    // Cancels the run between the close of a failed schedule and the write of its mirror, as a timeout or a stop would.
+    private sealed class CancelAfterTheClose : DbCommandInterceptor
+    {
+        public CancellationTokenSource? Run { get; set; }
+
+        public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (TestProvider.IsUpdateOf(command.CommandText, "cms_schedule")
+                && command.Parameters.Cast<DbParameter>().Any(parameter => parameter.Value is ScheduleRow.Failed))
+            {
+                Run?.Cancel();
+            }
+
+            return base.NonQueryExecutedAsync(command, eventData, result, cancellationToken);
+        }
+    }
+
     [Fact]
     public async Task AFailedScheduleIsFinalEvenIfItsJobIsRunAgain()
     {

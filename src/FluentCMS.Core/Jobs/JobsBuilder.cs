@@ -17,6 +17,9 @@ public sealed class JobsBuilder
     // The type is what cms_job stores, so it must outlive renames of the class. An attempt timeout of null takes
     // JobRunnerOptions.AttemptTimeout; Timeout.InfiniteTimeSpan puts no limit on this job whatever that is.
     public JobsBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout = null)
+        where TJob : class, IJob<TPayload> => AddJob<TJob, TPayload>(type, attemptTimeout, resumable: false);
+
+    internal JobsBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout, bool resumable)
         where TJob : class, IJob<TPayload>
     {
         ArgumentException.ThrowIfNullOrEmpty(type);
@@ -27,7 +30,7 @@ public sealed class JobsBuilder
         }
 
         _services.AddTransient<TJob>();
-        _services.AddSingleton(JobRegistration.Create<TJob, TPayload>(type, attemptTimeout));
+        _services.AddSingleton(JobRegistration.Create<TJob, TPayload>(type, attemptTimeout, resumable));
         return this;
     }
 }

@@ -33,10 +33,10 @@ internal sealed class SiteAdministration(SiteManager manager, ManagementAuthorit
     public async Task DeleteAsync(SiteId site, CancellationToken cancellationToken = default)
     {
         await authority.RequireAsync(CorePermissions.SitesManage, null, cancellationToken);
-        var deleted = await manager.DeleteAsync(site.Value, cancellationToken);
 
-        // The site is gone, so the event and its activity row are the instance's: no one could read the log of that site.
-        await bus.PublishAsync(new SiteDeletedEvent(deleted.Id, deleted.Slug) { Source = Source() with { SiteId = Guid.Empty } }, CancellationToken.None);
+        // The site is gone, so the event and its activity row are the instance's: no one could read the log of that site. The
+        // event commits with the deletion.
+        await manager.DeleteAsync(site.Value, Source() with { SiteId = Guid.Empty }, cancellationToken);
     }
 
     // The permission check has refused a call outside an operation.

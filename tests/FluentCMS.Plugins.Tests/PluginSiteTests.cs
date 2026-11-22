@@ -429,6 +429,35 @@ public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<P
         (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<PluginSiteRow>().CountAsync(row => row.SiteId == docs, Token)).ShouldBe(0);
     }
 
+    // #3306: the readers that find the state of the plugins expired at once share one read of cms_plugin_site.
+    [Fact]
+    public async Task ReadersThatFindThePluginStateExpiredAtOnceReadItOnce()
+    {
+        var reads = new HeldReads("cms_plugin_site");
+        await using var host = new FluentCmsTestHost()
+            .WithContentTypes<Note>()
+            .WithServices(services => services.AddSingleton(new PluginCalls()))
+            .Configure(cms =>
+            {
+                cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
+                cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+                cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(reads));
+            });
+        var state = host.Services.GetRequiredService<IPluginState>();
+        var site = new SiteId(Guid.CreateVersion7());
+        (await state.IsEnabledAsync("sample", site, Token)).ShouldBeTrue();
+
+        host.Time.Advance(PluginState.CacheDuration);
+        reads.Hold();
+        var readers = Enumerable.Range(0, 20).Select(_ => Task.Run(async () => await state.IsEnabledAsync("sample", site, Token))).ToList();
+        await reads.Entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        await Task.Delay(200, Token);
+        reads.Release();
+
+        (await Task.WhenAll(readers)).ShouldAllBe(enabled => enabled);
+        reads.Count.ShouldBe(1);
+    }
+
     // A site of the test's own, since the tests share a host.
     private static async Task<Guid> CreateSiteAsync(FluentCmsTestHost host, string? slug = null)
     {
@@ -614,4 +643,37 @@ public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<P
         JsonNode.Parse(await response.Content.ReadAsStringAsync(Token))!["code"]!.GetValue<string>();
 
     private static StringContent Json(string json) => new(json, Encoding.UTF8, "application/json");
+
+    // Counts the reads of one table once held, and keeps each waiting until released, so that whatever reads it while one
+    // read is under way is seen.
+    private sealed class HeldReads(string table) : DbCommandInterceptor
+    {
+        private TaskCompletionSource? _release;
+        private int _count;
+
+        public TaskCompletionSource Entered { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int Count => Volatile.Read(ref _count);
+
+        public void Hold()
+        {
+            _count = 0;
+            Entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+
+        public void Release() => Interlocked.Exchange(ref _release, null)?.TrySetResult();
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (Volatile.Read(ref _release) is { } release && command.CommandText.Contains(table, StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref _count);
+                Entered.TrySetResult();
+                await release.Task;
+            }
+
+            return result;
+        }
+    }
 }

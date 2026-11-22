@@ -21,6 +21,7 @@ using FluentCMS.Schema;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Content;
@@ -56,6 +57,7 @@ internal sealed partial class ContentService(
     IDataProvider provider,
     TimeProvider time,
     TransferImportMode importMode,
+    IServiceScopeFactory scopes,
     ILogger<ContentService> logger) : IContentService
 {
     internal const int DeadlockReruns = 5;
@@ -473,9 +475,13 @@ internal sealed partial class ContentService(
         return new WriteScope(operation, type, operation.Site, resolved, target, permissions, new FieldAccess(permissions, schema));
     }
 
-    // A flow joins only the write it started, so work it left running after that write cannot join a later one.
+    // A flow joins only the write it started, so work it left running after that write cannot join a later one. Once a hook
+    // of the scope was left running it may still use the scope's context and may call back in here, joining whatever write
+    // runs then, so no write runs in the scope after it, and none that ran then commits.
     private async Task<T> OneAtATimeAsync<T>(Func<Task<T>> write)
     {
+        hooks.ThrowIfLeftRunning();
+
         if (Volatile.Read(ref _write) is { } running && ReferenceEquals(_writeOfFlow.Value, running))
         {
             return await write();
@@ -509,18 +515,33 @@ internal sealed partial class ContentService(
 
     private async Task<T> TransactAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken)
     {
+        var tracked = TrackerSnapshot.Take(context);
         if (context.Database.CurrentTransaction is { } outer)
         {
-            return await InSavepointAsync(outer, work, cancellationToken);
+            try
+            {
+                return await InSavepointAsync(outer, work, cancellationToken);
+            }
+            catch (Exception) when (hooks.LeftRunning)
+            {
+                tracked.Restore();
+                throw;
+            }
         }
 
-        var tracked = TrackerSnapshot.Take(context);
         var keyRerun = false;
         for (var deadlocks = 0; ; )
         {
             try
             {
                 return await InOwnTransactionAsync(work, cancellationToken);
+            }
+            catch (Exception) when (hooks.LeftRunning)
+            {
+                // Never run again, and whatever it failed with, what it left tracked goes: the hook left running still holds
+                // the context, and so may a caller that goes on after the failure.
+                tracked.Restore();
+                throw;
             }
             catch (Exception exception) when (!keyRerun && provider.IsUniqueViolation(exception))
             {
@@ -558,6 +579,7 @@ internal sealed partial class ContentService(
             {
                 result = await work();
                 await StageAsync([.. _pending], cancellationToken);
+                hooks.ThrowIfLeftRunning();
                 await transaction.CommitAsync(CancellationToken.None);
                 committed = true;
                 _commits++;
@@ -600,6 +622,9 @@ internal sealed partial class ContentService(
             {
                 await StageAsync([.. _pending.Skip(pending)], cancellationToken);
             }
+
+            // In the try, so that a savepoint that may not be released is rolled back.
+            hooks.ThrowIfLeftRunning();
         }
         catch
         {

@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace FluentCMS.Core.Storage;
 
@@ -70,4 +71,16 @@ public interface IDataProvider
     // provider whose lock is that row, which a process that stops while it migrates leaves behind. Null when no row holds
     // it, and always where the lock ends with the session or transaction that took it.
     Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken);
+
+    // Begins a transaction on the context for a long read, such as an export, whose reads all see the database as it was at
+    // the first of them, and that keeps no writer waiting. Null where the database gives none; each read then sees what was
+    // committed when it ran.
+    Task<IDbContextTransaction?> BeginSnapshotAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<IDbContextTransaction?>(null);
+
+    // Locks the row of a site in cms_site to the end of the transaction of the context, so that a write that adds an entry to
+    // the site and the deletion of the site wait for each other: shared for the writes, which do not wait for one another,
+    // and exclusive for the deletion. False when there is no such site. The default reads the row without a lock, which is
+    // enough where the database has one writer.
+    Task<bool> LockSiteAsync(DbContext context, Guid site, bool exclusive, CancellationToken cancellationToken) =>
+        context.Set<Entities.Site>().AnyAsync(row => row.Id == site, cancellationToken);
 }
