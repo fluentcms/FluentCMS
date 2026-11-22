@@ -14,7 +14,6 @@ using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Telemetry;
-using FluentCMS.Hooks;
 using FluentCMS.Jobs;
 using FluentCMS.Localization;
 using FluentCMS.Publishing;
@@ -22,6 +21,7 @@ using FluentCMS.Schema;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Content;
@@ -57,6 +57,7 @@ internal sealed partial class ContentService(
     IDataProvider provider,
     TimeProvider time,
     TransferImportMode importMode,
+    IServiceScopeFactory scopes,
     ILogger<ContentService> logger) : IContentService
 {
     internal const int DeadlockReruns = 5;
@@ -474,14 +475,11 @@ internal sealed partial class ContentService(
     }
 
     // A flow joins only the write it started, so work it left running after that write cannot join a later one. Once a hook
-    // of the scope has timed out it may still be running on the scope's context and may call back in here, joining whatever
-    // write runs then, so no write runs in the scope after it.
+    // of the scope was left running it may still use the scope's context and may call back in here, joining whatever write
+    // runs then, so no write runs in the scope after it, and none that ran then commits.
     private async Task<T> OneAtATimeAsync<T>(Func<Task<T>> write)
     {
-        if (hooks.TimedOut)
-        {
-            throw new HookRejectedException(ContentErrorCodes.HookTimedOut, "A hook of this scope did not end within its time and may still be running, so no further write runs in this scope.");
-        }
+        hooks.ThrowIfLeftRunning();
 
         if (Volatile.Read(ref _write) is { } running && ReferenceEquals(_writeOfFlow.Value, running))
         {
@@ -516,18 +514,33 @@ internal sealed partial class ContentService(
 
     private async Task<T> TransactAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken)
     {
+        var tracked = TrackerSnapshot.Take(context);
         if (context.Database.CurrentTransaction is { } outer)
         {
-            return await InSavepointAsync(outer, work, cancellationToken);
+            try
+            {
+                return await InSavepointAsync(outer, work, cancellationToken);
+            }
+            catch (Exception) when (hooks.LeftRunning)
+            {
+                tracked.Restore();
+                throw;
+            }
         }
 
-        var tracked = TrackerSnapshot.Take(context);
         var keyRerun = false;
         for (var deadlocks = 0; ; )
         {
             try
             {
                 return await InOwnTransactionAsync(work, cancellationToken);
+            }
+            catch (Exception) when (hooks.LeftRunning)
+            {
+                // Never run again, and whatever it failed with, what it left tracked goes: the hook left running still holds
+                // the context, and so may a caller that goes on after the failure.
+                tracked.Restore();
+                throw;
             }
             catch (Exception exception) when (!keyRerun && provider.IsUniqueViolation(exception))
             {
@@ -544,13 +557,6 @@ internal sealed partial class ContentService(
                 // victim runs again a few times, each after a jittered pause, which lets one of them commit (#2959).
                 tracked.Restore();
                 await PauseAfterDeadlockAsync(++deadlocks, cancellationToken);
-            }
-            catch (HookRejectedException rejected) when (rejected.Code == ContentErrorCodes.HookTimedOut)
-            {
-                // The hook that ran too long may still be running and may yet save on this context: what the write left
-                // tracked goes, so that such a save cannot write the half of an entry the rollback took back.
-                tracked.Restore();
-                throw;
             }
         }
     }
@@ -572,6 +578,7 @@ internal sealed partial class ContentService(
             {
                 result = await work();
                 await StageAsync([.. _pending], cancellationToken);
+                hooks.ThrowIfLeftRunning();
                 await transaction.CommitAsync(CancellationToken.None);
                 committed = true;
                 _commits++;
@@ -614,6 +621,9 @@ internal sealed partial class ContentService(
             {
                 await StageAsync([.. _pending.Skip(pending)], cancellationToken);
             }
+
+            // In the try, so that a savepoint that may not be released is rolled back.
+            hooks.ThrowIfLeftRunning();
         }
         catch
         {

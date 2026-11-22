@@ -50,8 +50,8 @@ internal sealed partial class ContentService
         {
             cancelled = cancelled || cancellationToken.IsCancellationRequested;
 
-            // A hook that timed out may still be running on this scope, so the items after its own do not run.
-            if (cancelled || hooks.TimedOut)
+            // A hook that was left may still be running on this scope, so the items after its own do not run.
+            if (cancelled || hooks.LeftRunning)
             {
                 results.Add(new BulkItemResult(step.Index, step.Id, BulkItemStatus.NotRun));
             }

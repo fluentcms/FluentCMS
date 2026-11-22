@@ -14,7 +14,7 @@ public enum BulkItemStatus
 
     /// <summary>
     /// The request was cancelled before the operation ran, or while it ran and before it committed, or a hook of an earlier entry
-    /// ran past its time, which stops the entries after it.
+    /// ran past its time or was left running, which stops the entries after it.
     /// </summary>
     NotRun = 3,
 }

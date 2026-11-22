@@ -12,6 +12,7 @@ using FluentCMS.Jobs;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Content;
 
@@ -154,8 +155,11 @@ internal sealed partial class ContentService
         }
         catch (Exception exception) when ((IsRefusal(exception) || lastAttempt) && !(exception is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
-            await schedules.CloseAsync(row.Id, jobId, ScheduleRow.Failed, time.GetUtcNow(), ErrorText(exception), CancellationToken.None);
-            await schedules.SetMirrorAsync(row.DocumentId, row.Locale, row.Action, null, CancellationToken.None);
+            // A scope that left a hook running saves nothing more, so the failure is then written in a scope of its own.
+            await using var own = scopes.CreateAsyncScope();
+            var ending = hooks.LeftRunning ? own.ServiceProvider.GetRequiredService<ScheduleStore>() : schedules;
+            await ending.CloseAsync(row.Id, jobId, ScheduleRow.Failed, time.GetUtcNow(), ErrorText(exception), CancellationToken.None);
+            await ending.SetMirrorAsync(row.DocumentId, row.Locale, row.Action, null, CancellationToken.None);
             if (!IsRefusal(exception))
             {
                 throw;
