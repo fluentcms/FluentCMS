@@ -76,6 +76,16 @@ internal static class MemberProviderRegistration
                     authentication.AddScheme(scheme, built => built.HandlerType = HandlerOf(provider.Kind));
                 }
             })
+            .PostConfigure<MemberOptions, IOptionsMonitor<OpenIdConnectOptions>>((_, options, handlers) =>
+            {
+                // As for the providers of cms.Sso (#3531): events replaced after FluentCMS set them would drop its checks.
+                foreach (var (name, provider) in options.Providers)
+                {
+                    MemberProvider.Require(
+                        provider.Kind != MemberProviderKind.Oidc || ChainedOpenIdConnectEvents.Kept<MemberOidcEvents>(handlers.Get(MemberProvider.SchemeOf(name))),
+                        $"{FluentCmsOptions.Section}:{MemberOptions.Section}:{nameof(MemberOptions.Providers)}:{name}: the Events or EventsType of the provider's OpenIdConnectOptions were replaced after FluentCMS set them, which would drop its checks; set them in services.Configure<OpenIdConnectOptions>(\"{MemberProvider.SchemeOf(name)}\", ...), or set a delegate of options.Events.");
+                }
+            })
             .ValidateOnStart();
 
         Configure<GoogleOptions>(services, MemberProviderKind.Google, Google);
@@ -93,6 +103,7 @@ internal static class MemberProviderRegistration
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<AppleAuthenticationOptions>, ApplePostConfigureOptions>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<AppleAuthenticationOptions>, OAuthPostConfigureOptions<AppleAuthenticationOptions, AppleAuthenticationHandler>>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());
+        services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, ChainedEvents>();
         services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, PublicOriginCallback>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<LoggerFilterOptions>, AppleLogLevel>());
 
@@ -158,19 +169,6 @@ internal static class MemberProviderRegistration
         options.TokenValidationParameters.NameClaimType = "name";
         options.GetClaimsFromUserInfoEndpoint = false;
         AddScopes(options.Scope, provider.Scopes.Prepend("email"));
-
-        options.Events.OnTokenValidated = KeepSubject;
-
-        // A provider's logout ends no member session, and none is started here: the two paths the handler would answer
-        // are left to the rest of the pipeline, which has nothing there.
-        options.Events.OnRemoteSignOut = NotServed;
-        options.Events.OnSignedOutCallbackRedirect = NotServed;
-    }
-
-    private static Task NotServed(RemoteSignOutContext context)
-    {
-        context.SkipHandler();
-        return Task.CompletedTask;
     }
 
     private static void OAuth(OAuthOptions options, MemberProvider provider)
@@ -189,18 +187,6 @@ internal static class MemberProviderRegistration
                 scopes.Add(scope);
             }
         }
-    }
-
-    // The login's key is read from the name identifier, which the token calls sub.
-    private static Task KeepSubject(TokenValidatedContext context)
-    {
-        if (context.Principal?.Identity is ClaimsIdentity identity && !identity.HasClaim(claim => claim.Type == ClaimTypes.NameIdentifier)
-            && identity.FindFirst("sub") is { } subject)
-        {
-            identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, subject.Value, subject.ValueType, subject.Issuer));
-        }
-
-        return Task.CompletedTask;
     }
 
     // A refusal or an error of the provider, or a callback that does not belong to a sign-in started here, goes back to
@@ -256,16 +242,85 @@ internal static class MemberProviderRegistration
             options.SignInScheme = MemberProviders.ExternalScheme;
             options.CallbackPath = MemberProviders.CallbackPrefix + providerName;
             options.SaveTokens = false;
-            options.Events.OnRemoteFailure = BackToLoginAsync;
-            options.Events.OnTicketReceived = context =>
+
+            // An OpenID Connect provider has these from MemberOidcEvents, after every Configure (#3526).
+            if (options is not OpenIdConnectOptions)
             {
-                context.Properties!.Items[MemberProviders.ProviderItem] = providerName;
-                return Task.CompletedTask;
-            };
+                options.Events.OnRemoteFailure = BackToLoginAsync;
+                options.Events.OnTicketReceived = NameProvider;
+            }
 
             configure(options, providerName, provider);
         }
     }
+
+    private static Task NameProvider(TicketReceivedContext context)
+    {
+        context.Properties!.Items[MemberProviders.ProviderItem] = context.Scheme.Name[MemberProvider.SchemePrefix.Length..];
+        return Task.CompletedTask;
+    }
+
+    // The events of an OpenID Connect provider run FluentCMS's own first and then those the host set, as for a provider of
+    // cms.Sso, so that a host's events drop none of them (#3526). It runs after every Configure, and before
+    // PublicOriginCallback, which wraps the delegate it leaves.
+    private sealed class ChainedEvents(MemberOptions members) : IPostConfigureOptions<OpenIdConnectOptions>
+    {
+        public void PostConfigure(string? name, OpenIdConnectOptions options)
+        {
+            if (!IsOidc(members, name))
+            {
+                return;
+            }
+
+            options.Events = new MemberOidcEvents(options);
+            options.EventsType = null;
+        }
+    }
+
+    private sealed class MemberOidcEvents(OpenIdConnectOptions options) : ChainedOpenIdConnectEvents(options)
+    {
+        // The login's key is read from the name identifier, which the token calls sub.
+        public override Task TokenValidated(TokenValidatedContext context)
+        {
+            if (context.Principal?.Identity is ClaimsIdentity identity && !identity.HasClaim(claim => claim.Type == ClaimTypes.NameIdentifier)
+                && identity.FindFirst("sub") is { } subject)
+            {
+                identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, subject.Value, subject.ValueType, subject.Issuer));
+            }
+
+            return base.TokenValidated(context);
+        }
+
+        public override async Task RemoteFailure(RemoteFailureContext context)
+        {
+            await BackToLoginAsync(context);
+            await base.RemoteFailure(context);
+        }
+
+        public override async Task TicketReceived(TicketReceivedContext context)
+        {
+            await NameProvider(context);
+            await base.TicketReceived(context);
+        }
+
+        // A provider's logout ends no member session, and none is started here: the two paths the handler would answer
+        // are left to the rest of the pipeline, which has nothing there.
+        public override Task RemoteSignOut(RemoteSignOutContext context)
+        {
+            context.SkipHandler();
+            return base.RemoteSignOut(context);
+        }
+
+        public override Task SignedOutCallbackRedirect(RemoteSignOutContext context)
+        {
+            context.SkipHandler();
+            return base.SignedOutCallbackRedirect(context);
+        }
+    }
+
+    private static bool IsOidc(MemberOptions members, string? name) =>
+        name is not null && name.StartsWith(MemberProvider.SchemePrefix, StringComparison.Ordinal)
+        && members.Providers.TryGetValue(name[MemberProvider.SchemePrefix.Length..], out var provider) && provider.Kind == MemberProviderKind.Oidc;
 
     // The OpenID Connect handler keeps the redirect_uri it sends for the code's redemption, so both use the public
     // origin. It runs after every Configure, and before the event a host set, so a host's own event keeps it.

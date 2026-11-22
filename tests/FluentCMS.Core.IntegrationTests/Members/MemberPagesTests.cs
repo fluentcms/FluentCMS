@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Shouldly;
@@ -268,6 +269,45 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
         ended.ActorType.ShouldBe(PrincipalKind.Member);
         JsonSerializer.Deserialize<Dictionary<string, string?>>(ended.Details!)!["reason"].ShouldBe(SessionEndReasons.SignedOut);
         ended.Details!.ShouldNotContain(refreshToken);
+    }
+
+    // The member logout page deletes the cookie of the sign-in whose tokens it revoked even when its activity row cannot
+    // be written, and logs the missing row (#3531).
+    [Fact]
+    public async Task AMemberLogoutWhoseRowCannotBeWrittenStillDeletesItsCookie()
+    {
+        var failure = new SessionRowFailure();
+        var logs = new FluentCMS.Core.IntegrationTests.Diagnostics.LogCapture();
+        await using var host = MemberFixture.NewHost(new HostedPagesTests.CapturedEmails(), logs, cms => cms.Services.ConfigureDbContext<FluentCMS.Core.Storage.SystemDbContext>(options => options.AddInterceptors(failure)));
+        var member = await host.CreateMemberAsync(password: Password, cancellationToken: Token);
+        using var browser = new HostedPagesBrowser(host, "10.8.0.40");
+        await SignInMemberAsync(browser, member.Email);
+        var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+        using var code = await browser.GetAsync(request.Url);
+        var refreshToken = (await request.ExchangeAsync(host, code)).GetProperty("refresh_token").GetString()!;
+
+        var page = await browser.PageAsync("/account/members/logout");
+        using (var signedOut = await browser.PostAsync("/account/members/logout", page, new Dictionary<string, string>()))
+        {
+            signedOut.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        browser.HasCookie(MemberCookie).ShouldBeFalse();
+        (await MemberFixture.TokenAsync(host, new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = refreshToken,
+            ["client_id"] = FluentCmsTestHost.OAuthMemberClientId,
+        })).Status.ShouldBe(HttpStatusCode.BadRequest);
+
+        failure.Failed.ShouldBe(1);
+        (await MemberFixture.ActivityAsync(host, "member.sessions_ended", member.Id.ToString("D"))).ShouldBeEmpty();
+        var missing = logs.Entries.Where(entry => entry.EventId.Id == AccountLog.SessionEndNotRecordedId).ShouldHaveSingleItem();
+        missing.Level.ShouldBe(Microsoft.Extensions.Logging.LogLevel.Error);
+        ((string?)missing.State["Pool"]).ShouldBe("member");
+        ((Guid?)missing.State["Id"]).ShouldBe(member.Id);
+        ((string?)missing.State["Reason"]).ShouldBe(SessionEndReasons.SignedOut);
+        missing.Message.ShouldNotContain(refreshToken);
     }
 
     [Fact]

@@ -366,6 +366,44 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         ended.Details!.ShouldNotContain(client.DefaultRequestHeaders.Authorization!.Parameter!);
     }
 
+    // A new security stamp ends every session of the user, and is a row of the administrator with its reason only when a
+    // session was live (#3207, #3531): another change of the stamp, a removed login and a deactivation.
+    [Fact]
+    public async Task TheEndOfEverySessionOfAUserIsARowWithItsReasonOnlyWhenOneWasLive()
+    {
+        var user = await fixture.Host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: TestContext.Current.CancellationToken);
+        (await fixture.PatchAsync($"users/{user.Id:D}", $$"""{ "userName": "{{Guid.NewGuid():N}}@example.com" }""")).Status.ShouldBe(HttpStatusCode.OK);
+        (await SessionsEndedAsync(user.Id)).ShouldBeEmpty();
+
+        using (var client = await fixture.Host.AsUserAsync(user))
+        {
+            (await fixture.PatchAsync($"users/{user.Id:D}", $$"""{ "userName": "{{Guid.NewGuid():N}}@example.com" }""")).Status.ShouldBe(HttpStatusCode.OK);
+            (await fixture.GetAsync("me", client)).Status.ShouldBe(HttpStatusCode.Unauthorized);
+        }
+
+        await using (var scope = fixture.Host.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<CmsUserManager>();
+            (await users.AddLoginAsync((await users.FindByIdAsync(user.Id.ToString()))!, new Microsoft.AspNetCore.Identity.UserLoginInfo("corp", Guid.NewGuid().ToString("N"), "Corp"))).Succeeded.ShouldBeTrue();
+        }
+
+        using (var client = await fixture.Host.AsUserAsync(user))
+        {
+            (await fixture.DeleteAsync($"users/{user.Id:D}/logins/corp")).Status.ShouldBe(HttpStatusCode.NoContent);
+            (await fixture.GetAsync("me", client)).Status.ShouldBe(HttpStatusCode.Unauthorized);
+        }
+
+        using (var client = await fixture.Host.AsUserAsync(user))
+        {
+            (await fixture.PostAsync($"users/{user.Id:D}/deactivate")).Status.ShouldBe(HttpStatusCode.OK);
+            (await fixture.GetAsync("me", client)).Status.ShouldBe(HttpStatusCode.Unauthorized);
+        }
+
+        var ended = await SessionsEndedAsync(user.Id);
+        ended.Select(row => Details(row)["reason"]).ShouldBe([SessionEndReasons.SecurityChanged, SessionEndReasons.LoginRemoved, SessionEndReasons.Deactivated], ignoreOrder: true);
+        ended.ShouldAllBe(row => row.ActorType == PrincipalKind.AdminUser && row.ActorId != user.Id && row.SiteId == null);
+    }
+
     [Fact]
     public async Task ACallerHandsOutNoRoleThatGrantsMoreThanItHolds()
     {
@@ -425,6 +463,15 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         await using var scope = fixture.Host.Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<ActivityRow>().AsNoTracking()
             .SingleAsync(row => row.Action == "user.sessions_ended" && row.TargetId == userId.ToString("D"), TestContext.Current.CancellationToken);
+    }
+
+    private async Task<List<ActivityRow>> SessionsEndedAsync(Guid userId)
+    {
+        await DrainOutboxAsync();
+        await using var scope = fixture.Host.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<ActivityRow>().AsNoTracking()
+            .Where(row => row.Action == "user.sessions_ended" && row.TargetId == userId.ToString("D"))
+            .ToListAsync(TestContext.Current.CancellationToken);
     }
 
     private static Dictionary<string, string?> Details(ActivityRow row) =>
