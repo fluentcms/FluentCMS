@@ -95,11 +95,13 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
         try
         {
             await connection.OpenAsync(cancellationToken);
-            await RunAsync(connection, $"SELECT pg_advisory_lock({MigrationsLockKey})", cancellationToken);
+            await RunAsync(connection, $"SELECT pg_advisory_lock({MigrationsLockKey})", NoTimeout, cancellationToken);
             return new MigrationsLock(connection);
         }
         catch
         {
+            // The server may have granted the lock before the failure or cancellation, so the session is ended, not pooled.
+            NpgsqlConnection.ClearPool(connection);
             await connection.DisposeAsync();
             throw;
         }
@@ -107,24 +109,34 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
 
     private const string MigrationsLockKey = "hashtext(current_database() || ':fluentcms:migrations')";
 
-    private static async Task RunAsync(NpgsqlConnection connection, string sql, CancellationToken cancellationToken)
+    private const int NoTimeout = 0;
+
+    private const int ReleaseTimeoutSeconds = 5;
+
+    private static async Task RunAsync(NpgsqlConnection connection, string sql, int timeoutSeconds, CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
 #pragma warning disable CA2100 // Constants of this class.
         command.CommandText = sql;
 #pragma warning restore CA2100
-        command.CommandTimeout = 0;
+        command.CommandTimeout = timeoutSeconds;
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    // A pooled connection keeps its session, and with it the lock, until it is used again, so the lock is released first.
+    // A pooled connection keeps its session, and with it the lock, until it is used again, so the lock is released first, and
+    // a session whose release failed is ended.
     private sealed class MigrationsLock(NpgsqlConnection connection) : IAsyncDisposable
     {
         public async ValueTask DisposeAsync()
         {
             try
             {
-                await RunAsync(connection, $"SELECT pg_advisory_unlock({MigrationsLockKey})", CancellationToken.None);
+                await RunAsync(connection, $"SELECT pg_advisory_unlock({MigrationsLockKey})", ReleaseTimeoutSeconds, CancellationToken.None);
+            }
+            catch
+            {
+                NpgsqlConnection.ClearPool(connection);
+                throw;
             }
             finally
             {

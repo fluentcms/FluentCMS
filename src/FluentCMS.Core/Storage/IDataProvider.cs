@@ -56,15 +56,17 @@ public interface IDataProvider
     // UsePluginMigrationSet with the name of the provider's set in that assembly.
     void ConfigurePluginMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable);
 
-    // Holds the database while one process applies its streams, for a provider whose own migrations lock lets two processes
-    // apply the same migration; disposing it lets the next go. Null where EF's lock is enough.
+    // Holds the database while one process checks and applies its streams, for a provider whose own migrations lock lets two
+    // processes apply the same migration; disposing it lets the next go. Null where EF's lock is enough.
     // It waits for another process's lock until it is free or the token is cancelled; the runner bounds and logs the wait.
+    // A call or a disposal that fails leaves the lock on no pooled connection; the runner logs the failure of a disposal.
     Task<IAsyncDisposable?> LockMigrationsAsync(CancellationToken cancellationToken) => Task.FromResult<IAsyncDisposable?>(null);
 
     // Takes EF's migrations lock before EF does, in the session of the context's connection, which it opens and keeps open until
     // the handle is disposed, for a provider whose lock EF waits for no longer than a command may run; EF then takes it again in
-    // the same session at once. It waits as LockMigrationsAsync does. Null where EF's own wait is enough, and for a database
-    // that does not exist yet, which EF creates.
+    // the same session at once. The runner takes it on the system stream's context around its checks, and on each stream's
+    // before it reads what is pending. It waits and fails as LockMigrationsAsync does, and disposing it releases EF's shares
+    // too. Null where EF's own wait is enough; a database that does not exist yet is not waited for, since EF creates it.
     Task<IAsyncDisposable?> TakeMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<IAsyncDisposable?>(null);
 
     // The time written in the row of __EFMigrationsLock while one holds EF's migrations lock, as the database keeps it, for a
