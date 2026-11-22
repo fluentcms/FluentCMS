@@ -64,6 +64,8 @@ FluentCMS.Admin.Components.CmsDataGrid<TItem>.LoadingContent.get -> Microsoft.As
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.LoadingContent.set -> void
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.OnRowActivated.get -> Microsoft.AspNetCore.Components.EventCallback<TItem>
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.OnRowActivated.set -> void
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.RowKey.get -> System.Func<TItem, object!>?
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.RowKey.set -> void
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.RowLabel.get -> System.Func<TItem, string?>?
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.RowLabel.set -> void
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.RowOffset.get -> long

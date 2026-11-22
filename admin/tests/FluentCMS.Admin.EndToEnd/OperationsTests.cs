@@ -144,20 +144,25 @@ public sealed class OperationsTests(EndToEndHost host) : BrowserTest(host)
     // attempt that is due, as the first, may be claimed by a worker meanwhile and is never taken.
     private async Task<Guid> PendingDeliveryAsync(HttpClient management)
     {
-        var saved = DateTimeOffset.UtcNow.AddSeconds(-1);
         using var draft = await management.PostAsJsonAsync(new Uri("api/management/v1/content/article", UriKind.Relative), new JsonObject { ["title"] = $"Jobs {Mark}" }, Token);
-        draft.StatusCode.ShouldBe(HttpStatusCode.Created, await draft.Content.ReadAsStringAsync(Token));
+        var answer = await draft.Content.ReadAsStringAsync(Token);
+        draft.StatusCode.ShouldBe(HttpStatusCode.Created, answer);
 
+        // Every time is the server's: when the draft was saved, and the Date of each answer of the poll.
+        var saved = JsonNode.Parse(answer)!["createdAt"]!.GetValue<DateTimeOffset>();
         Guid? found = null;
         await Ui.UntilAsync(
             async () =>
             {
-                var pending = await management.GetFromJsonAsync<JsonObject>(new Uri($"api/management/v1/jobs?status=pending&type={Delivery}&pageSize=100", UriKind.Relative), Token);
-                found = pending!["items"]!.AsArray()
+                using var read = await management.GetAsync(new Uri($"api/management/v1/jobs?status=pending&type={Delivery}&pageSize=100", UriKind.Relative), Token);
+                read.EnsureSuccessStatusCode();
+                var now = read.Headers.Date.ShouldNotBeNull();
+                var pending = JsonNode.Parse(await read.Content.ReadAsStringAsync(Token))!;
+                found = pending["items"]!.AsArray()
                     .Where(item =>
                     {
                         var (created, runAt) = (item!["createdAt"]!.GetValue<DateTimeOffset>(), item["runAt"]!.GetValue<DateTimeOffset>());
-                        return created >= saved && runAt - created >= TimeSpan.FromSeconds(30) && runAt - DateTimeOffset.UtcNow >= TimeSpan.FromSeconds(40);
+                        return created >= saved && runAt - created >= TimeSpan.FromSeconds(30) && runAt - now >= TimeSpan.FromSeconds(40);
                     })
                     .Select(item => item!["id"]!.GetValue<Guid>())
                     .Cast<Guid?>()

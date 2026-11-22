@@ -56,6 +56,7 @@ else
                  Items="@items"
                  OnRowActivated="@OnRowActivated"
                  RowLabel="@RowLabel"
+                 RowKey="@RowKey"
                  Loading="@loading"
                  TotalItems="@total"
                  RowOffset="@((long)(shown.Page - 1) * PageSize)">
@@ -123,6 +124,10 @@ else
 
     [Parameter]
     public Func<TItem, string?>? RowLabel { get; set; }
+
+    // The key of a row, which a page that reads its rows again gives, so that a row whose values changed keeps its element.
+    [Parameter]
+    public Func<TItem, object>? RowKey { get; set; }
 
     [Parameter]
     public EventCallback<TItem> OnRowActivated { get; set; }
@@ -227,6 +232,13 @@ else
             var page = await Read(shown, current.Token);
             if (Overtaken(current))
             {
+                return false;
+            }
+
+            if (page.Items.Count == 0 && page.Total > 0 && shown.Page > PagesOf(page.Total))
+            {
+                // The page is past the end now, as after rows went, so the last page is shown, as a read of the user's goes.
+                Navigation.NavigateTo(Address(shown.Search, PagesOf(page.Total)), replace: true);
                 return false;
             }
 

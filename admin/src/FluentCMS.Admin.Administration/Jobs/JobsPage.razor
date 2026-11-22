@@ -36,6 +36,7 @@
             Filters="@Filters"
             EmptyText="@L["Jobs.List.Empty"]"
             RowLabel="@(job => job.Type)"
+            RowKey="@(job => job.Id)"
             OnRowActivated="@Open">
     <Columns>
         <CmsDataGridColumn TItem="JobRecord" Name="type" Title="@L["Jobs.List.Type"]" Order="0">

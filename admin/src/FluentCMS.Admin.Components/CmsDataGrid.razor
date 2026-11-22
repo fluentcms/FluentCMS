@@ -94,18 +94,18 @@
                 var position = index;
                 var item = displayed[index];
                 var selected = IsSelected(item);
-                <tr @key="item"
+                <tr @key="KeyOf(item)"
                     tabindex="@(SelectionMode == CmsSelectionMode.None ? "0" : null)"
                     aria-selected="@(SelectionMode == CmsSelectionMode.None ? null : selected ? "true" : "false")"
                     aria-rowindex="@(RowCount is null ? null : RowOffset + index + 2)"
                     class="@(selected ? "cms-data-grid-selected" : null)"
-                    @ref="_rows[item]"
+                    @ref="_rows[KeyOf(item)]"
                     @onkeydown="@(e => OnRowKeyDownAsync(e, item, position))">
                     @if (SelectionMode != CmsSelectionMode.None)
                     {
                         <td class="cms-data-grid-select">
                             <input type="checkbox"
-                                   @ref="_checks[item]"
+                                   @ref="_checks[KeyOf(item)]"
                                    class="cms-data-grid-checkbox"
                                    aria-label="@CmsStrings.Format(Texts.Text(CmsStrings.GridSelectRow), RowName(ordered, item, index))"
                                    checked="@selected"
@@ -134,9 +134,10 @@
     private string? _status;
     private readonly string _sortHintId = CmsIds.Next();
     private bool _shiftEnter;
-    // A row keeps its element while its item stays, so the references are kept by item, and those of rows gone are dropped.
-    private readonly Dictionary<TItem, ElementReference> _rows = [];
-    private readonly Dictionary<TItem, ElementReference> _checks = [];
+    // A row keeps its element while its key stays, and Blazor does not capture a kept element again, so the references are kept
+    // by the row's key, and those of rows gone are dropped.
+    private readonly Dictionary<object, ElementReference> _rows = [];
+    private readonly Dictionary<object, ElementReference> _checks = [];
 
     // Names the grid for assistive technology.
     [Parameter, EditorRequired]
@@ -171,6 +172,11 @@
     // Names a row's checkbox; the first column's text when not given.
     [Parameter]
     public Func<TItem, string?>? RowLabel { get; set; }
+
+    // What a row is drawn with as its key, the item when not given: a key that stays when an item is replaced by one with other
+    // values, as a read again of the same rows answers, keeps the row's element and the focus on it.
+    [Parameter]
+    public Func<TItem, object>? RowKey { get; set; }
 
     // While set, the table is busy, and shows LoadingContent when it has no rows.
     [Parameter]
@@ -234,12 +240,16 @@
     protected override void OnParametersSet()
     {
         CmsGuard.Named(Label, nameof(CmsDataGrid<TItem>), nameof(Label));
-        foreach (var gone in _rows.Keys.Where(item => !Items.Contains(item)).ToList())
+        var keys = Items.Select(KeyOf).ToHashSet();
+        foreach (var gone in _rows.Keys.Where(key => !keys.Contains(key)).ToList())
         {
             _rows.Remove(gone);
             _checks.Remove(gone);
         }
     }
+
+    // The key of a row: the item, or what RowKey gives.
+    private object KeyOf(TItem item) => RowKey?.Invoke(item) ?? item;
 
     private bool IsSelected(TItem item) => SelectedItems.Contains(item, EqualityComparer<TItem>.Default);
 
@@ -348,7 +358,7 @@
                 var displayed = Displayed;
                 var target = position + (e.Key == "ArrowDown" ? 1 : -1);
                 if (target >= 0 && target < displayed.Count
-                    && (SelectionMode == CmsSelectionMode.None ? _rows : _checks).TryGetValue(displayed[target], out var element))
+                    && (SelectionMode == CmsSelectionMode.None ? _rows : _checks).TryGetValue(KeyOf(displayed[target]), out var element))
                 {
                     await element.FocusAsync();
                 }

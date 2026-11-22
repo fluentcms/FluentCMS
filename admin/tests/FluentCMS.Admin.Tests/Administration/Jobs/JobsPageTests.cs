@@ -126,6 +126,23 @@ public sealed class JobsPageTests : JobsTestContext
         Eventually(() => Time.Waits.All(wait => wait != TimeSpan.FromSeconds(5)));
     }
 
+    // A keyboard user on the row of a running job keeps the focus there when the job ends: the row is kept by the job's id.
+    [Fact]
+    public void ARowWhoseJobEndsKeepsItsElementOnTheReadAgain()
+    {
+        var app = Load("jobs");
+        app.WaitForAssertion(() => ListRows(app)[0][2].ShouldBe("Running"));
+        var before = Components.CmsDataGridTests.RowReference(app.FindComponent<FluentCMS.Admin.Components.CmsDataGrid<FluentCMS.Admin.Administration.Jobs.JobRecord>>().Instance, 0);
+        before.ShouldNotBeNullOrEmpty();
+        Eventually(() => Time.Waits.Count(wait => wait == TimeSpan.FromSeconds(5)) == 1);
+        (JobOf(Publish)["status"], JobOf(Publish)["attempts"], JobOf(Publish)["completedAt"]) = ("succeeded", 2, Now);
+
+        Time.Tick();
+
+        app.WaitForAssertion(() => ListRows(app)[0][2].ShouldBe("Succeeded"));
+        ListRows(app)[0][3].ShouldBe("2 of 5");
+        Components.CmsDataGridTests.RowReference(app.FindComponent<FluentCMS.Admin.Components.CmsDataGrid<FluentCMS.Admin.Administration.Jobs.JobRecord>>().Instance, 0).ShouldBe(before);
+    }
     // A refusal of the rate limit, or a server that fails, skips the tick: the rows stay, and the next tick reads again.
     [Theory]
     [InlineData(429)]
