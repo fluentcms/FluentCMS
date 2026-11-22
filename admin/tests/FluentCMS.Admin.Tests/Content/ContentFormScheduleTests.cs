@@ -215,6 +215,20 @@ public sealed class ContentFormScheduleTests : AdminTestContext
     }
 
     [Fact]
+    public void AScheduleTheServerRefusesWith403ShowsItsDetail()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/post/{id:D}");
+        var dialog = OpenNew(app);
+        _content.NextWrite = _ => ServerProblem(System.Net.HttpStatusCode.Forbidden, "FCMS3103", "Forbidden", "The caller may not schedule this entry.");
+
+        DialogButton(dialog, "Schedule").Click();
+
+        app.WaitForAssertion(() => dialog.Find(".content-schedule-problem[role=alert]").TextContent.ShouldContain("The caller may not schedule this entry."));
+        dialog.Instance.Open.ShouldBeTrue();
+    }
+
+    [Fact]
     public void CancelRemovesThePendingScheduleOfTheFormsLocale()
     {
         var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });

@@ -1168,6 +1168,14 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                         .IsDescending(true, false)
                         .HasFilter("status = 'failed'");
 
+                    b.HasIndex("AvailableAt", "Attempts")
+                        .HasDatabaseName("ix_cms_outbox_failed_available_at")
+                        .HasFilter("status = 'failed'");
+
+                    b.HasIndex("Handler")
+                        .HasDatabaseName("ix_cms_outbox_failed_handler")
+                        .HasFilter("status = 'failed'");
+
                     b.HasIndex("EventId", "Handler")
                         .IsUnique()
                         .HasDatabaseName("uq_cms_outbox_event_handler");

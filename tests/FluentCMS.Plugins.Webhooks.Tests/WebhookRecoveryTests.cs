@@ -1,4 +1,5 @@
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Jobs;
 using FluentCMS.Testing;
@@ -26,12 +27,12 @@ public sealed class WebhookRecoveryTests(WebhookFixture hosts) : IClassFixture<W
         await AddAsync(host, second, first);
 
         await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<WebhookRetentionJob, WebhookRetentionPayload>(new WebhookRetentionPayload(), cancellationToken: Token);
-        (await RunDueJobsAsync(host)).ShouldBe(1);
+        (await RunDueJobsAsync(host, WebhookRetentionJob.Type)).ShouldBe(1);
         (await DeliveriesAsync(host, webhook)).Count.ShouldBe(2, "retention keeps an attempt that waits to be sent");
         receiver.Requests.ShouldBeEmpty("nothing wakes the queue on its own");
 
         await WakeAsync(host);
-        (await RunDueJobsAsync(host)).ShouldBe(3, "the queue job, then each attempt's job");
+        (await RunDueJobsAsync(host, WebhookQueueJob.Type, WebhookDeliveryJob.Type)).ShouldBe(3, "the queue job, then each attempt's job");
         receiver.Requests.Select(request => request.Body).ShouldBe([first.RequestBody, second.RequestBody]);
         (await DeliveriesAsync(host, webhook)).ShouldAllBe(delivery => delivery.State == DeliveryStates.Succeeded);
     }
@@ -84,13 +85,67 @@ public sealed class WebhookRecoveryTests(WebhookFixture hosts) : IClassFixture<W
         await AddAsync(host, ended, head);
 
         await WakeAsync(host);
-        (await RunDueJobsAsync(host)).ShouldBe(1, "the last claim is a minute old");
+        (await RunDueJobsAsync(host, WebhookQueueJob.Type, WebhookDeliveryJob.Type)).ShouldBe(1, "the last claim is a minute old");
         receiver.Requests.ShouldBeEmpty();
 
         host.Time.Advance(WebhookQueueJob.StalledAfter);
         await WakeAsync(host);
-        (await RunDueJobsAsync(host)).ShouldBe(2);
+        (await RunDueJobsAsync(host, WebhookQueueJob.Type, WebhookDeliveryJob.Type)).ShouldBe(2);
         receiver.Requests.ShouldHaveSingleItem().Body.ShouldBe(head.RequestBody);
+    }
+
+    // When the head's event is newer than the last claim, the queue has stalled once the head is 10 minutes old,
+    // not 10 minutes after the claim (#3380).
+    [Fact]
+    public async Task AQueueWhoseHeadIsNewerThanItsLastClaimStallsTenMinutesAfterTheHead()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        var host = await hosts.HostAsync();
+        using var client = await AdminAsync(host);
+        var webhook = Id(await CreateAsync(client, new { name = "quiet", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
+        var now = host.Time.GetUtcNow();
+        var ended = Queued(webhook, now - TimeSpan.FromMinutes(30), """{"n":0}""");
+        ended.State = DeliveryStates.Succeeded;
+        var head = Queued(webhook, now - WebhookQueueJob.StalledAfter + TimeSpan.FromSeconds(1), """{"n":1}""");
+        await AddAsync(host, ended, head);
+
+        await WakeAsync(host);
+        (await RunDueJobsAsync(host, WebhookQueueJob.Type, WebhookDeliveryJob.Type)).ShouldBe(1, "the head is not yet 10 minutes old");
+        receiver.Requests.ShouldBeEmpty();
+
+        host.Time.Advance(TimeSpan.FromSeconds(1));
+        await WakeAsync(host);
+        (await RunDueJobsAsync(host, WebhookQueueJob.Type, WebhookDeliveryJob.Type)).ShouldBe(2);
+        receiver.Requests.ShouldHaveSingleItem().Body.ShouldBe(head.RequestBody);
+    }
+
+    // A backlog of events more than 10 minutes old reaches a webhook with no claim in the last 10 minutes. The job of the
+    // second event reads the queue after the head's job queued it and before that job claims it, so it finds the queue
+    // stalled and enqueues a second job for the head. Each attempt is still sent once, in order (#3380).
+    [Fact]
+    public async Task AJobThatReadsAnOldHeadBeforeItsClaimWakesItOnceMoreAndNothingIsSentTwice()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        var host = await hosts.HostAsync();
+        using var client = await AdminAsync(host);
+        var webhook = Id(await CreateAsync(client, new { name = "backlog", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
+        var now = host.Time.GetUtcNow();
+        var head = Queued(webhook, now - TimeSpan.FromMinutes(30), """{"n":1}""");
+        await AddAsync(host, head);
+        var scheduler = host.Services.GetRequiredService<IJobScheduler>();
+        var second = new WebhookAttempt(webhook, Guid.CreateVersion7(), Guid.CreateVersion7(), "content.published", 1, Manual: false, """{"n":2}""", now - TimeSpan.FromMinutes(29));
+
+        await scheduler.EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(second, WebhookDeliveryJob.Options(DefaultSite.Id), Token);
+        (await RunDueJobsAsync(host)).ShouldBe(3, "the second event's job, the head's job it enqueued, and the second event's again, which the head's wakes");
+        receiver.Requests.Select(request => request.Body).ShouldBe([head.RequestBody, second.Body]);
+
+        // The head's own job, which queued it, then finds its attempt recorded.
+        await scheduler.EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(WebhookDeliveryJob.AttemptOf(head), WebhookDeliveryJob.Options(DefaultSite.Id), Token);
+        (await RunDueJobsAsync(host)).ShouldBe(1);
+        receiver.Requests.Count.ShouldBe(2);
+        var deliveries = await DeliveriesAsync(host, webhook);
+        deliveries.Count.ShouldBe(2);
+        deliveries.ShouldAllBe(delivery => delivery.State == DeliveryStates.Succeeded);
     }
 
     // A queued head with an old event, such as a late retry, behind a recent claim is a queue that drains, so a delivery
@@ -129,7 +184,7 @@ public sealed class WebhookRecoveryTests(WebhookFixture hosts) : IClassFixture<W
         await AddAsync(host, orphan);
 
         await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<WebhookRetentionJob, WebhookRetentionPayload>(new WebhookRetentionPayload(), cancellationToken: Token);
-        (await RunDueJobsAsync(host)).ShouldBe(1);
+        (await RunDueJobsAsync(host, WebhookRetentionJob.Type)).ShouldBe(1);
 
         (await DeliveriesAsync(host, orphan.WebhookId)).ShouldBeEmpty();
     }

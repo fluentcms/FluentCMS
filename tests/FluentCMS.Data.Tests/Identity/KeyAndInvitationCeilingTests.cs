@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
@@ -364,7 +365,7 @@ public sealed class KeyAndInvitationCeilingTests : IDisposable
         Task<CreatedApiKey> RotateAsVerifiedAsync() => _fixture.Database.AsAsync(ApiKeyClaims.PrincipalOf(verified), services =>
         {
             var http = new DefaultHttpContext { RequestServices = services };
-            ApiKeyAuthentication.Verify(http, verified);
+            ApiKeyAuthentication.Verify(http, verified, calling.Secret);
             services.GetRequiredService<IHttpContextAccessor>().HttpContext = http;
             return services.GetRequiredService<ApiKeyService>().RotateAsync(key.Key.Id, cancellationToken: Token);
         });
@@ -377,6 +378,120 @@ public sealed class KeyAndInvitationCeilingTests : IDisposable
 
         _window.Armed.ShouldBeFalse();
         _fixture.Read(context => context.Set<ApiKey>().AsNoTracking().Single(stored => stored.Id == key.Key.Id)).KeyHash.ShouldBe(ApiKeyFormat.Hash(key.Secret));
+    }
+
+    // Sending an invitation over a pending one and revoking one read the caller's grants again in their transaction: a
+    // caller who loses users.manage or a grant of the roles after the checks before it is refused, and nothing is written
+    // or mailed (#3481).
+    [Fact]
+    public async Task AnInvitationIsNeitherSupersededNorRevokedWhenTheCallersGrantsAreCutBeforeItsTransaction()
+    {
+        var people = await RoleAsync("People", CorePermissions.UsersManage);
+        var readers = await RoleAsync("Readers", "content.article.read");
+        var user = await _fixture.CreateUserAsync("people", Password, people.Id, readers.Id);
+        var caller = PrincipalOf(user);
+        var pending = await _fixture.WithAsync(services => services.GetRequiredService<InvitationService>().InviteAsync("bob@example.com", [readers.Id], AcceptUrl, Token));
+        var mailed = _fixture.Email.Sent.Count;
+        Func<InvitationService, Task>[] writes =
+        [
+            service => service.InviteAsync("bob@example.com", [], AcceptUrl, Token),
+            service => service.RevokeAsync(pending.Id, Token),
+        ];
+
+        foreach (var cut in new[] { readers.Id, people.Id })
+        {
+            foreach (var write in writes)
+            {
+                _window.Arm(() => _fixture.UsersAsync(async users => (await users.RemoveFromRoleAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, cut)).Succeeded));
+
+                await Should.ThrowAsync<ManagementAccessDeniedException>(() => InvitationsAsync(caller, async service =>
+                {
+                    await write(service);
+                    return true;
+                }));
+
+                _window.Armed.ShouldBeFalse();
+                await _fixture.UsersAsync(async users => (await users.AddToRoleAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, cut)).Succeeded);
+            }
+        }
+
+        _fixture.Invitations().ShouldHaveSingleItem().RevokedAt.ShouldBeNull();
+        _fixture.Email.Sent.Count.ShouldBe(mailed);
+        (await InvitationsAsync(caller, service => service.RevokeAsync(pending.Id, Token))).ShouldBeTrue();
+    }
+
+    // A change made by a key reads the key again in its transaction and refuses it as the authentication handler would now:
+    // a secret that a rotation without overlap retired, the replaced secret once its overlap ended, or a client its addresses
+    // no longer allow. A rotation with an overlap leaves the request's secret good (#3483).
+    [Fact]
+    public async Task AChangeByAKeyIsRefusedWhenItsSecretOrAddressNoLongerAuthenticatesTheRequestBeforeItsTransaction()
+    {
+        var manager = await RoleAsync("Key manager", CorePermissions.ApiKeysManage, CorePermissions.UsersManage, "content.article.read");
+        var readers = await RoleAsync("Readers", "content.article.read");
+        var calling = await CreateKeyAsync(manager.Id);
+        var key = await CreateKeyAsync(readers.Id);
+        var pending = await _fixture.WithAsync(services => services.GetRequiredService<InvitationService>().InviteAsync("bob@example.com", [readers.Id], AcceptUrl, Token));
+        var client = IPAddress.Parse("203.0.113.9");
+
+        Task<ApiKeyInfo> NarrowAsync(string secret) =>
+            AsCallingKeyAsync(calling.Key.Id, secret, client, services => services.GetRequiredService<ApiKeyService>().SetAllowedAddressesAsync(key.Key.Id, ["10.0.0.0/8"], Token));
+        Task<CreatedApiKey> RotateCallingAsync(TimeSpan? overlap) =>
+            _fixture.WithAsync(services => services.GetRequiredService<ApiKeyService>().RotateAsync(calling.Key.Id, overlap, Token));
+        Task SetCallingAddressesAsync(params string[] addresses) =>
+            _fixture.WithAsync(services => services.GetRequiredService<ApiKeyService>().SetAllowedAddressesAsync(calling.Key.Id, addresses, Token));
+
+        // A rotation without overlap retires the secret the request came with, for a key change and for an invitation.
+        var secret = calling.Secret;
+        _window.Arm(async () => secret = (await RotateCallingAsync(TimeSpan.Zero)).Secret);
+        await Should.ThrowAsync<ManagementAccessDeniedException>(() => NarrowAsync(calling.Secret));
+        _window.Armed.ShouldBeFalse();
+
+        var presented = secret;
+        _window.Arm(async () => secret = (await RotateCallingAsync(TimeSpan.Zero)).Secret);
+        await Should.ThrowAsync<ManagementAccessDeniedException>(() => AsCallingKeyAsync(calling.Key.Id, presented, client, services => services.GetRequiredService<InvitationService>().RevokeAsync(pending.Id, Token)));
+        _window.Armed.ShouldBeFalse();
+
+        // One with an overlap keeps it good until the overlap ends.
+        var current = secret;
+        _window.Arm(async () => secret = (await RotateCallingAsync(null)).Secret);
+        (await NarrowAsync(current)).AllowedAddresses.ShouldBe(["10.0.0.0/8"]);
+        await SetAddressesAsync(key.Key.Id, null);
+
+        _window.Arm(() =>
+        {
+            _fixture.Clock.Advance(TimeSpan.FromDays(2));
+            return Task.CompletedTask;
+        });
+        await Should.ThrowAsync<ManagementAccessDeniedException>(() => NarrowAsync(current));
+        _window.Armed.ShouldBeFalse();
+
+        // Addresses narrowed past the client refuse the change; ones that still allow it do not.
+        _window.Arm(() => SetCallingAddressesAsync("10.0.0.0/8"));
+        await Should.ThrowAsync<ManagementAccessDeniedException>(() => NarrowAsync(secret));
+        _window.Armed.ShouldBeFalse();
+
+        await SetCallingAddressesAsync("10.0.0.0/8", "203.0.113.0/24");
+        _window.Arm(() => SetCallingAddressesAsync("203.0.113.0/24"));
+        (await NarrowAsync(secret)).AllowedAddresses.ShouldBe(["10.0.0.0/8"]);
+
+        _fixture.Invitations().ShouldHaveSingleItem().RevokedAt.ShouldBeNull();
+    }
+
+    private Task<ApiKeyInfo> SetAddressesAsync(Guid id, IReadOnlyCollection<string>? addresses) =>
+        _fixture.WithAsync(services => services.GetRequiredService<ApiKeyService>().SetAllowedAddressesAsync(id, addresses, Token));
+
+    // As a request whose key the authentication handler verified with this secret from this client.
+    private Task<T> AsCallingKeyAsync<T>(Guid id, string secret, IPAddress client, Func<IServiceProvider, Task<T>> work)
+    {
+        var verified = _fixture.Read(context => context.Set<ApiKey>().AsNoTracking().Single(stored => stored.Id == id));
+        return _fixture.Database.AsAsync(ApiKeyClaims.PrincipalOf(verified), services =>
+        {
+            var http = new DefaultHttpContext { RequestServices = services };
+            http.Connection.RemoteIpAddress = client;
+            ApiKeyAuthentication.Verify(http, verified, secret);
+            services.GetRequiredService<IHttpContextAccessor>().HttpContext = http;
+            return work(services);
+        });
     }
 
     private void SetClientRoles(Guid client, string role, bool add = false) =>

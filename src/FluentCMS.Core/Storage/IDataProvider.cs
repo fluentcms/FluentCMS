@@ -58,7 +58,14 @@ public interface IDataProvider
 
     // Holds the database while one process applies its streams, for a provider whose own migrations lock lets two processes
     // apply the same migration; disposing it lets the next go. Null where EF's lock is enough.
+    // It waits for another process's lock until it is free or the token is cancelled; the runner bounds and logs the wait.
     Task<IAsyncDisposable?> LockMigrationsAsync(CancellationToken cancellationToken) => Task.FromResult<IAsyncDisposable?>(null);
+
+    // Takes EF's migrations lock before EF does, in the session of the context's connection, which it opens and keeps open until
+    // the handle is disposed, for a provider whose lock EF waits for no longer than a command may run; EF then takes it again in
+    // the same session at once. It waits as LockMigrationsAsync does. Null where EF's own wait is enough, and for a database
+    // that does not exist yet, which EF creates.
+    Task<IAsyncDisposable?> TakeMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<IAsyncDisposable?>(null);
 
     // The time written in the row of __EFMigrationsLock while one holds EF's migrations lock, as the database keeps it, for a
     // provider whose lock is that row, which a process that stops while it migrates leaves behind. Null when no row holds

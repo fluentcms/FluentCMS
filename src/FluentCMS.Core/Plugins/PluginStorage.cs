@@ -1,4 +1,5 @@
 using System.Reflection;
+using FluentCMS.Core.Caching;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using FluentCMS.Plugins;
@@ -99,6 +100,7 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
         {
             Configure(options, provider, contributors, assembly, history);
             options.AddInterceptors(container.GetRequiredService<PluginTransactions>());
+            LeaseRenewalInterceptor.AddTo(options, container, provider);
         });
 
         if (Migrations is not null)

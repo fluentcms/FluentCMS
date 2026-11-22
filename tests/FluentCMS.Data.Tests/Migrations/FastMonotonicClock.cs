@@ -21,5 +21,6 @@ internal sealed class FastMonotonicClock(DateTimeOffset? frozenWallClock) : Time
         services.AddSingleton<IDistributedLock>(provider => new DatabaseDistributedLock(
             provider.GetRequiredService<IServiceScopeFactory>(),
             clock,
-            provider.GetRequiredService<ILogger<DatabaseDistributedLock>>()));
+            provider.GetRequiredService<ILogger<DatabaseDistributedLock>>(),
+            provider.GetRequiredService<LeaseRenewalInterceptor>()));
 }

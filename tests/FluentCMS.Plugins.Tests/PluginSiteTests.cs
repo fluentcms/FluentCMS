@@ -184,6 +184,53 @@ public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<P
         (await host.Services.GetRequiredService<IEventDeadLetters>().ListAsync(0, 50, Token)).ShouldContain(item => item.Id == failed.Id);
     }
 
+    // The state is read once for a batch, which goes back with one write and no attempt used; the lane waits, and a later drain
+    // delivers the batch in the order of its events.
+    [Fact]
+    public async Task ABatchWhosePluginStateCannotBeReadGoesBackWithOneReadAndOneWrite()
+    {
+        var fault = new PluginStateFault();
+        var writes = new OutboxWrites();
+        var calls = new PluginCalls();
+        await using var host = new FluentCmsTestHost()
+            .WithServices(services => services.AddSingleton(calls))
+            .Configure(cms =>
+            {
+                cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(fault, writes));
+                cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
+                cms.Jobs.Options.Queues[SampleNoteJob.Queue] = 0;
+                cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+            });
+        var docs = await CreateSiteAsync(host);
+        var drainer = host.Services.GetRequiredService<OutboxDrainer>();
+        await drainer.DrainAsync(Token);
+        string[] texts = ["first", "second", "third"];
+        foreach (var text in texts)
+        {
+            await PublishAsync(host, docs, text);
+        }
+
+        // Armed first, so that no read in between caches the state again. The activity of the notes is delivered in a lane of
+        // its own, with one claim and one settle; the sample's lane claims its batch and gives it back.
+        fault.Armed = true;
+        host.Services.GetRequiredService<PluginState>().Invalidate();
+        writes.Reset();
+        (await drainer.DrainAsync(Token)).ShouldBe(texts.Length);
+        fault.Armed = false;
+
+        fault.Refused.ShouldBe(1);
+        writes.Count.ShouldBe(4);
+        calls.All.ShouldNotContain(call => call.StartsWith("sample.outbox:", StringComparison.Ordinal));
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking().Where(message => message.Handler == "sample.note-added").ToListAsync(Token))
+                .ShouldAllBe(message => message.Status == OutboxStatus.Pending && message.Attempts == 0 && message.LeaseOwner == null);
+        }
+
+        (await drainer.DrainAsync(Token)).ShouldBe(texts.Length);
+        calls.All.Where(call => call.StartsWith("sample.outbox:", StringComparison.Ordinal)).ShouldBe(texts.Select(text => $"sample.outbox:{text}"));
+    }
+
     // As the drain does with a delivery: the job did not run, so it uses no attempt, and it waits one poll before it is tried again.
     [Fact]
     public async Task AJobWhosePluginStateCannotBeReadWaitsWithoutUsingAnAttempt()
@@ -423,10 +470,40 @@ public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<P
     {
         public volatile bool Armed;
 
-        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default) =>
-            Armed && command.CommandText.Contains("cms_plugin_site", StringComparison.Ordinal)
-                ? throw new InvalidOperationException("The database went away.")
-                : ValueTask.FromResult(result);
+        private int _refused;
+
+        public int Refused => Volatile.Read(ref _refused);
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (Armed && command.CommandText.Contains("cms_plugin_site", StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref _refused);
+                throw new InvalidOperationException("The database went away.");
+            }
+
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    // Counts the updates of cms_outbox.
+    private sealed class OutboxWrites : DbCommandInterceptor
+    {
+        private int _count;
+
+        public int Count => Volatile.Read(ref _count);
+
+        public void Reset() => Interlocked.Exchange(ref _count, 0);
+
+        public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase) && command.CommandText.Contains("cms_outbox", StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref _count);
+            }
+
+            return ValueTask.FromResult(result);
+        }
     }
 
     private static async Task RunJobsAsync(FluentCmsTestHost host)

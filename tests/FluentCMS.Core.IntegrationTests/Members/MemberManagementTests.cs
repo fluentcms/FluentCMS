@@ -4,6 +4,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.IntegrationTests.Identity;
+using FluentCMS.Events;
 using FluentCMS.Testing;
 using Shouldly;
 using Xunit;
@@ -313,6 +314,15 @@ public sealed class MemberManagementTests(MemberFixture fixture) : IClassFixture
         (await fixture.MembersAsync(HttpMethod.Get, "me", client: client)).Status.ShouldBe(HttpStatusCode.Unauthorized);
         (await fixture.RefreshAsync(tokens.RefreshToken!, FluentCmsTestHost.OAuthMemberClientId)).Status.ShouldBe(HttpStatusCode.BadRequest);
         (await fixture.ManageAsync(HttpMethod.Get, $"members/{member.Id:D}/sessions")).Json["items"]!.AsArray().ShouldBeEmpty();
+
+        // The end is an activity row of the administrator that names the session, with no token in it (#3207).
+        var ended = (await fixture.ActivityAsync("member.sessions_ended", member.Id.ToString("D"))).ShouldHaveSingleItem();
+        ended.ActorType.ShouldBe(PrincipalKind.AdminUser);
+        ended.SiteId.ShouldBeNull();
+        Details(ended.Details)["reason"].ShouldBe(SessionEndReasons.Revoked);
+        Details(ended.Details)["session"].ShouldBe(sessionId);
+        ended.Details!.ShouldNotContain(tokens.RefreshToken!);
+        ended.Details!.ShouldNotContain(tokens.AccessToken);
 
         // The users routes do not reach a member, nor the member routes a user.
         (await fixture.ManageAsync(HttpMethod.Get, $"users/{member.Id:D}")).Status.ShouldBe(HttpStatusCode.NotFound);
