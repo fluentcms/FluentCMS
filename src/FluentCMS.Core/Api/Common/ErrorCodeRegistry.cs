@@ -291,6 +291,7 @@ public static class ErrorCodeRegistry
         BadQuery(IdempotencyErrorCodes.InvalidKey, "Invalid Idempotency-Key"),
         Invalid(IdempotencyErrorCodes.KeyReused, "Idempotency-Key used for another request"),
         new(IdempotencyErrorCodes.InProgress, StatusCodes.Status409Conflict, "Request with this Idempotency-Key still running"),
+        new(LocaleErrorCodes.LocaleIsFallback, StatusCodes.Status409Conflict, "Locale is a fallback"),
 
         // 316x the member pool: its options, found when the host starts, and the refusals of its APIs
         Startup(MemberErrorCodes.InvalidOptions, "Invalid member options"),
