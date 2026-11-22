@@ -32,8 +32,8 @@ namespace FluentCMS.Core.Events;
 // more delivery. The rows delivered are settled together then and at the end of the batch, and so are the rows given back,
 // with one write for those that wait and one for the rest, so a batch whose handlers answer in time costs one write to claim
 // it and one to settle it; a renewal that fails ends the batch and gives back the rows not tried, and so does a stopping host.
-// The writes of a stop have the job runner's ReleaseTimeout in all, with the delivered rows of each lane settled first and
-// in half of it at most, so that the release always has its turn. The rows of one that does not fit keep their lease. A
+// The writes of a stop have the job runner's ReleaseTimeout in all: those before the releases, the settle first, have half
+// at most. The releases share what is left, so a slow one can leave the next none. What does not fit stays leased. A
 // crash before the settle delivers the batch again. A delivery is cut off before its lease can end, so that a worker never
 // delivers on a lease it has lost, and every write of an outcome is conditional on the claim.
 // A cut-off that comes before the handler starts, as when the thread pool is starved, gives the attempt back and leaves the
@@ -769,7 +769,7 @@ internal sealed class OutboxDrainer(
     }
 
     // For the writes that come before a release, which are not waited for past their limit, so that a provider that ignores it
-    // or is slow to cancel leaves the release its turn. One given up is cancelled, and is harmless when it still lands, since
+    // or is slow to cancel leaves the releases the rest. One given up is cancelled, and is harmless when it still lands, since
     // it is conditional on the claim.
     private async Task<T> InTimeAsync<T>(Func<SystemDbContext, CancellationToken, Task<T>> write, CancellationToken limit)
     {
