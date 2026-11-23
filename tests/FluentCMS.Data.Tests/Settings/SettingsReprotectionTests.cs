@@ -244,17 +244,18 @@ public sealed class SettingsReprotectionTests
         }
 
         Snapshot(database).Where(row => row.SiteId != SiteA.Value).ToList().ShouldBe(untouched);
-        // The row was written for its secret, so the member is compared as stored text rather than the row byte for byte.
-        var written = database.Rows().Single(row => row.SiteId == SiteA.Value).Json;
-        written.ShouldContain($"\"oldToken\":\"{payload}\"");
-        JsonNode.Parse(written)!["apiKey"]!.GetValue<string>().ShouldStartWith(SettingsProtection.Prefix);
+        // The row was written for its secret, and the stored text is the database's own form (jsonb on PostgreSQL), so the
+        // member's value is compared, ordinally.
+        var written = JsonNode.Parse(database.Rows().Single(row => row.SiteId == SiteA.Value).Json)!;
+        string.Equals(written["oldToken"]!.GetValue<string>(), payload, StringComparison.Ordinal).ShouldBeTrue();
+        written["apiKey"]!.GetValue<string>().ShouldStartWith(SettingsProtection.Prefix);
 
         var again = await CommandAsync(database, "settings", "reprotect");
         (again.ExitCode, again.Error).ShouldBe((exitCode, error));
         again.Output.ShouldContain("Protected the secrets of 0 stored settings documents");
     }
 
-    // A plugin that is not loaded in this run, or no longer exists: its rows are named, every one, and stay as stored. One
+    // A plugin that is not loaded in this run, or no longer exists: its rows are named, every one, and keep every value. One
     // whose protected values are all under the default key needs no older key, so the command still ends with 0.
     [Fact]
     public async Task EveryRowOfAnUnregisteredAreaIsListedAndLeftAsStoredAndNeedsNoOlderKeyUnderTheDefaultOne()
