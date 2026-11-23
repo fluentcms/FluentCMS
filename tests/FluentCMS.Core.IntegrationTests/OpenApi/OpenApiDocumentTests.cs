@@ -654,6 +654,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
             Response(Paths[$"{Management}/api-keys"]!["post"]!, "201"),
             Response(Paths[$"{Management}/api-keys/{{id}}/rotate"]!["post"]!, "200"),
             Response(Paths[$"{Management}/api-keys/{{id}}/expire"]!["post"]!, "200"),
+            Response(Paths[$"{Management}/api-keys/{{id}}/allowed-addresses"]!["put"]!, "200"),
         ];
 
         foreach (var key in keys)

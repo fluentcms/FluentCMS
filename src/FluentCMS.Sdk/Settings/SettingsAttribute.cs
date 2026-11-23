@@ -1,9 +1,9 @@
 namespace FluentCMS.Settings;
 
 /// <summary>
-/// Marks a class as a settings area that administrators change at runtime, per site. The class needs a public
-/// parameterless constructor, whose property values are the code defaults, and public read-write properties.
-/// The permission to change it is <c>settings.{area}.manage</c>.
+/// Marks a class as a settings area that administrators change at runtime, with instance defaults and, unless the area's
+/// code reads the defaults only, values per site. The class needs a public parameterless constructor, whose property
+/// values are the code defaults, and public read-write properties. The permission to change it is <c>settings.{area}.manage</c>.
 /// </summary>
 /// <param name="area">The name of the area: lower case letters and digits joined by single hyphens, up to 64 characters, such as <c>media</c> or <c>site-seo</c>.</param>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
@@ -13,8 +13,11 @@ public sealed class SettingsAttribute(string area) : Attribute
     public string Area { get; } = area;
 
     /// <summary>
-    /// Whether the area is read from the instance defaults only, with <see cref="ISettings{T}.GetDefaultAsync"/>, so that a
-    /// site's own values change nothing. <c>GET /settings</c> of the Management API says so as <c>instanceOnly</c>.
+    /// Whether <c>GET /settings</c> of the Management API lists the area as read from the instance defaults only
+    /// (<c>instanceOnly</c>), so that the admin edits its defaults and hides its site page. It only describes the area and
+    /// changes nothing about how the area is read or written: a site's values are still stored, and
+    /// <see cref="ISettings{T}.GetAsync"/> still gives them. It is true only when the area's own code reads it with
+    /// <see cref="ISettings{T}.GetDefaultAsync"/>.
     /// </summary>
     public bool InstanceOnly { get; set; }
 }
