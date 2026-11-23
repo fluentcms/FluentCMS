@@ -41,7 +41,7 @@ internal sealed record UserPreferencesChange
 // knows, stored as it writes them; the time zone is an IANA id, as a schedule takes. The row has no version, so the entity
 // tag is a hash of the four values: it changes with any of them, and a write based on a tag is refused once another write
 // has changed them.
-internal sealed class UserPreferences(SystemDbContext context, TimeProvider clock)
+internal sealed class UserPreferences(SystemDbContext context, IdentityChanges changes, TimeProvider clock)
 {
     public const int CultureLength = 32;
 
@@ -115,46 +115,51 @@ internal sealed class UserPreferences(SystemDbContext context, TimeProvider cloc
 
             // Only the members the write sets are written, so that two writes of different members both stay. With a tag the
             // write holds only while the row still has the values the tag was checked against. The answer is the row as this
-            // update left it, read again in its transaction, since a write of other members may have landed after the read
-            // above; the update holds the row until the commit, so no later write shows in the answer either.
-            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-            var rows = context.Set<UserPreferenceRow>().Where(item => item.UserId == userId);
-            if (expectedTag is not null)
-            {
-                rows = rows.Where(item => item.Culture == stored.Culture && item.TimeZone == stored.TimeZone
-                    && item.DateFormat == stored.DateFormat && item.NumberFormat == stored.NumberFormat);
-            }
-
-            var now = clock.GetUtcNow();
-            var written = await rows.ExecuteUpdateAsync(
-                set =>
+            // update left it, read again in the transaction IdentityChanges opens for it, since a write of other members may
+            // have landed after the read above; the update holds the row until the commit, so no later write shows in it.
+            var updated = await changes.RunAsync<UserPreferencesInfo?>(
+                async () =>
                 {
-                    set.SetProperty(item => item.UpdatedAt, now);
-                    if (change.SetsCulture)
+                    var rows = context.Set<UserPreferenceRow>().Where(item => item.UserId == userId);
+                    if (expectedTag is not null)
                     {
-                        set.SetProperty(item => item.Culture, next.Culture);
+                        rows = rows.Where(item => item.Culture == stored.Culture && item.TimeZone == stored.TimeZone
+                            && item.DateFormat == stored.DateFormat && item.NumberFormat == stored.NumberFormat);
                     }
 
-                    if (change.SetsTimeZone)
-                    {
-                        set.SetProperty(item => item.TimeZone, next.TimeZone);
-                    }
+                    var now = clock.GetUtcNow();
+                    var written = await rows.ExecuteUpdateAsync(
+                        set =>
+                        {
+                            set.SetProperty(item => item.UpdatedAt, now);
+                            if (change.SetsCulture)
+                            {
+                                set.SetProperty(item => item.Culture, next.Culture);
+                            }
 
-                    if (change.SetsDateFormat)
-                    {
-                        set.SetProperty(item => item.DateFormat, next.DateFormat);
-                    }
+                            if (change.SetsTimeZone)
+                            {
+                                set.SetProperty(item => item.TimeZone, next.TimeZone);
+                            }
 
-                    if (change.SetsNumberFormat)
-                    {
-                        set.SetProperty(item => item.NumberFormat, next.NumberFormat);
-                    }
+                            if (change.SetsDateFormat)
+                            {
+                                set.SetProperty(item => item.DateFormat, next.DateFormat);
+                            }
+
+                            if (change.SetsNumberFormat)
+                            {
+                                set.SetProperty(item => item.NumberFormat, next.NumberFormat);
+                            }
+                        },
+                        cancellationToken);
+                    return written > 0
+                        ? Info(await context.Set<UserPreferenceRow>().AsNoTracking().FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken))
+                        : null;
                 },
                 cancellationToken);
-            if (written > 0)
+            if (updated is not null)
             {
-                var updated = Info(await context.Set<UserPreferenceRow>().AsNoTracking().FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken));
-                await transaction.CommitAsync(cancellationToken);
                 return updated;
             }
 
