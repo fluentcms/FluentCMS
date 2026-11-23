@@ -147,9 +147,9 @@ internal sealed class SchemaApplyCommand : HostCommand
                 $"the content tables match schema {hash}, but the schema history could not be written ({exception.GetType().Name}); run 'fluentcms schema apply' again with the same options to record it");
         }
 
-        await context.Output.WriteLineAsync(steps.Count == 0
-            ? $"Nothing to apply; the content tables match schema {hash}, which the schema history records."
-            : $"Applied {Count(steps.Count)}; the schema history records schema {hash}.");
+        await context.Output.WriteLineAsync(steps.Count > 0 ? $"Applied {Count(steps.Count)}; the schema history records schema {hash}."
+            : plan.LeftAlone.Count > 0 ? $"Nothing to apply; what is listed above was left alone, and the schema history records schema {hash}."
+            : $"Nothing to apply; the content tables match schema {hash}, which the schema history records.");
         return CommandExitCodes.Success;
     }
 

@@ -64,4 +64,36 @@ public sealed class SchemaReaderTests : IDisposable
             .Order(StringComparer.Ordinal)
             .ShouldBe(table.Expected);
     }
+
+    // What schema apply compares with the collation of the model (#3476). PostgreSQL gives none for the database's default,
+    // and SQL Server the name of the database's; SQLite's reader reads none.
+    [Fact]
+    public async Task EachReaderReportsTheCollationOfATextColumn()
+    {
+        _database.Execute(TestProvider.Name switch
+        {
+            TestProvider.Sqlite => "create table tests_collation (id integer primary key, named text collate nocase, plain text, number integer)",
+            TestProvider.PostgreSql => "create table tests_collation (id integer primary key, named text collate \"C\", plain text, number integer)",
+            _ => "create table tests_collation (id int primary key, named nvarchar(100) collate Latin1_General_100_CI_AS, plain nvarchar(100), number int)",
+        });
+
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, "Production");
+        using var scope = host.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        await context.Database.OpenConnectionAsync(Token);
+        var columns = (await scope.ServiceProvider.GetRequiredService<IDataProvider>().SchemaReader.ReadAsync(context.Database.GetDbConnection(), Token))
+            .Tables["tests_collation"].Columns.ToDictionary(column => column.Name, column => column.Collation);
+
+        columns["named"].ShouldBe(TestProvider.Name switch { TestProvider.Sqlite => null, TestProvider.PostgreSql => "C", _ => "Latin1_General_100_CI_AS" });
+        if (TestProvider.IsSqlServer)
+        {
+            columns["plain"].ShouldNotBeNull();
+        }
+        else
+        {
+            columns["plain"].ShouldBeNull();
+        }
+
+        columns["number"].ShouldBeNull();
+    }
 }

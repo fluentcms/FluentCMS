@@ -1,5 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Data.Tests.Providers;
 using Shouldly;
 using Xunit;
 
@@ -185,6 +186,50 @@ public sealed class PaginationTests : IDisposable
         (await AllByCursor("sort=title")).ShouldBe(ByCodePoint);
         (await AllByCursor("sort=-title")).ShouldBe(ByCodePoint.AsEnumerable().Reverse());
     }
+
+    // A character at U+10000 or above is a surrogate pair in UTF-16, whose first unit is in D800 to DBFF. SQLite and
+    // PostgreSQL's C compare UTF-8 bytes, which is code point order, and SQL Server's Latin1_General_100_BIN2 compares the
+    // UTF-16 units of nvarchar, so there the pair sorts before U+E000 to U+FFFF (#3476). The order is the provider's own in
+    // the sort and the cursor alike. On a failure the message gives the order the database gave.
+    [Fact]
+    public async Task TextAboveUFFFFSortsByCodePointExceptByUtf16UnitOnSqlServer()
+    {
+        const string Low = "z";
+        const string High = "\uFF21";
+        const string Astral = "\U0001F600";
+        const string LowThenHigh = Low + High;
+        const string LowThenAstral = Low + Astral;
+        string[] byCodePoint = [Low, LowThenHigh, LowThenAstral, High, Astral];
+        string[] byUtf16Unit = [Low, LowThenAstral, LowThenHigh, Astral, High];
+        var expected = TestProvider.IsSqlServer ? byUtf16Unit : byCodePoint;
+        foreach (var title in byCodePoint.AsEnumerable().Reverse())
+        {
+            Add(title);
+        }
+
+        void ShouldBeInOrder(string[] actual, IEnumerable<string> wanted, string what) =>
+            Points(actual).ShouldBe(Points(wanted), $"{TestProvider.Name} gave {what} as {Points(actual)}, by code point {Points(byCodePoint)}, by UTF-16 unit {Points(byUtf16Unit)}");
+
+        ShouldBeInOrder(Titles(await _database.RunAsync("sort=title&locale=en")), expected, "sort=title");
+        ShouldBeInOrder(Titles(await _database.RunAsync("sort=-title&locale=en")), expected.AsEnumerable().Reverse(), "sort=-title");
+        ShouldBeInOrder(await AllByCursor("sort=title"), expected, "the cursor pages of sort=title");
+        ShouldBeInOrder(await AllByCursor("sort=-title"), expected.AsEnumerable().Reverse(), "the cursor pages of sort=-title");
+
+        // Text has no lt or gt filter; a cursor that ends on U+FF21 asks for what is greater, or less in a descending sort.
+        ShouldBeInOrder(await AfterAsync("sort=title", expected, High), [.. expected.SkipWhile(title => title != High).Skip(1)], "the titles after U+FF21 by sort=title");
+        ShouldBeInOrder(await AfterAsync("sort=-title", [.. expected.AsEnumerable().Reverse()], High), [.. expected.TakeWhile(title => title != High).Reverse()], "the titles after U+FF21 by sort=-title");
+    }
+
+    // The entries after one, from the cursor of a page that ends on it.
+    private async Task<string[]> AfterAsync(string sort, string[] order, string title)
+    {
+        var page = await _database.RunAsync($"{sort}&limit={Array.IndexOf(order, title) + 1}&locale=en");
+        Titles(page)[^1].ShouldBe(title);
+        return page.NextCursor is null ? [] : Titles(await _database.RunAsync($"{sort}&limit=100&locale=en&cursor={page.NextCursor}"));
+    }
+
+    private static string Points(IEnumerable<string> titles) =>
+        string.Join(" | ", titles.Select(title => string.Join(' ', title.EnumerateRunes().Select(rune => $"U+{rune.Value:X4}"))));
 
     [Fact]
     public async Task EqualKeysKeepAStableOrderThroughTheDocumentId()
