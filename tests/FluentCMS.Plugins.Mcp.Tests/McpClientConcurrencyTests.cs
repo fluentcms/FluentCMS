@@ -2,6 +2,7 @@ using System.Net;
 using FluentCMS.Agents;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Core.Storage;
 using FluentCMS.Plugins.Sample;
 using FluentCMS.Testing;
 using Microsoft.Data.Sqlite;
@@ -9,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.Mcp.Tests.McpClientTesting;
@@ -418,7 +420,9 @@ public sealed class McpClientConcurrencyTests(McpClientHookFixture fixture) : IC
         using var errorPage = await agent.Http.GetAsync(new Uri("/account/error?error=temporarily_unavailable", UriKind.Relative), Token);
         refused.Error.ShouldBe("temporarily_unavailable");
         (await errorPage.Content.ReadAsStringAsync(Token)).ShouldContain("The server is busy, so nothing was changed.");
-        (await StateAsync(host, await IdOfAsync(admin, asked))).UsedAt.ShouldBeNull();
+        var askedId = await IdOfAsync(admin, asked);
+        (await StateAsync(host, askedId)).UsedAt.ShouldBeNull();
+        (await ConsentStatusesAsync(host, user.Id, askedId)).ShouldBeEmpty();
         using (busy)
         {
             busy.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable, await busy.Content.ReadAsStringAsync(Token));
@@ -426,14 +430,17 @@ public sealed class McpClientConcurrencyTests(McpClientHookFixture fixture) : IC
         }
 
         (await StateAsync(host, keptId)).UsedBy.ShouldBe(user.Id);
+        (await ConsentStatusesAsync(host, user.Id, keptId)).ShouldBe([OpenIddictConstants.Statuses.Valid]);
         using var later = await EndConsentAsync(asUser, keptId);
         later.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
-    // A token issued under the consent while it is deleted makes its foreign key refuse the delete. Nothing is ended, the
-    // answer is the change that crossed another, and the call again ends the consent.
+    // A token issued under the consent while it is deleted makes its foreign key refuse the delete, here of the second of
+    // the user's two consents to the client. The delete rolls back whole, the first consent included, so the place is
+    // still taken; but the consents were revoked with their tokens before it, so the client keeps none that works, and the
+    // call again frees the place.
     [Fact]
-    public async Task AnEndOfAConsentThatCrossesANewTokenIsAConflictAndWorksAgain()
+    public async Task AnEndOfAConsentThatCrossesANewTokenIsAConflictThatLeavesNoTokenWorking()
     {
         var host = fixture.Host;
         await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
@@ -442,19 +449,73 @@ public sealed class McpClientConcurrencyTests(McpClientHookFixture fixture) : IC
         var user = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
         var clientId = await agent.RegisteredAsync();
         var tokens = await agent.TokensAsync(clientId, user);
+        (await GiveConsentAsync(host, user.Id, clientId)).ShouldBe(ConsentGrant.Granted);
         var id = await IdOfAsync(admin, clientId);
         using var asUser = await host.AsUserAsync(user);
 
-        fixture.Hooks.FailNextAuthorizationDelete();
+        fixture.Hooks.FailNextAuthorizationDelete(passed: 1);
         using var crossed = await EndConsentAsync(asUser, id);
+        var left = await ConsentStatusesAsync(host, user.Id, id);
         using var http = agent.Bearer(tokens["access_token"]!.GetValue<string>());
-        using var stillWorking = await PostAsync(http);
+        using var used = await PostAsync(http);
+        using var refreshed = await agent.RefreshAsync(clientId, tokens["refresh_token"]!.GetValue<string>());
+        IReadOnlyList<ConsentPlace> places;
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            places = await scope.ServiceProvider.GetRequiredService<ClientConsents>().PlacesAsync(user.Id, Token);
+        }
+
         using var again = await EndConsentAsync(asUser, id);
 
         crossed.StatusCode.ShouldBe(HttpStatusCode.Conflict, await crossed.Content.ReadAsStringAsync(Token));
         (await CodeAsync(crossed)).ShouldBe("FCMS1609");
-        stillWorking.StatusCode.ShouldBe(HttpStatusCode.OK);
-        again.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        left.ShouldBe([OpenIddictConstants.Statuses.Revoked, OpenIddictConstants.Statuses.Revoked]);
+        used.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        refreshed.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await JsonAsync(refreshed))["error"]!.GetValue<string>().ShouldBe("invalid_grant");
+        places.ShouldHaveSingleItem().Valid.ShouldBeFalse();
+        again.StatusCode.ShouldBe(HttpStatusCode.NoContent, await again.Content.ReadAsStringAsync(Token));
+        (await ConsentStatusesAsync(host, user.Id, id)).ShouldBeEmpty();
+    }
+
+    // The end revokes the consent and commits before it deletes it, so a client that refreshes between the two gets no
+    // token, and a token that a refresh which passed its check before the revoke inserts then goes with the consent: the
+    // end frees the place, and the client keeps nothing.
+    [Fact]
+    public async Task AClientThatRefreshesBetweenTheRevokeAndTheDeleteOfItsConsentKeepsNothing()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, "10.5.0.15");
+        using var admin = await KeyAsync(host);
+        var user = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var clientId = await agent.RegisteredAsync();
+        var tokens = await agent.TokensAsync(clientId, user);
+        var id = await IdOfAsync(admin, clientId);
+        using var asUser = await host.AsUserAsync(user);
+
+        HttpStatusCode? refreshed = null;
+        string? refusal = null;
+        string? inserted = null;
+        fixture.Hooks.AfterNextSessionsEnded(async () =>
+        {
+            using var refresh = await agent.RefreshAsync(clientId, tokens["refresh_token"]!.GetValue<string>());
+            refreshed = refresh.StatusCode;
+            refusal = (await JsonAsync(refresh))["error"]?.GetValue<string>();
+            inserted = await IssueUnderConsentAsync(host, user.Id, id);
+        });
+        using var ended = await EndConsentAsync(asUser, id);
+        using var http = agent.Bearer(tokens["access_token"]!.GetValue<string>());
+        using var used = await PostAsync(http);
+
+        ended.StatusCode.ShouldBe(HttpStatusCode.NoContent, await ended.Content.ReadAsStringAsync(Token));
+        refreshed.ShouldBe(HttpStatusCode.BadRequest);
+        refusal.ShouldBe("invalid_grant");
+        used.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        await using var scope = host.Services.CreateAsyncScope();
+        (await scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>().FindByIdAsync(inserted.ShouldNotBeNull(), Token)).ShouldBeNull();
+        (await ConsentStatusesAsync(host, user.Id, id)).ShouldBeEmpty();
+        (await scope.ServiceProvider.GetRequiredService<ClientConsents>().PlacesAsync(user.Id, Token)).ShouldBeEmpty();
     }
 
     // The cleanup takes its clients in the order of their ids, and one whose delete fails for another reason than a race
@@ -488,5 +549,42 @@ public sealed class McpClientConcurrencyTests(McpClientHookFixture fixture) : IC
     {
         await using var scope = host.Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<ClientConsents>().GrantAsync(user, clientId, ["openid", "mcp"], Token);
+    }
+
+    // The statuses of the user's authorizations of the client.
+    private static async Task<IReadOnlyList<string?>> ConsentStatusesAsync(FluentCmsTestHost host, Guid user, Guid application)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var subject = user.ToString("D");
+        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().AsNoTracking()
+            .Where(authorization => authorization.Application != null && authorization.Application.Id == application && authorization.Subject == subject)
+            .Select(authorization => authorization.Status)
+            .ToListAsync(Token);
+    }
+
+    // A refresh token under the user's consent to the client, as a refresh that passed its check before the consent was
+    // revoked inserts it after.
+    private static async Task<string> IssueUnderConsentAsync(FluentCmsTestHost host, Guid user, Guid application)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var subject = user.ToString("D");
+        var consent = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().AsNoTracking()
+            .Where(authorization => authorization.Application != null && authorization.Application.Id == application && authorization.Subject == subject)
+            .Select(authorization => authorization.Id)
+            .SingleAsync(Token);
+        var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>();
+        var token = await manager.CreateAsync(
+            new OpenIddictTokenDescriptor
+            {
+                ApplicationId = application.ToString("D"),
+                AuthorizationId = consent.ToString("D"),
+                CreationDate = host.Time.GetUtcNow(),
+                ExpirationDate = host.Time.GetUtcNow().AddDays(14),
+                Status = OpenIddictConstants.Statuses.Valid,
+                Subject = subject,
+                Type = OpenIddictConstants.TokenTypeHints.RefreshToken,
+            },
+            Token);
+        return await manager.GetIdAsync(token, Token) ?? "";
     }
 }
