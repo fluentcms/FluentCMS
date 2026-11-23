@@ -476,6 +476,20 @@ public sealed class McpClientRegistrationTests(McpClientFixture fixture) : IClas
         invalid.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
     }
 
+    // The area is registered as read from the instance defaults only, so the settings menu sends it to its defaults.
+    [Fact]
+    public async Task TheListOfSettingsAreasSaysTheAreaIsReadFromTheInstanceDefaultsOnly()
+    {
+        using var admin = await KeyAsync(fixture.Host);
+
+        using var response = await admin.GetAsync(new Uri("/api/management/v1/settings", UriKind.Relative), Token);
+
+        var body = await response.Content.ReadAsStringAsync(Token);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, body);
+        var mcp = JsonNode.Parse(body)!["items"]!.AsArray().Single(item => item!["area"]!.GetValue<string>() == "mcp")!;
+        (mcp["plugin"]!.GetValue<string>(), mcp["instanceOnly"]!.GetValue<bool>()).ShouldBe(("mcp", true));
+    }
+
     // Open without a role to give is not open: a client that would get the user's whole reach waits instead.
     [Fact]
     public async Task WithOpenAndNoUsableDefaultRoleARegistrationWaitsForApproval()

@@ -24,6 +24,7 @@ internal sealed class SettingsDescriptor
         Type = type;
         Permission = CorePermissions.Settings(area);
         Listed = type.GetCustomAttribute<UnlistedSettingsAttribute>(inherit: false) is null;
+        InstanceOnly = type.GetCustomAttribute<SettingsAttribute>(inherit: false)?.InstanceOnly ?? false;
 
         var properties = SettingsJson.Strict.GetTypeInfo(type).Properties.Where(property => property.Get is not null && property.Set is not null).ToList();
         KnownKeys = properties.Select(property => property.Name).ToFrozenSet(StringComparer.Ordinal);
@@ -50,6 +51,9 @@ internal sealed class SettingsDescriptor
 
     // Whether the list of areas shows it.
     public bool Listed { get; }
+
+    // Whether it is read from the instance defaults only, as [Settings(InstanceOnly = true)] registers it.
+    public bool InstanceOnly { get; }
 
     // The names of the keys of the document, as they are in JSON.
     public IReadOnlySet<string> KnownKeys { get; }

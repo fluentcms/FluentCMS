@@ -627,10 +627,12 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     {
         var list = Response(Paths[$"{Management}/settings"]!["get"]!, "200");
         var area = Resolve(list["properties"]!["items"]!["items"]!);
-        area["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["area", "plugin", "site", "defaults"]);
+        area["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["area", "plugin", "site", "defaults", "instanceOnly"]);
         area["properties"]!["plugin"]!["description"]!.GetValue<string>().ShouldContain("null for an area of core");
         area["properties"]!["site"]!["description"]!.GetValue<string>().ShouldContain("/settings/{area}");
         area["properties"]!["defaults"]!["description"]!.GetValue<string>().ShouldContain("/settings/{area}/defaults");
+        area["properties"]!["instanceOnly"]!["type"]!.GetValue<string>().ShouldBe("boolean");
+        area["properties"]!["instanceOnly"]!["description"]!.GetValue<string>().ShouldContain("instance defaults only");
 
         foreach (var path in new[] { $"{Management}/settings/{{area}}", $"{Management}/settings/{{area}}/defaults" })
         {
@@ -638,6 +640,28 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
             reset["operationId"]!.GetValue<string>().ShouldStartWith("deleteSettingsByArea");
             reset["responses"]!["204"].ShouldNotBeNull(path);
             reset["requestBody"].ShouldBeNull(path);
+        }
+    }
+
+    [Fact]
+    public void EveryAnswerOfAKeySaysTheLongestOverlapOfARotation()
+    {
+        var list = Response(Paths[$"{Management}/api-keys"]!["get"]!, "200");
+        JsonNode[] keys =
+        [
+            Resolve(list["properties"]!["items"]!["items"]!),
+            Response(Paths[$"{Management}/api-keys/{{id}}"]!["get"]!, "200"),
+            Response(Paths[$"{Management}/api-keys"]!["post"]!, "201"),
+            Response(Paths[$"{Management}/api-keys/{{id}}/rotate"]!["post"]!, "200"),
+            Response(Paths[$"{Management}/api-keys/{{id}}/expire"]!["post"]!, "200"),
+        ];
+
+        foreach (var key in keys)
+        {
+            var longest = key["properties"]!["maxOverlapSeconds"]!;
+            (longest["type"]!.GetValue<string>(), longest["format"]!.GetValue<string>()).ShouldBe(("integer", "int32"));
+            longest["description"]!.GetValue<string>().ShouldContain("RotationOverlap");
+            key["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldContain("maxOverlapSeconds");
         }
     }
 

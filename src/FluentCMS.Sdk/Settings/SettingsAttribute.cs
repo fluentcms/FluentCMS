@@ -11,4 +11,10 @@ public sealed class SettingsAttribute(string area) : Attribute
 {
     /// <summary>The name of the area. It is the key of the stored row and the middle of the permission.</summary>
     public string Area { get; } = area;
+
+    /// <summary>
+    /// Whether the area is read from the instance defaults only, with <see cref="ISettings{T}.GetDefaultAsync"/>, so that a
+    /// site's own values change nothing. <c>GET /settings</c> of the Management API says so as <c>instanceOnly</c>.
+    /// </summary>
+    public bool InstanceOnly { get; set; }
 }

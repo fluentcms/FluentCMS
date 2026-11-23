@@ -210,7 +210,7 @@ A key can be limited to IP addresses and CIDR ranges with `allowedAddresses`, on
 
 | `FluentCms:ApiKeys:` | Default | Meaning |
 | --- | --- | --- |
-| `RotationOverlap` | `1.00:00:00` | How long the secret a rotation replaces is still accepted beside the new one, at most 30 days. `00:00:00` ends it at the rotation. |
+| `RotationOverlap` | `1.00:00:00` | How long the secret a rotation replaces is still accepted beside the new one, at most 30 days. `00:00:00` ends it at the rotation. A rotation may ask for a shorter overlap, and the answers of `/api-keys` give this one as `maxOverlapSeconds`. |
 
 ### Preview tokens
 
