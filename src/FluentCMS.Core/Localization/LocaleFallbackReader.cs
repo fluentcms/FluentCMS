@@ -170,6 +170,8 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
     }
 
     // The filter names the ids, and counts against MaxFilterNodes, so a long list is read in batches that stay under it.
+    // The first read chose the ids, its search included, so the index is not asked again: what the entries hold in another
+    // locale need not match (#3469). The engine still holds this locale's grants, row rule, site, state and trash.
     private async Task<IReadOnlyList<ContentDocument>> ReadAsync(string typeName, ContentQuery query, string locale, IReadOnlyList<Guid> ids, List<string> select, PopulateBudget budget, CancellationToken cancellationToken)
     {
         var batchSize = Math.Max(1, Math.Min(options.MaxPageSize, options.MaxFilterNodes - 1));
@@ -183,6 +185,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
             var other = query with
             {
                 Filter = filter,
+                Search = null,
                 Sort = [],
                 Page = new PageRequest { Size = batch.Length, WithTotal = false },
                 Cursor = null,

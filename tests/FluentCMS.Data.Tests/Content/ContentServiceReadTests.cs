@@ -1,12 +1,14 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Storage;
 using FluentCMS.Data.Tests.Authorization;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Providers;
 using FluentCMS.Schema;
+using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -240,9 +242,12 @@ public sealed class ContentServiceReadTests : IDisposable
         ((ContentDocument)page.Items[1]["locales"]!).Keys.ShouldBe(["en"]);
     }
 
+    // Finds the ids in every locale, or in Locale alone when a test sets it, as text that holds the word there only.
     private sealed class Hits
     {
         public List<Guid> Ids { get; } = [];
+
+        public string? Locale { get; set; }
 
         public List<SearchRequest> Requests { get; } = [];
     }
@@ -254,8 +259,132 @@ public sealed class ContentServiceReadTests : IDisposable
         public Task<IReadOnlyList<Guid>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default)
         {
             hits.Requests.Add(request);
-            return Task.FromResult<IReadOnlyList<Guid>>(hits.Ids);
+            return Task.FromResult<IReadOnlyList<Guid>>(hits.Locale is null || hits.Locale == request.Locale ? hits.Ids : []);
         }
+    }
+
+    private static ServiceDatabase Searching(Hits hits, Action<FluentCmsBuilder>? configure = null) => new(cms =>
+    {
+        cms.Services.AddSingleton(hits);
+        cms.Providers.Use<ISearchIndex, FakeSearch>();
+        configure?.Invoke(cms);
+    });
+
+    // #3469: the search chose the entries in French; what English fills in for them does not have to match.
+    [Fact]
+    public async Task AFallbackReadOfASearchedListFillsFieldsFromALocaleWhoseTextDoesNotMatch()
+    {
+        var hits = new Hits { Locale = "fr" };
+        using var database = Searching(hits);
+        var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Hello", ["subtitle"] = "Sub en" }));
+        await database.UpdateAsync(Editor, id, Titled("Fusion"), 0, locale: "fr");
+        hits.Ids.Add(id);
+
+        var listed = (await database.QueryAsync(Editor, new ContentQuery { Status = QueryStatus.Draft, Locale = "fr", Fallback = LocaleFallback.Chain, Search = "fusion" })).Items.ShouldHaveSingleItem();
+
+        listed["title"].ShouldBe("Fusion");
+        listed["subtitle"].ShouldBe("Sub en");
+        ((ContentDocument)listed[LocaleFallbackReader.FallbacksKey]!)["subtitle"].ShouldBe("en");
+        hits.Requests.ShouldHaveSingleItem().Locale.ShouldBe("fr");
+    }
+
+    // #3469: the search chose the entries in English, the first locale; every locale of each is in its map.
+    [Fact]
+    public async Task ALocaleAllReadOfASearchedListHoldsEveryLocaleOfEachEntry()
+    {
+        var hits = new Hits { Locale = "en" };
+        using var database = Searching(hits);
+        var id = IdOf(await database.CreateAsync(Editor, Titled("Merger")));
+        await database.UpdateAsync(Editor, id, Titled("Fusion"), 0, locale: "fr");
+        hits.Ids.Add(id);
+
+        var listed = (await database.QueryAsync(Editor, new ContentQuery { Status = QueryStatus.Draft, Locale = "all", Search = "merger" })).Items.ShouldHaveSingleItem();
+
+        var map = (ContentDocument)listed["locales"]!;
+        map.Keys.ShouldBe(["en", "fr"]);
+        ((ContentDocument)map["fr"]!)["title"].ShouldBe("Fusion");
+        hits.Requests.ShouldHaveSingleItem().Locale.ShouldBe("en");
+    }
+
+    // The reads of the other locales name the ids, one at a time under this cap, and ask the index nothing: the order, the
+    // total, the cursor and searchTruncated are those of the one search, as they are without a fallback.
+    [Fact]
+    public async Task ASearchedListAsksTheIndexOnceWhateverLocalesAndBatchesItReads()
+    {
+        var hits = new Hits();
+        using var database = Searching(hits, cms => cms.Services.AddSingleton(new ContentQueryOptions { MaxFilterNodes = 2 }));
+        foreach (var title in new[] { "C", "A", "B" })
+        {
+            var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = $"{title} english", ["subtitle"] = $"Sub {title}" }));
+            await database.UpdateAsync(Editor, id, Titled($"{title} quebec"), 0, locale: "fr-CA");
+            hits.Ids.Add(id);
+        }
+
+        var searched = new ContentQuery { Status = QueryStatus.Draft, Search = "word", Sort = [new SortField("title")], Page = new PageRequest { Size = 2 } };
+        foreach (var query in new[] { searched with { Locale = "fr-CA" }, searched with { Locale = "all" } })
+        {
+            hits.Requests.Clear();
+            var page = await database.QueryAsync(Editor, query with { Fallback = LocaleFallback.Chain });
+            hits.Requests.Count.ShouldBe(1);
+
+            var alone = await database.QueryAsync(Editor, query with { Fallback = LocaleFallback.None });
+            page.Items.Select(item => item["id"]).ShouldBe(alone.Items.Select(item => item["id"]));
+            page.Items.Count.ShouldBe(2);
+            page.Total.ShouldBe(3);
+            page.NextCursor.ShouldNotBeNull();
+            page.NextCursor.ShouldBe(alone.NextCursor);
+            page.SearchTruncated.ShouldBeFalse();
+        }
+
+        var french = (await database.QueryAsync(Editor, searched with { Locale = "fr-CA" })).Items;
+        french.Select(item => item["subtitle"]).ShouldBe(["Sub A", "Sub B"]);
+        var all = (await database.QueryAsync(Editor, searched with { Locale = "all" })).Items;
+        all.Select(item => string.Join(',', ((ContentDocument)item["locales"]!).Keys)).ShouldBe(["en,fr-CA", "en,fr-CA"]);
+    }
+
+    // The index finds every entry in every locale here, so what the other locales hold is what the caller may read there:
+    // the row rule of French, the state read and the site, with what is in the trash left out.
+    [Fact]
+    public async Task TheOtherLocalesOfASearchedListShowWhatTheCallerMayReadThereAlone()
+    {
+        var hits = new Hits();
+        using var database = Searching(hits, cms => cms.Authorization.AddRowRule<Regional>("region", ctx => article => article.Region == ctx.Principal.Claim("region")));
+        async Task<Guid> ArticleAsync(string region, SiteId? site = null)
+        {
+            var title = $"{region} {hits.Ids.Count}";
+            var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = $"{title} english", ["subtitle"] = $"Sub {region}", ["region"] = region }, site: site));
+            await database.UpdateAsync(Editor, id, new() { ["title"] = $"{title} francais", ["subtitle"] = $"Sous-titre {region}", ["region"] = region }, 0, locale: "fr", site: site);
+            await database.UpdateAsync(Editor, id, new() { ["title"] = $"{title} quebec", ["region"] = region }, 0, locale: "fr-CA", site: site);
+            hits.Ids.Add(id);
+            return id;
+        }
+
+        var abroad = await ArticleAsync("us");
+        var local = await ArticleAsync("eu");
+        await ArticleAsync("eu", SiteB);
+        await database.DeleteAsync(Editor, await ArticleAsync("eu"));
+        var role = database.Database.AddRoleForTest(
+            "Regional",
+            ("content.article.read", new PermissionConstraints { Locales = ["en", "fr-CA"] }),
+            ("content.article.read", new PermissionConstraints { Locales = ["fr"], RowRule = "region" }));
+        var regional = AuthorizationDatabase.User([role], [TokenScopes.Management], claims: new() { ["region"] = "eu" });
+        var searched = new ContentQuery { Status = QueryStatus.Draft, Search = "word", Sort = [new SortField("createdAt")] };
+
+        var french = (await database.QueryAsync(regional, searched with { Locale = "fr-CA", Fallback = LocaleFallback.Chain })).Items;
+        french.Select(item => item["id"]).ShouldBe([abroad, local]);
+        french.Select(item => item["subtitle"]).ShouldBe(["Sub us", "Sous-titre eu"]);
+
+        var all = (await database.QueryAsync(regional, searched with { Locale = "all" })).Items;
+        all.Select(item => item["id"]).ShouldBe([abroad, local]);
+        all.Select(item => string.Join(',', ((ContentDocument)item["locales"]!).Keys)).ShouldBe(["en,fr-CA", "en,fr,fr-CA"]);
+
+        // Published: the French draft of the subtitle is not served, and French has no row to list.
+        await database.PublishAsync(Editor, local, locale: "en");
+        await database.PublishAsync(Editor, local, locale: "fr-CA");
+        var published = new ContentQuery { Search = "word" };
+
+        (await database.QueryAsync(regional, published with { Locale = "fr-CA", Fallback = LocaleFallback.Chain })).Items.ShouldHaveSingleItem()["subtitle"].ShouldBe("Sub eu");
+        ((ContentDocument)(await database.QueryAsync(regional, published with { Locale = "all" })).Items.ShouldHaveSingleItem()["locales"]!).Keys.ShouldBe(["en", "fr-CA"]);
     }
 
     // The index knows no row rule. A hit on an English row the rule hides finds nothing, though the entry's French row could
