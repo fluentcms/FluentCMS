@@ -1,3 +1,4 @@
+using System.Text;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Idempotency;
@@ -141,11 +142,63 @@ public sealed class IdempotencyStoreTests : IDisposable
         _clock.Advance(TimeSpan.FromMinutes(5));
         var second = (await BeginAsync()).Claim!;
 
-        (await Store.RenewAsync(first, Token)).ShouldBeFalse();
-        (await Store.RenewAsync(second, Token)).ShouldBeTrue();
+        (await Store.RenewAsync(first, Token)).ShouldBe(IdempotencyRenewal.Lost);
+        (await Store.RenewAsync(second, Token)).ShouldBe(IdempotencyRenewal.Renewed);
 
         await Store.CompleteAsync(second, Created);
-        (await Store.RenewAsync(second, Token)).ShouldBeFalse();
+        (await Store.RenewAsync(second, Token)).ShouldBe(IdempotencyRenewal.Lost);
+    }
+
+    // #3523: a key whose window ends while its request still holds the lease, as with a window shorter than the request,
+    // is neither claimed afresh by a repeat nor removed by the retention job, so its renewals go on finding it.
+    [Fact]
+    public async Task AKeyPastItsWindowIsKeptWhileItsRequestHoldsTheLease()
+    {
+        var claim = (await BeginAsync()).Claim!;
+        _clock.Advance(TimeSpan.FromHours(24) - TimeSpan.FromMinutes(1));
+        (await Store.RenewAsync(claim, Token)).ShouldBe(IdempotencyRenewal.Renewed);
+        _clock.Advance(TimeSpan.FromMinutes(2));
+
+        (await RefusedAsync(() => BeginAsync())).ShouldBe(IdempotencyErrorCodes.InProgress);
+        (await RefusedAsync(() => BeginAsync(hash: "hash-b"))).ShouldBe(IdempotencyErrorCodes.InProgress);
+        await RetainAsync();
+
+        Rows().ShouldHaveSingleItem().Owner.ShouldBe(claim.Owner);
+        (await Store.RenewAsync(claim, Token)).ShouldBe(IdempotencyRenewal.Renewed);
+
+        // Once the request answered, the key past its window is claimed afresh.
+        await Store.CompleteAsync(claim, Created);
+        (await BeginAsync(hash: "hash-b")).Claim.ShouldNotBeNull().Id.ShouldNotBe(claim.Id);
+    }
+
+    // #3523: a key that expired and was removed, after its lease ran out, is not one a repeat took: the lease is not lost,
+    // and it is lost only once a repeat claims the key afresh.
+    [Fact]
+    public async Task ALeaseWhoseKeyExpiredAndWasRemovedIsNotLostUntilARepeatClaimsTheKey()
+    {
+        var claim = (await BeginAsync()).Claim!;
+        var others = _clock.Timers;
+        var lease = Store.Hold(claim);
+        try
+        {
+            await RemoveRowsAsync();
+            await TurnSetAsync(others);
+            _clock.Advance(TimeSpan.FromMinutes(5) / 3);
+            await TurnSetAsync(others);
+            lease.Lost.IsCancellationRequested.ShouldBeFalse();
+
+            (await BeginAsync()).Claim.ShouldNotBeNull();
+            var lost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var heard = lease.Lost.Register(() => lost.TrySetResult());
+            _clock.Advance(TimeSpan.FromMinutes(5) / 3);
+            await lost.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        }
+        finally
+        {
+            await lease.DisposeAsync();
+        }
+
+        lease.Expired.ShouldBeTrue();
     }
 
     // A claim a repeat took over, after renewals failed for a whole lease, is lost at the next turn, which cancels the
@@ -180,13 +233,7 @@ public sealed class IdempotencyStoreTests : IDisposable
     public async Task ARequestWhoseClaimARepeatTookOverIsCancelledAndAnswersInProgress()
     {
         using var scope = _database.Database.NewScope();
-        var http = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
-        http.Request.Method = HttpMethods.Post;
-        http.Request.Path = "/api/management/v1/content/article";
-        http.Request.ContentType = "application/json";
-        http.Request.Body = new MemoryStream("{}"u8.ToArray());
-        http.Request.Headers[IdempotencyStore.Header] = "key-lost";
-        http.Features.Set(new ApiRequest(new OperationContext(Alice, Origin.Api, SiteA, "en", null, "c", _clock.GetUtcNow()), "en"));
+        var http = Request(scope, "key-lost");
         var others = _clock.Timers;
         var working = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -198,16 +245,116 @@ public sealed class IdempotencyStoreTests : IDisposable
         });
         await working.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
 
-        using (var other = _database.Database.NewScope())
-        {
-            (await other.ServiceProvider.GetRequiredService<SystemDbContext>().Set<IdempotencyRow>()
-                .ExecuteUpdateAsync(set => set.SetProperty(row => row.Owner, Guid.NewGuid()), Token)).ShouldBe(1);
-        }
-
+        await TakeOverAsync();
         await TurnSetAsync(others);
         _clock.Advance(TimeSpan.FromMinutes(5) / 3);
 
-        (await RefusedAsync(() => running.WaitAsync(TimeSpan.FromSeconds(30), Token))).ShouldBe(IdempotencyErrorCodes.InProgress);
+        var refused = (await Should.ThrowAsync<ValidationException>(() => running.WaitAsync(TimeSpan.FromSeconds(30), Token))).Errors.ShouldHaveSingleItem();
+        refused.Code.ShouldBe(IdempotencyErrorCodes.InProgress);
+        refused.Message.ShouldContain("rolled back");
+    }
+
+    // #3523: a request whose write committed before a repeat took its key, as when the key is lost while the content
+    // service reads the entry back, which no cancellation stops, answers what it wrote rather than that it rolled back.
+    // That answer is not kept, since the key is the repeat's.
+    [Fact]
+    public async Task ARequestWhoseKeyIsTakenOverAfterItsWriteCommittedAnswersTheWrite()
+    {
+        using var scope = _database.Database.NewScope();
+        var http = Request(scope, "key-committed");
+        var others = _clock.Timers;
+        var committed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var running = IdempotentRequests.RunAsync(http, async () =>
+        {
+            using var heard = http.RequestAborted.Register(() => stopped.TrySetResult());
+            committed.TrySetResult();
+            await stopped.Task;
+            return Results.Json(new { id = "1" }, statusCode: StatusCodes.Status201Created);
+        });
+        await committed.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+
+        await TakeOverAsync();
+        await TurnSetAsync(others);
+        _clock.Advance(TimeSpan.FromMinutes(5) / 3);
+
+        await AnswersCreatedAsync(http, await running.WaitAsync(TimeSpan.FromSeconds(30), Token));
+        Rows().ShouldHaveSingleItem().ResponseStatus.ShouldBeNull();
+    }
+
+    // #3523: a key that passed its window and was removed while its request ran, its lease out, is not a key a repeat took:
+    // the request goes on, answers what it wrote, and stores nothing under the key.
+    [Fact]
+    public async Task ARequestWhoseKeyExpiredAndWasRemovedUnderItGoesOnAndKeepsNothing()
+    {
+        using var scope = _database.Database.NewScope();
+        var http = Request(scope, "key-expired");
+        var others = _clock.Timers;
+        var working = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var running = IdempotentRequests.RunAsync(http, async () =>
+        {
+            working.TrySetResult();
+            await release.Task.WaitAsync(http.RequestAborted);
+            return Results.Json(new { id = "1" }, statusCode: StatusCodes.Status201Created);
+        });
+        await working.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+
+        await RemoveRowsAsync();
+        await TurnSetAsync(others);
+        _clock.Advance(TimeSpan.FromMinutes(5) / 3);
+        await TurnSetAsync(others);
+        release.TrySetResult();
+
+        await AnswersCreatedAsync(http, await running.WaitAsync(TimeSpan.FromSeconds(30), Token));
+        Rows().ShouldBeEmpty();
+    }
+
+    private DefaultHttpContext Request(IServiceScope scope, string key)
+    {
+        var http = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        http.Request.Method = HttpMethods.Post;
+        http.Request.Path = "/api/management/v1/content/article";
+        http.Request.ContentType = "application/json";
+        http.Request.Body = new MemoryStream("{}"u8.ToArray());
+        http.Request.Headers[IdempotencyStore.Header] = key;
+        http.Response.Body = new MemoryStream();
+        http.Features.Set(new ApiRequest(new OperationContext(Alice, Origin.Api, SiteA, "en", null, "c", _clock.GetUtcNow()), "en"));
+        return http;
+    }
+
+    private static async Task AnswersCreatedAsync(HttpContext http, IResult answer)
+    {
+        await answer.ExecuteAsync(http);
+        http.Response.StatusCode.ShouldBe(StatusCodes.Status201Created);
+        http.Response.Headers[IdempotentRequests.ReplayedHeader].ShouldBeEmpty();
+        Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray()).ShouldBe("""{"id":"1"}""");
+    }
+
+    // As a repeat that took the key over does, after the renewals failed for a whole lease.
+    private async Task TakeOverAsync()
+    {
+        using var scope = _database.Database.NewScope();
+        (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<IdempotencyRow>()
+            .ExecuteUpdateAsync(set => set.SetProperty(row => row.Owner, Guid.NewGuid()), Token)).ShouldBe(1);
+    }
+
+    // As the retention job or a repeat does once the key's window and lease have both run out.
+    private async Task RemoveRowsAsync()
+    {
+        using var scope = _database.Database.NewScope();
+        (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<IdempotencyRow>().ExecuteDeleteAsync(Token)).ShouldBe(1);
+    }
+
+    private async Task RetainAsync()
+    {
+        using var scope = _database.Database.NewScope();
+        var operation = new OperationContext(Principal.System, Origin.Job, SiteA, "en", null, "retention", _clock.GetUtcNow());
+        await scope.ServiceProvider.GetRequiredService<IdempotencyRetentionJob>().ExecuteAsync(
+            new IdempotencyRetentionPayload(),
+            new JobContext(Guid.CreateVersion7(), IdempotencyRetentionJob.Type, "default", 1, 3, operation, Token));
     }
 
     private Task TurnSetAsync(int others) => _clock.WhenTimersAsync(others + 1).WaitAsync(TimeSpan.FromSeconds(30), Token);
@@ -283,13 +430,7 @@ public sealed class IdempotencyStoreTests : IDisposable
         await BeginAsync("recent");
         _clock.Advance(TimeSpan.FromHours(1));
 
-        using (var scope = _database.Database.NewScope())
-        {
-            var operation = new OperationContext(Principal.System, Origin.Job, SiteA, "en", null, "retention", _clock.GetUtcNow());
-            await scope.ServiceProvider.GetRequiredService<IdempotencyRetentionJob>().ExecuteAsync(
-                new IdempotencyRetentionPayload(),
-                new JobContext(Guid.CreateVersion7(), IdempotencyRetentionJob.Type, "default", 1, 3, operation, Token));
-        }
+        await RetainAsync();
 
         Rows().ShouldHaveSingleItem().ExpiresAt.ShouldBe(Start.AddHours(47));
     }

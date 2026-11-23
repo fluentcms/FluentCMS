@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Data.Common;
 using FluentCMS.Content;
 using FluentCMS.Core.Content;
@@ -9,6 +10,7 @@ using FluentCMS.Hooks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Data.Tests.Content.ServiceDatabase;
@@ -25,9 +27,12 @@ public sealed class HookScopeTests : IDisposable
 
     private static readonly DateTimeOffset Start = new(2027, 3, 1, 8, 0, 0, TimeSpan.Zero);
 
+    private const string InsideTag = "the left hook's read";
+
     private readonly ManualTimeProvider _clock = new(Start);
     private readonly Script _script = new();
     private readonly CancellationTokenSource _caller = new();
+    private readonly HookLogs _logs = new();
     private readonly ServiceDatabase _database;
 
     public HookScopeTests() =>
@@ -35,11 +40,12 @@ public sealed class HookScopeTests : IDisposable
         {
             cms.Services.AddSingleton<TimeProvider>(_clock);
             cms.Services.AddSingleton(_script);
+            cms.Services.AddSingleton<ILoggerProvider>(_logs);
             cms.Services.AddScoped<IBeforeCreateHook<ContentDocument>, LeftHook>();
             cms.Services.AddScoped<IAfterCreateHook<ContentDocument>, NestingHook>();
             cms.Services.AddScoped<IAfterCreateHook<ContentDocument>, FollowingHook>();
             cms.Services.ConfigureDbContext<CmsDbContext>((services, options) =>
-                options.AddInterceptors(new MarksAsItSaves(_script, services.GetRequiredService<HookScopeGuard>())));
+                options.AddInterceptors(new MarksAsItSaves(_script, services.GetRequiredService<HookScopeGuard>()), new HeldInside(_script)));
         });
 
     public void Dispose()
@@ -168,6 +174,47 @@ public sealed class HookScopeTests : IDisposable
 
         _script.Failure.ShouldBeOfType<HookRejectedException>().Code.ShouldBe("FCMS2410");
         State().ShouldBe(before);
+    }
+
+    // #3542: a hook left by its cancelled caller is logged by name, as one that timed out is, each with its own event.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AHookThatWasLeftIsLoggedByName(bool callerCancels)
+    {
+        var creating = _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().CreateAsync("article", Titled("Left"), _caller.Token));
+        await LeaveAsync(callerCancels);
+        ShouldBeHowItWasLeft(await FailureOfAsync(() => creating.WaitAsync(Bound, Token)), callerCancels);
+
+        var logged = _logs.Of(callerCancels ? 9408 : 9406).ShouldHaveSingleItem();
+        logged.ShouldContain(typeof(LeftHook).FullName!);
+        logged.ShouldContain(nameof(HookKind.BeforeCreate));
+        _logs.Of(callerCancels ? 9406 : 9408).ShouldBeEmpty();
+    }
+
+    // #3542: the write's rollback and then the disposal of its scope run while the hook its cancelled caller left is inside
+    // a command on the same connection, its reader open. Both end, the write fails with the cancellation, nothing commits,
+    // and the hook's command ends once it goes on.
+    [Fact]
+    public async Task AWriteRollsBackAndItsScopeEndsWhileTheHookItLeftIsInsideACommand()
+    {
+        _script.Inside = services => services.GetRequiredService<CmsDbContext>().Documents.IgnoreQueryFilters().TagWith(InsideTag).CountAsync(Token);
+        var before = State();
+
+        var failure = await _database.AsAsync(Editor, async services =>
+        {
+            var creating = services.GetRequiredService<IContentService>().CreateAsync("article", Titled("Left"), _caller.Token);
+            await LeaveAsync(callerCancels: true);
+            return await FailureOfAsync(() => creating.WaitAsync(Bound, Token));
+        }).WaitAsync(Bound, Token);
+
+        failure.ShouldBeAssignableTo<OperationCanceledException>();
+        _script.Ended.Task.IsCompleted.ShouldBeFalse();
+        await ReleaseAsync();
+        State().ShouldBe(before);
+
+        // The database's writer and the rows' locks are free again.
+        await _database.CreateAsync(Editor, Titled("After")).WaitAsync(Bound, Token);
     }
 
     [Theory]
@@ -399,6 +446,8 @@ public sealed class HookScopeTests : IDisposable
 
         public Func<IServiceProvider, Task>? Late { get; set; }
 
+        public Func<IServiceProvider, Task>? Inside { get; set; }
+
         public Func<IServiceProvider, Task>? Nested { get; set; }
 
         public Exception? Failure { get; set; }
@@ -419,6 +468,14 @@ public sealed class HookScopeTests : IDisposable
             }
 
             script.BeforeWaiting?.Invoke(services);
+            if (script.Inside is { } inside)
+            {
+                // HeldInside enters and holds it in the command.
+                script.Failure = await FailureOfAsync(() => inside(services));
+                script.Ended.TrySetResult();
+                return;
+            }
+
             script.Entered.TrySetResult();
             await script.Release.Task;
             if (script.Late is { } late)
@@ -483,6 +540,43 @@ public sealed class HookScopeTests : IDisposable
             {
                 guard.MarkLeftRunning("the test's hook");
             }
+        }
+    }
+
+    // Holds the left hook's read once the database has run it, its reader open on the connection, until the test lets it go.
+    private sealed class HeldInside(Script script) : DbCommandInterceptor
+    {
+        public override async ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains(InsideTag, StringComparison.Ordinal))
+            {
+                script.Entered.TrySetResult();
+                await script.Release.Task;
+            }
+
+            return result;
+        }
+    }
+
+    // What the pipeline logs, by event id.
+    private sealed class HookLogs : ILoggerProvider, ILogger
+    {
+        private readonly ConcurrentQueue<(int Id, string Message)> _logged = new();
+
+        public List<string> Of(int id) => [.. _logged.Where(entry => entry.Id == id).Select(entry => entry.Message)];
+
+        public ILogger CreateLogger(string categoryName) => this;
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            _logged.Enqueue((eventId.Id, formatter(state, exception)));
+
+        public void Dispose()
+        {
         }
     }
 }
