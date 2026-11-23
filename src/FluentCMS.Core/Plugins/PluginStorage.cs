@@ -179,7 +179,7 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
         services.AddDbContext<PluginDbContext<TPlugin>>((container, options) =>
         {
             Configure(options, provider, contributors, assembly, history);
-            options.AddInterceptors(container.GetRequiredService<PluginTransactions>());
+            options.AddInterceptors(container.GetRequiredService<PluginTransactions>(), container.GetRequiredService<PluginSiteHold>());
             LeaseRenewalInterceptor.AddTo(options, container, provider);
         });
 

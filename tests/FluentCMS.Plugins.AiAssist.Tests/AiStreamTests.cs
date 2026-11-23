@@ -92,7 +92,7 @@ public sealed class AiStreamTests : IClassFixture<AiHost>
     [Fact]
     public async Task APieceThatCannotBeWrittenEndsTheCallAsCancelledWhateverTheWriteThrows()
     {
-        var site = Guid.CreateVersion7();
+        var site = await _ai.SiteAsync();
         await using var scope = _ai.Services.CreateAsyncScope();
         var service = scope.ServiceProvider.GetRequiredService<AiAssistService>();
         var call = new AiCall(
