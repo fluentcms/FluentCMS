@@ -499,10 +499,9 @@ internal sealed class McpClients(
     // counts what this left (#3441). A client that cannot count for the user is answered before the lock, so that a call
     // with any id keeps no consent waiting, and everything is read again under it.
     // The valid consents are revoked with their tokens and committed first, and only then deleted. A refresh that crosses
-    // the delete, by a token it inserts or the one it redeems, makes the delete roll back, and a status update in the same
-    // transaction would not keep its insert out on PostgreSQL; committed before, the revoke leaves such a token dead and
-    // lets no later refresh through, so the client cannot keep the consent by refreshing, and the next call frees the
-    // place (#3594).
+    // the delete with a token it inserts makes the delete roll back, and a status update in the same transaction would
+    // not keep that insert out on PostgreSQL; committed before, the revoke leaves such a token dead and lets no later
+    // refresh through, so the client cannot keep the consent by refreshing, and the next call frees the place (#3594).
     public async Task<McpClientChange> EndConsentAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
     {
         var subject = userId.ToString("D");
@@ -587,9 +586,9 @@ internal sealed class McpClients(
         }
         catch (Exception exception) when (exception is OpenIddictExceptions.ConcurrencyException || (exception is DbUpdateException && CrossedAGrant(exception)))
         {
-            // The client or a consent changed since it was read, or a token of the consent was issued or redeemed while
-            // it was deleted, which the foreign key or the token's concurrency check refuses. The delete rolled back
-            // whole, so the place is still taken, but what the revoke committed stays: the caller tries again.
+            // The client or a consent changed since it was read, or a token of the consent was issued while it was
+            // deleted, which the foreign key refuses. The delete rolled back whole, so the place is still taken, but what
+            // the revoke committed stays: the caller tries again.
             return new McpClientChange(McpClientChangeOutcome.ChangedMeanwhile, null);
         }
     }
