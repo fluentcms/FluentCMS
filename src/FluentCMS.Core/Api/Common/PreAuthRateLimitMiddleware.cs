@@ -10,6 +10,7 @@ internal enum PreAuthLimit
     None,
     Coarse,
     Health,
+    StaticFiles,
 }
 
 // Limits a client address on the FluentCMS routes before anything authenticates it. The rate limiter of the endpoints runs
@@ -18,7 +19,8 @@ internal enum PreAuthLimit
 // a plugin's included, is known by its metadata, and a path under a group of core gets the limit even when no endpoint
 // answers it, as none answers the token endpoint. /connect, /account and /api/members/v1 also get the strict auth limit,
 // which the endpoints of those groups then do not count a second time. /health counts in a partition of its own, so that probes
-// and API traffic from one address do not use up each other's allowance.
+// and API traffic from one address do not use up each other's allowance, and so do the endpoints a surface marks as serving
+// its static files, so that loading the admin's files does not use up the coarse allowance of an office behind one address.
 internal sealed class PreAuthRateLimiter : IDisposable
 {
     private static readonly PathString HealthPrefix = new(FluentCmsEndpointGroups.Prefixes.Single(entry => entry.Group == FluentCmsEndpointGroup.Health).Prefix);
@@ -36,29 +38,42 @@ internal sealed class PreAuthRateLimiter : IDisposable
     private readonly PreAuthRateLimitPolicy _coarsePolicy;
     private readonly HealthRateLimitPolicy _healthPolicy;
     private readonly AuthRateLimitPolicy _authPolicy;
+    private readonly StaticFilesRateLimitPolicy _staticFilesPolicy;
     private readonly PartitionedRateLimiter<HttpContext> _coarse;
     private readonly PartitionedRateLimiter<HttpContext> _health;
     private readonly PartitionedRateLimiter<HttpContext> _auth;
+    private readonly PartitionedRateLimiter<HttpContext> _staticFiles;
 
-    public PreAuthRateLimiter(PreAuthRateLimitPolicy coarse, HealthRateLimitPolicy health, AuthRateLimitPolicy auth)
+    public PreAuthRateLimiter(PreAuthRateLimitPolicy coarse, HealthRateLimitPolicy health, AuthRateLimitPolicy auth, StaticFilesRateLimitPolicy staticFiles)
     {
         _coarsePolicy = coarse;
         _healthPolicy = health;
         _authPolicy = auth;
+        _staticFilesPolicy = staticFiles;
         _coarse = PartitionedRateLimiter.Create<HttpContext, string>(coarse.GetPartition);
         _health = PartitionedRateLimiter.Create<HttpContext, string>(health.GetPartition);
         _auth = PartitionedRateLimiter.Create<HttpContext, string>(auth.GetPartition);
+        _staticFiles = PartitionedRateLimiter.Create<HttpContext, string>(staticFiles.GetPartition);
     }
 
     public static PreAuthLimit LimitOf(HttpContext context)
     {
         var endpoint = context.GetEndpoint();
+        var path = context.Request.Path;
         if (endpoint?.Metadata.GetMetadata<FluentCmsEndpointMetadata>() is not null)
         {
-            return FluentCmsSurfaceMetadata.IsHealth(endpoint) ? PreAuthLimit.Health : PreAuthLimit.Coarse;
+            if (FluentCmsSurfaceMetadata.IsHealth(endpoint))
+            {
+                return PreAuthLimit.Health;
+            }
+
+            // Only the endpoint routing chose tells a file, never the path or extension the caller sent; under a group of core,
+            // the APIs and the sign-in, the mark does not count.
+            return endpoint.Metadata.GetMetadata<FluentCmsStaticFileMetadata>() is not null && !Prefixes.Any(prefix => path.StartsWithSegments(prefix))
+                ? PreAuthLimit.StaticFiles
+                : PreAuthLimit.Coarse;
         }
 
-        var path = context.Request.Path;
         if (path.StartsWithSegments(HealthPrefix))
         {
             return PreAuthLimit.Health;
@@ -72,6 +87,11 @@ internal sealed class PreAuthRateLimiter : IDisposable
         if (limit == PreAuthLimit.Health)
         {
             return await TryAcquireAsync(context, _health, _healthPolicy);
+        }
+
+        if (limit == PreAuthLimit.StaticFiles)
+        {
+            return await TryAcquireAsync(context, _staticFiles, _staticFilesPolicy);
         }
 
         if (!await TryAcquireAsync(context, _coarse, _coarsePolicy))
@@ -98,6 +118,7 @@ internal sealed class PreAuthRateLimiter : IDisposable
         _coarse.Dispose();
         _health.Dispose();
         _auth.Dispose();
+        _staticFiles.Dispose();
     }
 
     private static async Task<bool> TryAcquireAsync(HttpContext context, PartitionedRateLimiter<HttpContext> limiter, FluentCmsRateLimitPolicy policy)

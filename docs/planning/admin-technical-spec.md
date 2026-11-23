@@ -361,7 +361,7 @@ Sign-in, refresh, sign-out and expiry with the draft kept are as in 2.4. The acc
 | `GET /me/two-factor`; `POST /me/two-factor/enrol`, `/verify`, `/recovery-codes`, `/disable` | two-factor, with the authenticator URI as a QR code drawn in the browser | exist |
 | `GET /me/logins`, `DELETE /me/logins/{provider}` | external logins | exist |
 | `/account/change-password` | the hosted page, opened in the same tab | exists |
-| `GET` and `PUT /me/preferences` | interface culture, time zone, formats (4.17) | [#3096] |
+| `GET`, `PUT` and `PATCH /me/preferences` | interface culture, time zone, formats (4.17); `PATCH` changes only the members it names, and an optional `If-Match` takes the read's `ETag` | [#3096], [#3450] |
 
 A key or a service account cannot sign in to the admin, which is a code-flow client. Called with one, `GET /me` answers 200 with `{ id, kind, name }` and `GET /me/sessions` an empty list; only the two-factor and logins routes answer 403.
 
@@ -660,7 +660,7 @@ Rows 3.18, 7.7, 7.9.
 | `GET /content/{type}?locale=all`, `GET /content/{type}/{id}?locale=all` | status of each locale | exist |
 | `PUT /content/{type}/{id}` with `If-Match: "0"` | copy from locale | exists |
 | the locales of each site in `GET /me/sites` | switcher for editors | [#3096] |
-| `GET` and `PUT /me/preferences` | culture, time zone, formats per user | [#3096] |
+| `GET`, `PUT` and `PATCH /me/preferences` | culture, time zone, formats per user | [#3096], [#3450] |
 
 **As built (A-17, [#3238]).** The content locale is in the address, `?locale=fr`; the shell holds it beside the site (`ShellSite`, sent as `X-Cms-Locale`). An address that names a locale sets it, on any page and on a cold load; one that names none keeps it, and the list and the form of a localized type replace such an address with one that names it, so that Back goes to the locale an address was in and a reload keeps it. A locale the site does not have enabled reads as the default. The routed page sets the locale of its address before it reads, and `GET /me/access` and `GET /schema` are read again in it, since the server narrows both by the request's locale: a translator whose grants are limited to `fr` sees its types and may change entries in `fr`, and reads the others where its grants let it, with the form read-only there. `/me/access` is also read once per site in each enabled locale when a view first needs it, so that a locale the user may not read gets no badge rather than look untranslated, and so that where the content locale shows no type the user may read, the sidebar names the locales that show some. A site switch resets the locale to the new site's default in the same step, which a route it keeps then names. The switcher is a link per enabled locale of `GET /me/sites`, in the site's order, on the list and the form of a localized type, with the current locale as text, `hreflang` and the language's own name; a form with unsaved changes asks before it is left, as for any route change, and a switch is announced and moves focus to the heading. `ContentForm` edits the locale it is given; only the routed page's form, which owns the address, offers the switcher and side by side, so a form in a side panel does not move the shell's locale. The form reads the entry in its locale and `GET /content/{type}/{id}?locale=all` for the status of each locale, shown as a badge per readable locale with an empty one where the entry has no translation. A locale without a translation opens a form of the defaults of the fields the caller may change, with the fields the locales share as the entry has them and read-only, since the server keeps them when it adds the locale; "Copy from" another locale the entry has fills each field the caller may change from a read in that locale, as an unsaved change, after asking when the user typed values; the first save sends `PUT` with `If-Match: "0"`, and a publish saves first. A localized singleton that has no entry in the content locale is found in another and opened as a new locale of it, since a second create is refused. The status controls of A-16 act on the read, so on the form's locale. Side by side: a second locale, chosen beside the form and read on its own, shows each field's editor read-only beside the field, labelled with that locale, in its language and direction. A field's `lang` and `dir` are those of the form's locale, the site's default included; the script is the subtag after the language and its extended language subtags only. Dates, times and numbers are A-14's, in the user's culture and time zone from `GET /me/preferences`.
 
@@ -1173,6 +1173,7 @@ The draft asked sixteen questions, each with a recommendation. All were decided 
 [#3367]: https://github.com/fluentcms/FluentCMS/issues/3367
 [#3368]: https://github.com/fluentcms/FluentCMS/issues/3368
 [#3432]: https://github.com/fluentcms/FluentCMS/issues/3432
+[#3450]: https://github.com/fluentcms/FluentCMS/issues/3450
 [#3473]: https://github.com/fluentcms/FluentCMS/issues/3473
 [#3517]: https://github.com/fluentcms/FluentCMS/issues/3517
 [#3369]: https://github.com/fluentcms/FluentCMS/issues/3369

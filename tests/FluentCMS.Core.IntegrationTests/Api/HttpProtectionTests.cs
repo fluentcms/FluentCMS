@@ -159,6 +159,79 @@ public sealed class HttpProtectionTests(CmsWebHosts hosts) : IClassFixture<CmsWe
         counter.Policies.ShouldContain("health");
     }
 
+    // A cold load of a surface's files from one address leaves the coarse allowance of that address alone; its page, a path
+    // that is no file and a marked endpoint under a group of core still spend it (#3452).
+    [Fact]
+    public async Task TheFilesASurfaceMarksDoNotSpendTheCoarseLimit()
+    {
+        var settings = Limits(delivery: 2);
+        settings["FluentCms:RateLimits:PreAuth:PermitLimit"] = "2";
+        settings["FluentCms:RateLimits:Delivery:MaxKeyLimit"] = "2";
+        settings["FluentCms:RateLimits:StaticFiles:PermitLimit"] = "10";
+        var client = await Start(settings);
+
+        for (var request = 0; request < 10; request++)
+        {
+            (await Status(client, "/surface/app.js", ("X-Test-Ip", "10.0.0.20"))).ShouldBe(HttpStatusCode.OK);
+        }
+
+        (await Status(client, "/surface/", ("X-Test-Ip", "10.0.0.20"))).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, "/surface/missing.js", ("X-Test-Ip", "10.0.0.20"))).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, "/surface/other", ("X-Test-Ip", "10.0.0.20"))).ShouldBe(HttpStatusCode.TooManyRequests);
+        (await Status(client, DeliveryPath, ("X-Test-Ip", "10.0.0.20"))).ShouldBe(HttpStatusCode.TooManyRequests);
+
+        (await Status(client, "/api/management/v1/static.js", ("X-Test-Ip", "10.0.0.21"))).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, "/api/management/v1/static.js", ("X-Test-Ip", "10.0.0.21"))).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, "/api/management/v1/static.js", ("X-Test-Ip", "10.0.0.21"))).ShouldBe(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
+    public async Task TheStaticFilesLimitRefusesAtItsOwnLimitAndCountsUnderStaticFiles()
+    {
+        using var counter = new RefusalCounter();
+        var settings = Limits();
+        settings["FluentCms:RateLimits:StaticFiles:PermitLimit"] = "3";
+        var client = await Start(settings);
+
+        for (var request = 0; request < 3; request++)
+        {
+            using var allowed = await Send(client, "/surface/app.js", ("X-Test-Ip", "10.0.0.22"));
+
+            allowed.StatusCode.ShouldBe(HttpStatusCode.OK);
+            allowed.Headers.Contains("RateLimit-Limit").ShouldBeFalse();
+        }
+
+        using var refused = await Send(client, "/surface/app.js", ("X-Test-Ip", "10.0.0.22"));
+
+        refused.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        (await Problem(refused)).GetProperty("code").GetString().ShouldBe("FCMS3110");
+        Seconds(refused, "Retry-After").ShouldBeInRange(1, 60);
+        counter.Policies.ShouldContain("static-files");
+        (await Status(client, "/surface/app.js", ("X-Test-Ip", "10.0.0.23"))).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, "/surface/", ("X-Test-Ip", "10.0.0.22"))).ShouldBe(HttpStatusCode.OK);
+    }
+
+    // Forty cold loads of the admin, some 230 files each, within a minute from one address.
+    [Fact]
+    public async Task TheDefaultStaticFilesLimitHoldsFortyColdLoadsOfTheAdmin()
+    {
+        await Start();
+
+        _app!.Services.GetRequiredService<RateLimitOptions>().StaticFiles.PermitLimit.ShouldBeGreaterThanOrEqualTo(40 * 230);
+    }
+
+    [Fact]
+    public async Task AStaticFilesLimitBelowOneStopsTheHost()
+    {
+        var settings = Limits();
+        settings["FluentCms:RateLimits:StaticFiles:PermitLimit"] = "0";
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => Start(settings));
+
+        exception.Code.ShouldBe("FCMS1101");
+        exception.Message.ShouldContain("FluentCms:RateLimits:StaticFiles:PermitLimit");
+    }
+
     [Fact]
     public async Task AKeyThatIsNotAnApiKeyOrHasNoPositiveLimitUsesTheDefault()
     {
@@ -669,6 +742,7 @@ public sealed class HttpProtectionTests(CmsWebHosts hosts) : IClassFixture<CmsWe
                     builder.Services.AddFluentCmsEndpoints(group, routes =>
                     {
                         routes.MapGet("/probe", () => "ok");
+                        routes.MapGet("/static.js", () => "file").WithMetadata(FluentCmsStaticFileMetadata.Instance);
                         routes.MapGet("/caller", () => "ok").RequireCallerRateLimit();
                         routes.MapGet("/cached", (HttpContext context) =>
                         {
@@ -703,6 +777,12 @@ public sealed class HttpProtectionTests(CmsWebHosts hosts) : IClassFixture<CmsWe
                 });
                 app.UseFluentCms();
                 app.MapGet("/host", () => "host");
+
+                // A surface mapped as the admin maps its own: its files marked, its page and its fallback not.
+                var surface = app.MapGroup("/surface").WithMetadata(FluentCmsEndpointMetadata.Instance, new FluentCmsSurfaceMetadata("surface"));
+                surface.MapGet("/app.js", () => "file").WithMetadata(FluentCmsStaticFileMetadata.Instance);
+                surface.MapGet("/", () => "page");
+                surface.MapFallback("{**path}", () => "page");
             },
             cms: cms =>
             {

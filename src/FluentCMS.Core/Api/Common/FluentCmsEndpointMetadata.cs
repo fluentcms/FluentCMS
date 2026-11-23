@@ -10,6 +10,14 @@ internal sealed class FluentCmsEndpointMetadata
     public static readonly FluentCmsEndpointMetadata Instance = new();
 }
 
+// Marks the endpoints of a surface that serve its static files as they are, such as the fingerprinted files of the admin,
+// which read nothing of the instance. The check before authentication counts them under the StaticFiles limit instead of the
+// coarse one; a surface leaves it off a page, a configuration and a fallback that answers no file.
+internal sealed class FluentCmsStaticFileMetadata
+{
+    public static readonly FluentCmsStaticFileMetadata Instance = new();
+}
+
 // Marks the hosted pages, whose responses also carry a Content-Security-Policy.
 internal sealed class HostedPageMetadata
 {
