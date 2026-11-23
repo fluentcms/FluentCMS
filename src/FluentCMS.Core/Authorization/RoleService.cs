@@ -252,6 +252,14 @@ internal sealed class RoleService(
         if (existing is not null)
         {
             var stored = (await GrantsAsync([existing.Id], cancellationToken))[existing.Id].ToList();
+
+            // A role the import leaves as it is needs no validation, so a grant stored before a check refused its shape does not
+            // stop an instance from importing its own export.
+            if (existing.Name == role.Name && existing.Description == role.Description && existing.RequireTwoFactor == role.RequireTwoFactor && SameGrants(stored, [.. role.Grants]))
+            {
+                return TransferOutcome.Skipped;
+            }
+
             var (name, description, grants) = await ValidateAsync(request, site, existing.Id, cancellationToken);
             if (existing.Name == name && existing.Description == description && existing.RequireTwoFactor == role.RequireTwoFactor && SameGrants(stored, grants))
             {

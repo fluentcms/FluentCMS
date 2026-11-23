@@ -117,7 +117,7 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         var rules = await fixture.GetAsync("permissions/row-rules", reader);
 
         rules.Status.ShouldBe(HttpStatusCode.OK, rules.Body?.ToJsonString());
-        rules.Json.ToJsonString().ShouldBe($$"""{"items":[{"name":"{{AdminFixture.NewsRule}}","typeNames":["page"]},{"name":"{{BuiltInRoles.OwnEntriesRule}}","typeNames":null}]}""");
+        rules.Json.ToJsonString().ShouldBe($$"""{"items":[{"name":"{{AdminFixture.NamedRule}}","typeNames":["page","person"]},{"name":"{{AdminFixture.NewsRule}}","typeNames":["page"]},{"name":"{{BuiltInRoles.OwnEntriesRule}}","typeNames":null}]}""");
         (await fixture.GetAsync("permissions", reader)).Status.ShouldBe(HttpStatusCode.OK);
     }
 
@@ -207,6 +207,21 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         changed.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, changed.Body?.ToJsonString());
         changed.Json["errors"]!.AsArray().ShouldHaveSingleItem()!["path"]!.GetValue<string>().ShouldBe("grants[0].constraints.rowRule");
         (await fixture.GetAsync($"roles/{fitting}")).Json["grants"]!.AsArray().Count.ShouldBe(4);
+    }
+
+    // A rule registered for each type by a rule of its own, and none on ContentItem, fits a pattern of every type.
+    [Fact]
+    public async Task ARowRuleRegisteredForEachTypeFitsAPatternOfEveryType()
+    {
+        var created = await fixture.PostAsync("roles", $$"""
+            { "name": "Every type {{Guid.NewGuid():N}}", "grants": [
+              { "permission": "content.*.update", "constraints": { "rowRule": "{{AdminFixture.NamedRule}}" } },
+              { "permission": "content.*.*", "constraints": { "rowRule": "{{AdminFixture.NamedRule}}" } },
+              { "permission": "content.person.read", "constraints": { "rowRule": "{{AdminFixture.NamedRule}}" } } ] }
+            """);
+
+        created.Status.ShouldBe(HttpStatusCode.Created, created.Body?.ToJsonString());
+        created.Json["grants"]!.AsArray().ShouldAllBe(grant => grant!["constraints"]!["rowRule"]!.GetValue<string>() == AdminFixture.NamedRule);
     }
 
     // A rule that does not fit is refused where an unknown one is: after the check of roles.manage, and before the check that

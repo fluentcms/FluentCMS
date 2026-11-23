@@ -959,6 +959,30 @@ public sealed class TransferTests : IDisposable
         target.Read(context => context.Set<Role>().Count(item => item.Id == role)).ShouldBe(0);
     }
 
+    // An instance imports its own export: a role the import would leave as it is is skipped without validation, while the
+    // same role with any change is validated and refused for the grant.
+    [Fact]
+    public async Task AnUnchangedRoleWithAStoredRowRuleThatDoesNotFitIsSkippedAndAChangedOneRefused()
+    {
+        var role = Guid.CreateVersion7();
+        _source.Read(context =>
+        {
+            context.Add(new Role { Id = role, SiteId = SiteA.Value, Name = $"role-{role:N}" });
+            context.Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = role, Permission = CorePermissions.UsersManage, Constraints = new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }.ToJson() });
+            return context.SaveChanges();
+        });
+        var package = await ExportAsync(_source, new TransferExportRequest { Roles = true });
+
+        var same = await ImportAsync(_source, package, new TransferImportRequest { Roles = true });
+        same.Sections[TransferImporter.RolesSection].ShouldBe(TransferCounts.None with { Skipped = 1 });
+
+        _source.Read(context => context.Set<Role>().Where(item => item.Id == role).ExecuteUpdate(update => update.SetProperty(item => item.Name, "renamed")));
+        var changed = await ImportAsync(_source, package, new TransferImportRequest { Roles = true });
+        changed.Sections[TransferImporter.RolesSection].ShouldBe(TransferCounts.None with { Errors = 1 });
+        changed.Items.Single(entry => entry.Section == TransferImporter.RolesSection).Code.ShouldBe("FCMS3042");
+        _source.Read(context => context.Set<Role>().Single(item => item.Id == role).Name).ShouldBe("renamed");
+    }
+
     [Fact]
     public async Task AFieldThePackageDoesNotHaveKeepsWhatTheInstanceHolds()
     {
