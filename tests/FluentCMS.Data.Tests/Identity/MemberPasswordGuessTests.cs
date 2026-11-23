@@ -53,7 +53,7 @@ public sealed class MemberPasswordGuessTests : IDisposable
         (await MembersAsync(async members => await members.IsLockedOutAsync((await members.FindByIdAsync(member.Id.ToString("D")))!))).ShouldBeTrue();
         (await MembersAsync(async members => await members.ChangePasswordAsync((await members.FindByIdAsync(member.Id.ToString("D")))!, Password, NewPassword)))
             .Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.PasswordMismatch));
-        (await MembersAsync(members => members.CheckPasswordAsync(member, Password))).ShouldBeTrue();
+        (await MembersAsync(async members => await members.CheckPasswordAsync((await members.FindByIdAsync(member.Id.ToString("D")))!, Password))).ShouldBeTrue();
     }
 
     // A right password sent with wrong ones read the member before any of them saved, and loses its save to the first wrong
