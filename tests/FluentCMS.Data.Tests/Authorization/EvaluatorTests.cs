@@ -294,6 +294,53 @@ public sealed class EvaluatorTests : IDisposable
         (await _database.QueryAsync(AuthorizationDatabase.User([role]), "locale=en")).Items.ShouldBeEmpty();
     }
 
+    // #3443: grants stored before roles refused their row rule. One on a type the rule is not registered for matches none of
+    // its rows, as before, and one beside a permission that is not content's gives that permission nowhere, while the content
+    // a wildcard reaches stays under the rule.
+    [Fact]
+    public async Task AStoredRowRuleThatDoesNotFitItsPermissionGivesNothingBeyondItsRows()
+    {
+        var ann = Guid.CreateVersion7();
+        Rows.AddArticle("Mine", createdBy: ann, values: new() { ["region"] = "us" });
+        Rows.AddArticle("Regional", createdBy: Guid.CreateVersion7(), values: new() { ["region"] = "eu" });
+        var author = QueryDatabase.Schema.FindContentType("author")!;
+        var regional = AuthorizationDatabase.User(
+            [_database.AddRole(
+                "Region on every type",
+                null,
+                ("content.author.update", new PermissionConstraints { RowRule = "region" }),
+                ("content.*.read", new PermissionConstraints { RowRule = "region" }))],
+            [TokenScopes.Management],
+            ann,
+            new() { ["region"] = "eu" });
+        var onTypes = await _database.PermissionsAsync(regional);
+        onTypes.RowRuleOf(author, ContentOperation.Update, InSiteA).ShouldBe(RowRule.NoRows);
+        onTypes.RowRuleOf(author, ContentOperation.Read, InSiteA).ShouldBe(RowRule.NoRows);
+        Titles(await _database.QueryAsync(regional, "locale=en")).ShouldBe(["Regional"]);
+
+        var users = await _database.PermissionsAsync(Manager(_database.AddRole(
+            "Own users",
+            null,
+            (CorePermissions.UsersManage, new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }))));
+        users.Allows(CorePermissions.UsersManage, InSiteA).ShouldBeFalse();
+        users.ResourcesOf(CorePermissions.UsersManage, InSiteA).ShouldNotBeNull().ShouldBeEmpty();
+
+        var everything = AuthorizationDatabase.User(
+            [_database.AddRole("Everything of one's own", null, ("*", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }))],
+            [TokenScopes.Management],
+            ann);
+        var wildcard = await _database.PermissionsAsync(everything);
+        foreach (var permission in (string[])[CorePermissions.UsersManage, CorePermissions.RolesManage, CorePermissions.SchemaRead, CorePermissions.Settings("mail"), "media.read"])
+        {
+            wildcard.Allows(permission, InSiteA).ShouldBeFalse(permission);
+            wildcard.ResourcesOf(permission, InSiteA).ShouldNotBeNull(permission).ShouldBeEmpty(permission);
+        }
+
+        wildcard.Allows(Article, ContentOperation.Publish, InSiteA).ShouldBeTrue();
+        wildcard.RowRuleOf(Article, ContentOperation.Publish, InSiteA).ShouldNotBeNull();
+        Titles(await _database.QueryAsync(everything, "locale=en")).ShouldBe(["Mine"]);
+    }
+
     [Fact]
     public async Task AConstraintThisVersionDoesNotKnowFailsInsteadOfWidening()
     {

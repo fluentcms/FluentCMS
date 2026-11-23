@@ -117,7 +117,7 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         var rules = await fixture.GetAsync("permissions/row-rules", reader);
 
         rules.Status.ShouldBe(HttpStatusCode.OK, rules.Body?.ToJsonString());
-        rules.Json.ToJsonString().ShouldBe($$"""{"items":[{"name":"{{AdminFixture.NewsRule}}","typeNames":["page"]},{"name":"{{BuiltInRoles.OwnEntriesRule}}","typeNames":null}]}""");
+        rules.Json.ToJsonString().ShouldBe($$"""{"items":[{"name":"{{AdminFixture.NamedRule}}","typeNames":["page","person"]},{"name":"{{AdminFixture.NewsRule}}","typeNames":["page"]},{"name":"{{BuiltInRoles.OwnEntriesRule}}","typeNames":null}]}""");
         (await fixture.GetAsync("permissions", reader)).Status.ShouldBe(HttpStatusCode.OK);
     }
 
@@ -133,6 +133,163 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         rules.Status.ShouldBe(catalogue.Status, rules.Body?.ToJsonString());
         rules.Json["code"]!.GetValue<string>().ShouldBe(catalogue.Json["code"]!.GetValue<string>());
         rules.Json["items"].ShouldBeNull();
+    }
+
+    // #3443: a grant limited to another site, or of a role of another site, reads neither list in this site, and both in its own.
+    [Fact]
+    public async Task AGrantLimitedToAnotherSiteReadsTheCatalogueAndTheRowRulesOnlyThere()
+    {
+        Guid other;
+        string slug;
+        await using (var scope = fixture.Host.Services.CreateAsyncScope())
+        {
+            var site = await scope.ServiceProvider.GetRequiredService<SiteManager>().CreateAsync("Other", $"o-{Guid.NewGuid():N}", "en", TestContext.Current.CancellationToken);
+            (other, slug) = (site.Id, site.Slug);
+        }
+
+        var limited = await fixture.CreateRoleAsync($$"""{ "name": "limited-{{Guid.NewGuid():N}}", "grants": [ { "permission": "roles.manage", "constraints": { "sites": ["{{other}}"] } } ] }""");
+        var ofSite = await fixture.CreateRoleAsync($$"""{ "name": "of-site-{{Guid.NewGuid():N}}", "siteId": "{{other}}", "grants": [ { "permission": "roles.manage" } ] }""");
+        foreach (var role in (string[])[limited, ofSite])
+        {
+            var user = await fixture.Host.CreateUserAsync(await fixture.RoleWithAsync(), cancellationToken: TestContext.Current.CancellationToken);
+            (await fixture.PutAsync($"users/{user.Id:D}/roles/{role}")).Status.ShouldBe(HttpStatusCode.OK);
+            using var caller = await fixture.Host.AsUserAsync(user);
+
+            foreach (var path in (string[])["permissions", "permissions/row-rules"])
+            {
+                var here = await fixture.GetAsync(path, caller);
+                here.Status.ShouldBe(HttpStatusCode.Forbidden, $"{path}: {here.Body?.ToJsonString()}");
+                here.Json["code"]!.GetValue<string>().ShouldBe("FCMS3103");
+            }
+
+            caller.DefaultRequestHeaders.Add("X-Cms-Site", slug);
+            foreach (var path in (string[])["permissions", "permissions/row-rules"])
+            {
+                var there = await fixture.GetAsync(path, caller);
+                there.Status.ShouldBe(HttpStatusCode.OK, $"{path}: {there.Body?.ToJsonString()}");
+                there.Json["items"]!.AsArray().ShouldNotBeEmpty();
+            }
+        }
+    }
+
+    // #3443: a row rule limits content rows, so it is refused beside any other permission, and on a content permission of a
+    // type it is not registered for, which a pattern of every type is unless the rule is registered for each type.
+    [Fact]
+    public async Task ARowRuleIsRefusedBesideAPermissionItDoesNotLimit()
+    {
+        var refused = await fixture.PostAsync("roles", $$"""
+            { "name": "Misfit {{Guid.NewGuid():N}}", "grants": [
+              { "permission": "content.person.update", "constraints": { "rowRule": "{{AdminFixture.NewsRule}}" } },
+              { "permission": "content.*.update", "constraints": { "rowRule": "{{AdminFixture.NewsRule}}" } },
+              { "permission": "content.*.*", "constraints": { "rowRule": "{{AdminFixture.NewsRule}}" } },
+              { "permission": "users.manage", "constraints": { "rowRule": "{{BuiltInRoles.OwnEntriesRule}}" } },
+              { "permission": "*", "constraints": { "rowRule": "{{BuiltInRoles.OwnEntriesRule}}" } },
+              { "permission": "*.*.update", "constraints": { "rowRule": "{{BuiltInRoles.OwnEntriesRule}}" } },
+              { "permission": "settings.mail.manage", "constraints": { "rowRule": "{{BuiltInRoles.OwnEntriesRule}}" } } ] }
+            """);
+
+        refused.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, refused.Body?.ToJsonString());
+        refused.Json["code"]!.GetValue<string>().ShouldBe("FCMS3042");
+        var errors = refused.Json["errors"]!.AsArray();
+        errors.Select(error => error!["path"]!.GetValue<string>()).ShouldBe([.. Enumerable.Range(0, 7).Select(index => $"grants[{index}].constraints.rowRule")]);
+        errors[1]!["message"]!.GetValue<string>().ShouldContain("'person'");
+        errors[1]!["message"]!.GetValue<string>().ShouldNotContain("'page'");
+
+        var fitting = await fixture.CreateRoleAsync($$"""
+            { "name": "Fitting {{Guid.NewGuid():N}}", "grants": [
+              { "permission": "content.page.update", "constraints": { "rowRule": "{{AdminFixture.NewsRule}}" } },
+              { "permission": "content.page.*", "constraints": { "rowRule": "{{AdminFixture.NewsRule}}" } },
+              { "permission": "content.*.read", "constraints": { "rowRule": "{{BuiltInRoles.OwnEntriesRule}}" } },
+              { "permission": "content.*.*", "constraints": { "rowRule": "{{BuiltInRoles.OwnEntriesRule}}" } } ] }
+            """);
+
+        var changed = await fixture.PutAsync($"roles/{fitting}", $$"""{ "name": "Fitting {{Guid.NewGuid():N}}", "grants": [ { "permission": "content.person.read", "constraints": { "rowRule": "{{AdminFixture.NewsRule}}" } } ] }""");
+        changed.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, changed.Body?.ToJsonString());
+        changed.Json["errors"]!.AsArray().ShouldHaveSingleItem()!["path"]!.GetValue<string>().ShouldBe("grants[0].constraints.rowRule");
+        (await fixture.GetAsync($"roles/{fitting}")).Json["grants"]!.AsArray().Count.ShouldBe(4);
+    }
+
+    // A rule registered for each type by a rule of its own, and none on ContentItem, fits a pattern of every type.
+    [Fact]
+    public async Task ARowRuleRegisteredForEachTypeFitsAPatternOfEveryType()
+    {
+        var created = await fixture.PostAsync("roles", $$"""
+            { "name": "Every type {{Guid.NewGuid():N}}", "grants": [
+              { "permission": "content.*.update", "constraints": { "rowRule": "{{AdminFixture.NamedRule}}" } },
+              { "permission": "content.*.*", "constraints": { "rowRule": "{{AdminFixture.NamedRule}}" } },
+              { "permission": "content.person.read", "constraints": { "rowRule": "{{AdminFixture.NamedRule}}" } } ] }
+            """);
+
+        created.Status.ShouldBe(HttpStatusCode.Created, created.Body?.ToJsonString());
+        created.Json["grants"]!.AsArray().ShouldAllBe(grant => grant!["constraints"]!["rowRule"]!.GetValue<string>() == AdminFixture.NamedRule);
+    }
+
+    // A rule that does not fit is refused where an unknown one is: after the check of roles.manage, and before the check that
+    // the caller holds what the role grants, so that neither tells a caller more than the other.
+    [Fact]
+    public async Task ARowRuleThatDoesNotFitIsRefusedInTheOrderOfAnUnknownOne()
+    {
+        using var outsider = await fixture.ClientWithAsync(CorePermissions.UsersManage, "content.*.*");
+        using var manager = await fixture.ClientWithAsync(CorePermissions.RolesManage);
+
+        foreach (var grant in (string[])[
+            $$"""{ "permission": "content.person.update", "constraints": { "rowRule": "{{AdminFixture.NewsRule}}" } }""",
+            $$"""{ "permission": "users.manage", "constraints": { "rowRule": "{{BuiltInRoles.OwnEntriesRule}}" } }""",
+            """{ "permission": "content.page.update", "constraints": { "rowRule": "no-such-rule" } }"""])
+        {
+            var role = $$"""{ "name": "Ordered {{Guid.NewGuid():N}}", "grants": [ {{grant}} ] }""";
+            var notManaging = await fixture.PostAsync("roles", role, outsider);
+            notManaging.Status.ShouldBe(HttpStatusCode.Forbidden, grant);
+            notManaging.Json["code"]!.GetValue<string>().ShouldBe("FCMS3103");
+            var managing = await fixture.PostAsync("roles", role, manager);
+            managing.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, grant);
+            managing.Json["code"]!.GetValue<string>().ShouldBe("FCMS3042");
+        }
+
+        var beyond = await fixture.PostAsync("roles", $$"""{ "name": "Beyond {{Guid.NewGuid():N}}", "grants": [ { "permission": "content.page.update", "constraints": { "rowRule": "{{AdminFixture.NewsRule}}" } } ] }""", manager);
+        beyond.Status.ShouldBe(HttpStatusCode.Forbidden);
+        beyond.Json["code"]!.GetValue<string>().ShouldBe("FCMS3103");
+    }
+
+    // A grant stored before roles refused its rule is still read, gives its holder no permission beside content, and is kept
+    // through an edit only by dropping it or its rule.
+    [Fact]
+    public async Task ARoleWithAStoredRowRuleThatDoesNotFitIsReadAndChangedOnlyWithoutIt()
+    {
+        var name = $"Stored {Guid.NewGuid():N}";
+        var id = Guid.CreateVersion7();
+        await using (var scope = fixture.Host.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            context.Add(new Role { Id = id, Name = name });
+            context.AddRange(
+                new RoleGrant { Id = Guid.CreateVersion7(), RoleId = id, Permission = CorePermissions.UsersManage, Constraints = new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }.ToJson() },
+                new RoleGrant { Id = Guid.CreateVersion7(), RoleId = id, Permission = "content.person.update", Constraints = new PermissionConstraints { RowRule = AdminFixture.NewsRule }.ToJson() },
+                new RoleGrant { Id = Guid.CreateVersion7(), RoleId = id, Permission = "content.page.read" });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var read = await fixture.GetAsync($"roles/{id:D}");
+        read.Status.ShouldBe(HttpStatusCode.OK, read.Body?.ToJsonString());
+        read.Json["grants"]!.AsArray().Select(grant => grant!["constraints"]?["rowRule"]?.GetValue<string>()).ShouldBe([BuiltInRoles.OwnEntriesRule, AdminFixture.NewsRule, null], ignoreOrder: true);
+        (await fixture.GetAsync("roles")).Json["items"]!.AsArray().ShouldContain(item => item!["id"]!.GetValue<string>() == id.ToString("D"));
+
+        using var holder = await fixture.ClientForAsync(name);
+        var users = await fixture.GetAsync("users", holder);
+        users.Status.ShouldBe(HttpStatusCode.Forbidden, users.Body?.ToJsonString());
+        (await fixture.GetAsync("content/page", holder)).Status.ShouldBe(HttpStatusCode.OK);
+
+        var kept = await fixture.PutAsync($"roles/{id:D}", $$"""
+            { "name": "{{name}}", "grants": [
+              { "permission": "users.manage", "constraints": { "rowRule": "{{BuiltInRoles.OwnEntriesRule}}" } },
+              { "permission": "content.person.update", "constraints": { "rowRule": "{{AdminFixture.NewsRule}}" } },
+              { "permission": "content.page.read" } ] }
+            """);
+        kept.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, kept.Body?.ToJsonString());
+        kept.Json["errors"]!.AsArray().Select(error => error!["path"]!.GetValue<string>()).ShouldBe(["grants[0].constraints.rowRule", "grants[1].constraints.rowRule"]);
+
+        var dropped = await fixture.PutAsync($"roles/{id:D}", $$"""{ "name": "{{name}}", "grants": [ { "permission": "content.page.read" } ] }""");
+        dropped.Status.ShouldBe(HttpStatusCode.OK, dropped.Body?.ToJsonString());
     }
 
     [Fact]
