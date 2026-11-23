@@ -30,6 +30,8 @@ internal sealed record UserPreferencesChange
 
     public bool SetsNumberFormat { get; init; }
 
+    public bool SetsAny => SetsCulture || SetsTimeZone || SetsDateFormat || SetsNumberFormat;
+
     public static UserPreferencesChange All(UserPreferencesInfo values) =>
         new() { Values = values, SetsCulture = true, SetsTimeZone = true, SetsDateFormat = true, SetsNumberFormat = true };
 }
@@ -73,6 +75,12 @@ internal sealed class UserPreferences(SystemDbContext context, TimeProvider cloc
                 throw Conflict();
             }
 
+            // A change that names no member writes nothing, not even a row for a user who has none.
+            if (!change.SetsAny)
+            {
+                return stored;
+            }
+
             var next = new UserPreferencesInfo(
                 change.SetsCulture ? valid.Culture : stored.Culture,
                 change.SetsTimeZone ? valid.TimeZone : stored.TimeZone,
@@ -106,7 +114,10 @@ internal sealed class UserPreferences(SystemDbContext context, TimeProvider cloc
             }
 
             // Only the members the write sets are written, so that two writes of different members both stay. With a tag the
-            // write holds only while the row still has the values the tag was checked against.
+            // write holds only while the row still has the values the tag was checked against. The answer is the row as this
+            // update left it, read again in its transaction, since a write of other members may have landed after the read
+            // above; the update holds the row until the commit, so no later write shows in the answer either.
+            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
             var rows = context.Set<UserPreferenceRow>().Where(item => item.UserId == userId);
             if (expectedTag is not null)
             {
@@ -142,7 +153,9 @@ internal sealed class UserPreferences(SystemDbContext context, TimeProvider cloc
                 cancellationToken);
             if (written > 0)
             {
-                return next;
+                var updated = Info(await context.Set<UserPreferenceRow>().AsNoTracking().FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken));
+                await transaction.CommitAsync(cancellationToken);
+                return updated;
             }
 
             if (expectedTag is not null)

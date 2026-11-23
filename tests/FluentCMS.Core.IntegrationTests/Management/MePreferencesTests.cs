@@ -1,6 +1,12 @@
+using System.Data.Common;
 using System.Net;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 
@@ -68,6 +74,50 @@ public sealed class MePreferencesTests(AdminFixture fixture) : IClassFixture<Adm
         refused.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, refused.Body?.ToJsonString());
         (await fixture.PatchAsync("me/preferences", """{ "theme": "dark" }""", first)).Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
         (await fixture.GetAsync("me/preferences", first)).Json.ToJsonString().ShouldBe(cleared.Json.ToJsonString());
+    }
+
+    // Tab A reads, tab B changes another member and commits, then A writes its own: A is answered what is stored, B's change
+    // included, with the tag of that, so a client that saves the answer whole cannot undo B (#3450).
+    [Fact]
+    public async Task APatchIsAnsweredWhatIsStoredWhenAnotherLandedBetweenItsReadAndItsWrite()
+    {
+        var hold = new Hold();
+        await using var host = new FluentCmsTestHost()
+            .Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(new HoldCommands(hold), new HoldTransactions(hold))));
+        var user = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        using var first = await host.AsUserAsync(user);
+        using var second = await host.AsUserAsync(user);
+        (await AdminFixture.SendAsync(first, HttpMethod.Put, "me/preferences", """{ "culture": "en-US", "timeZone": "Europe/Berlin" }""")).Status.ShouldBe(HttpStatusCode.OK);
+
+        hold.Arm();
+        var held = AdminFixture.SendAsync(first, HttpMethod.Patch, "me/preferences", """{ "culture": "de-DE" }""");
+        await hold.Reached.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        var other = await AdminFixture.SendAsync(second, HttpMethod.Patch, "me/preferences", """{ "timeZone": "Asia/Tokyo" }""");
+        other.Status.ShouldBe(HttpStatusCode.OK, other.Body?.ToJsonString());
+        hold.Release();
+        var answer = await held;
+
+        answer.Status.ShouldBe(HttpStatusCode.OK, answer.Body?.ToJsonString());
+        var stored = await AdminFixture.SendAsync(first, HttpMethod.Get, "me/preferences");
+        stored.Json.ToJsonString().ShouldBe("""{"culture":"de-DE","timeZone":"Asia/Tokyo","dateFormat":null,"numberFormat":null}""");
+        answer.Json.ToJsonString().ShouldBe(stored.Json.ToJsonString());
+        answer.ETag.ShouldBe(stored.ETag);
+    }
+
+    // A change that names nothing writes nothing: a user without preferences gets no row, and is answered the defaults.
+    [Fact]
+    public async Task AnEmptyPatchWritesNothing()
+    {
+        var user = await fixture.Host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        using var client = await fixture.Host.AsUserAsync(user);
+
+        var empty = await fixture.PatchAsync("me/preferences", "{}", client);
+
+        empty.Status.ShouldBe(HttpStatusCode.OK, empty.Body?.ToJsonString());
+        empty.Json.ToJsonString().ShouldBe(Nothing);
+        empty.ETag.ShouldBe((await fixture.GetAsync("me/preferences", client)).ETag);
+        await using var scope = fixture.Host.Services.CreateAsyncScope();
+        (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<UserPreferenceRow>().AnyAsync(row => row.UserId == user.Id, Token)).ShouldBeFalse();
     }
 
     // A write that names the ETag it read is refused once another tab changed the preferences, and that tab's change stays.
@@ -190,5 +240,71 @@ public sealed class MePreferencesTests(AdminFixture fixture) : IClassFixture<Adm
 
         using var anonymous = fixture.Host.CreateClient();
         (await fixture.GetAsync("me/preferences", anonymous)).Status.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    // Holds the first write of the preferences after its read, armed, until released: at its transaction, or at its update
+    // when it has none.
+    private sealed class Hold
+    {
+        private readonly TaskCompletionSource _reached = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private DbContext? _held;
+        private int _armed;
+        private int _done;
+
+        public Task Reached => _reached.Task;
+
+        public void Arm() => Volatile.Write(ref _armed, 1);
+
+        public void Release() => _released.TrySetResult();
+
+        public void Read(DbContext? context)
+        {
+            if (Volatile.Read(ref _armed) == 1 && context is not null)
+            {
+                Interlocked.CompareExchange(ref _held, context, null);
+            }
+        }
+
+        public async Task WaitAsync(DbContext? context)
+        {
+            if (context is not null && ReferenceEquals(context, Volatile.Read(ref _held)) && Interlocked.Exchange(ref _done, 1) == 0)
+            {
+                _reached.TrySetResult();
+                await _released.Task;
+            }
+        }
+    }
+
+    private sealed class HoldCommands(Hold hold) : DbCommandInterceptor
+    {
+        public override ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.StartsWith("SELECT", StringComparison.Ordinal) && command.CommandText.Contains("\"cms_user_preference\"", StringComparison.Ordinal))
+            {
+                hold.Read(eventData.Context);
+            }
+
+            return base.ReaderExecutedAsync(command, eventData, result, cancellationToken);
+        }
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.StartsWith("UPDATE", StringComparison.Ordinal) && command.CommandText.Contains("\"cms_user_preference\"", StringComparison.Ordinal))
+            {
+                await hold.WaitAsync(eventData.Context);
+            }
+
+            return await base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
+        }
+    }
+
+    private sealed class HoldTransactions(Hold hold) : DbTransactionInterceptor
+    {
+        public override async ValueTask<InterceptionResult<DbTransaction>> TransactionStartingAsync(DbConnection connection, TransactionStartingEventData eventData, InterceptionResult<DbTransaction> result, CancellationToken cancellationToken = default)
+        {
+            await hold.WaitAsync(eventData.Context);
+            return await base.TransactionStartingAsync(connection, eventData, result, cancellationToken);
+        }
     }
 }
