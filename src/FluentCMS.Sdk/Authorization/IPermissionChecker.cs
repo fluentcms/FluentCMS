@@ -7,7 +7,8 @@ namespace FluentCMS.Authorization;
 /// as core's services do: the HTTP layer carries the identity and the service decides. A check needs a current operation:
 /// code that acts as the system, such as a job, a seed or the host's own startup code, runs inside
 /// <see cref="FluentCMS.Content.SystemOperation.Begin"/>, which every check allows. A grant limited to resources, such as
-/// media folders, counts only in <see cref="ResourcesAsync"/>, because the other checks cannot say which resource they act on.
+/// media folders, gives a permission only through <see cref="ResourcesAsync"/>, because the other permission checks cannot say
+/// which resource they act on; <see cref="HoldsGrantInAsync"/> counts it in a site where it gives one that way.
 /// </summary>
 public interface IPermissionChecker
 {
