@@ -17,7 +17,10 @@ public sealed class CmsUserManager : UserManager<CmsUser>
 
     // UserStoreBase keeps the authenticator key under this provider name too.
     private const string StoreProvider = "[AspNetUserStore]";
-    private const string SignedInFailuresName = "SignedInFailures";
+
+    // The wrong current passwords of the user's sessions, and their wrong codes of two-factor, each "count:lockedUntil".
+    private const string PasswordFailuresName = "SignedInFailures";
+    private const string CodeFailuresName = "SignedInCodeFailures";
 
     private readonly TimeProvider _time;
     private readonly IServiceProvider _services;
@@ -116,8 +119,9 @@ public sealed class CmsUserManager : UserManager<CmsUser>
         }
 
         user.DeactivatedAt = _time.GetUtcNow();
+        _reloaded = null;
         var result = await UpdateSecurityStampAsync(user);
-        if (!result.Succeeded)
+        if (!result.Succeeded && !Reloaded(user))
         {
             user.DeactivatedAt = null;
         }
@@ -136,8 +140,9 @@ public sealed class CmsUserManager : UserManager<CmsUser>
         }
 
         user.DeactivatedAt = null;
+        _reloaded = null;
         var result = await UpdateUserAsync(user);
-        if (!result.Succeeded)
+        if (!result.Succeeded && !Reloaded(user))
         {
             user.DeactivatedAt = deactivated;
         }
@@ -156,8 +161,9 @@ public sealed class CmsUserManager : UserManager<CmsUser>
         }
 
         user.MustChangePassword = true;
+        _reloaded = null;
         var result = await UpdateUserAsync(user);
-        if (!result.Succeeded)
+        if (!result.Succeeded && !Reloaded(user))
         {
             user.MustChangePassword = false;
         }
@@ -233,89 +239,66 @@ public sealed class CmsUserManager : UserManager<CmsUser>
     }
 
     // Anyone who knows a user name raises the lockout with wrong passwords, so it holds for a new sign-in only and not for
-    // what a user who is signed in already has to do: change the password, enrol an authenticator (#3371). What a session
-    // gets wrong is bounded by a count of its own, with the lockout's limit and time, kept with the user as the token
-    // SignedInFailures ("count:lockedUntil", in Unix seconds) and raised only by requests that carry the user's sign-in.
+    // what a user who is signed in already has to do: change the password, enrol an authenticator (#3371). What the user's
+    // sessions get wrong is bounded by counts of their own, with the lockout's limit and time, raised only by requests that
+    // carry the user's sign-in: wrong current passwords and wrong codes of two-factor, apart, as the tokens SignedInFailures
+    // and SignedInCodeFailures ("count:lockedUntil", in Unix seconds). Either at its limit keeps the sessions out of both, and
+    // each starts again only with a right one of its own kind, so that a right code is no way to guess more passwords, nor
+    // a right password to guess more codes (#3447).
     public async Task<bool> IsSignedInLockedOutAsync(CmsUser user)
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(user);
 
-        return SupportsUserLockout && await GetLockoutEnabledAsync(user) && (await SignedInFailuresAsync(user)).Until >= _time.GetUtcNow();
-    }
-
-    // A wrong password or code of a signed-in user counts towards both, the lockout as before, in one save.
-    public async Task<IdentityResult> SignedInAccessFailedAsync(CmsUser user)
-    {
-        ThrowIfDisposed();
-        ArgumentNullException.ThrowIfNull(user);
-
-        if (Store is IUserAuthenticationTokenStore<CmsUser> tokens)
+        if (!SupportsUserLockout || !await GetLockoutEnabledAsync(user))
         {
-            var (count, until) = await SignedInFailuresAsync(user);
-            if (++count >= Options.Lockout.MaxFailedAccessAttempts)
-            {
-                (count, until) = (0, _time.GetUtcNow() + Options.Lockout.DefaultLockoutTimeSpan);
-            }
-
-            var value = string.Create(CultureInfo.InvariantCulture, $"{count}:{until?.ToUnixTimeSeconds()}");
-            await tokens.SetTokenAsync(user, StoreProvider, SignedInFailuresName, value, CancellationToken);
+            return false;
         }
 
-        return await AccessFailedAsync(user);
+        var now = _time.GetUtcNow();
+        return (await SignedInFailuresAsync(user, PasswordFailuresName)).Until >= now || (await SignedInFailuresAsync(user, CodeFailuresName)).Until >= now;
     }
 
-    // A right password or code of a signed-in user starts both counts again.
-    public async Task<IdentityResult> ResetSignedInFailuresAsync(CmsUser user)
+    internal Task<IdentityResult> SignedInCodeFailedAsync(CmsUser user) => SignedInFailedAsync(user, CodeFailuresName);
+
+    // A right code proves the second factor and not the password, so the count of wrong passwords and the lockout stay.
+    internal Task<IdentityResult> ResetSignedInCodeFailuresAsync(CmsUser user) => ResetSignedInFailuresAsync(user, CodeFailuresName);
+
+    // A guess of a signed-in user whose save lost to another save of the user, as one of several sent at once does, is made
+    // again on what is stored now, so that a wrong one is counted and a right one taken: a guess is answered as right or
+    // wrong only from a save that went through, and N at once count N (#3447). Each lost save is a save of another request
+    // that went through, so the attempts run out only while more of them do than the counts of the sessions and the lockout
+    // let pass before they refuse; the answer is then the concurrency failure, whether the guess was right or wrong.
+    internal async Task<IdentityResult> GuessAsync(CmsUser user, Func<Task<IdentityResult>> guess)
     {
-        ThrowIfDisposed();
-        ArgumentNullException.ThrowIfNull(user);
+        ArgumentNullException.ThrowIfNull(guess);
 
-        if (Store is not IUserAuthenticationTokenStore<CmsUser> tokens || await tokens.GetTokenAsync(user, StoreProvider, SignedInFailuresName, CancellationToken) is null)
+        var attempts = 2 * Math.Max(Options.Lockout.MaxFailedAccessAttempts, 1);
+        IdentityResult result;
+        do
         {
-            return await ResetAccessFailedCountAsync(user);
+            _reloaded = null;
+            result = await guess();
         }
+        while (--attempts > 0 && Reloaded(user) && result.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.ConcurrencyFailure)));
 
-        await tokens.RemoveTokenAsync(user, StoreProvider, SignedInFailuresName, CancellationToken);
-        user.AccessFailedCount = 0;
-        return await UpdateUserAsync(user);
+        return result;
     }
 
     // A wrong current password counts towards the lockout, as at sign-in, and towards the count of the user's sessions, so
-    // that a session that leaked is no way to guess it; while that count keeps the sessions out the change is refused
-    // unchecked, and a right one starts the counts again. A user with no password, one of a provider only, has nothing to
+    // that a session that leaked is no way to guess it; while the sessions are kept out the change is refused unchecked,
+    // and a right one starts the count of passwords again. A user with no password, one of a provider only, has nothing to
     // guess, so nothing is counted.
     public override async Task<IdentityResult> ChangePasswordAsync(CmsUser user, string currentPassword, string newPassword)
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(user);
 
-        if (await IsSignedInLockedOutAsync(user))
-        {
-            return IdentityResult.Failed(new IdentityError { Code = LockedOutCode, Description = "The account is locked out for now; try again later." });
-        }
-
-        // The count starts again in the save of the new password, and comes back if that fails, unless a failed save
-        // reloaded the user with what is stored now, which another request may have changed since.
-        var failures = user.AccessFailedCount;
-        user.AccessFailedCount = 0;
-        _reloaded = null;
-        var result = await ClearingPasswordChangeAsync(user, () => base.ChangePasswordAsync(user, currentPassword, newPassword));
+        var result = await GuessAsync(user, () => ChangePasswordOnceAsync(user, currentPassword, newPassword));
         if (result.Succeeded)
         {
-            // Its failure leaves the sessions' count as it was, which only keeps them out sooner.
-            await ResetSignedInFailuresAsync(user);
-            return result;
-        }
-
-        if (!ReferenceEquals(_reloaded, user))
-        {
-            user.AccessFailedCount = failures;
-        }
-
-        if (SupportsUserLockout && result.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.PasswordMismatch)) && await HasPasswordAsync(user))
-        {
-            await SignedInAccessFailedAsync(user);
+            // Its failure leaves the count as it was, which only keeps the sessions out sooner.
+            await ResetSignedInFailuresAsync(user, PasswordFailuresName);
         }
 
         return result;
@@ -331,9 +314,10 @@ public sealed class CmsUserManager : UserManager<CmsUser>
 
         var required = user.MustChangePassword;
         user.MustChangePassword = true;
+        _reloaded = null;
         var result = await UpdatePasswordHash(user, newPassword, validatePassword: true);
         result = result.Succeeded ? await UpdateUserAsync(user) : result;
-        if (!result.Succeeded)
+        if (!result.Succeeded && !Reloaded(user))
         {
             user.MustChangePassword = required;
         }
@@ -357,7 +341,7 @@ public sealed class CmsUserManager : UserManager<CmsUser>
         {
             result = await base.UpdateUserAsync(user);
         }
-        catch (DbUpdateException exception) when (addsToken && _services.GetService<IDataProvider>()?.IsUniqueViolation(exception) == true && store!.IsTokenKeyViolation(exception))
+        catch (DbUpdateException exception) when (addsToken && _services.GetService<IDataProvider>() is { } provider && store!.IsTokenKeyViolation(provider, exception))
         {
             result = IdentityResult.Failed(ErrorDescriber.ConcurrencyFailure());
         }
@@ -374,28 +358,100 @@ public sealed class CmsUserManager : UserManager<CmsUser>
         return result;
     }
 
-    private async Task<(int Count, DateTimeOffset? Until)> SignedInFailuresAsync(CmsUser user)
+    private async Task<IdentityResult> ChangePasswordOnceAsync(CmsUser user, string currentPassword, string newPassword)
     {
-        var parts = (await GetAuthenticationTokenAsync(user, StoreProvider, SignedInFailuresName))?.Split(':');
+        if (await IsSignedInLockedOutAsync(user))
+        {
+            return IdentityResult.Failed(new IdentityError { Code = LockedOutCode, Description = "The account is locked out for now; try again later." });
+        }
+
+        // The lockout's count starts again in the save of the new password, and comes back if that fails, unless a failed
+        // save reloaded the user with what is stored now, which another request may have changed since.
+        var failures = user.AccessFailedCount;
+        user.AccessFailedCount = 0;
+        var result = await ClearingPasswordChangeAsync(user, () => base.ChangePasswordAsync(user, currentPassword, newPassword));
+        if (result.Succeeded)
+        {
+            return result;
+        }
+
+        if (!Reloaded(user))
+        {
+            user.AccessFailedCount = failures;
+        }
+
+        if (SupportsUserLockout && result.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.PasswordMismatch)) && await HasPasswordAsync(user))
+        {
+            var counted = await SignedInFailedAsync(user, PasswordFailuresName);
+            return counted.Succeeded ? result : counted;
+        }
+
+        return result;
+    }
+
+    // A wrong password or code of a signed-in user counts towards its count and towards the lockout, as before, in one save.
+    private async Task<IdentityResult> SignedInFailedAsync(CmsUser user, string name)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+
+        if (Store is IUserAuthenticationTokenStore<CmsUser> tokens)
+        {
+            var (count, until) = await SignedInFailuresAsync(user, name);
+            if (++count >= Options.Lockout.MaxFailedAccessAttempts)
+            {
+                (count, until) = (0, _time.GetUtcNow() + Options.Lockout.DefaultLockoutTimeSpan);
+            }
+
+            var value = string.Create(CultureInfo.InvariantCulture, $"{count}:{until?.ToUnixTimeSeconds()}");
+            await tokens.SetTokenAsync(user, StoreProvider, name, value, CancellationToken);
+        }
+
+        return await AccessFailedAsync(user);
+    }
+
+    private async Task<IdentityResult> ResetSignedInFailuresAsync(CmsUser user, string name)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+
+        if (Store is not IUserAuthenticationTokenStore<CmsUser> tokens || await tokens.GetTokenAsync(user, StoreProvider, name, CancellationToken) is null)
+        {
+            return IdentityResult.Success;
+        }
+
+        await tokens.RemoveTokenAsync(user, StoreProvider, name, CancellationToken);
+        return await UpdateUserAsync(user);
+    }
+
+    private async Task<(int Count, DateTimeOffset? Until)> SignedInFailuresAsync(CmsUser user, string name)
+    {
+        var parts = (await GetAuthenticationTokenAsync(user, StoreProvider, name))?.Split(':');
         return parts is [var count, var until] && int.TryParse(count, NumberStyles.None, CultureInfo.InvariantCulture, out var failures)
             ? (failures, long.TryParse(until, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds) ? DateTimeOffset.FromUnixTimeSeconds(seconds) : null)
             : (0, null);
     }
 
-    // The user's own new password clears the flag, with its save, and the flag comes back if that fails. A password an admin
-    // sets by removing and adding one keeps it, since that is how a temporary password is given.
-    private static async Task<IdentityResult> ClearingPasswordChangeAsync(CmsUser user, Func<Task<IdentityResult>> change)
+    // The user's own new password clears the flag, with its save, and the flag comes back if that fails, unless a failed save
+    // reloaded the user with what is stored now (#3447). A password an admin sets by removing and adding one keeps it, since
+    // that is how a temporary password is given.
+    private async Task<IdentityResult> ClearingPasswordChangeAsync(CmsUser user, Func<Task<IdentityResult>> change)
     {
         ArgumentNullException.ThrowIfNull(user);
 
         var required = user.MustChangePassword;
         user.MustChangePassword = false;
+        _reloaded = null;
         var result = await change();
-        if (!result.Succeeded)
+        if (!result.Succeeded && !Reloaded(user))
         {
             user.MustChangePassword = required;
         }
 
         return result;
     }
+
+    // Whether a failed save of the call reloaded the user with what is stored, which a value it changed is then not put back
+    // over: that may be another request's by now, and a later save of the scope would store the stale one (#3381, #3447).
+    private bool Reloaded(CmsUser user) => ReferenceEquals(_reloaded, user);
 }

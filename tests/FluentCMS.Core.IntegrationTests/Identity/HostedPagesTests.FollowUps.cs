@@ -157,6 +157,55 @@ public sealed partial class HostedPagesTests
         after.Status.ShouldBe(HttpStatusCode.OK, after.Body?.ToJsonString());
     }
 
+    // Wrong passwords and wrong codes of the user's sessions are counted apart. A right code proves the second factor and
+    // not the password, so it starts the count of codes again and leaves that of passwords: a session that holds the second
+    // factor guesses no more passwords than one that does not. Either count at its limit keeps the sessions out of both
+    // (#3447).
+    [Fact]
+    public async Task ARightCodeStartsTheCountOfCodesAgainAndLeavesThatOfPasswords()
+    {
+        await using var host = NewTwoFactorHost();
+        var lockout = new AdminUserOptions().Lockout;
+        var guarded = await CreateUserAsync(host);
+        var (key, _) = await EnableTwoFactorAsync(host, guarded);
+        using var client = await host.AsUserAsync(guarded);
+        async Task<string> ChangeAsync(string current)
+        {
+            await using var scope = host.Services.CreateAsyncScope();
+            var users = scope.ServiceProvider.GetRequiredService<CmsUserManager>();
+            var result = await users.ChangePasswordAsync((await users.FindByIdAsync(guarded.Id.ToString()))!, current, NewPassword);
+            return result.Succeeded ? "" : result.Errors.Single().Code;
+        }
+
+        async Task<ApiResponse> CodeAsync(string code)
+        {
+            // A code is taken once, so each right one is of a step of its own.
+            host.Time.Advance(TimeSpan.FromSeconds(30));
+            return await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/recovery-codes", Code(code == "" ? Totp(host, key) : code));
+        }
+
+        for (var attempt = 1; attempt < lockout.MaxFailedAccessAttempts; attempt++)
+        {
+            (await ChangeAsync("not the password")).ShouldBe("PasswordMismatch");
+            (await CodeAsync(WrongCode(host, key))).Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.InvalidTwoFactorCode);
+        }
+
+        var right = await CodeAsync("");
+        right.Status.ShouldBe(HttpStatusCode.OK, right.Body?.ToJsonString());
+        (await CodeAsync(WrongCode(host, key))).Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.InvalidTwoFactorCode);
+
+        // The right code left the count of passwords one short of the limit.
+        (await ChangeAsync("not the password")).ShouldBe("PasswordMismatch");
+        (await ChangeAsync(Password)).ShouldBe(CmsUserManager.LockedOutCode);
+        var refused = await CodeAsync("");
+        refused.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        refused.Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.InvalidTwoFactorCode);
+
+        host.Time.Advance(lockout.DefaultLockoutTimeSpan);
+        (await CodeAsync("")).Status.ShouldBe(HttpStatusCode.OK);
+        (await ChangeAsync(Password)).ShouldBe("");
+    }
+
     // A user of a provider only has no current password to give on /account/change-password. The flag is refused for it,
     // and one that carries the flag from before is not sent there: it gets its code and refreshes its tokens.
     [Fact]

@@ -7,6 +7,7 @@ using FluentCMS.Core.Storage;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace FluentCMS.Data.SqlServer;
@@ -30,6 +31,20 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
     // 2601 is a unique index, 2627 a unique or primary key constraint.
     public bool IsUniqueViolation(Exception exception) =>
         (exception as SqlException ?? exception.InnerException as SqlException) is { Number: 2601 or 2627 };
+
+    // 2627 quotes the constraint and then its table, 2601 the table and then the index, each between single quotes and
+    // before the duplicate value, which comes last and may hold anything, so only those first two names are read. A message
+    // worded or quoted otherwise, as a server of another language may answer, names no key, and the failure is thrown.
+    public bool IsUniqueViolation(Exception exception, IUniqueConstraint key)
+    {
+        if (key is null || (exception as SqlException ?? exception.InnerException as SqlException)?.Errors.Cast<SqlError>().FirstOrDefault(error => error.Number is 2601 or 2627) is not { } error)
+        {
+            return false;
+        }
+
+        var quoted = error.Message.Split('\'');
+        return quoted.Length >= 5 && (string.Equals(quoted[1], key.Name, StringComparison.Ordinal) || string.Equals(quoted[3], key.Name, StringComparison.Ordinal));
+    }
 
     // 547 is any conflict with a constraint, a CHECK such as the ISJSON of a JSON column included, so the message is read
     // too. It quotes the constraint, and every foreign key of the model is named FK_ by EF's convention, a name no language

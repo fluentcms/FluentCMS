@@ -4,6 +4,7 @@ using System.Reflection;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 
@@ -27,6 +28,11 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
 
     public bool IsUniqueViolation(Exception exception) =>
         (exception as PostgresException ?? exception.InnerException as PostgresException) is { SqlState: PostgresErrorCodes.UniqueViolation };
+
+    // The error names the constraint or the unique index in a field of its own.
+    public bool IsUniqueViolation(Exception exception, IUniqueConstraint key) =>
+        (exception as PostgresException ?? exception.InnerException as PostgresException) is { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: { } name }
+        && string.Equals(name, key?.Name, StringComparison.Ordinal);
 
     public bool IsForeignKeyViolation(Exception exception) =>
         (exception as PostgresException ?? exception.InnerException as PostgresException) is { SqlState: PostgresErrorCodes.ForeignKeyViolation };
