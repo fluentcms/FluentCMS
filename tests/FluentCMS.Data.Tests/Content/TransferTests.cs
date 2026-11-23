@@ -936,6 +936,29 @@ public sealed class TransferTests : IDisposable
         target.Read(context => context.Set<Role>().Single(role => role.Id == other).SiteId).ShouldBe(SiteA.Value);
     }
 
+    // #3443: a role exported with a grant whose row rule roles now refuse is refused on import with the grant's code.
+    [Fact]
+    public async Task ARoleWithARowRuleBesideAPermissionItDoesNotLimitIsRefusedOnImport()
+    {
+        var role = Guid.CreateVersion7();
+        _source.Read(context =>
+        {
+            context.Add(new Role { Id = role, SiteId = SiteA.Value, Name = $"role-{role:N}" });
+            context.Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = role, Permission = CorePermissions.UsersManage, Constraints = new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }.ToJson() });
+            return context.SaveChanges();
+        });
+        var package = await ExportAsync(_source, new TransferExportRequest { Roles = true });
+        var target = Target();
+
+        var result = await ImportAsync(target, package, new TransferImportRequest { Roles = true });
+
+        result.Sections[TransferImporter.RolesSection].ShouldBe(TransferCounts.None with { Errors = 1 });
+        var refused = result.Items.Single(entry => entry.Section == TransferImporter.RolesSection);
+        refused.Code.ShouldBe("FCMS3042");
+        refused.Message.ShouldStartWith("grants[0].constraints.rowRule:");
+        target.Read(context => context.Set<Role>().Count(item => item.Id == role)).ShouldBe(0);
+    }
+
     [Fact]
     public async Task AFieldThePackageDoesNotHaveKeepsWhatTheInstanceHolds()
     {

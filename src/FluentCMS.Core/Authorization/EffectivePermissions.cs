@@ -17,6 +17,8 @@ internal readonly record struct AccessTarget(SiteId? Site, string? Locale, strin
 // split when the grant is built, which is before it enters EffectiveGrantCache, since every check matches it again.
 internal sealed class EffectiveGrant(string pattern, PermissionConstraints constraints, Guid? roleSite)
 {
+    private const string ContentPrefix = FluentCMS.Authorization.Permission.ContentPrefix + ".";
+
     private readonly string[]? _segments = PermissionPattern.Segments(pattern);
 
     public string Pattern { get; } = pattern;
@@ -36,8 +38,11 @@ internal sealed class EffectiveGrant(string pattern, PermissionConstraints const
         ReachesInSomeLocale(permission, target)
         && (Constraints.Locales is null || (!string.IsNullOrEmpty(target.Locale) && Constraints.Locales.Contains(target.Locale, StringComparer.OrdinalIgnoreCase)));
 
+    // A row rule limits rows of content, so a grant with one gives no other permission, as one limited to resources gives no
+    // core one. Roles refuse such a grant, so only one stored before that has it.
     private bool ReachesInSomeLocale(string permission, AccessTarget target) =>
         PermissionPattern.Matches(_segments, permission)
+        && (Constraints.RowRule is null || permission.StartsWith(ContentPrefix, StringComparison.Ordinal))
         && (RoleSite is null || target.Site?.Value == RoleSite)
         && (Constraints.Sites is null || (target.Site is { } site && Constraints.Sites.Contains(site)));
 

@@ -540,9 +540,16 @@ internal sealed class RoleService(
             errors.Add(Invalid(path + ".constraints.fields", "A grant is limited to named fields, at least one, or to none by leaving fields out."));
         }
 
-        if (constraints.RowRule is { } rule && !rules.Has(rule))
+        if (constraints.RowRule is { } rule)
         {
-            errors.Add(Invalid(path + ".constraints.rowRule", $"There is no row rule '{rule}'."));
+            if (!rules.Has(rule))
+            {
+                errors.Add(Invalid(path + ".constraints.rowRule", $"There is no row rule '{rule}'."));
+            }
+            else if (catalogue.IsGrantable(grant.Permission) && RowRuleMisfit(rule, grant.Permission) is { } misfit)
+            {
+                errors.Add(Invalid(path + ".constraints.rowRule", misfit));
+            }
         }
 
         if (constraints.Resources is { } resources && (resources.Count is 0 or > MaxResources || resources.Any(resource => string.IsNullOrWhiteSpace(resource) || resource.Length > ResourceLength)))
@@ -559,6 +566,15 @@ internal sealed class RoleService(
             Resources = constraints.Resources?.Distinct(StringComparer.Ordinal).ToList(),
         });
     }
+
+    // A rule limits the rows of content, so it stands only beside content permissions and for the types it is registered for,
+    // each type of the schema for a pattern of every type: elsewhere the grant would read as limited and give nothing.
+    private string? RowRuleMisfit(string rule, string permission) => rules.TypesWithout(rule, permission) switch
+    {
+        null => $"A row rule limits only content permissions, and '{permission}' is not one of them alone.",
+        [] => null,
+        var types => $"Row rule '{rule}' is not registered for {string.Join(", ", types.Select(type => $"'{type}'"))}, which '{permission}' grants.",
+    };
 
     private async Task SaveAsync(Role role, CancellationToken cancellationToken)
     {

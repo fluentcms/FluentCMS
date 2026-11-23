@@ -19,11 +19,15 @@ internal sealed class RowRuleRegistry
 {
     private readonly Dictionary<(string Name, string? Type), RowRule> _rules = [];
 
+    private readonly string[] _types;
+
     public RowRuleRegistry(SchemaModel schema, ContentQueryOptions options, IEnumerable<RowRule> rules)
     {
         ArgumentNullException.ThrowIfNull(schema);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(rules);
+
+        _types = [.. schema.ContentTypes.Select(type => type.Name).Order(StringComparer.Ordinal)];
 
         var paths = new QueryPaths(schema, new ContentQueryAccess.Closed());
         foreach (var rule in rules)
@@ -53,6 +57,14 @@ internal sealed class RowRuleRegistry
         _rules.GetValueOrDefault((name, typeName)) ?? _rules.GetValueOrDefault((name, null));
 
     public bool Has(string name) => _rules.Keys.Any(key => string.Equals(key.Name, name, StringComparison.Ordinal));
+
+    // The content types that a grant of the pattern reaches and the rule is not registered for: the type the pattern names, or
+    // each type of the schema for one of every type. Null when the pattern is not of content permissions alone, which no row
+    // rule limits.
+    public IReadOnlyList<string>? TypesWithout(string name, string pattern) =>
+        pattern.Split('.') is [FluentCMS.Authorization.Permission.ContentPrefix, var type, _]
+            ? [.. (type == "*" ? _types : [type]).Where(item => Find(name, item) is null)]
+            : null;
 
     private static void Check(SchemaModel schema, ContentQueryOptions options, QueryPaths paths, RowRule rule)
     {
