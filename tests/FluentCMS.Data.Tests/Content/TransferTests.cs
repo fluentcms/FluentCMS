@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Data.Common;
 using System.IO.Compression;
 using System.Text.Json;
@@ -13,6 +14,7 @@ using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Core.Tests.Transfer;
 using FluentCMS.Core.Transfer;
 using FluentCMS.Data.Tests.Authorization;
+using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Hooks;
 using FluentCMS.Providers;
@@ -23,6 +25,7 @@ using FluentCMS.Transfer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Data.Tests.Content.ServiceDatabase;
@@ -120,6 +123,262 @@ public sealed class TransferTests : IDisposable
         during.ShouldBe(before);
         during.ShouldContain(grace.ToString("D"));
         Entries(await ExportAsync(source, new TransferExportRequest { Types = ["author"] }))[TransferPackage.ContentPath("author")].ShouldContain("Ada changed");
+    }
+
+    // #3485: a reader that stalls does not keep the snapshot of an export open. At FluentCms:Transfer:ExportSnapshotTimeout
+    // the export stops and ends its output, as the endpoint aborts the response, even where the write it waits in heeds no
+    // token, and the snapshot ends with it. The stall is at the last write of the snapshot, as a first export with the same
+    // entries counts them. A write that the abort ends may throw or return as if it went through, and either way the export
+    // is not finished: 9190 is logged, no transfer.exported row is written, and the output keeps what it got before the abort,
+    // without the central directory, so the import refuses those bytes even where a transport kept them.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AStalledReaderDoesNotHoldTheSnapshotPastTheBound(bool throwsWhenAborted)
+    {
+        var clock = new ManualTimeProvider(new DateTimeOffset(2027, 3, 1, 8, 0, 0, TimeSpan.Zero));
+        var logs = new ExportLogs();
+        var source = new ServiceDatabase(cms =>
+        {
+            Configure(cms);
+            cms.Services.AddSingleton<TimeProvider>(clock);
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+        });
+        _targets.Add(source);
+        if (TestProvider.IsSqlServer)
+        {
+            source.Read(context => context.Database.ExecuteSqlRaw("ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON"));
+        }
+
+        await CreateAsSystemAsync(source, "author", new ContentDocument { ["name"] = "Ada" });
+        var counted = new StalledOutput(throwsWhenAborted, stallAt: int.MaxValue);
+        await source.AsAsync(Admin, async services =>
+        {
+            var (exporter, run) = await StartExportAsync(services, counted);
+            await exporter.WriteAsync(run, counted, counted.Abort, Token);
+            return 0;
+        }).WaitAsync(RowLocks.Limit, Token);
+        Exported(source).ShouldBe(1);
+        var output = new StalledOutput(throwsWhenAborted, stallAt: counted.SnapshotWrites);
+
+        // On a thread of its own, since the stalled write can be one that blocks, which SQLite reaches without a yield. A
+        // failed assertion still lets the write go, so that no snapshot is left open.
+        var exporting = Task.Run(() => source.AsAsync(Admin, async services =>
+        {
+            var (exporter, run) = await StartExportAsync(services, output);
+            await Should.ThrowAsync<OperationCanceledException>(() => exporter.WriteAsync(run, output, output.Abort, Token));
+            return services.GetRequiredService<CmsDbContext>().Database.CurrentTransaction is null;
+        }), Token);
+        try
+        {
+            await output.Stalled.Task.WaitAsync(RowLocks.Limit, Token);
+            exporting.IsCompleted.ShouldBeFalse();
+
+            clock.Advance(TimeSpan.FromHours(1));
+
+            (await exporting.WaitAsync(RowLocks.Limit, Token)).ShouldBeTrue();
+        }
+        finally
+        {
+            output.Abort();
+        }
+
+        logs.Of(9190).ShouldHaveSingleItem();
+        logs.Of(9181).ShouldHaveSingleItem();
+        Exported(source).ShouldBe(1);
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(Target(), output.Received.ToArray()));
+        refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
+    }
+
+    // #3485: the bound ends a read too. What the provider throws for a read it cancelled need not be a cancellation, as
+    // SqlClient's "Operation cancelled by user" is not, and the export still ends as one the bound stopped: 9190 and 9182,
+    // no transfer.exported row, and a cancellation that names the option.
+    [Fact]
+    public async Task ABoundThatEndsAReadStopsTheExportAsBoundedWhateverTheProviderThrows()
+    {
+        var clock = new ManualTimeProvider(new DateTimeOffset(2027, 3, 1, 8, 0, 0, TimeSpan.Zero));
+        var logs = new ExportLogs();
+        var read = new ReadGate();
+        var source = new ServiceDatabase(cms =>
+        {
+            Configure(cms);
+            cms.Services.AddSingleton<TimeProvider>(clock);
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+            cms.Services.ConfigureDbContext<CmsDbContext>(options => options.AddInterceptors(read));
+        });
+        _targets.Add(source);
+        if (TestProvider.IsSqlServer)
+        {
+            source.Read(context => context.Database.ExecuteSqlRaw("ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON"));
+        }
+
+        await CreateAsSystemAsync(source, "author", new ContentDocument { ["name"] = "Ada" });
+        using var output = new MemoryStream();
+
+        var exporting = Task.Run(() => source.AsAsync(Admin, async services =>
+        {
+            var exporter = services.GetRequiredService<TransferExporter>();
+            var run = await exporter.PrepareAsync(new TransferExportRequest { Types = ["author"] }, Token);
+            read.Armed = true;
+
+            // Caught here, since Shouldly answers a cancelled task with a cancellation of its own, without the message.
+            try
+            {
+                await exporter.WriteAsync(run, output, () => { }, Token);
+                return null;
+            }
+            catch (OperationCanceledException exception)
+            {
+                return exception;
+            }
+        }), Token);
+        try
+        {
+            await read.Reached.Task.WaitAsync(RowLocks.Limit, Token);
+            clock.Advance(TimeSpan.FromHours(1));
+        }
+        finally
+        {
+            read.Release.TrySetResult();
+        }
+
+        (await exporting.WaitAsync(RowLocks.Limit, Token)).ShouldNotBeNull().Message.ShouldContain("ExportSnapshotTimeout");
+        logs.Of(9190).ShouldHaveSingleItem();
+        logs.Of(9182).ShouldHaveSingleItem();
+        Exported(source).ShouldBe(0);
+    }
+
+    // Holds the first read of cms_document inside the export's snapshot until the test lets it go, and then fails it as
+    // SqlClient fails a command whose token was cancelled.
+    private sealed class ReadGate : DbCommandInterceptor
+    {
+        private int _passed;
+
+        public volatile bool Armed;
+
+        public TaskCompletionSource Reached { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (Armed && eventData.Context?.Database.CurrentTransaction is not null && command.CommandText.Contains("cms_document", StringComparison.Ordinal) && Interlocked.Exchange(ref _passed, 1) == 0)
+            {
+                Reached.TrySetResult();
+                await Release.Task;
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    throw new InvalidOperationException("Operation cancelled by user.");
+                }
+            }
+
+            return result;
+        }
+    }
+
+    private static async Task<(TransferExporter Exporter, TransferExportRun Run)> StartExportAsync(IServiceProvider services, StalledOutput output)
+    {
+        var exporter = services.GetRequiredService<TransferExporter>();
+        var run = await exporter.PrepareAsync(new TransferExportRequest { Types = ["author"] }, Token);
+        var context = services.GetRequiredService<CmsDbContext>();
+        output.InSnapshot = () => context.Database.CurrentTransaction is not null;
+        return (exporter, run);
+    }
+
+    private static int Exported(ServiceDatabase database) =>
+        database.Read(context => context.Set<ActivityRow>().Count(row => row.Action == "transfer.exported"));
+
+    // An output whose reader stops reading while the export holds its snapshot: its write waits, whatever its token says,
+    // until the output is aborted, and then fails as a write to a response whose client is gone does, or goes through. Every
+    // write that does not fail is kept, after the abort too, as by a transport that keeps every write.
+    private sealed class StalledOutput(bool throwsWhenAborted, int stallAt) : Stream
+    {
+        private readonly TaskCompletionSource _aborted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _snapshotWrites;
+
+        public Func<bool> InSnapshot { get; set; } = () => false;
+
+        public TaskCompletionSource Stalled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public MemoryStream Received { get; } = new();
+
+        // The writes made while the export held its snapshot.
+        public int SnapshotWrites => Volatile.Read(ref _snapshotWrites);
+
+        public override bool CanRead => false;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => true;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public void Abort() => _aborted.TrySetResult();
+
+        public override void Flush()
+        {
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => WriteAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (InSnapshot() && Interlocked.Increment(ref _snapshotWrites) == stallAt)
+            {
+                Stalled.TrySetResult();
+                await _aborted.Task;
+                if (throwsWhenAborted)
+                {
+                    throw new IOException("The reader of the export is gone.");
+                }
+            }
+
+            lock (Received)
+            {
+                Received.Write(buffer.Span);
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Received.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+
+    private sealed class ExportLogs : ILoggerProvider, ILogger
+    {
+        private readonly ConcurrentQueue<(int Id, string Message)> _logged = new();
+
+        public List<string> Of(int id) => [.. _logged.Where(entry => entry.Id == id).Select(entry => entry.Message)];
+
+        public ILogger CreateLogger(string categoryName) => this;
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            _logged.Enqueue((eventId.Id, formatter(state, exception)));
+
+        public void Dispose()
+        {
+        }
     }
 
     // #3305: a line of a type that is not localized names a locale only in a package made by hand; it is reported as an

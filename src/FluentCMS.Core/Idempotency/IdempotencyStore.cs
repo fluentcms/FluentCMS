@@ -212,6 +212,17 @@ internal sealed class IdempotencyStore(IServiceScopeFactory scopes, IDataProvide
         return new IdempotencyLease(this, claim, options.InProgressTimeout / 3, time, logger);
     }
 
+    // What the answer of a request is captured with (IdempotentRequests): the capture writes to memory and needs no client,
+    // so the client going away does not stop it, and a retry gets the answer of a write that committed rather than run it
+    // again; it stops InProgressTimeout after that, so that a request whose client is gone holds its key no longer than a lease.
+    public IdempotencyCapture CaptureBound(CancellationToken aborted) => new(options.InProgressTimeout, time, aborted);
+
+    public void NotCaptured(IdempotencyClaim claim)
+    {
+        ArgumentNullException.ThrowIfNull(claim);
+        IdempotencyLog.NotCaptured(logger, claim.Id);
+    }
+
     // Not canceled: the work is done, and a repeat should find its answer.
     public async Task CompleteAsync(IdempotencyClaim claim, StoredResponse response)
     {
@@ -272,6 +283,28 @@ internal sealed class IdempotencyStore(IServiceScopeFactory scopes, IDataProvide
         Refused(IdempotencyErrorCodes.InProgress, $"A repeat took this {Header} over after its lease ran out, so this request was stopped before it answered, and its write was rolled back.");
 
     private static ValidationException Refused(string code, string message) => new([new ValidationError(Header, code, message)]);
+}
+
+internal sealed class IdempotencyCapture : IDisposable
+{
+    private readonly CancellationTokenSource _bound;
+    private readonly CancellationTokenRegistration _gone;
+
+    public IdempotencyCapture(TimeSpan bound, TimeProvider time, CancellationToken aborted)
+    {
+        _bound = new CancellationTokenSource(Timeout.InfiniteTimeSpan, time);
+        _gone = aborted.Register(() => _bound.CancelAfter(bound));
+    }
+
+    public CancellationToken Token => _bound.Token;
+
+    public bool IsCancellationRequested => _bound.IsCancellationRequested;
+
+    public void Dispose()
+    {
+        _gone.Dispose();
+        _bound.Dispose();
+    }
 }
 
 internal sealed class IdempotencyLease : IAsyncDisposable
@@ -349,4 +382,7 @@ internal static partial class IdempotencyLog
 
     [LoggerMessage(EventId = 9146, Level = LogLevel.Warning, Message = "The Idempotency-Key {Id} passed its window and was removed while its request still ran, after its lease ran out; no other request had claimed it, so the request put its claim back and holds the key again.")]
     public static partial void ClaimRestored(ILogger logger, Guid id);
+
+    [LoggerMessage(EventId = 9147, Level = LogLevel.Error, Message = "The answer of the Idempotency-Key {Id} was not captured within InProgressTimeout after its client went away; nothing is kept, the key stays held until its lease runs out, and a retry after that runs the request again.")]
+    public static partial void NotCaptured(ILogger logger, Guid id);
 }
