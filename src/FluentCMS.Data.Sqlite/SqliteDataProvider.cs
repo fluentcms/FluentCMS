@@ -6,6 +6,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
 using SQLitePCL;
 
@@ -40,6 +41,13 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
     // A primary key counts, as it does on the other providers.
     public bool IsUniqueViolation(Exception exception) =>
         (exception as SqliteException ?? exception.InnerException as SqliteException) is { SqliteExtendedErrorCode: raw.SQLITE_CONSTRAINT_UNIQUE or raw.SQLITE_CONSTRAINT_PRIMARYKEY };
+
+    // SQLite names no key, only its columns, as table.column in the key's order and to the end of its message, and never a
+    // value.
+    public bool IsUniqueViolation(Exception exception, IUniqueConstraint key) =>
+        key is not null
+        && (exception as SqliteException ?? exception.InnerException as SqliteException) is { SqliteExtendedErrorCode: raw.SQLITE_CONSTRAINT_UNIQUE or raw.SQLITE_CONSTRAINT_PRIMARYKEY, Message: var message }
+        && message.EndsWith($"constraint failed: {string.Join(", ", key.Columns.Select(column => $"{key.Table.Name}.{column.Name}"))}'.", StringComparison.Ordinal);
 
     public bool IsForeignKeyViolation(Exception exception) =>
         (exception as SqliteException ?? exception.InnerException as SqliteException) is { SqliteExtendedErrorCode: raw.SQLITE_CONSTRAINT_FOREIGNKEY };
