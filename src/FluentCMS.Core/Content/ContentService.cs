@@ -625,9 +625,10 @@ internal sealed partial class ContentService(
         return result;
     }
 
-    // A hook that was left may hold the connection in a command, its reader open, and a driver may then refuse the rollback,
-    // as SqlClient without MARS refuses any other command. The transaction, which cannot commit, then ends when the scope
-    // closes its connection, and the caller gets what the write failed with rather than the refusal.
+    // A hook that was left may hold the connection in a command, its reader open. SqlClient without MARS then refuses the
+    // rollback and throws it out of the disposal (Npgsql swallows a failed rollback itself). The caller gets what the write
+    // failed with rather than that refusal, but the transaction and its locks stay until the scope disposes the context,
+    // whose closed connection rolls them back; the scope's guard keeps it from committing meanwhile.
     private async Task EndAsync(IDbContextTransaction transaction)
     {
         try

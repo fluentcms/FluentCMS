@@ -226,7 +226,7 @@ public sealed class HostMapTests : IAsyncLifetime
             () => map.ResolveAsync(name, Token).AsTask(),
             Token,
             TaskCreationOptions.None,
-            TaskScheduler.Default)));
+            TaskScheduler.Default))).WaitAsync(TimeSpan.FromSeconds(30), Token);
         _other.HostReads.Release();
 
         (await Task.WhenAll(requests)).ShouldAllBe(site => site == null);

@@ -456,7 +456,7 @@ public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<P
             () => state.IsEnabledAsync("sample", site, Token).AsTask(),
             Token,
             TaskCreationOptions.None,
-            TaskScheduler.Default)));
+            TaskScheduler.Default))).WaitAsync(TimeSpan.FromSeconds(30), Token);
         reads.Release();
 
         (await Task.WhenAll(readers)).ShouldAllBe(enabled => enabled);

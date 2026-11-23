@@ -6,6 +6,7 @@ using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Jobs;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Hooks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -209,6 +210,10 @@ public sealed class HookScopeTests : IDisposable
         }).WaitAsync(Bound, Token);
 
         failure.ShouldBeAssignableTo<OperationCanceledException>();
+
+        // SqlClient without MARS throws its refusal of the rollback beside the open reader out of the disposal; Npgsql
+        // swallows a failed rollback, and SQLite rolls back beside the reader.
+        _logs.Of(9409).Count.ShouldBe(TestProvider.IsSqlServer ? 1 : 0);
         _script.Ended.Task.IsCompleted.ShouldBeFalse();
         await ReleaseAsync();
         State().ShouldBe(before);

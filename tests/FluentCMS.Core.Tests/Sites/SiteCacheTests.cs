@@ -45,7 +45,7 @@ public sealed class SiteCacheTests
             () => _cache.GetOrLoadAsync(SiteCache.DefaultKey, Load, found => found is not null, TestContext.Current.CancellationToken),
             TestContext.Current.CancellationToken,
             TaskCreationOptions.None,
-            TaskScheduler.Default)));
+            TaskScheduler.Default))).WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         release.SetResult();
 
         (await Task.WhenAll(requests)).ShouldAllBe(found => found == Site);

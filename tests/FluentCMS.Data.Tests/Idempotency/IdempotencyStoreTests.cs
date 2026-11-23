@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Data.Common;
 using System.Text;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
@@ -6,12 +8,15 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Content;
 using FluentCMS.Data.Tests.Jobs;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Jobs;
 using FluentCMS.Sites;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Data.Tests.Content.ServiceDatabase;
@@ -31,12 +36,18 @@ public sealed class IdempotencyStoreTests : IDisposable
 
     private readonly ManualTimeProvider _clock = new(Start);
 
+    private readonly KeyGate _gate = new();
+
+    private readonly KeyLogs _logs = new();
+
     private readonly ServiceDatabase _database;
 
     public IdempotencyStoreTests() =>
         _database = new ServiceDatabase(cms =>
         {
             cms.Services.AddSingleton<TimeProvider>(_clock);
+            cms.Services.AddSingleton<ILoggerProvider>(_logs);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(_gate));
             cms.Idempotency.Window = TimeSpan.FromHours(24);
             cms.Idempotency.InProgressTimeout = TimeSpan.FromMinutes(5);
         });
@@ -171,34 +182,39 @@ public sealed class IdempotencyStoreTests : IDisposable
         (await BeginAsync(hash: "hash-b")).Claim.ShouldNotBeNull().Id.ShouldNotBe(claim.Id);
     }
 
-    // #3523: a key that expired and was removed, after its lease ran out, is not one a repeat took: the lease is not lost,
-    // and it is lost only once a repeat claims the key afresh.
+    // #3523: a repeat removes the expired row of a request whose lease ran out, and the request renews before the repeat
+    // claims the key afresh: the request puts its claim back, and the repeat then finds the key held rather than run too.
     [Fact]
-    public async Task ALeaseWhoseKeyExpiredAndWasRemovedIsNotLostUntilARepeatClaimsTheKey()
+    public async Task ARepeatThatRemovedAnExpiredKeyLosesItToTheRequestThatPutsItBack()
     {
-        var claim = (await BeginAsync()).Claim!;
-        var others = _clock.Timers;
-        var lease = Store.Hold(claim);
-        try
-        {
-            await RemoveRowsAsync();
-            await TurnSetAsync(others);
-            _clock.Advance(TimeSpan.FromMinutes(5) / 3);
-            await TurnSetAsync(others);
-            lease.Lost.IsCancellationRequested.ShouldBeFalse();
+        var first = (await BeginAsync()).Claim!;
+        _clock.Advance(TimeSpan.FromHours(24));
+        IdempotencyRenewal? renewal = null;
+        var deleted = false;
+        _gate.Arm(
+            command => (deleted |= TestProvider.IsDeleteFrom(command.CommandText, "cms_idempotency_key")) && command.CommandText.StartsWith("SELECT", StringComparison.Ordinal),
+            async () => renewal = await Store.RenewAsync(first, Token));
 
-            (await BeginAsync()).Claim.ShouldNotBeNull();
-            var lost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            using var heard = lease.Lost.Register(() => lost.TrySetResult());
-            _clock.Advance(TimeSpan.FromMinutes(5) / 3);
-            await lost.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
-        }
-        finally
-        {
-            await lease.DisposeAsync();
-        }
+        (await RefusedAsync(() => BeginAsync())).ShouldBe(IdempotencyErrorCodes.InProgress);
 
-        lease.Expired.ShouldBeTrue();
+        renewal.ShouldBe(IdempotencyRenewal.Restored);
+        Rows().ShouldHaveSingleItem().Owner.ShouldBe(first.Owner);
+    }
+
+    // #3523: a repeat that read a lapsed lease loses its takeover to a renewal of that lease before its update.
+    [Fact]
+    public async Task ATakeoverLosesToARenewalBetweenItsReadAndItsUpdate()
+    {
+        var first = (await BeginAsync()).Claim!;
+        _clock.Advance(TimeSpan.FromMinutes(5));
+        IdempotencyRenewal? renewal = null;
+        _gate.Arm(command => TestProvider.IsUpdateOf(command.CommandText, "cms_idempotency_key"), async () => renewal = await Store.RenewAsync(first, Token));
+
+        (await RefusedAsync(() => BeginAsync())).ShouldBe(IdempotencyErrorCodes.InProgress);
+
+        renewal.ShouldBe(IdempotencyRenewal.Renewed);
+        Rows().ShouldHaveSingleItem().Owner.ShouldBe(first.Owner);
+        _logs.Of(9140).ShouldBeEmpty();
     }
 
     // A claim a repeat took over, after renewals failed for a whole lease, is lost at the next turn, which cancels the
@@ -284,9 +300,10 @@ public sealed class IdempotencyStoreTests : IDisposable
     }
 
     // #3523: a key that passed its window and was removed while its request ran, its lease out, is not a key a repeat took:
-    // the request goes on, answers what it wrote, and stores nothing under the key.
+    // the request puts its claim back and holds the key again, so a repeat meanwhile is refused, and its answer is kept
+    // and replayed as usual.
     [Fact]
-    public async Task ARequestWhoseKeyExpiredAndWasRemovedUnderItGoesOnAndKeepsNothing()
+    public async Task ARequestWhoseKeyWasRemovedUnderItPutsItBackAndKeepsItsAnswer()
     {
         using var scope = _database.Database.NewScope();
         var http = Request(scope, "key-expired");
@@ -301,15 +318,52 @@ public sealed class IdempotencyStoreTests : IDisposable
             return Results.Json(new { id = "1" }, statusCode: StatusCodes.Status201Created);
         });
         await working.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        var hash = Rows().Single().RequestHash;
 
         await RemoveRowsAsync();
         await TurnSetAsync(others);
         _clock.Advance(TimeSpan.FromMinutes(5) / 3);
         await TurnSetAsync(others);
+
+        _logs.Of(9146).ShouldHaveSingleItem();
+        (await RefusedAsync(() => BeginAsync("key-expired", hash))).ShouldBe(IdempotencyErrorCodes.InProgress);
         release.TrySetResult();
 
         await AnswersCreatedAsync(http, await running.WaitAsync(TimeSpan.FromSeconds(30), Token));
-        Rows().ShouldBeEmpty();
+        (await BeginAsync("key-expired", hash)).Stored.ShouldNotBeNull().Body.ShouldBe("""{"id":"1"}""");
+    }
+
+    // #3523: a repeat that claimed a removed key afresh before the request's renewal keeps it: the request cannot put its
+    // claim back and is cancelled before its write, so only one of the two writes.
+    [Fact]
+    public async Task ARequestWhoseRemovedKeyARepeatClaimedIsCancelled()
+    {
+        using var scope = _database.Database.NewScope();
+        var http = Request(scope, "key-reclaimed");
+        var others = _clock.Timers;
+        var working = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var wrote = false;
+
+        var running = IdempotentRequests.RunAsync(http, async () =>
+        {
+            working.TrySetResult();
+            await Task.Delay(Timeout.Infinite, http.RequestAborted);
+            wrote = true;
+            return Results.Ok();
+        });
+        await working.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        var hash = Rows().Single().RequestHash;
+
+        await RemoveRowsAsync();
+        var repeat = (await BeginAsync("key-reclaimed", hash)).Claim.ShouldNotBeNull();
+        await TurnSetAsync(others);
+        _clock.Advance(TimeSpan.FromMinutes(5) / 3);
+
+        (await RefusedAsync(() => running.WaitAsync(TimeSpan.FromSeconds(30), Token))).ShouldBe(IdempotencyErrorCodes.InProgress);
+        wrote.ShouldBeFalse();
+        Rows().ShouldHaveSingleItem().Owner.ShouldBe(repeat.Owner);
+        _logs.Of(9145).ShouldHaveSingleItem();
+        _logs.Of(9146).ShouldBeEmpty();
     }
 
     private DefaultHttpContext Request(IServiceScope scope, string key)
@@ -461,5 +515,62 @@ public sealed class IdempotencyStoreTests : IDisposable
         IdempotencyStore.Key(["550e8400-e29b-41d4-a716-446655440000"]).ShouldBe("550e8400-e29b-41d4-a716-446655440000");
         Should.Throw<ValidationException>(() => IdempotencyStore.Key([new string('k', 256)]));
         Should.Throw<ValidationException>(() => IdempotencyStore.Key(["a", "b"])).Errors.ShouldHaveSingleItem().Path.ShouldBe("Idempotency-Key");
+    }
+
+    // Runs what a test gives it before the first command of the store that matches once armed, and lets the command go on
+    // when that is done.
+    private sealed class KeyGate : DbCommandInterceptor
+    {
+        private Func<DbCommand, bool>? _matches;
+        private Func<Task>? _at;
+
+        public void Arm(Func<DbCommand, bool> matches, Func<Task> at)
+        {
+            _at = at;
+            Volatile.Write(ref _matches, matches);
+        }
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            await PassAsync(command);
+            return result;
+        }
+
+        // A save sends its batch as a query on some providers.
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            await PassAsync(command);
+            return result;
+        }
+
+        private async Task PassAsync(DbCommand command)
+        {
+            if (Volatile.Read(ref _matches) is { } matches && matches(command) && Interlocked.CompareExchange(ref _matches, null, matches) == matches)
+            {
+                await _at!().WaitAsync(TimeSpan.FromSeconds(30), Token);
+            }
+        }
+    }
+
+    // What the store logs, by event id.
+    private sealed class KeyLogs : ILoggerProvider, ILogger
+    {
+        private readonly ConcurrentQueue<(int Id, string Message)> _logged = new();
+
+        public List<string> Of(int id) => [.. _logged.Where(entry => entry.Id == id).Select(entry => entry.Message)];
+
+        public ILogger CreateLogger(string categoryName) => this;
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            _logged.Enqueue((eventId.Id, formatter(state, exception)));
+
+        public void Dispose()
+        {
+        }
     }
 }
