@@ -55,6 +55,7 @@ internal sealed partial class ContentService(
     JobFactory jobs,
     ApiKeyPrincipals keys,
     IDataProvider provider,
+    ContentWriteOptions writeOptions,
     TimeProvider time,
     TransferImportMode importMode,
     IServiceScopeFactory scopes,
@@ -539,6 +540,10 @@ internal sealed partial class ContentService(
             {
                 throw conflict;
             }
+            catch (Exception exception) when (exception is not EntryBusyException && provider.IsLockTimeout(exception))
+            {
+                throw new EntryBusyException(writeOptions.LockTimeout, exception);
+            }
         }
 
         var keyRerun = false;
@@ -583,6 +588,11 @@ internal sealed partial class ContentService(
                 tracked.Restore();
                 await PauseAfterDeadlockAsync(++deadlocks, cancellationToken);
             }
+            catch (Exception exception) when (exception is not EntryBusyException && provider.IsLockTimeout(exception))
+            {
+                // Not run again: the holder may hold on for as long as its hooks run, so the caller decides when to try (#3573).
+                throw new EntryBusyException(writeOptions.LockTimeout, exception);
+            }
         }
     }
 
@@ -594,7 +604,7 @@ internal sealed partial class ContentService(
         // On SQLite this takes the write lock at once, so a second writer waits here and then sees the first one's version.
         var committed = false;
         T result;
-        var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var transaction = await provider.BeginWriteAsync(context, writeOptions.LockTimeout, cancellationToken);
         _ownsTransaction = true;
         events.Open();
         try

@@ -79,6 +79,38 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
 
     public bool HasOneWriter => false;
 
+    // SET LOCK_TIMEOUT holds for the rest of the session, so the transaction sets it back before it ends (LockTimeoutTransaction).
+    // It is sent alone and without parameters, as a batch: inside sp_executesql it would end with that call.
+    public async Task<IDbContextTransaction> BeginWriteAsync(DbContext context, TimeSpan lockTimeout, CancellationToken cancellationToken)
+    {
+        var transaction = new LockTimeoutTransaction(context, await context.Database.BeginTransactionAsync(cancellationToken));
+        try
+        {
+            var milliseconds = (int)Math.Min(int.MaxValue, Math.Max(1, Math.Ceiling(lockTimeout.TotalMilliseconds)));
+            await context.Database.ExecuteSqlRawAsync(string.Create(CultureInfo.InvariantCulture, $"SET LOCK_TIMEOUT {milliseconds}"), cancellationToken);
+            return transaction;
+        }
+        catch
+        {
+            await transaction.DisposeAsync();
+            throw;
+        }
+    }
+
+    // 1222 is a lock request that ran out of its LOCK_TIMEOUT, among any errors the batch reported; a deadlock victim is 1205.
+    public bool IsLockTimeout(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is SqlException sql && (sql.Number == 1222 || sql.Errors.Cast<SqlError>().Any(error => error.Number == 1222)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // EF's migrations lock is an application lock of the session, which ends with it.
     public Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
 

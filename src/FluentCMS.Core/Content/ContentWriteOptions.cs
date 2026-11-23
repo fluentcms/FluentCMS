@@ -23,10 +23,17 @@ public sealed class ContentWriteOptions
     // A hook that ends after at least this long is logged as slow, by name.
     public TimeSpan SlowHookThreshold { get; set; } = TimeSpan.FromSeconds(1);
 
+    // How long a write in a transaction of its own waits for what another transaction holds, the entry's rows or on SQLite
+    // the database, before it gives up with FCMS2411. A third of the drivers' 30 second command timeout, so that the lock
+    // wait and not the command is what ends a wait, with room for the statement itself, and ten times the threshold of a
+    // slow hook, so that only a holder far slower than a write should be is given up on.
+    public TimeSpan LockTimeout { get; set; } = TimeSpan.FromSeconds(10);
+
     internal void Validate()
     {
         Require(MaxItems > 0, $"{nameof(MaxItems)} is {MaxItems}; it must be positive.");
         Require(HookTimeout > TimeSpan.Zero && HookTimeout <= MaxHookTimeout, $"{nameof(HookTimeout)} is {HookTimeout}; it must be more than 00:00:00 and at most {MaxHookTimeout.Days} day.");
+        Require(LockTimeout > TimeSpan.Zero && LockTimeout <= MaxHookTimeout, $"{nameof(LockTimeout)} is {LockTimeout}; it must be more than 00:00:00 and at most {MaxHookTimeout.Days} day.");
         Require(SlowHookThreshold > TimeSpan.Zero, $"{nameof(SlowHookThreshold)} is {SlowHookThreshold}; it must be positive.");
     }
 

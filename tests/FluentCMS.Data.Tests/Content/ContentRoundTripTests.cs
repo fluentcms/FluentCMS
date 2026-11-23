@@ -65,8 +65,10 @@ public sealed class ContentRoundTripTests : IDisposable
 
         // One for the grants, begin, eight in the transaction, commit, and the row of the answer. The read the principal
         // is shown is made of the draft rows and references just read and one readable-targets query, and the answer
-        // reuses the references written and the targets found readable.
-        _trips.Count.ShouldBeLessThanOrEqualTo(12, string.Join('\n', _trips.Sent));
+        // reuses the references written and the targets found readable. A server's transaction also sets its lock timeout,
+        // which SQL Server sets back before the commit (#3573).
+        var lockTimeout = TestProvider.IsSqlite ? 0 : TestProvider.IsPostgreSql ? 1 : 2;
+        _trips.Count.ShouldBeLessThanOrEqualTo(12 + lockTimeout, string.Join('\n', _trips.Sent));
         copies.ShouldBeLessThanOrEqualTo(2);
         answer!["title"].ShouldBe("Post two");
         Json(answer).ShouldBe(Json(await _database.GetAsync(Editor, id, type: "post")));

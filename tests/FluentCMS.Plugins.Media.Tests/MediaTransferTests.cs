@@ -7,7 +7,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Sites;
+using FluentCMS.Jobs;
 using FluentCMS.Media;
 using FluentCMS.Providers;
 using FluentCMS.Settings;
@@ -15,6 +17,7 @@ using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.Media.Tests.MediaHost;
@@ -111,7 +114,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
     {
         await using var rules = await media.ConfigureAsync(settings => settings.Svg = SvgHandling.Sanitize);
         using var admin = await media.AdminAsync();
-        var svg = Files.Svg("""<rect width="10" height="10"/><script>alert(1)</script>""");
+        var svg = Files.Svg("""<style>rect { fill: red }</style><defs><linearGradient id="g"/></defs><rect width="10" height="10" fill="url(#g)"/><script>alert(1)</script>""");
         var id = Guid.CreateVersion7();
         var package = await PackageAsync(admin, [Line(id, "logo.svg", "image/png", svg)], (FileOf(id, ".svg"), svg));
 
@@ -121,7 +124,13 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         stored.MimeType.ShouldBe("image/svg+xml");
         stored.StorageKey.ShouldMatch($@"^{DefaultSite.Id:N}/{id:N}/original-[0-9a-f]{{32}}\.svg$");
         var bytes = await StoredAsync(stored.StorageKey);
-        Encoding.UTF8.GetString(bytes).ShouldNotContain("script");
+        var text = Encoding.UTF8.GetString(bytes);
+        text.ShouldNotContain("script");
+        text.ShouldNotContain("<style");
+        var prefix = System.Text.RegularExpressions.Regex.Match(text, "fcms_[0-9a-f]{16}_").Value;
+        prefix.ShouldNotBeNullOrEmpty();
+        text.ShouldContain($"""<linearGradient id="{prefix}g" />""");
+        text.ShouldContain($"""fill="url(#{prefix}g)" """);
         (stored.Size, stored.Checksum).ShouldBe((bytes.LongLength, Sha256(bytes)));
 
         // A sanitised file is sanitised to the same bytes, so a line can take its key as it is.
@@ -698,6 +707,142 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         FilesOf(media, uploaded.Id).ShouldBe([key]);
     }
 
+    // The daily cleanup deletes the file of a deleted asset, and a file that a replace left to a holder, once no other asset
+    // names it, so a line that names either is refused, in a dry run too.
+    [Fact]
+    public async Task ALineThatNamesAFileTheCleanupCanDeleteIsRefused()
+    {
+        using var admin = await media.AdminAsync();
+        var bands = Bands(8, 8);
+        var deleted = await UploadAsync(admin, bands, "deleted.png");
+        var deletedKey = (await AssetAsync(deleted.Id)).ShouldNotBeNull().StorageKey;
+        using (var response = await admin.DeleteAsync(new Uri($"{Root}/{deleted.Id:D}", UriKind.Relative), Token))
+        {
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        }
+
+        var replaced = await UploadAsync(admin, bands, "replaced.png");
+        var replacedKey = (await AssetAsync(replaced.Id)).ShouldNotBeNull().StorageKey;
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(Guid.CreateVersion7(), "shared.png", "image/png", bands, key: replacedKey)]))).ShouldBe((1, 0, 0));
+        await ReplaceThroughTheServiceAsync(admin, replaced.Id, Files.Png(5, 5));
+        var (first, second) = (Guid.CreateVersion7(), Guid.CreateVersion7());
+        var package = await PackageAsync(admin, [Line(first, "first.png", "image/png", bands, key: deletedKey), Line(second, "second.png", "image/png", bands, key: replacedKey)]);
+
+        foreach (var dryRun in (bool[])[true, false])
+        {
+            Items(await ImportAsync(admin, package, dryRun)).ShouldBe(new Dictionary<Guid, (string, string?)>
+            {
+                [first] = ("error", MediaErrorCodes.TransferFileMissing),
+                [second] = ("error", MediaErrorCodes.TransferFileMissing),
+            });
+        }
+
+        (await AssetAsync(first)).ShouldBeNull();
+        (await AssetAsync(second)).ShouldBeNull();
+    }
+
+    // The owner of the key a line names is deleted, and its file purged, after the line read the file and before it is
+    // saved. The save is conditional on the owner as the line read it, so the line is refused and no asset names a file that
+    // is gone.
+    [Fact]
+    public async Task ALineWhoseOwnerIsDeletedAndPurgedWhileItIsImportedIsRefused()
+    {
+        var sharing = Guid.CreateVersion7();
+        var race = new RacingSave(sharing);
+        await using var host = new MediaHost();
+        host.Host.Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(race)));
+        using var admin = await host.AdminAsync();
+        var bands = Bands(8, 8);
+        var owner = await UploadAsync(admin, bands, "owner.png");
+        var key = (await AssetAsync(host, owner.Id)).ShouldNotBeNull().StorageKey;
+        var package = await PackageAsync(admin, [Line(sharing, "shared.png", "image/png", bands, key: key)]);
+        race.Before = async () =>
+        {
+            using var response = await admin.DeleteAsync(new Uri($"{Root}/{owner.Id:D}", UriKind.Relative), Token);
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            host.Host.Time.Advance(new MediaOptions().DeletedRetention + TimeSpan.FromDays(1));
+            await CleanupAsync(host);
+            (await AssetAsync(host, owner.Id)).ShouldBeNull();
+        };
+
+        var report = await ImportAsync(admin, package);
+
+        Items(report).ShouldBe(new Dictionary<Guid, (string, string?)> { [sharing] = ("error", MediaErrorCodes.TransferFileMissing) });
+        (await AssetAsync(host, sharing)).ShouldBeNull();
+        File.Exists(Path.Combine(host.StorageRoot, key)).ShouldBeFalse();
+    }
+
+    // A line names the owner's key after the replace of the owner found no other asset that names it and before the replace
+    // saves. The line's save holds the owner's version, which it leaves as it is, so both saves stand; the replace checks
+    // again just before it deletes the old file, finds the line's asset, and leaves the file to a holder. A holder that
+    // cannot be saved leaves the file with no row, and the log says that an asset still names it.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ALineThatNamesTheKeyWhileTheOwnerIsReplacedKeepsTheFile(bool holderRefused)
+    {
+        var race = new ReplacingSave { HolderRefused = holderRefused };
+        var logs = new CapturedLogs();
+        await using var host = new MediaHost();
+        host.Host
+            .WithServices(services => services.AddLogging(logging => logging.AddProvider(logs)))
+            .Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(race)));
+        using var admin = await host.AdminAsync();
+        var bands = Bands(8, 8);
+        var owner = await UploadAsync(admin, bands, "owner.png");
+        var key = (await AssetAsync(host, owner.Id)).ShouldNotBeNull().StorageKey;
+        var sharing = Guid.CreateVersion7();
+        var package = await PackageAsync(admin, [Line(sharing, "shared.png", "image/png", bands, key: key)]);
+        JsonNode? imported = null;
+        (race.Asset, race.Before) = (owner.Id, async () => imported = await ImportAsync(admin, package));
+
+        await ReplaceThroughTheServiceAsync(admin, owner.Id, Files.Png(5, 5));
+
+        Counts(imported.ShouldNotBeNull()).ShouldBe((1, 0, 0));
+        (await AssetAsync(host, sharing)).ShouldNotBeNull().StorageKey.ShouldBe(key);
+        (await AssetAsync(host, owner.Id)).ShouldNotBeNull().StorageKey.ShouldNotBe(key);
+        File.Exists(Path.Combine(host.StorageRoot, key)).ShouldBeTrue();
+        await using var scope = host.Services.CreateAsyncScope();
+        var holder = await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().AsNoTracking()
+            .SingleOrDefaultAsync(asset => asset.StorageKey == key && asset.OwnsFile && asset.DeletedAt != null, Token);
+        (holder is null).ShouldBe(holderRefused);
+        var unheld = logs.Lines.Where(line => line.StartsWith($"Warning {typeof(MediaService).FullName} 9278: The file {key} of the local storage, left by the media asset {owner.Id}", StringComparison.Ordinal)).ToList();
+        unheld.Count.ShouldBe(holderRefused ? 1 : 0);
+        if (holderRefused)
+        {
+            unheld[0].ShouldContain("is still named by another asset");
+            unheld[0].ShouldContain("do not remove it by hand while an asset names it");
+        }
+
+        logs.Lines.ShouldNotContain(line => line.Contains(" 9268:", StringComparison.Ordinal));
+    }
+
+    // A line for an asset itself, without a file, that names a key in the asset's own folder which the asset no longer
+    // names, as the file a replace left to a holder, would take a file its row does not own and whose holder deletes it;
+    // it is refused as a line whose file is not there.
+    [Fact]
+    public async Task ALineForTheAssetThatNamesAKeyOfItsFolderItNoLongerNamesIsRefused()
+    {
+        using var admin = await media.AdminAsync();
+        var bands = Bands(8, 8);
+        var owner = await UploadAsync(admin, bands, "owner.png");
+        var key = (await AssetAsync(owner.Id)).ShouldNotBeNull().StorageKey;
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(Guid.CreateVersion7(), "shared.png", "image/png", bands, key: key)]))).ShouldBe((1, 0, 0));
+        await ReplaceThroughTheServiceAsync(admin, owner.Id, Files.Png(5, 5));
+        var replaced = (await AssetAsync(owner.Id)).ShouldNotBeNull().StorageKey;
+        File.Exists(Path.Combine(media.StorageRoot, key)).ShouldBeTrue();
+        var package = await PackageAsync(admin, [Line(owner.Id, "owner.png", "image/png", bands, updatedAt: media.Host.Time.GetUtcNow().AddMinutes(5), key: key)]);
+
+        foreach (var dryRun in (bool[])[true, false])
+        {
+            Items(await ImportAsync(admin, package, dryRun)).ShouldBe(new Dictionary<Guid, (string, string?)> { [owner.Id] = ("error", MediaErrorCodes.TransferFileMissing) });
+        }
+
+        var stored = (await AssetAsync(owner.Id)).ShouldNotBeNull();
+        (stored.StorageKey, stored.OwnsFile).ShouldBe((replaced, true));
+        File.Exists(Path.Combine(media.StorageRoot, replaced)).ShouldBeTrue();
+    }
+
     // The import is still updated when the old file cannot be deleted, as a replace is, and the file stays.
     [Fact]
     public async Task AnOldFileTheStorageFailsToDeleteStaysAndTheItemIsUpdated()
@@ -988,6 +1133,36 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         }
     }
 
+    // The first save that gives the asset another file runs the other work before it goes on; with HolderRefused, a save
+    // that adds a holder fails as a database that refuses the row does.
+    private sealed class ReplacingSave : SaveChangesInterceptor
+    {
+        private int _armed = 1;
+
+        public Guid Asset { get; set; }
+
+        public Func<Task>? Before { get; set; }
+
+        public bool HolderRefused { get; init; }
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (HolderRefused && eventData.Context!.ChangeTracker.Entries<Asset>().Any(entry => entry.State == EntityState.Added && entry.Entity.OwnsFile && entry.Entity.DeletedAt != null))
+            {
+                throw new DbUpdateException("The database refused the holder.");
+            }
+
+            if (Before is { } before
+                && eventData.Context!.ChangeTracker.Entries<Asset>().Any(entry => entry.State == EntityState.Modified && entry.Entity.Id == Asset && entry.Property(item => item.StorageKey).IsModified)
+                && Interlocked.Exchange(ref _armed, 0) == 1)
+            {
+                await before();
+            }
+
+            return await base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+    }
+
     // A save of the asset that loses the lock of the import, before the save, which then stops, or after it.
     private sealed class LosingSave(bool afterSave) : SaveChangesInterceptor
     {
@@ -1100,6 +1275,16 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         using var response = await FetchAsync(anonymous, await UrlAsync(host, asset, new MediaImageOptions { Width = 2 }));
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await VariantsAsync(host, id)).ShouldBe(1);
+    }
+
+    private static async Task CleanupAsync(MediaHost host)
+    {
+        await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<MediaVariantCleanupJob, MediaVariantCleanupPayload>(new MediaVariantCleanupPayload(), cancellationToken: Token);
+        await using var scope = host.Services.CreateAsyncScope();
+        var executor = scope.ServiceProvider.GetRequiredService<JobExecutor>();
+        while (await executor.RunNextAsync(JobRunnerOptions.DefaultQueue, "test", Token))
+        {
+        }
     }
 
     private static async Task<int> VariantsAsync(MediaHost host, Guid id)

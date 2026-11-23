@@ -53,6 +53,16 @@ public interface IDataProvider
     // timings of that wait the default lock keeps in core (DatabaseDistributedLock).
     bool HasOneWriter { get; }
 
+    // Begins the transaction of a content write, in which a wait for another transaction's lock gives up after lockTimeout
+    // with an error that IsLockTimeout recognises, and leaves that bound on no connection once the transaction ends (spec
+    // 4.5, "Lock waits as built"). The default sets none, so a wait there lasts until the command timeout.
+    Task<IDbContextTransaction> BeginWriteAsync(DbContext context, TimeSpan lockTimeout, CancellationToken cancellationToken) =>
+        context.Database.BeginTransactionAsync(cancellationToken);
+
+    // Whether a command gave up waiting for another transaction's lock at the bound of BeginWriteAsync, or, on a database
+    // with one writer, for the database. The command changed nothing. False by default.
+    bool IsLockTimeout(Exception exception) => false;
+
     // A condition of a LINQ query: the text holds the fragment, as it is (LikePattern), without regard to case as the database
     // compares text. A match on a part of the text uses no index.
     Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment);
