@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FluentCMS.Content;
 using FluentCMS.Events;
 using FluentCMS.Media;
 using FluentCMS.Settings;
@@ -201,7 +202,7 @@ internal sealed class MediaTransfer(
                 existing.Path = path;
             }
 
-            await SaveAsync(cancellationToken);
+            await (existing is null ? SaveHeldAsync(library, cancellationToken) : SaveAsync(cancellationToken));
         }
 
         Move(folders, line.Id, oldPath, path);
@@ -321,7 +322,7 @@ internal sealed class MediaTransfer(
 
         try
         {
-            await SaveAsync(cancellationToken);
+            await (existing is null ? SaveHeldAsync(library, cancellationToken) : SaveAsync(cancellationToken));
         }
         catch (DbUpdateConcurrencyException exception) when (stored.Owner is { } held && exception.Entries.Any(entry => entry.Entity is Asset other && other.Id == held.Id))
         {
@@ -382,6 +383,24 @@ internal sealed class MediaTransfer(
 
     private Task<int> SaveAsync(CancellationToken cancellationToken) => DatabaseAsync(() => database.SaveChangesAsync(cancellationToken));
 
+    // A line that adds a row to the library holds its site as an upload does (MediaService.SaveHeldAsync); a site that is
+    // gone refuses the line with FCMS2301.
+    private async Task<int> SaveHeldAsync(Guid library, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await DatabaseAsync(async () =>
+            {
+                await MediaService.SaveHeldAsync(database, library, cancellationToken);
+                return 0;
+            });
+        }
+        catch (ValidationException gone)
+        {
+            throw Refused(gone.Errors[0].Code, gone.Errors[0].Message);
+        }
+    }
+
     // The row as read, with its version as the condition of the save and nothing else written.
     private void Hold(Asset owner)
     {
@@ -401,7 +420,7 @@ internal sealed class MediaTransfer(
         {
             return await work();
         }
-        catch (Exception exception) when (exception is not DbUpdateException and not OperationCanceledException)
+        catch (Exception exception) when (exception is not DbUpdateException and not OperationCanceledException and not ValidationException)
         {
             throw new DbUpdateException("The database failed on the media rows of the item.", exception);
         }

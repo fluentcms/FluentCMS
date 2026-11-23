@@ -64,6 +64,8 @@ internal sealed class SiteHostService(
     }
 
     // The first host of a site is its primary host, whatever the request says, and a later one when the request asks for it.
+    // The new host holds its site to its commit, so that the site's deletion waits for it and it goes with DeletedSiteHosts,
+    // or it finds the site gone, also when the check above read it from a cache, and is refused with FCMS2301 (#3586).
     public async Task<SiteHostInfo> AddAsync(Guid siteId, SiteHostRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -74,6 +76,8 @@ internal sealed class SiteHostService(
         SiteHost added;
         await using (await LockAsync(cancellationToken))
         {
+            await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+            await database.HoldSiteAsync(new SiteId(site.Id), cancellationToken);
             if (await database.Set<SiteHost>().AsNoTracking().FirstOrDefaultAsync(host => host.Hostname == name, cancellationToken) is { } taken)
             {
                 await ReleaseOrRefuseAsync(taken, site, cancellationToken);
@@ -88,6 +92,7 @@ internal sealed class SiteHostService(
 
             database.Add(added);
             await database.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(CancellationToken.None);
             map.Invalidate();
         }
 

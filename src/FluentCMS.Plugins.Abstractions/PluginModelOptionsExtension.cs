@@ -10,11 +10,18 @@ internal interface IPluginModelKey
     string ModelKey { get; }
 }
 
+// How core holds a site for PluginDbContext<T>.HoldSiteAsync, since a plugin references neither core nor its data provider.
+internal interface IPluginSiteHold
+{
+    Task HoldAsync(DbContext context, Guid site, CancellationToken cancellationToken);
+}
+
 // What core gives a PluginDbContext through its options.
 internal sealed class PluginModelOptionsExtension(
     IReadOnlyList<IPluginModelContributor> contributors,
     Action<ModelConfigurationBuilder>? conventions,
-    string key) : IDbContextOptionsExtension
+    string key,
+    IPluginSiteHold? siteHold) : IDbContextOptionsExtension
 {
     private ExtensionInfo? _info;
 
@@ -24,10 +31,12 @@ internal sealed class PluginModelOptionsExtension(
 
     public string Key { get; } = key;
 
+    public IPluginSiteHold? SiteHold { get; } = siteHold;
+
     public DbContextOptionsExtensionInfo Info => _info ??= new ExtensionInfo(this);
 
-    public static void Use(DbContextOptionsBuilder options, IReadOnlyList<IPluginModelContributor> contributors, Action<ModelConfigurationBuilder>? conventions, string key) =>
-        ((IDbContextOptionsBuilderInfrastructure)options).AddOrUpdateExtension(new PluginModelOptionsExtension(contributors, conventions, key));
+    public static void Use(DbContextOptionsBuilder options, IReadOnlyList<IPluginModelContributor> contributors, Action<ModelConfigurationBuilder>? conventions, string key, IPluginSiteHold? siteHold) =>
+        ((IDbContextOptionsBuilderInfrastructure)options).AddOrUpdateExtension(new PluginModelOptionsExtension(contributors, conventions, key, siteHold));
 
     public void ApplyServices(IServiceCollection services)
     {
