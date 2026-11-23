@@ -174,7 +174,7 @@ internal sealed class ReplacedFiles
                 // The files stay, with no row that owns them, rather than go while an asset names them.
                 foreach (var key in keys)
                 {
-                    MediaLog.ReplacedNotDeleted(logger, _asset.Id, _asset.StorageProvider, key, exception);
+                    MediaLog.ReplacedNotHeld(logger, _asset.Id, _asset.StorageProvider, key, exception);
                 }
             }
             finally

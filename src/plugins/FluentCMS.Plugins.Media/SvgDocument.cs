@@ -17,12 +17,17 @@ namespace FluentCMS.Plugins.Media;
 // and every other attribute kept, goes when it holds a url() to anything but a #fragment, @import, expression(, image(,
 // image-set(, src( or element(, in the value with its CSS comments kept or with them taken out, after CSS escapes are
 // undone; the two forms cover a comment that a string hides and a string that a comment hides; a value with a backslash and
-// a url( goes too. The root loses overflow, style and transform, which would paint over the page around it. An animation
-// of a link, a handler, a class or an id goes. Scoping then gives every id and every reference to one a prefix of the file,
-// so that an inlined SVG names nothing of the page, on window or in another SVG, and reaches none of its elements. Save
-// writes what an HTML parser reads as an XML parser does: no CDATA section, comment or prefixed element.
+// a url( goes too. The root loses overflow, style, transform and filter, which would paint over the page around it, and
+// an animation of the root that sets one of them or moves it goes. An animation of a link, a handler, a class or an id
+// goes. A file nested deeper than MaxDepth is no SVG. Scoping then gives every id and every reference to one a prefix of
+// the file, so that an inlined SVG names nothing of the page, on window or in another SVG, and reaches none of its
+// elements. Save writes what an HTML parser reads as an XML parser does: no CDATA section, comment or prefixed element.
 internal static partial class SvgDocument
 {
+    // The most levels of elements a file nests, the root included. A file nested deeper is no SVG the plugin takes: no
+    // drawing needs as many, and the passes over the tree, Save's included, recurse as deep as it nests.
+    public const int MaxDepth = 128;
+
     public static readonly XNamespace SvgNamespace = "http://www.w3.org/2000/svg";
 
     private static readonly XNamespace XLinkNamespace = "http://www.w3.org/1999/xlink";
@@ -90,8 +95,12 @@ internal static partial class SvgDocument
     // The attributes that name an element for the page's CSS and scripts, which an animation may not set.
     private static readonly HashSet<string> Names = new(StringComparer.OrdinalIgnoreCase) { "class", "id" };
 
-    // The attributes of the root that would let the drawing paint over the page around it when the page inlines it.
-    private static readonly HashSet<string> RootDropped = new(StringComparer.Ordinal) { "overflow", "style", "transform" };
+    // The attributes of the root that would let the drawing paint over the page around it when the page inlines it, which
+    // an animation of the root may not set either; animateTransform and animateMotion of the root move it as transform does.
+    private static readonly HashSet<string> RootDropped = new(StringComparer.OrdinalIgnoreCase) { "overflow", "style", "transform", "filter" };
+
+    // The white space of a begin or end list; a no-break space is none, so that it is no part of a value that is read whole.
+    private static readonly char[] TimingSpace = [' ', '\t', '\n', '\r'];
 
     // Attributes that hold ids separated by white space, and those of an animation that can name an element, as id.event.
     private static readonly HashSet<string> IdLists = new(StringComparer.Ordinal) { "aria-labelledby", "aria-describedby" };
@@ -110,9 +119,24 @@ internal static partial class SvgDocument
             CloseInput = false,
         };
 
+        // The depth is read first, without building the tree, so that a file nested past the limit costs one pass of the reader.
+        var seekable = stream.CanSeek ? stream : Buffered(stream);
+        var start = seekable.Position;
         try
         {
-            using var reader = XmlReader.Create(stream, settings);
+            using (var scan = XmlReader.Create(seekable, settings))
+            {
+                while (scan.Read())
+                {
+                    if (scan.NodeType == XmlNodeType.Element && scan.Depth >= MaxDepth)
+                    {
+                        return null;
+                    }
+                }
+            }
+
+            seekable.Position = start;
+            using var reader = XmlReader.Create(seekable, settings);
             var document = XDocument.Load(reader);
             return document.Root is { } root && root.Name.LocalName == "svg" && (root.Name.Namespace == SvgNamespace || root.Name.Namespace == XNamespace.None) ? document : null;
         }
@@ -120,6 +144,14 @@ internal static partial class SvgDocument
         {
             return null;
         }
+    }
+
+    private static MemoryStream Buffered(Stream stream)
+    {
+        var copy = new MemoryStream();
+        stream.CopyTo(copy);
+        copy.Position = 0;
+        return copy;
     }
 
     public static void Sanitize(XDocument document)
@@ -159,6 +191,15 @@ internal static partial class SvgDocument
             }
         }
 
+        if (document.Root is { } root)
+        {
+            var rootId = root.Attribute("id")?.Value;
+            foreach (var animation in root.Descendants().Where(element => Animations.Contains(element.Name.LocalName) && Targets(element, root, rootId) && MovesTheBox(element)).ToList())
+            {
+                animation.Remove();
+            }
+        }
+
         // A CDATA section is its text, which Save escapes; a comment or a processing instruction is nothing of the drawing.
         foreach (var node in document.DescendantNodes().Where(node => node is XCData or XComment or XProcessingInstruction).ToList())
         {
@@ -176,12 +217,13 @@ internal static partial class SvgDocument
     }
 
     // After Sanitize: every id, and every name that a link, a url(), an aria id list or the begin or end of an animation
-    // refers to, takes the prefix fcms-, sixteen hex digits of the SHA-256 of the file as Save writes it before the prefix,
-    // and a hyphen. A reference to no id of the file takes it too, so that it still finds nothing rather than an element of
-    // the page. A prefix of that form that the file's ids carry already, or with no id its references, is kept only when it
-    // is the one the file without it derives, which is the case for a file this wrote, so that sanitising it gives the same
-    // bytes; any other takes the file's own on top. First the values this cannot rewrite go: a link that is no fragment, a
-    // value whose url() it does not read, and a begin or end with a backslash, whose escapes a browser may read as a name.
+    // refers to, takes the prefix fcms_, sixteen hex digits of the SHA-256 of the file as Save writes it before the prefix,
+    // and an underscore; a hyphen would be read as an offset in id.end-1s. A reference to no id of the file takes it too, so
+    // that it still finds nothing rather than an element of the page. A prefix of that form that the file carries already
+    // is kept only when taking it off and scoping the file again gives the same bytes, which is the case for a file this
+    // wrote, so that sanitising it gives the same bytes; otherwise every name takes the file's own on top. First the values
+    // this cannot rewrite go: a link that is no fragment, a value whose url() it does not read, and a begin or end that is
+    // not read whole, such as one with a backslash, whose escapes a browser may read as a name.
     public static void Scope(XDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -200,11 +242,13 @@ internal static partial class SvgDocument
             return;
         }
 
-        if (ScopedPrefix().Match(named[0]) is { Success: true } existing && named.TrueForAll(name => name.StartsWith(existing.Value, StringComparison.Ordinal)))
+        if (ScopedPrefix().Match(named[0]) is { Success: true } existing)
         {
-            var stripped = new XDocument(document);
-            Visit(stripped, name => name.StartsWith(existing.Value, StringComparison.Ordinal) ? name[existing.Value.Length..] : name);
-            if (PrefixOf(stripped) == existing.Value)
+            var again = new XDocument(document);
+            Visit(again, name => name.StartsWith(existing.Value, StringComparison.Ordinal) ? name[existing.Value.Length..] : name);
+            var derived = PrefixOf(again);
+            Visit(again, name => derived + name);
+            if (Save(again).AsSpan().SequenceEqual(Save(document)))
             {
                 return;
             }
@@ -214,7 +258,7 @@ internal static partial class SvgDocument
         Visit(document, name => prefix + name);
     }
 
-    private static string PrefixOf(XDocument document) => $"fcms-{Convert.ToHexStringLower(SHA256.HashData(Save(document)))[..16]}-";
+    private static string PrefixOf(XDocument document) => $"fcms_{Convert.ToHexStringLower(SHA256.HashData(Save(document)))[..16]}_";
 
     // Each name an attribute holds, as the map gives it back. Normalising, the values that cannot be rewritten go.
     private static void Visit(XDocument document, Func<string, string> map, bool normalize = false)
@@ -252,13 +296,16 @@ internal static partial class SvgDocument
                 }
                 else if (plain && Timings.Contains(local) && Animations.Contains(element.Name.LocalName))
                 {
-                    if (normalize && attribute.Value.Contains('\\', StringComparison.Ordinal))
+                    var timings = attribute.Value.Split(';');
+                    if (normalize && !timings.All(timing => timing.Trim(TimingSpace).Length == 0 || Timing().IsMatch(timing)))
                     {
                         attribute.Remove();
                         continue;
                     }
 
-                    attribute.Value = string.Join(';', attribute.Value.Split(';').Select(timing => Syncbase().Replace(timing, match => match.Groups[1].Value + map(match.Groups[2].Value) + ".", 1)));
+                    attribute.Value = string.Join(';', timings.Select(timing => Timing().Match(timing) is { Success: true } match && match.Groups["id"] is { Success: true } id
+                        ? timing[..id.Index] + map(id.Value) + timing[(id.Index + id.Length)..]
+                        : timing));
                 }
                 else if (plain)
                 {
@@ -372,6 +419,16 @@ internal static partial class SvgDocument
     }
 
     private static bool IsSvg(XName name) => name.Namespace == SvgNamespace || name.Namespace == XNamespace.None;
+
+    // An animation without a link animates its parent; one with a link, the element of that id.
+    private static bool Targets(XElement animation, XElement root, string? rootId) =>
+        (animation.Attribute("href") ?? animation.Attribute(XLinkNamespace + "href")) is { } link
+            ? rootId is not null && link.Value.Trim(UrlWhiteSpace) == "#" + rootId
+            : animation.Parent == root;
+
+    private static bool MovesTheBox(XElement animation) =>
+        animation.Name.LocalName is "animateTransform" or "animateMotion"
+        || (animation.Attribute("attributeName")?.Value.Trim() is { } target && RootDropped.Contains(target[(target.LastIndexOf(':') + 1)..]));
 
     private static bool IsKept(XElement element)
     {
@@ -505,11 +562,14 @@ internal static partial class SvgDocument
     [GeneratedRegex(@"(?i:url)\([\t\n\f\r ]*(['""]?)#([\p{L}\p{N}_.:-]+)\1[\t\n\f\r ]*\)")]
     private static partial Regex CssReference();
 
-    // The element of a begin or end value, id.event, id.begin, id.end or id.repeat(n), where a clock value such as 1.5s is
-    // no id since what follows its dot is no letter.
-    [GeneratedRegex(@"^(\s*)([^\s.;+()\\-][^\s.;+()\\]*)\.(?=[A-Za-z])")]
-    private static partial Regex Syncbase();
+    // One value of a begin or end list, read whole: an event, begin, end or repeat(n) with an optional id and a dot before
+    // it, accessKey(c) or wallclock(...), each with an optional offset; or a clock value, with an optional sign; or
+    // indefinite, which reads as an event. Anything else is a value a browser may read otherwise.
+    [GeneratedRegex(@"^[ \t\r\n]*(?:(?:(?:(?<id>[\p{L}_][\p{L}\p{N}_:-]*)\.)?(?:repeat\([0-9]+\)|[A-Za-z]+)|accessKey\(.\)|wallclock\([^()]*\))(?:[ \t\r\n]*[+-][ \t\r\n]*" + Clock + ")?|[+-]?[ \t\r\n]*" + Clock + @")[ \t\r\n]*$")]
+    private static partial Regex Timing();
 
-    [GeneratedRegex("^fcms-[0-9a-f]{16}-")]
+    private const string Clock = @"(?:[0-9]+:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?|[0-9]+:[0-9]{2}(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?(?:h|min|s|ms)?)";
+
+    [GeneratedRegex("^fcms_[0-9a-f]{16}_")]
     private static partial Regex ScopedPrefix();
 }

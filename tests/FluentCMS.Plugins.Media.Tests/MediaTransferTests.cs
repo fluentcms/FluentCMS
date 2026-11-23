@@ -17,6 +17,7 @@ using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.Media.Tests.MediaHost;
@@ -126,7 +127,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var text = Encoding.UTF8.GetString(bytes);
         text.ShouldNotContain("script");
         text.ShouldNotContain("<style");
-        var prefix = System.Text.RegularExpressions.Regex.Match(text, "fcms-[0-9a-f]{16}-").Value;
+        var prefix = System.Text.RegularExpressions.Regex.Match(text, "fcms_[0-9a-f]{16}_").Value;
         prefix.ShouldNotBeNullOrEmpty();
         text.ShouldContain($"""<linearGradient id="{prefix}g" />""");
         text.ShouldContain($"""fill="url(#{prefix}g)" """);
@@ -773,13 +774,19 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
 
     // A line names the owner's key after the replace of the owner found no other asset that names it and before the replace
     // saves. The line's save holds the owner's version, which it leaves as it is, so both saves stand; the replace checks
-    // again just before it deletes the old file, finds the line's asset, and leaves the file to a holder.
-    [Fact]
-    public async Task ALineThatNamesTheKeyWhileTheOwnerIsReplacedKeepsTheFile()
+    // again just before it deletes the old file, finds the line's asset, and leaves the file to a holder. A holder that
+    // cannot be saved leaves the file with no row, and the log says that an asset still names it.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ALineThatNamesTheKeyWhileTheOwnerIsReplacedKeepsTheFile(bool holderRefused)
     {
-        var race = new ReplacingSave();
+        var race = new ReplacingSave { HolderRefused = holderRefused };
+        var logs = new CapturedLogs();
         await using var host = new MediaHost();
-        host.Host.Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(race)));
+        host.Host
+            .WithServices(services => services.AddLogging(logging => logging.AddProvider(logs)))
+            .Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(race)));
         using var admin = await host.AdminAsync();
         var bands = Bands(8, 8);
         var owner = await UploadAsync(admin, bands, "owner.png");
@@ -796,8 +803,44 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         (await AssetAsync(host, owner.Id)).ShouldNotBeNull().StorageKey.ShouldNotBe(key);
         File.Exists(Path.Combine(host.StorageRoot, key)).ShouldBeTrue();
         await using var scope = host.Services.CreateAsyncScope();
-        (await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().AsNoTracking()
-            .SingleOrDefaultAsync(asset => asset.StorageKey == key && asset.OwnsFile && asset.DeletedAt != null, Token)).ShouldNotBeNull();
+        var holder = await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().AsNoTracking()
+            .SingleOrDefaultAsync(asset => asset.StorageKey == key && asset.OwnsFile && asset.DeletedAt != null, Token);
+        (holder is null).ShouldBe(holderRefused);
+        var unheld = logs.Lines.Where(line => line.StartsWith($"Warning {typeof(MediaService).FullName} 9278: The file {key} of the local storage, left by the media asset {owner.Id}", StringComparison.Ordinal)).ToList();
+        unheld.Count.ShouldBe(holderRefused ? 1 : 0);
+        if (holderRefused)
+        {
+            unheld[0].ShouldContain("is still named by another asset");
+            unheld[0].ShouldContain("do not remove it by hand while an asset names it");
+        }
+
+        logs.Lines.ShouldNotContain(line => line.Contains(" 9268:", StringComparison.Ordinal));
+    }
+
+    // A line for an asset itself, without a file, that names a key in the asset's own folder which the asset no longer
+    // names, as the file a replace left to a holder, would take a file its row does not own and whose holder deletes it;
+    // it is refused as a line whose file is not there.
+    [Fact]
+    public async Task ALineForTheAssetThatNamesAKeyOfItsFolderItNoLongerNamesIsRefused()
+    {
+        using var admin = await media.AdminAsync();
+        var bands = Bands(8, 8);
+        var owner = await UploadAsync(admin, bands, "owner.png");
+        var key = (await AssetAsync(owner.Id)).ShouldNotBeNull().StorageKey;
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(Guid.CreateVersion7(), "shared.png", "image/png", bands, key: key)]))).ShouldBe((1, 0, 0));
+        await ReplaceThroughTheServiceAsync(admin, owner.Id, Files.Png(5, 5));
+        var replaced = (await AssetAsync(owner.Id)).ShouldNotBeNull().StorageKey;
+        File.Exists(Path.Combine(media.StorageRoot, key)).ShouldBeTrue();
+        var package = await PackageAsync(admin, [Line(owner.Id, "owner.png", "image/png", bands, updatedAt: media.Host.Time.GetUtcNow().AddMinutes(5), key: key)]);
+
+        foreach (var dryRun in (bool[])[true, false])
+        {
+            Items(await ImportAsync(admin, package, dryRun)).ShouldBe(new Dictionary<Guid, (string, string?)> { [owner.Id] = ("error", MediaErrorCodes.TransferFileMissing) });
+        }
+
+        var stored = (await AssetAsync(owner.Id)).ShouldNotBeNull();
+        (stored.StorageKey, stored.OwnsFile).ShouldBe((replaced, true));
+        File.Exists(Path.Combine(media.StorageRoot, replaced)).ShouldBeTrue();
     }
 
     // The import is still updated when the old file cannot be deleted, as a replace is, and the file stays.
@@ -1090,7 +1133,8 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         }
     }
 
-    // The first save that gives the asset another file runs the other work before it goes on.
+    // The first save that gives the asset another file runs the other work before it goes on; with HolderRefused, a save
+    // that adds a holder fails as a database that refuses the row does.
     private sealed class ReplacingSave : SaveChangesInterceptor
     {
         private int _armed = 1;
@@ -1099,8 +1143,15 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
 
         public Func<Task>? Before { get; set; }
 
+        public bool HolderRefused { get; init; }
+
         public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
         {
+            if (HolderRefused && eventData.Context!.ChangeTracker.Entries<Asset>().Any(entry => entry.State == EntityState.Added && entry.Entity.OwnsFile && entry.Entity.DeletedAt != null))
+            {
+                throw new DbUpdateException("The database refused the holder.");
+            }
+
             if (Before is { } before
                 && eventData.Context!.ChangeTracker.Entries<Asset>().Any(entry => entry.State == EntityState.Modified && entry.Entity.Id == Asset && entry.Property(item => item.StorageKey).IsModified)
                 && Interlocked.Exchange(ref _armed, 0) == 1)

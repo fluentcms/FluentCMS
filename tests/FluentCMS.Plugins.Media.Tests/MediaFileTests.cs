@@ -269,7 +269,7 @@ public sealed class MediaFileTests
         foreach (var body in (string[])[
             """<defs><circle id="dot" r="1"/></defs><use href="#dot"/><rect width="1" height="1" fill="url(#dot)" aria-labelledby="dot"/><animate attributeName="opacity" to="0" begin="dot.click" dur="1s"/>""",
             """<use href="#page"/>""",
-            """<circle id="fcms-0badf00d0badf00d-dot" r="1"/><use href="#fcms-0badf00d0badf00d-dot"/>""",
+            """<circle id="fcms_0badf00d0badf00d_dot" r="1"/><use href="#fcms_0badf00d0badf00d_dot"/>""",
             "<title>a&#xD;b</title><text xml:space=\"preserve\">line\n  <tspan>x</tspan></text>"])
         {
             var once = Sanitized(Files.Svg(body));
@@ -277,10 +277,10 @@ public sealed class MediaFileTests
             Sanitized(once).ShouldBe(once, body);
         }
 
-        var text = Encoding.UTF8.GetString(Sanitized(Files.Svg("""<circle id="fcms-0badf00d0badf00d-dot" r="1"/><use href="#fcms-0badf00d0badf00d-dot"/><use href="#page"/>""")));
+        var text = Encoding.UTF8.GetString(Sanitized(Files.Svg("""<circle id="fcms_0badf00d0badf00d_dot" r="1"/><use href="#fcms_0badf00d0badf00d_dot"/><use href="#page"/>""")));
         var prefix = Prefix(text);
-        prefix.ShouldNotBe("fcms-0badf00d0badf00d-");
-        text.ShouldContain($"""<use href="#{prefix}fcms-0badf00d0badf00d-dot" />""");
+        prefix.ShouldNotBe("fcms_0badf00d0badf00d_");
+        text.ShouldContain($"""<use href="#{prefix}fcms_0badf00d0badf00d_dot" />""");
         text.ShouldContain($"""<use href="#{prefix}page" />""");
     }
 
@@ -331,16 +331,16 @@ public sealed class MediaFileTests
     // it is kept only when it is the one the file derives without it, so it takes the file's own on top.
     [Theory]
     [InlineData("""<defs><linearGradient id="fcms-0badf00d-grad"/></defs><rect width="1" height="1" fill="url(#fcms-0badf00d-grad)"/>""", "fcms-0badf00d-grad")]
-    [InlineData("""<defs><linearGradient id="fcms-0badf00d0badf00d-grad"/></defs><rect width="1" height="1" fill="url(#fcms-0badf00d0badf00d-grad)"/>""", "fcms-0badf00d0badf00d-grad")]
+    [InlineData("""<defs><linearGradient id="fcms_0badf00d0badf00d_grad"/></defs><rect width="1" height="1" fill="url(#fcms_0badf00d0badf00d_grad)"/>""", "fcms_0badf00d0badf00d_grad")]
     [InlineData("""<use href="#fcms-0badf00d-icon"/>""", "fcms-0badf00d-icon")]
-    [InlineData("""<use href="#fcms-0badf00d0badf00d-icon"/>""", "fcms-0badf00d0badf00d-icon")]
+    [InlineData("""<use href="#fcms_0badf00d0badf00d_icon"/>""", "fcms_0badf00d0badf00d_icon")]
     public void APrefixTheUploaderWroteIsNotKept(string body, string name)
     {
         var text = Encoding.UTF8.GetString(Sanitized(Files.Svg(body)));
 
         text.ShouldNotContain($"\"{name}\"");
         text.ShouldNotContain($"#{name}");
-        Regex.IsMatch(text, $@"fcms-[0-9a-f]{{16}}-{Regex.Escape(name)}").ShouldBeTrue(text);
+        Regex.IsMatch(text, $@"fcms_[0-9a-f]{{16}}_{Regex.Escape(name)}").ShouldBeTrue(text);
     }
 
     // A browser that reads the escapes of a begin or end value would time the animation by an element of the page, so a value
@@ -359,10 +359,110 @@ public sealed class MediaFileTests
     [Fact]
     public void TheRootKeepsNoOverflowStyleOrTransform()
     {
-        var text = Encoding.UTF8.GetString(Sanitized(Encoding.UTF8.GetBytes("""<svg xmlns="http://www.w3.org/2000/svg" overflow="visible" width="1" height="1" transform="translate(-500 -500)" style="position:fixed;inset:0;z-index:99999"><g style="opacity: 0.5" overflow="visible"><rect x="-5000" y="-5000" width="10000" height="10000" fill="white"/></g></svg>""")));
+        var text = Encoding.UTF8.GetString(Sanitized(Encoding.UTF8.GetBytes("""<svg xmlns="http://www.w3.org/2000/svg" overflow="visible" width="1" height="1" transform="translate(-500 -500)" filter="drop-shadow(0 0 5000px white)" style="position:fixed;inset:0;z-index:99999"><g style="opacity: 0.5" overflow="visible"><rect x="-5000" y="-5000" width="10000" height="10000" fill="white"/></g></svg>""")));
 
         text.ShouldStartWith("""<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1">""");
         text.ShouldContain("""<g style="opacity: 0.5" overflow="visible"><rect x="-5000" y="-5000" width="10000" height="10000" fill="white" /></g>""");
+    }
+
+    // An animation of the root, a child without a link or one whose link is the root's id, that sets its overflow, style,
+    // transform or filter, or moves it, would take the drawing out of its box; the same animations of an element inside stay.
+    [Fact]
+    public void AnAnimationThatMovesTheRootOutOfItsBoxGoes()
+    {
+        var text = Encoding.UTF8.GetString(Sanitized(Encoding.UTF8.GetBytes("""
+            <svg xmlns="http://www.w3.org/2000/svg" id="root" width="1" height="1">
+            <set attributeName="overflow" to="visible"/>
+            <animateTransform attributeName="transform" type="translate" to="-500 -500" dur="1s"/>
+            <animateMotion path="M0 0 L-500 -500" dur="1s"/>
+            <animate attributeName="style" to="position:fixed" dur="1s"/>
+            <g><animate href="#root" attributeName="filter" to="drop-shadow(0 0 5000px white)" dur="1s"/></g>
+            <set attributeName="opacity" to="0.5"/>
+            <g><animateTransform attributeName="transform" type="rotate" to="90" dur="1s"/></g>
+            </svg>
+            """)));
+
+        foreach (var gone in (string[])["overflow", "translate", "animateMotion", "position", "drop-shadow"])
+        {
+            text.ShouldNotContain(gone);
+        }
+
+        text.ShouldContain("""<set attributeName="opacity" to="0.5" />""");
+        text.ShouldContain("""<g><animateTransform attributeName="transform" type="rotate" to="90" dur="1s" /></g>""");
+    }
+
+    // A file nests at most MaxDepth levels of elements, so that no pass over its tree, which recurses, runs out of stack or
+    // takes a time that grows with the square of its depth; one deeper is no SVG, which the reader finds before it builds
+    // the tree, however large the file.
+    [Fact]
+    public void AFileNestedToTheLimitIsTakenAndOneNestedDeeperIsNot()
+    {
+        static byte[] Nested(int levels) => Encoding.UTF8.GetBytes(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\">" + string.Concat(Enumerable.Repeat("<g>", levels - 1)) + "x" + string.Concat(Enumerable.Repeat("</g>", levels - 1)) + "</svg>");
+
+        var text = Encoding.UTF8.GetString(Sanitized(Nested(SvgDocument.MaxDepth)));
+        Regex.Count(text, "<g>").ShouldBe(SvgDocument.MaxDepth - 1);
+        SvgDocument.Parse(new MemoryStream(Nested(SvgDocument.MaxDepth + 1))).ShouldBeNull();
+
+        var deep = Nested(100_000);
+        deep.Length.ShouldBeGreaterThan(700_000);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        SvgDocument.Parse(new MemoryStream(deep)).ShouldBeNull();
+        watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(2));
+    }
+
+    // Each value of a begin or end list is read whole, or the list goes: a name the timing grammar does not read, which a
+    // browser may read as an element of the page, is never left without the prefix.
+    [Theory]
+    [InlineData("foo(.click")]
+    [InlineData("pg x.click")]
+    [InlineData("pg.1click")]
+    [InlineData("2s; b(.end")]
+    [InlineData("a..click")]
+    [InlineData("\\submit.click")]
+    public void ABeginOrEndThatIsNotReadWholeGoes(string begin)
+    {
+        var text = Encoding.UTF8.GetString(Sanitized(Files.Svg($"""<animate id="a" attributeName="opacity" to="0" begin="{begin}" end="{begin}" dur="1s"/>""")));
+
+        text.ShouldNotContain("begin=");
+        text.ShouldNotContain("end=");
+        text.ShouldContain("dur=\"1s\"");
+    }
+
+    [Fact]
+    public void EveryFormOfABeginOrEndListIsReadAndItsIdsTakeThePrefix()
+    {
+        var text = Encoding.UTF8.GetString(Sanitized(Files.Svg("""<animate id="a" attributeName="opacity" to="0" begin="a.end+1.5s; 2s; -0.5s; 1:02:03.5; click; a.repeat(2); accessKey(x); wallclock(2026-01-01T00:00:00Z); indefinite; a.begin - 2min" dur="1s"/>""")));
+
+        var prefix = Prefix(text);
+        text.ShouldContain($"""begin="{prefix}a.end+1.5s; 2s; -0.5s; 1:02:03.5; click; {prefix}a.repeat(2); accessKey(x); wallclock(2026-01-01T00:00:00Z); indefinite; {prefix}a.begin - 2min" """);
+    }
+
+    // The uploader can give the ids the file's own prefix, which the pass would derive, and leave the references plain, or
+    // name another stored file's id; the prefix is kept only when scoping the file again gives the same bytes, so here every
+    // name takes the file's own on top, and the result is sanitised to the same bytes again.
+    [Fact]
+    public void IdsWithTheFilesOwnPrefixAndPlainReferencesTakeAPrefixOnEveryName()
+    {
+        const string Body = """<defs><linearGradient id="g"/></defs><use href="#victim"/><use href="#fcms_0123456789abcdef_icon"/><rect width="1" height="1" fill="url(#victim)" aria-labelledby="victim"/><animate id="a" attributeName="opacity" to="0" begin="victim.click" dur="1s"/>""";
+        var derived = Prefix(Encoding.UTF8.GetString(Sanitized(Files.Svg(Body))));
+        var crafted = Files.Svg(Body.Replace("id=\"g\"", $"id=\"{derived}g\"", StringComparison.Ordinal).Replace("id=\"a\"", $"id=\"{derived}a\"", StringComparison.Ordinal));
+
+        var once = Sanitized(crafted);
+
+        var text = Encoding.UTF8.GetString(once);
+        var own = Prefix(text);
+        var names = Names(text);
+        names.Count.ShouldBe(5);
+        foreach (var name in names)
+        {
+            name.ShouldStartWith(own);
+        }
+
+        Ids(text, own).ShouldBe([$"{derived}g", $"{derived}a"], ignoreOrder: true);
+        var twice = Sanitized(once);
+        twice.ShouldBe(once);
+        Sanitized(twice).ShouldBe(once);
     }
 
     // element() paints an element of the page, and an animation of class or id gives an element of the SVG a name of the
@@ -487,7 +587,7 @@ public sealed class MediaFileTests
     // The prefix the file took, the first in it.
     private static string Prefix(string text)
     {
-        var prefix = Regex.Match(text, "fcms-[0-9a-f]{16}-").Value;
+        var prefix = Regex.Match(text, "fcms_[0-9a-f]{16}_").Value;
         prefix.ShouldNotBeNullOrEmpty();
         return prefix;
     }

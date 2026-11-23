@@ -572,6 +572,16 @@ internal sealed class MediaTransfer(
         }
 
         Take(taken, $"storage/{provider}/{key}", key, line.Id);
+
+        // A line for the asset itself takes a key of the asset's own folder only while the asset names it; any other key there
+        // is a file a replace left, which a holder or nothing owns and which may go, so it is no file of the line's.
+        if (ReplacedFiles.FolderOf(key) == line.Id
+            && await DatabaseAsync(() => database.Set<Asset>().AsNoTracking().FirstOrDefaultAsync(asset => asset.Id == line.Id && asset.SiteId == library, cancellationToken)) is { } own
+            && !await NamesAsync(own, provider, key, cancellationToken))
+        {
+            return null;
+        }
+
         var owner = await OwnerAsync(line, library, provider, key, cancellationToken);
 
         await using var content = await storage.OpenReadAsync(key, cancellationToken);
@@ -606,18 +616,31 @@ internal sealed class MediaTransfer(
             throw Refused(MediaErrorCodes.TransferFileMissing, $"The file at {key} in the storage is a file of the asset {folder:D}, which is deleted in this instance and goes with it; export with {FilesOption}=true to bring it.");
         }
 
-        var lowered = key.ToLowerInvariant();
-#pragma warning disable CA1304, CA1311, CA1862 // The database lowers the column, where lower() takes no culture.
-        var names = asset.StorageProvider == provider
-            && (string.Equals(asset.StorageKey, key, StringComparison.OrdinalIgnoreCase)
-                || await DatabaseAsync(() => database.Set<Variant>().AnyAsync(variant => variant.AssetId == folder && variant.StorageKey.ToLower() == lowered, cancellationToken)));
-#pragma warning restore CA1304, CA1311, CA1862
-        if (!names)
+        if (!await NamesAsync(asset, provider, key, cancellationToken))
         {
             throw Refused(MediaErrorCodes.TransferFileMissing, $"The file at {key} in the storage is no longer a file of the asset {folder:D} of this instance, which may delete it; export with {FilesOption}=true to bring it.");
         }
 
         return asset.OwnsFile ? asset : null;
+    }
+
+    // Whether the asset names the key of that storage as its file or a variant's.
+    private async Task<bool> NamesAsync(Asset asset, string provider, string key, CancellationToken cancellationToken)
+    {
+        if (asset.StorageProvider != provider)
+        {
+            return false;
+        }
+
+        if (string.Equals(asset.StorageKey, key, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var lowered = key.ToLowerInvariant();
+#pragma warning disable CA1304, CA1311, CA1862 // The database lowers the column, where lower() takes no culture.
+        return await DatabaseAsync(() => database.Set<Variant>().AnyAsync(variant => variant.AssetId == asset.Id && variant.StorageKey.ToLower() == lowered, cancellationToken));
+#pragma warning restore CA1304, CA1311, CA1862
     }
 
     private static bool SameKey(Asset asset, StoredFile file) =>
