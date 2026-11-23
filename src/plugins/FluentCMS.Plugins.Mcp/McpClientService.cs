@@ -1,6 +1,7 @@
 using System.Text.Json;
 using FluentCMS.Agents;
 using FluentCMS.Authorization;
+using FluentCMS.Content;
 
 namespace FluentCMS.Plugins.Mcp;
 
@@ -26,14 +27,26 @@ public sealed record McpClientInfo(
     DateTimeOffset RegisteredAt,
     Guid? ApprovedBy,
     DateTimeOffset? ApprovedAt,
-    DateTimeOffset? LastActivityAt);
+    DateTimeOffset? LastActivityAt,
+    DateTimeOffset? UsedAt,
+    Guid? UsedBy);
+
+// A client the open policy approved that counts toward the caller's maxConsentsPerUser.
+public sealed record McpConsentInfo(
+    Guid Id,
+    string ClientId,
+    string Name,
+    IReadOnlyList<string> RedirectUris,
+    DateTimeOffset RegisteredAt,
+    DateTimeOffset? ConsentedAt,
+    bool Active);
 
 // The MCP clients that registered themselves, and those an administrator registers, for the Management API. A client
 // belongs to the instance, as the authorization server does, so every call needs mcp.manage from a grant with no site
-// limit. Core keeps the clients and makes the changes behind IMcpClients, which checks nothing; this service decides who
-// may ask. A role is checked the same way wherever it is given: it must exist, and the caller need not hold it, since a
-// client's role only narrows what its users' own roles allow.
-internal sealed class McpClientService(IMcpClients clients, IPermissionChecker permissions)
+// limit, but those of the caller's own consents. Core keeps the clients and makes the changes behind IMcpClients, which
+// checks nothing; this service decides who may ask. A role is checked the same way wherever it is given: it must exist,
+// and the caller need not hold it, since a client's role only narrows what its users' own roles allow.
+internal sealed class McpClientService(IMcpClients clients, IPermissionChecker permissions, IOperationContextAccessor operations)
 {
     // The most clients one bulk removal removes.
     public const int MaxRemovedPerCall = 100;
@@ -100,6 +113,27 @@ internal sealed class McpClientService(IMcpClients clients, IPermissionChecker p
         return new McpClientRemovalResult(removed, removed >= MaxRemovedPerCall);
     }
 
+    // A user's own consents need no permission, and are only ever the caller's: a caller that is no user, such as an API
+    // key, holds none, and a client that counts for another user is not found.
+    public async Task<IReadOnlyList<McpConsentInfo>> ListConsentsAsync(CancellationToken cancellationToken) =>
+        CallingUser() is { } user ? [.. (await clients.ListConsentsAsync(user, cancellationToken)).Select(ConsentInfo)] : [];
+
+    public async Task EndConsentAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var change = CallingUser() is { } user ? await clients.EndConsentAsync(user, id, cancellationToken) : new McpClientChange(McpClientChangeOutcome.NotFound, null);
+        switch (change.Outcome)
+        {
+            case McpClientChangeOutcome.Done:
+                return;
+            case McpClientChangeOutcome.ChangedMeanwhile:
+                throw new PluginException(McpErrorCodes.ClientChangedMeanwhile, $"The MCP client {id:D} or your consent to it was changed by another request at the same time; read your consents again.");
+            default:
+                throw new PluginException(McpErrorCodes.ClientNotFound, $"No MCP client {id:D} counts toward your consents.");
+        }
+    }
+
+    private Guid? CallingUser() => operations.Current?.Principal is { Kind: PrincipalKind.AdminUser } principal ? principal.Id : null;
+
     // Read as the schedule route reads its time: one written without an offset would be taken in the zone of the server,
     // and the call would remove the clients of another span.
     private static DateTimeOffset? Time(string? text, string name)
@@ -145,7 +179,18 @@ internal sealed class McpClientService(IMcpClients clients, IPermissionChecker p
         client.RegisteredAt,
         client.ApprovedBy,
         client.ApprovedAt,
-        client.LastActivityAt);
+        client.LastActivityAt,
+        client.UsedAt,
+        client.UsedBy);
+
+    private static McpConsentInfo ConsentInfo(McpClientConsent consent) => new(
+        consent.Client.Id,
+        consent.Client.ClientId,
+        consent.Client.Name,
+        consent.Client.RedirectUris,
+        consent.Client.RegisteredAt,
+        consent.ConsentedAt,
+        consent.Active);
 
     private static string StatusOf(McpClientStatus status) => status switch
     {

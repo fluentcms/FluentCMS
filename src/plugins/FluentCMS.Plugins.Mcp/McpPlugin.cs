@@ -58,6 +58,7 @@ public sealed class McpPlugin : IPlugin
         var options = app.Services.GetRequiredService<IOptions<McpOptions>>().Value;
         app.MapProtectedResource(Prefix, new ProtectedResourceOptions { Scope = Scope, Origin = Origin.Mcp, Name = options.Title }).LimitBody(options.MaxRequestBytes).MapMcp();
         app.MapManagement("/mcp/clients").MapMcpClientEndpoints();
+        app.MapManagement("/mcp/consents").MapMcpConsentEndpoints();
         McpSiteSetup.Map(app);
     }
 }

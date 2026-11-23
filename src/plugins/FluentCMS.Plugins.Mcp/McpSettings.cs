@@ -43,8 +43,10 @@ public sealed class McpSettings
     [Range(1, 8760)]
     public int NeverUsedClientHours { get; set; } = 24;
 
-    // How many clients the open policy approved one user may consent to at once. A consent keeps such a client from the
-    // cleanup, so without it one user could fill MaxClients for good.
+    // How many clients the open policy approved one user may keep by consenting. A consent keeps such a client from the
+    // cleanup, so without it one user could fill MaxClients for good. A consent ended by a session or a password change
+    // still counts, until the prune takes it or, for the user who first used the client, while the client is there; the
+    // user frees a place with DELETE /mcp/consents/{id}.
     [Range(1, 10000)]
     public int MaxConsentsPerUser { get; set; } = 20;
 }

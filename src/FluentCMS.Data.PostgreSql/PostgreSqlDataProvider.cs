@@ -28,6 +28,9 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
     public bool IsUniqueViolation(Exception exception) =>
         (exception as PostgresException ?? exception.InnerException as PostgresException) is { SqlState: PostgresErrorCodes.UniqueViolation };
 
+    public bool IsForeignKeyViolation(Exception exception) =>
+        (exception as PostgresException ?? exception.InnerException as PostgresException) is { SqlState: PostgresErrorCodes.ForeignKeyViolation };
+
     // EF's execution strategy wraps a deadlock met in SaveChanges as a transient failure, so the whole chain is read.
     public bool IsDeadlock(Exception exception)
     {

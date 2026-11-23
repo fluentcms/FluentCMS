@@ -4029,3 +4029,25 @@ const FluentCMS.Events.SessionEndReasons.Revoked = "revoked" -> string!
 const FluentCMS.Events.SessionEndReasons.SecondFactor = "second_factor" -> string!
 const FluentCMS.Events.SessionEndReasons.SecurityChanged = "security_changed" -> string!
 const FluentCMS.Events.SessionEndReasons.SignedOut = "signed_out" -> string!
+FluentCMS.Agents.IMcpClients.ListConsentsAsync(System.Guid userId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpClientConsent!>!>!
+FluentCMS.Agents.IMcpClients.EndConsentAsync(System.Guid userId, System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Agents.McpClientChange!>!
+FluentCMS.Agents.McpClient.UsedAt.get -> System.DateTimeOffset?
+FluentCMS.Agents.McpClient.UsedAt.init -> void
+FluentCMS.Agents.McpClient.UsedBy.get -> System.Guid?
+FluentCMS.Agents.McpClient.UsedBy.init -> void
+FluentCMS.Agents.McpClientConsent
+FluentCMS.Agents.McpClientConsent.<Clone>$() -> FluentCMS.Agents.McpClientConsent!
+FluentCMS.Agents.McpClientConsent.Active.get -> bool
+FluentCMS.Agents.McpClientConsent.Active.init -> void
+FluentCMS.Agents.McpClientConsent.Client.get -> FluentCMS.Agents.McpClient!
+FluentCMS.Agents.McpClientConsent.Client.init -> void
+FluentCMS.Agents.McpClientConsent.ConsentedAt.get -> System.DateTimeOffset?
+FluentCMS.Agents.McpClientConsent.ConsentedAt.init -> void
+FluentCMS.Agents.McpClientConsent.Deconstruct(out FluentCMS.Agents.McpClient! Client, out System.DateTimeOffset? ConsentedAt, out bool Active) -> void
+FluentCMS.Agents.McpClientConsent.Equals(FluentCMS.Agents.McpClientConsent? other) -> bool
+FluentCMS.Agents.McpClientConsent.McpClientConsent(FluentCMS.Agents.McpClient! Client, System.DateTimeOffset? ConsentedAt, bool Active) -> void
+override FluentCMS.Agents.McpClientConsent.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpClientConsent.GetHashCode() -> int
+override FluentCMS.Agents.McpClientConsent.ToString() -> string!
+static FluentCMS.Agents.McpClientConsent.operator !=(FluentCMS.Agents.McpClientConsent? left, FluentCMS.Agents.McpClientConsent? right) -> bool
+static FluentCMS.Agents.McpClientConsent.operator ==(FluentCMS.Agents.McpClientConsent? left, FluentCMS.Agents.McpClientConsent? right) -> bool

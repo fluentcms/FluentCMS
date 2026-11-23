@@ -1,6 +1,8 @@
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using FluentCMS.Agents;
 using FluentCMS.Content;
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Events;
@@ -37,6 +39,8 @@ internal sealed class McpClients(
     IOpenIddictAuthorizationManager authorizations,
     IOpenIddictTokenManager tokens,
     SystemDbContext context,
+    IDataProvider provider,
+    ClientConsents consents,
     IdentityChanges changes,
     IEventBus events,
     IOperationContextAccessor accessor,
@@ -272,7 +276,9 @@ internal sealed class McpClients(
     // A client the open policy approved has no administrator who would remove it. One no user ever consented to goes after
     // the short period, so that clients registered only to fill MaxClients do not hold it; one whose tokens and
     // authorizations are all gone goes after the long one. The candidates are found in SQL, and each is read again just
-    // before it is deleted, so that a client that got its first token in between stays.
+    // before it is deleted, so that a client that got its first token in between stays. They go in the order of their ids,
+    // and a delete that fails for another reason than a race is logged and passed over, so that one client that cannot be
+    // deleted does not keep the run from the others; the run then fails with it, and the job runner tries again (#3448).
     public async Task<int> RemoveUnusedAsync(DateTimeOffset neverUsedBefore, DateTimeOffset unusedBefore, CancellationToken cancellationToken = default)
     {
         await MarkUsedAsync(cancellationToken);
@@ -280,10 +286,12 @@ internal sealed class McpClients(
         var unused = await McpApplications()
             .Where(application => !context.Set<OpenIddictEntityFrameworkCoreToken<Guid>>().Any(token => token.Application != null && token.Application.Id == application.Id)
                 && !context.Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().Any(authorization => authorization.Application != null && authorization.Application.Id == application.Id))
+            .OrderBy(application => application.Id)
             .Select(application => application.Id)
             .ToListAsync(cancellationToken);
 
         var removed = 0;
+        List<Exception> failures = [];
         foreach (var id in unused)
         {
             if (await applications.FindByIdAsync(id.ToString("D"), cancellationToken) is not { } application
@@ -303,23 +311,47 @@ internal sealed class McpClients(
             {
                 // Changed since it was read, by an approval or a first use; the next run looks at it again.
             }
-            catch (DbUpdateException exception)
+            catch (DbUpdateException exception) when (CrossedAGrant(exception))
             {
-                // A consent or a token arrived between the last look and the delete, which its foreign key refuses. The
-                // failed delete is still tracked, and would fail every later one of this run with it.
+                // A consent or a token arrived between the last look and the delete, which its foreign key refuses, or
+                // which the database answers as a deadlock under the store's serializable transaction. The failed delete
+                // is still tracked, and would fail every later one of this run with it.
                 context.ChangeTracker.Clear();
                 OidcLog.ClientDeleteRefused(logger, exception, id);
             }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                context.ChangeTracker.Clear();
+                OidcLog.ClientDeleteFailed(logger, exception, id);
+                failures.Add(exception);
+            }
+        }
+
+        if (failures.Count == 1)
+        {
+            ExceptionDispatchInfo.Capture(failures[0]).Throw();
+        }
+
+        if (failures.Count > 1)
+        {
+            throw new AggregateException($"Could not delete {failures.Count} MCP clients; each is logged with its id (event {OidcLog.ClientDeleteFailedId}).", failures);
         }
 
         return removed;
     }
 
+    // What a delete gets when a consent or a token of the client arrived during it: the refusal of a foreign key, or, under
+    // a serializable transaction such as the store's own, the deadlock that SQL Server answers for the same race. A
+    // serialization failure of PostgreSQL (40001) has no member of the providers to tell it, so it is thrown.
+    private bool CrossedAGrant(Exception exception) => provider.IsForeignKeyViolation(exception) || provider.IsDeadlock(exception);
+
     // A client that holds a token or an authorization was used, whatever its state says: one that registered before the
     // first use was recorded has no usedAt, and neither has one whose first consent crossed another write of the client
     // (ClientConsents.MarkUsedAsync). The cleanup writes it, with the user of the oldest authorization, while the grant
     // is there to tell, so that such a client is not taken for one never used once its grants are gone, and keeps its
-    // place among the clients that user may keep.
+    // place among the clients that user may keep. usedBy gives a place, so it is written under the lock of the consents:
+    // otherwise a user whose consent ended between the read of the oldest authorization and the write would be named
+    // again, and hold a place without a consent (#3441).
     private async Task MarkUsedAsync(CancellationToken cancellationToken)
     {
         var unmarked = await McpApplications()
@@ -329,7 +361,13 @@ internal sealed class McpClients(
                     || context.Set<OpenIddictEntityFrameworkCoreToken<Guid>>().Any(token => token.Application != null && token.Application.Id == application.Id)))
             .Select(application => application.Id)
             .ToListAsync(cancellationToken);
+        if (unmarked.Count == 0)
+        {
+            return;
+        }
 
+        await using var held = await consents.LockAsync(cancellationToken)
+            ?? throw new TimeoutException($"The lock {ClientConsents.LockName} was not free, so the first uses of the MCP clients were not written; the next run writes them.");
         foreach (var id in unmarked)
         {
             if (await applications.FindByIdAsync(id.ToString("D"), cancellationToken) is not { } application
@@ -368,15 +406,23 @@ internal sealed class McpClients(
     // their sessions and tokens, each as RevokeAsync removes one and with its event. A client an administrator approved,
     // registered or gave a role carries that administrator and is never one of them, and each is read again just before
     // it is deleted, so that one an administrator acted on meanwhile stays. Each delete is a transaction of its own with
-    // its event, so a call removes limit clients at most and the caller repeats it for the rest.
+    // its event, so a call removes limit clients at most and the caller repeats it for the rest. The candidates are found
+    // before any transaction: the status and approvedBy in SQL, and the span in the state that the same query reads, since
+    // registeredAt is in the stored JSON, which the system model has no function of the providers for (#3448).
     public async Task<int> RemoveOpenApprovedAsync(DateTimeOffset? registeredFrom, DateTimeOffset? registeredBefore, int limit, CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(limit, 1);
 
-        var candidates = await McpApplications()
-            .Where(application => !application.Properties!.Contains(ApprovedByMarker))
-            .Select(application => application.Id)
+        var rows = await McpApplications()
+            .Where(application => application.Properties!.Contains(ApprovedMarker) && !application.Properties.Contains(ApprovedByMarker))
+            .Select(application => new { application.Id, application.Properties })
             .ToListAsync(cancellationToken);
+        var candidates = rows
+            .Select(row => (row.Id, State: McpClientState.OfStored(row.Properties)))
+            .Where(row => row.State is { IsApproved: true, ApprovedBy: null } state && !(state.RegisteredAt < registeredFrom) && !(state.RegisteredAt >= registeredBefore))
+            .OrderBy(row => row.State!.RegisteredAt)
+            .Select(row => row.Id)
+            .ToList();
 
         var removed = 0;
         foreach (var id in candidates)
@@ -410,16 +456,121 @@ internal sealed class McpClients(
             {
                 // Changed since it was read, as by an approval or a role change; it is left.
             }
-            catch (DbUpdateException exception)
+            catch (DbUpdateException exception) when (CrossedAGrant(exception))
             {
                 // A consent or a token arrived during the delete, which its foreign key refuses; the failed delete is
-                // still tracked, and would fail every later one of this call with it.
+                // still tracked, and would fail every later one of this call with it. Any other failure of the save, the
+                // write of the event included, ends the call: the clients removed before it stay removed, each with its
+                // activity row (#3448).
                 context.ChangeTracker.Clear();
                 OidcLog.ClientDeleteRefused(logger, exception, id);
             }
         }
 
         return removed;
+    }
+
+    public async Task<IReadOnlyList<McpClientConsent>> ListConsentsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        List<McpClientConsent> listed = [];
+        foreach (var place in await consents.PlacesAsync(userId, cancellationToken))
+        {
+            if (await applications.FindByIdAsync(place.ApplicationId, cancellationToken) is { } application
+                && await DescribeAsync(application, cancellationToken) is { } client)
+            {
+                listed.Add(new McpClientConsent(client, place.ConsentedAt, place.Valid));
+            }
+        }
+
+        return
+        [
+            .. listed
+                .OrderByDescending(consent => consent.ConsentedAt ?? consent.Client.UsedAt)
+                .ThenBy(consent => consent.Client.ClientId, StringComparer.Ordinal),
+        ];
+    }
+
+    // A place is held by the user's authorizations of the client, valid or revoked, and by usedBy, so ending a consent as a
+    // session does leaves it taken (ClientConsents.PlacesAsync). This frees it: the authorizations go with their tokens,
+    // which a revoke would leave until the prune, and usedBy no longer names the user. A client that then holds no grant
+    // of anyone loses usedAt too and is taken for one never used, which the cleanup removes after NeverUsedClientHours;
+    // otherwise a user could consent to a client, free its place and consent to the next, each kept for the cleanup's
+    // long period. It runs under the lock of the consents that take a place, so a consent of the user at the same moment
+    // counts what this left (#3441). A client that cannot count for the user is answered before the lock, so that a call
+    // with any id keeps no consent waiting, and everything is read again under it.
+    public async Task<McpClientChange> EndConsentAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
+    {
+        var subject = userId.ToString("D");
+        var marker = McpClientState.UsedByMarker(userId);
+        if (!await McpApplications().AnyAsync(
+                application => application.Id == id
+                    && application.Properties!.Contains(ApprovedMarker)
+                    && !application.Properties.Contains(ApprovedByMarker)
+                    && (application.Properties.Contains(marker)
+                        || context.Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().Any(authorization => authorization.Application != null && authorization.Application.Id == id && authorization.Subject == subject)),
+                cancellationToken))
+        {
+            return new McpClientChange(McpClientChangeOutcome.NotFound, null);
+        }
+
+        await using var held = await consents.LockAsync(cancellationToken)
+            ?? throw new ServiceUnavailableException($"Other consents to MCP clients are being changed, so the consent to {id:D} was not ended; try again in a moment.");
+        try
+        {
+            return await changes.RunAsync(
+                async () =>
+                {
+                    if (await FindAsync(id, cancellationToken) is not var (application, client, state)
+                        || state is not { IsApproved: true, ApprovedBy: null })
+                    {
+                        return new McpClientChange(McpClientChangeOutcome.NotFound, null);
+                    }
+
+                    var granted = await context.Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().AsNoTracking()
+                        .Where(authorization => authorization.Application != null && authorization.Application.Id == id && authorization.Subject == subject)
+                        .Select(authorization => new { authorization.Id, authorization.Status })
+                        .ToListAsync(cancellationToken);
+                    if (granted.Count == 0 && state.UsedBy != userId)
+                    {
+                        return new McpClientChange(McpClientChangeOutcome.NotFound, null);
+                    }
+
+                    foreach (var grant in granted)
+                    {
+                        if (await authorizations.FindByIdAsync(grant.Id.ToString("D"), cancellationToken) is { } authorization)
+                        {
+                            await authorizations.DeleteAsync(authorization, cancellationToken);
+                        }
+                    }
+
+                    var freed = state.UsedBy == userId ? state with { UsedBy = null } : state;
+                    if (freed.UsedBy is null && !await HasGrantsAsync(id, cancellationToken))
+                    {
+                        freed = freed with { UsedAt = null };
+                    }
+
+                    if (freed != state)
+                    {
+                        await StoreAsync(application, freed, cancellationToken);
+                    }
+
+                    var name = await context.Set<CmsUser>().AsNoTracking().Where(user => user.Id == userId).Select(user => user.UserName).FirstOrDefaultAsync(cancellationToken);
+                    foreach (var ended in granted.Where(grant => grant.Status == Statuses.Valid))
+                    {
+                        await changes.RaiseAsync(new UserSessionsEndedEvent(userId, name ?? "", SessionEndReasons.Revoked, ended.Id), cancellationToken);
+                    }
+
+                    return new McpClientChange(McpClientChangeOutcome.Done, With(client, freed));
+                },
+                cancellationToken);
+        }
+        catch (Exception exception) when (exception is OpenIddictExceptions.ConcurrencyException || (exception is DbUpdateException && CrossedAGrant(exception)))
+        {
+            // The client or a consent changed since it was read, or a token of the consent was issued while it was
+            // deleted, which the foreign key refuses; the transaction rolled back whole, so nothing was ended, and the
+            // caller tries again.
+            return new McpClientChange(McpClientChangeOutcome.ChangedMeanwhile, null);
+        }
     }
 
     private async Task<bool> HasGrantsAsync(Guid id, CancellationToken cancellationToken) =>
@@ -539,6 +690,8 @@ internal sealed class McpClients(
 
     private static readonly string PendingMarker = "\"status\":\"pending\"";
 
+    private static readonly string ApprovedMarker = "\"status\":\"approved\"";
+
     // A state is written without its null members, so one without these was approved by no administrator, or names no
     // user who first used it.
     private static readonly string ApprovedByMarker = "\"approvedBy\":";
@@ -610,6 +763,8 @@ internal sealed class McpClients(
         RoleId = state.RoleId,
         ApprovedBy = state.ApprovedBy,
         ApprovedAt = state.ApprovedAt,
+        UsedAt = state.UsedAt,
+        UsedBy = state.UsedBy,
     };
 
     private async Task StoreAsync(object application, McpClientState state, CancellationToken cancellationToken)

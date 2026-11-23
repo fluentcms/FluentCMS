@@ -61,6 +61,8 @@ internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : TestDataba
 
         public bool IsUniqueViolation(Exception exception) => inner.IsUniqueViolation(exception);
 
+        public bool IsForeignKeyViolation(Exception exception) => inner.IsForeignKeyViolation(exception);
+
         public bool IsDeadlock(Exception exception) => inner.IsDeadlock(exception);
 
         public bool IsBusy(Exception exception) => inner.IsBusy(exception);

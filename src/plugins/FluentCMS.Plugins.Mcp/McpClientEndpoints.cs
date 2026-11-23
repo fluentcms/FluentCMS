@@ -6,9 +6,25 @@ namespace FluentCMS.Plugins.Mcp;
 
 internal sealed record McpClientList(IReadOnlyList<McpClientInfo> Items);
 
-// /api/management/v1/mcp/clients. The service checks mcp.manage for the instance.
+internal sealed record McpConsentList(IReadOnlyList<McpConsentInfo> Items);
+
+// /api/management/v1/mcp/clients, where the service checks mcp.manage for the instance, and /mcp/consents, the caller's own.
 internal static class McpClientEndpoints
 {
+    public static RouteGroupBuilder MapMcpConsentEndpoints(this RouteGroupBuilder group)
+    {
+        group.MapGet("", async (McpClientService clients, CancellationToken cancellationToken) =>
+            Results.Ok(new McpConsentList(await clients.ListConsentsAsync(cancellationToken)))).Produces<McpConsentList>();
+
+        group.MapDelete("/{id:guid}", async (Guid id, McpClientService clients, CancellationToken cancellationToken) =>
+        {
+            await clients.EndConsentAsync(id, cancellationToken);
+            return Results.NoContent();
+        }).Produces(StatusCodes.Status204NoContent);
+
+        return group;
+    }
+
     public static RouteGroupBuilder MapMcpClientEndpoints(this RouteGroupBuilder group)
     {
         group.MapGet("", async (McpClientService clients, CancellationToken cancellationToken) =>
