@@ -6,6 +6,7 @@ using FluentCMS.Core.Schema;
 using FluentCMS.Data.PostgreSql;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Data.SqlServer;
+using FluentCMS.Diagnostics;
 using FluentCMS.Plugins.AiAssist;
 using FluentCMS.Plugins.GraphQL;
 using FluentCMS.Plugins.Mcp;
@@ -30,6 +31,7 @@ public static class ReferenceHost
     public const string BlogSampleName = "blog";
     public const string KeyRingCertificatePathKey = "FluentCms:DataProtection:Certificate:Path";
     public const string KeyRingCertificatePasswordKey = "FluentCms:DataProtection:Certificate:Password";
+    public const string PreviousKeyRingCertificatesSection = "FluentCms:DataProtection:PreviousCertificates";
     public const string MediaS3Section = "FluentCms:Media:S3";
 
     public static WebApplication Build(WebApplicationBuilder builder)
@@ -156,20 +158,47 @@ public static class ReferenceHost
     }
 
     // The image is set up by environment variables alone, so it cannot call ProtectKeysWithCertificate the way a host of
-    // its own does. Before AddFluentCms, which keeps the ring loading on first use rather than at start.
+    // its own does. Before AddFluentCms, which keeps the ring loading on first use rather than at start. A previous certificate
+    // only unprotects: the one encryptor is that of the current certificate, so a new key is never protected with an old one.
     private static void ProtectKeyRing(IServiceCollection services, ConfigurationManager configuration)
     {
         var path = configuration[KeyRingCertificatePathKey];
+        // An entry whose every member is empty is absent, as an empty current Path is, so that the environment can blank one.
+        var previous = configuration.GetSection(PreviousKeyRingCertificatesSection).GetChildren()
+            .Where(entry => entry.AsEnumerable().Any(member => !string.IsNullOrWhiteSpace(member.Value)))
+            .ToList();
         if (string.IsNullOrWhiteSpace(path))
         {
+            if (previous.Count > 0)
+            {
+                throw new ReferenceHostException(ReferenceHostErrorCodes.KeyRingCertificateUnusable, $"{PreviousKeyRingCertificatesSection} is set without {KeyRingCertificatePathKey}; a previous certificate only reads the ring, so set the certificate that protects its new keys.");
+            }
+
             return;
         }
 
         var certificate = LoadKeyRingCertificate(path, configuration[KeyRingCertificatePasswordKey]);
-        services.AddDataProtection().ProtectKeysWithCertificate(certificate);
+        var protection = services.AddDataProtection().ProtectKeysWithCertificate(certificate);
+        if (previous.Count == 0)
+        {
+            return;
+        }
+
+        X509Certificate2[] readers = [.. previous.Select(LoadPreviousKeyRingCertificate)];
+        protection.UnprotectKeysWithAnyCertificate(readers);
+        services.AddSingleton<IInsecureDefaultSource>(provider => new PreviousKeyRingCertificatesReport([.. readers.Select(reader => reader.Thumbprint).Distinct(StringComparer.OrdinalIgnoreCase)], provider.GetRequiredService<IHostEnvironment>()));
     }
 
-    internal static X509Certificate2 LoadKeyRingCertificate(string path, string? password)
+    private static X509Certificate2 LoadPreviousKeyRingCertificate(IConfigurationSection entry)
+    {
+        var key = $"{PreviousKeyRingCertificatesSection}:{entry.Key}:Path";
+        var path = entry["Path"];
+        return string.IsNullOrWhiteSpace(path)
+            ? throw new ReferenceHostException(ReferenceHostErrorCodes.KeyRingCertificateUnusable, $"{key} is not set; each previous key ring certificate names its PKCS#12 file.")
+            : LoadKeyRingCertificate(path, entry["Password"], key);
+    }
+
+    internal static X509Certificate2 LoadKeyRingCertificate(string path, string? password, string key = KeyRingCertificatePathKey)
     {
         X509Certificate2 certificate;
         try
@@ -180,7 +209,7 @@ public static class ReferenceHost
         }
         catch (Exception exception) when (exception is CryptographicException or IOException or UnauthorizedAccessException)
         {
-            throw new ReferenceHostException(ReferenceHostErrorCodes.KeyRingCertificateUnusable, $"{KeyRingCertificatePathKey} is '{path}', which cannot be read as a PKCS#12 file with this password: {exception.Message}");
+            throw new ReferenceHostException(ReferenceHostErrorCodes.KeyRingCertificateUnusable, $"{key} is '{path}', which cannot be read as a PKCS#12 file with this password: {exception.Message}");
         }
 
         // Data Protection encrypts the ring for the certificate's RSA key and needs the private key to read it back.
@@ -189,7 +218,7 @@ public static class ReferenceHost
             if (rsa is null)
             {
                 certificate.Dispose();
-                throw new ReferenceHostException(ReferenceHostErrorCodes.KeyRingCertificateUnusable, $"{KeyRingCertificatePathKey} is '{path}', which holds no RSA private key.");
+                throw new ReferenceHostException(ReferenceHostErrorCodes.KeyRingCertificateUnusable, $"{key} is '{path}', which holds no RSA private key.");
             }
         }
 
