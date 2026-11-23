@@ -57,7 +57,8 @@ internal sealed class MediaVariantCleanupJob(PluginDbContext<MediaPlugin> databa
                 var asset = assets.GetValueOrDefault(variants.Key);
                 if (asset is { OwnsFile: false })
                 {
-                    done += await ReplacedFiles.HandOverAsync(database, asset, [.. variants], cancellationToken);
+                    var handed = (await ReplacedFiles.HandOverAsync(database, asset, [.. variants], cancellationToken)).Select(variant => variant.ParamsHash).ToList();
+                    done += await database.Set<Variant>().Where(item => item.AssetId == asset.Id && handed.Contains(item.ParamsHash)).ExecuteDeleteAsync(cancellationToken);
                     continue;
                 }
 

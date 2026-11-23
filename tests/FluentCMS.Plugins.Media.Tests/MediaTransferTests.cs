@@ -126,7 +126,8 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var text = Encoding.UTF8.GetString(bytes);
         text.ShouldNotContain("script");
         text.ShouldNotContain("<style");
-        var prefix = $"fcms-{Sha256(svg)[..8]}-";
+        var prefix = System.Text.RegularExpressions.Regex.Match(text, "fcms-[0-9a-f]{16}-").Value;
+        prefix.ShouldNotBeNullOrEmpty();
         text.ShouldContain($"""<linearGradient id="{prefix}g" />""");
         text.ShouldContain($"""fill="url(#{prefix}g)" """);
         (stored.Size, stored.Checksum).ShouldBe((bytes.LongLength, Sha256(bytes)));
@@ -770,6 +771,35 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         File.Exists(Path.Combine(host.StorageRoot, key)).ShouldBeFalse();
     }
 
+    // A line names the owner's key after the replace of the owner found no other asset that names it and before the replace
+    // saves. The line's save holds the owner's version, which it leaves as it is, so both saves stand; the replace checks
+    // again just before it deletes the old file, finds the line's asset, and leaves the file to a holder.
+    [Fact]
+    public async Task ALineThatNamesTheKeyWhileTheOwnerIsReplacedKeepsTheFile()
+    {
+        var race = new ReplacingSave();
+        await using var host = new MediaHost();
+        host.Host.Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(race)));
+        using var admin = await host.AdminAsync();
+        var bands = Bands(8, 8);
+        var owner = await UploadAsync(admin, bands, "owner.png");
+        var key = (await AssetAsync(host, owner.Id)).ShouldNotBeNull().StorageKey;
+        var sharing = Guid.CreateVersion7();
+        var package = await PackageAsync(admin, [Line(sharing, "shared.png", "image/png", bands, key: key)]);
+        JsonNode? imported = null;
+        (race.Asset, race.Before) = (owner.Id, async () => imported = await ImportAsync(admin, package));
+
+        await ReplaceThroughTheServiceAsync(admin, owner.Id, Files.Png(5, 5));
+
+        Counts(imported.ShouldNotBeNull()).ShouldBe((1, 0, 0));
+        (await AssetAsync(host, sharing)).ShouldNotBeNull().StorageKey.ShouldBe(key);
+        (await AssetAsync(host, owner.Id)).ShouldNotBeNull().StorageKey.ShouldNotBe(key);
+        File.Exists(Path.Combine(host.StorageRoot, key)).ShouldBeTrue();
+        await using var scope = host.Services.CreateAsyncScope();
+        (await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().AsNoTracking()
+            .SingleOrDefaultAsync(asset => asset.StorageKey == key && asset.OwnsFile && asset.DeletedAt != null, Token)).ShouldNotBeNull();
+    }
+
     // The import is still updated when the old file cannot be deleted, as a replace is, and the file stays.
     [Fact]
     public async Task AnOldFileTheStorageFailsToDeleteStaysAndTheItemIsUpdated()
@@ -1051,6 +1081,28 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         {
             if (Before is { } before
                 && eventData.Context!.ChangeTracker.Entries<Asset>().Any(entry => entry.State == EntityState.Added && entry.Entity.Id == asset)
+                && Interlocked.Exchange(ref _armed, 0) == 1)
+            {
+                await before();
+            }
+
+            return await base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+    }
+
+    // The first save that gives the asset another file runs the other work before it goes on.
+    private sealed class ReplacingSave : SaveChangesInterceptor
+    {
+        private int _armed = 1;
+
+        public Guid Asset { get; set; }
+
+        public Func<Task>? Before { get; set; }
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (Before is { } before
+                && eventData.Context!.ChangeTracker.Entries<Asset>().Any(entry => entry.State == EntityState.Modified && entry.Entity.Id == Asset && entry.Property(item => item.StorageKey).IsModified)
                 && Interlocked.Exchange(ref _armed, 0) == 1)
             {
                 await before();

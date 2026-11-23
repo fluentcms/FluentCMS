@@ -197,19 +197,20 @@ public sealed class MediaFileTests
             """))).ShouldNotBeNull();
 
         SvgDocument.Sanitize(svg);
-        SvgDocument.Scope(svg, Checksum);
+        SvgDocument.Scope(svg);
         var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
 
+        var prefix = Prefix(text);
         text.ShouldNotContain("<style");
         text.ShouldNotContain("display: none");
-        text.ShouldContain("""<rect id="fcms-0a1b2c3d-location" width="1" height="1" style="fill: red" />""");
-        text.ShouldContain("""<g id="fcms-0a1b2c3d-config">""");
-        text.ShouldContain("""<use href="#fcms-0a1b2c3d-login-form" />""");
-        text.ShouldContain("""fill="url(#fcms-0a1b2c3d-page-gradient)" aria-labelledby="fcms-0a1b2c3d-page-label" """);
-        text.ShouldContain("""begin="fcms-0a1b2c3d-page-button.click" """);
+        text.ShouldContain($"""<rect id="{prefix}location" width="1" height="1" style="fill: red" />""");
+        text.ShouldContain($"""<g id="{prefix}config">""");
+        text.ShouldContain($"""<use href="#{prefix}login-form" />""");
+        text.ShouldContain($"""fill="url(#{prefix}page-gradient)" aria-labelledby="{prefix}page-label" """);
+        text.ShouldContain($"""begin="{prefix}page-button.click" """);
         foreach (var name in Names(text))
         {
-            name.ShouldStartWith("fcms-0a1b2c3d-");
+            name.ShouldStartWith(prefix);
         }
     }
 
@@ -240,38 +241,150 @@ public sealed class MediaFileTests
             """))).ShouldNotBeNull();
 
         SvgDocument.Sanitize(svg);
-        SvgDocument.Scope(svg, Checksum);
+        SvgDocument.Scope(svg);
         var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
 
-        var ids = Ids(text);
+        var prefix = Prefix(text);
+        var ids = Ids(text, prefix);
         ids.ShouldBe(["t", "g", "g2", "c", "m", "k", "f", "p", "dot", "a"], ignoreOrder: true);
         var names = Names(text);
         names.Count.ShouldBe(13);
         foreach (var name in names)
         {
-            name.ShouldStartWith("fcms-0a1b2c3d-");
-            ids.ShouldContain(name["fcms-0a1b2c3d-".Length..]);
+            name.ShouldStartWith(prefix);
+            ids.ShouldContain(name[prefix.Length..]);
         }
 
-        Ids(Encoding.UTF8.GetString(Sanitized(Encoding.UTF8.GetBytes(text), Checksum))).ShouldBe(ids, ignoreOrder: true);
-
-        text.ShouldContain("""begin="fcms-0a1b2c3d-a.end+1.5s; 2s; click; fcms-0a1b2c3d-a.repeat(2)" end="indefinite" """);
-        text.ShouldContain("""xlink:href="#fcms-0a1b2c3d-dot" """);
+        Sanitized(Encoding.UTF8.GetBytes(text)).ShouldBe(Encoding.UTF8.GetBytes(text));
+        text.ShouldContain($"""begin="{prefix}a.end+1.5s; 2s; click; {prefix}a.repeat(2)" end="indefinite" """);
+        text.ShouldContain($"""xlink:href="#{prefix}dot" """);
     }
 
-    // Sanitising a sanitised file changes nothing, so that an import can take its key; a file whose names carry one prefix
-    // keeps it, and a reference of it without the prefix takes it.
+    // Sanitising a file the pass wrote changes nothing, byte for byte, so that an import can take its key, a file without ids
+    // and one that took a prefix on top of the uploader's included. A prefix of the form that the uploader wrote, with a
+    // reference without it, is not the file's own, so every name takes the file's on top.
     [Fact]
-    public void ScopingAScopedFileChangesNothingAndAReferenceWithoutThePrefixTakesIt()
+    public void ScopingAScopedFileChangesNothingAndAPrefixTheFileDoesNotDeriveTakesItsOwnOnTop()
     {
-        var once = Sanitized(Files.Svg("""<defs><circle id="dot" r="1"/></defs><use href="#dot"/><rect width="1" height="1" fill="url(#dot)"/>"""), Checksum);
+        foreach (var body in (string[])[
+            """<defs><circle id="dot" r="1"/></defs><use href="#dot"/><rect width="1" height="1" fill="url(#dot)" aria-labelledby="dot"/><animate attributeName="opacity" to="0" begin="dot.click" dur="1s"/>""",
+            """<use href="#page"/>""",
+            """<circle id="fcms-0badf00d0badf00d-dot" r="1"/><use href="#fcms-0badf00d0badf00d-dot"/>""",
+            "<title>a&#xD;b</title><text xml:space=\"preserve\">line\n  <tspan>x</tspan></text>"])
+        {
+            var once = Sanitized(Files.Svg(body));
 
-        Sanitized(once, new string('f', 64)).ShouldBe(once);
+            Sanitized(once).ShouldBe(once, body);
+        }
 
-        var crafted = Sanitized(Files.Svg("""<circle id="fcms-12345678-dot" r="1"/><use href="#fcms-12345678-dot"/><use href="#page"/>"""), Checksum);
-        var text = Encoding.UTF8.GetString(crafted);
-        text.ShouldContain("""<use href="#fcms-12345678-dot" />""");
-        text.ShouldContain("""<use href="#fcms-12345678-page" />""");
+        var text = Encoding.UTF8.GetString(Sanitized(Files.Svg("""<circle id="fcms-0badf00d0badf00d-dot" r="1"/><use href="#fcms-0badf00d0badf00d-dot"/><use href="#page"/>""")));
+        var prefix = Prefix(text);
+        prefix.ShouldNotBe("fcms-0badf00d0badf00d-");
+        text.ShouldContain($"""<use href="#{prefix}fcms-0badf00d0badf00d-dot" />""");
+        text.ShouldContain($"""<use href="#{prefix}page" />""");
+    }
+
+    // A page that inlines the stored file parses it as HTML, where a CDATA section or a comment ends at the first > and a
+    // prefixed element is no SVG, so what the file holds after it would be markup of the page. What is stored holds none of
+    // those, only SVG elements without a prefix, and text and values escaped.
+    public static TheoryData<string> Constructs => new()
+    {
+        """<s:svg xmlns:s="http://www.w3.org/2000/svg"><s:text><![CDATA[><img src=x onerror=alert(document.domain)>]]></s:text></s:svg>""",
+        Encoding.UTF8.GetString(Files.Svg("""<title><![CDATA[><img src=x onerror=alert(1)>]]></title>""")),
+        Encoding.UTF8.GetString(Files.Svg("""<desc><![CDATA[><img src=x onerror=alert(1)>]]></desc>""")),
+        Encoding.UTF8.GetString(Files.Svg("""<text><tspan><![CDATA[><img src=x onerror=alert(1)>]]></tspan></text>""")),
+        Encoding.UTF8.GetString(Files.Svg("""<path id="p" d="M0 0"/><text><textPath href="#p"><![CDATA[><img src=x onerror=alert(1)>]]></textPath></text>""")),
+        Encoding.UTF8.GetString(Files.Svg("""<!-- <img src=x onerror=alert(1)> --><rect width="1" height="1"/>""")),
+        Encoding.UTF8.GetString(Files.Svg("""<?pi <img src=x onerror=alert(1)>?><rect width="1" height="1"/>""")),
+        """<s:svg xmlns:s="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" xmlns:t="http://www.w3.org/2000/svg"><rect width="1" height="1"/><t:circle r="1"/><s:g><t:text>&lt;img src=x onerror=alert(1)&gt;</t:text></s:g></s:svg>""",
+    };
+
+    [Theory]
+    [MemberData(nameof(Constructs))]
+    public void WhatIsStoredMeansToAnHtmlParserWhatItMeansAsXml(string xml)
+    {
+        var text = Encoding.UTF8.GetString(Sanitized(Encoding.UTF8.GetBytes(xml)));
+
+        text.ShouldStartWith("<svg xmlns=\"http://www.w3.org/2000/svg\"");
+        foreach (var construct in (string[])["<![CDATA[", "<!--", "<?", "<img", "<!"])
+        {
+            text.ShouldNotContain(construct);
+        }
+
+        Regex.IsMatch(text, @"</?[A-Za-z][\w.-]*:").ShouldBeFalse(text);
+        XDocument.Parse(text).Root.ShouldNotBeNull().Name.ShouldBe(SvgDocument.SvgNamespace + "svg");
+    }
+
+    // A text with every character that ends a context in HTML, and new lines, which are written as \n on every platform so
+    // that a file sanitises to the same bytes wherever it is.
+    [Fact]
+    public void TextAndValuesAreEscapedAndNewLinesAreTheSameOnEveryPlatform()
+    {
+        var text = Encoding.UTF8.GetString(Sanitized(Files.Svg("<title>a &lt;/title&gt; &amp; \"b\" 'c'\nd&#xD;</title><rect width=\"1\" height=\"1\" aria-label=\"&quot;&gt;&lt;img&#xA;x\"/>")));
+
+        text.ShouldContain("<title>a &lt;/title&gt; &amp; \"b\" 'c'\nd&#xD;</title>");
+        text.ShouldContain("aria-label=\"&quot;&gt;&lt;img&#xA;x\"");
+        text.ShouldNotContain("\r");
+    }
+
+    // The uploader may write ids and references that carry a prefix of the form, such as another SVG's, read from its file;
+    // it is kept only when it is the one the file derives without it, so it takes the file's own on top.
+    [Theory]
+    [InlineData("""<defs><linearGradient id="fcms-0badf00d-grad"/></defs><rect width="1" height="1" fill="url(#fcms-0badf00d-grad)"/>""", "fcms-0badf00d-grad")]
+    [InlineData("""<defs><linearGradient id="fcms-0badf00d0badf00d-grad"/></defs><rect width="1" height="1" fill="url(#fcms-0badf00d0badf00d-grad)"/>""", "fcms-0badf00d0badf00d-grad")]
+    [InlineData("""<use href="#fcms-0badf00d-icon"/>""", "fcms-0badf00d-icon")]
+    [InlineData("""<use href="#fcms-0badf00d0badf00d-icon"/>""", "fcms-0badf00d0badf00d-icon")]
+    public void APrefixTheUploaderWroteIsNotKept(string body, string name)
+    {
+        var text = Encoding.UTF8.GetString(Sanitized(Files.Svg(body)));
+
+        text.ShouldNotContain($"\"{name}\"");
+        text.ShouldNotContain($"#{name}");
+        Regex.IsMatch(text, $@"fcms-[0-9a-f]{{16}}-{Regex.Escape(name)}").ShouldBeTrue(text);
+    }
+
+    // A browser that reads the escapes of a begin or end value would time the animation by an element of the page, so a value
+    // with a backslash goes.
+    [Fact]
+    public void ABeginOrEndWithABackslashGoes()
+    {
+        var text = Encoding.UTF8.GetString(Sanitized(Files.Svg("""<animate attributeName="opacity" to="0" begin="\submit.click; pay\-now.click" end="\x.end" dur="1s"/>""")));
+
+        text.ShouldContain("<animate attributeName=\"opacity\" to=\"0\" dur=\"1s\" />");
+        text.ShouldNotContain("\\");
+    }
+
+    // The root's overflow, style and transform would let the drawing paint over the page around it; the elements inside
+    // keep theirs, which the root clips.
+    [Fact]
+    public void TheRootKeepsNoOverflowStyleOrTransform()
+    {
+        var text = Encoding.UTF8.GetString(Sanitized(Encoding.UTF8.GetBytes("""<svg xmlns="http://www.w3.org/2000/svg" overflow="visible" width="1" height="1" transform="translate(-500 -500)" style="position:fixed;inset:0;z-index:99999"><g style="opacity: 0.5" overflow="visible"><rect x="-5000" y="-5000" width="10000" height="10000" fill="white"/></g></svg>""")));
+
+        text.ShouldStartWith("""<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1">""");
+        text.ShouldContain("""<g style="opacity: 0.5" overflow="visible"><rect x="-5000" y="-5000" width="10000" height="10000" fill="white" /></g>""");
+    }
+
+    // element() paints an element of the page, and an animation of class or id gives an element of the SVG a name of the
+    // page's.
+    [Fact]
+    public void ACopyOfAnElementOfThePageAndAnAnimationOfClassOrIdGo()
+    {
+        var text = Encoding.UTF8.GetString(Sanitized(Files.Svg("""
+            <rect width="1" height="1" style="fill: red; background: -moz-element(#login)"/>
+            <rect width="2" height="2" fill="element(#login)"/>
+            <set attributeName="class" to="admin"/>
+            <animate attributeName="id" values="a;b" dur="1s"/>
+            <set attributeName="opacity" to="1"/>
+            """)));
+
+        text.ShouldContain("""<rect width="1" height="1" />""");
+        text.ShouldContain("""<rect width="2" height="2" />""");
+        text.ShouldContain("""attributeName="opacity" """);
+        foreach (var gone in (string[])["element(", "\"class\"", "\"id\"", "admin"])
+        {
+            text.ShouldNotContain(gone);
+        }
     }
 
     // What the review of #3309 found past a pass by names it drops: a string that hides a comment, a comment that hides a
@@ -363,24 +476,30 @@ public sealed class MediaFileTests
         text.ShouldContain("""<circle id="kept" r="1" />""");
     }
 
-    private const string Checksum = "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9";
-
-    private static byte[] Sanitized(byte[] bytes, string checksum)
+    private static byte[] Sanitized(byte[] bytes)
     {
         var svg = SvgDocument.Parse(new MemoryStream(bytes)).ShouldNotBeNull();
         SvgDocument.Sanitize(svg);
-        SvgDocument.Scope(svg, checksum);
+        SvgDocument.Scope(svg);
         return SvgDocument.Save(svg);
     }
 
-    // The ids, each of which must carry the prefix of Checksum, without it.
-    private static List<string> Ids(string text)
+    // The prefix the file took, the first in it.
+    private static string Prefix(string text)
+    {
+        var prefix = Regex.Match(text, "fcms-[0-9a-f]{16}-").Value;
+        prefix.ShouldNotBeNullOrEmpty();
+        return prefix;
+    }
+
+    // The ids, each of which must carry the prefix, without it.
+    private static List<string> Ids(string text, string prefix)
     {
         List<string> ids = [];
         foreach (var id in XDocument.Parse(text).Descendants().Select(element => element.Attribute("id")?.Value).OfType<string>())
         {
-            id.ShouldStartWith("fcms-0a1b2c3d-");
-            ids.Add(id["fcms-0a1b2c3d-".Length..]);
+            id.ShouldStartWith(prefix);
+            ids.Add(id[prefix.Length..]);
         }
 
         return ids;

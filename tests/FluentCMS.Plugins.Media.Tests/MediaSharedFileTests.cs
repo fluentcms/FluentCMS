@@ -1,4 +1,6 @@
+using System.IO.Compression;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Sites;
@@ -6,6 +8,7 @@ using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Media;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -111,6 +114,8 @@ public sealed class MediaSharedFileTests(PerSiteMediaHost media) : IClassFixture
 
         var holder = (await HolderAsync(shared.Key)).ShouldNotBeNull();
         holder.Id.ShouldNotBeOneOf(shared.Owner, shared.Named, other);
+        (await GetAsync(admin, $"{Root}?pageSize=100")).ToJsonString().ShouldNotContain(holder.Id.ToString("D"));
+        (await ExportedAssetsAsync(admin)).ShouldNotContain(holder.Id.ToString("D"));
         (await VariantKeysAsync(holder.Id)).ShouldBe([shared.SharedVariant, shared.OwnVariant], ignoreOrder: true);
         (await VariantKeysAsync(shared.Owner)).ShouldBeEmpty();
         Exists(shared.Key, shared.SharedVariant, shared.OwnVariant).ShouldBe([true, true, true]);
@@ -143,6 +148,96 @@ public sealed class MediaSharedFileTests(PerSiteMediaHost media) : IClassFixture
         Exists(shared.Key).ShouldBe([false]);
         var owner = (await RowAsync(shared.Owner)).ShouldNotBeNull();
         FilesOf(null, shared.Owner).Select(Path.GetFileName).ShouldBe([Path.GetFileName(owner.StorageKey)]);
+    }
+
+    // Each replaced file that another asset names has a holder of its own, and goes with the last asset that names it.
+    [Fact]
+    public async Task EachReplacedFileThatAnotherNamesGoesWithTheLastAssetThatNamesIt()
+    {
+        using var admin = await media.AdminAsync();
+        var shared = await SharedAsync(admin, null, Guid.CreateVersion7(), withVariants: false);
+        await ReplaceAsync(admin, shared.Owner, Bands(12, 4));
+        var second = (await RowAsync(shared.Owner)).ShouldNotBeNull().StorageKey;
+        var other = await NameAsync(shared.Owner, Guid.CreateVersion7());
+        await ReplaceAsync(admin, shared.Owner, Bands(16, 4));
+
+        (await HolderAsync(shared.Key)).ShouldNotBeNull();
+        (await HolderAsync(second)).ShouldNotBeNull();
+        media.Host.Time.Advance(PastRetention);
+        await CleanupAsync();
+        Exists(shared.Key, second).ShouldBe([true, true]);
+
+        await DeleteAsync(admin, shared.Named);
+        media.Host.Time.Advance(PastRetention);
+        await CleanupAsync();
+
+        Exists(shared.Key, second).ShouldBe([false, true]);
+        (await HolderAsync(shared.Key)).ShouldBeNull();
+
+        await DeleteAsync(admin, other);
+        media.Host.Time.Advance(PastRetention);
+        await CleanupAsync();
+
+        Exists(second).ShouldBe([false]);
+        (await HolderAsync(second)).ShouldBeNull();
+        var owner = (await RowAsync(shared.Owner)).ShouldNotBeNull();
+        FilesOf(null, shared.Owner).Select(Path.GetFileName).ShouldBe([Path.GetFileName(owner.StorageKey)]);
+    }
+
+    // A replace of an asset on another's key keeps the files, and hands its variant rows to the owner of the key, as its
+    // delete does, so they go with the owner.
+    [Fact]
+    public async Task AReplaceOfAnAssetOnTheKeyHandsItsVariantsToTheOwner()
+    {
+        using var admin = await media.AdminAsync();
+        var shared = await SharedAsync(admin, null, Guid.CreateVersion7());
+        await VariantAsync(admin, null, shared.Named, 6);
+        var made = (await VariantKeysAsync(shared.Named)).Where(key => key != shared.SharedVariant).ShouldHaveSingleItem();
+
+        await ReplaceAsync(admin, shared.Named, Bands(12, 4));
+
+        (await VariantKeysAsync(shared.Named)).ShouldBeEmpty();
+        (await VariantKeysAsync(shared.Owner)).ShouldBe([shared.SharedVariant, shared.OwnVariant, made], ignoreOrder: true);
+        Exists(shared.Key, made).ShouldBe([true, true]);
+
+        await DeleteAsync(admin, shared.Owner);
+        media.Host.Time.Advance(PastRetention);
+        await CleanupAsync();
+
+        (await RowAsync(shared.Owner)).ShouldBeNull();
+        FilesOf(null, shared.Owner).ShouldBeEmpty();
+    }
+
+    // One variant that the owner made at the same moment beats its row, and one whose save fails otherwise stays with the
+    // asset for the next run; the others are handed over all the same.
+    [Fact]
+    public async Task AHandOverGoesRowByRowAndKeepsARowItCouldNotHandOver()
+    {
+        var save = new HandOverSave();
+        await using var host = new PerSiteMediaHost();
+        host.Host.Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(save)));
+        using var admin = await host.AdminAsync();
+        var owner = await UploadAsync(admin, Bands(8, 8));
+        var named = Guid.CreateVersion7();
+        string[] hashes = [new('1', 64), new('2', 64), new('3', 64)];
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+            var row = await database.Set<Asset>().AsNoTracking().SingleAsync(asset => asset.Id == owner.Id, Token);
+            var folder = row.StorageKey[..row.StorageKey.LastIndexOf('/')];
+            row.Id = named;
+            row.OwnsFile = false;
+            row.DeletedAt = host.Host.Time.GetUtcNow();
+            database.Add(row);
+            database.AddRange(hashes.Select(hash => new Variant { AssetId = named, ParamsHash = hash, StorageKey = $"{folder}/{hash}.png", Size = 1, CreatedAt = host.Host.Time.GetUtcNow() }));
+            await database.SaveChangesAsync(Token);
+        }
+
+        (save.Services, save.Owner, save.Duplicate, save.Refused) = (host.Services, owner.Id, hashes[0], hashes[1]);
+        await CleanupAsync(host);
+
+        (await HashesAsync(host, owner.Id)).ShouldBe([hashes[0], hashes[2]], ignoreOrder: true);
+        (await HashesAsync(host, named)).ShouldBe([hashes[1]]);
     }
 
     // The owner that holds the bytes of its old file again makes its variants at the keys its holder names, which the
@@ -389,13 +484,68 @@ public sealed class MediaSharedFileTests(PerSiteMediaHost media) : IClassFixture
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
-    private async Task CleanupAsync()
+    private Task CleanupAsync() => CleanupAsync(media);
+
+    private static async Task CleanupAsync(MediaHost host)
     {
-        await media.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<MediaVariantCleanupJob, MediaVariantCleanupPayload>(new MediaVariantCleanupPayload(), cancellationToken: Token);
-        await using var scope = media.Services.CreateAsyncScope();
+        await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<MediaVariantCleanupJob, MediaVariantCleanupPayload>(new MediaVariantCleanupPayload(), cancellationToken: Token);
+        await using var scope = host.Services.CreateAsyncScope();
         var executor = scope.ServiceProvider.GetRequiredService<JobExecutor>();
         while (await executor.RunNextAsync(JobRunnerOptions.DefaultQueue, "test", Token))
         {
+        }
+    }
+
+    private static async Task<List<string>> HashesAsync(MediaHost host, Guid id)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Variant>().AsNoTracking().Where(variant => variant.AssetId == id).Select(variant => variant.ParamsHash).ToListAsync(Token);
+    }
+
+    // The asset lines of an export of the default site.
+    private static async Task<string> ExportedAssetsAsync(HttpClient admin)
+    {
+        using var exported = await admin.PostAsync(new Uri("/api/management/v1/transfer/export", UriKind.Relative), new StringContent("{}", Encoding.UTF8, "application/json"), Token);
+        exported.StatusCode.ShouldBe(HttpStatusCode.OK, await exported.Content.ReadAsStringAsync(Token));
+        using var package = new ZipArchive(new MemoryStream(await exported.Content.ReadAsByteArrayAsync(Token)), ZipArchiveMode.Read);
+        await using var lines = package.GetEntry("plugins/media/assets.jsonl").ShouldNotBeNull().Open();
+        using var reader = new StreamReader(lines);
+        var text = await reader.ReadToEndAsync(Token);
+        text.ShouldNotBeEmpty();
+        return text;
+    }
+
+    // A save that hands a variant over to the owner: for one hash the owner makes the same variant first, through another
+    // context, and for another the database refuses the save.
+    private sealed class HandOverSave : SaveChangesInterceptor
+    {
+        private int _armed = 1;
+
+        public IServiceProvider? Services { get; set; }
+
+        public Guid Owner { get; set; }
+
+        public string? Duplicate { get; set; }
+
+        public string? Refused { get; set; }
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            var added = eventData.Context!.ChangeTracker.Entries<Variant>().Where(entry => entry.State == EntityState.Added && entry.Entity.AssetId == Owner).Select(entry => entry.Entity).ToList();
+            if (added.Any(variant => variant.ParamsHash == Refused))
+            {
+                throw new DbUpdateException("The database refused the row.");
+            }
+
+            if (added.FirstOrDefault(variant => variant.ParamsHash == Duplicate) is { } duplicate && Interlocked.Exchange(ref _armed, 0) == 1)
+            {
+                await using var scope = Services!.CreateAsyncScope();
+                var other = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+                other.Add(new Variant { AssetId = Owner, ParamsHash = duplicate.ParamsHash, StorageKey = duplicate.StorageKey, Size = 2, CreatedAt = duplicate.CreatedAt });
+                await other.SaveChangesAsync(cancellationToken);
+            }
+
+            return await base.SavingChangesAsync(eventData, result, cancellationToken);
         }
     }
 

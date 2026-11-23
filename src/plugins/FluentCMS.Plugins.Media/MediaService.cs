@@ -555,7 +555,7 @@ internal sealed class MediaService(
             }, cancellationToken);
             written = null;
 
-            await replaced!.DeleteAsync(asset, storages, logger);
+            await replaced!.DeleteAsync(database, asset, storages, logger);
             await events.PublishAsync(new MediaAssetReplacedEvent(asset.Id, asset.FolderId, asset.FileName, asset.MimeType, asset.Size), cancellationToken);
             return Versioned(asset, operation.Locale);
         }
@@ -1065,7 +1065,7 @@ internal sealed class MediaService(
                     }
 
                     SvgDocument.Sanitize(svg);
-                    SvgDocument.Scope(svg, checksum);
+                    SvgDocument.Scope(svg);
                     var sanitized = SvgDocument.Save(svg);
                     await content.DisposeAsync();
                     content = new MemoryStream(sanitized, writable: false);

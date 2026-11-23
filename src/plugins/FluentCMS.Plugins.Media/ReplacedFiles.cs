@@ -10,14 +10,19 @@ namespace FluentCMS.Plugins.Media;
 // key the saved row names, which a line can take from the old ones, and a file that cannot be deleted, which is logged, and
 // the replace stands. Files that stay because another asset names them go to a holder in the same save: a deleted row of
 // their own, which owns the old original and takes the variant rows, so that the purge deletes them once no other asset
-// names them, as for an owner deleted first.
+// names them, as for an owner deleted first. A line of an import can name one of the keys after that check and before the
+// save, holding the asset's version as it was, which the save does not change; so the check is made again after the save,
+// just before the files are deleted, and a file named by then goes to a holder too. The variant rows of an asset that does
+// not own its file go to the asset that does, as when the asset is deleted (HandOverAsync).
 internal sealed class ReplacedFiles
 {
-    private readonly Guid _asset;
-    private readonly string _provider;
+    private readonly Asset _asset;
     private readonly List<string> _keys;
+    private readonly List<Variant> _variants;
+    private readonly Asset? _holder;
 
-    private ReplacedFiles(Guid asset, string provider, List<string> keys) => (_asset, _provider, _keys) = (asset, provider, keys);
+    private ReplacedFiles(Asset asset, List<string> keys, List<Variant> variants, Asset? holder) =>
+        (_asset, _keys, _variants, _holder) = (asset, keys, variants, holder);
 
     // Before the asset takes its new file: removes its variant rows from the context, to go with the save. Without
     // deleteFiles only the rows go, as for a key a line of an import named, whose files may be another instance's.
@@ -25,21 +30,23 @@ internal sealed class ReplacedFiles
     {
         var variants = await database.Set<Variant>().Where(variant => variant.AssetId == asset.Id).ToListAsync(cancellationToken);
         database.RemoveRange(variants);
+        var before = Copy(asset);
+        List<Variant> copies = [.. variants.Select(variant => Copy(variant, variant.AssetId))];
         if (!deleteFiles)
         {
-            return new ReplacedFiles(asset.Id, asset.StorageProvider, []);
+            return new ReplacedFiles(before, [], copies, null);
         }
 
         List<string> keys = [asset.StorageKey, .. variants.Select(variant => variant.StorageKey)];
+        var holder = HolderOf(asset, now);
         if (!await NamedByOthers(database, asset, keys).AnyAsync(cancellationToken))
         {
-            return new ReplacedFiles(asset.Id, asset.StorageProvider, keys);
+            return new ReplacedFiles(before, keys, copies, holder);
         }
 
-        var holder = HolderOf(asset, now);
         database.Add(holder);
-        database.AddRange(variants.Select(variant => new Variant { AssetId = holder.Id, ParamsHash = variant.ParamsHash, StorageKey = variant.StorageKey, Size = variant.Size, CreatedAt = variant.CreatedAt }));
-        return new ReplacedFiles(asset.Id, asset.StorageProvider, []);
+        database.AddRange(variants.Select(variant => Copy(variant, holder.Id)));
+        return new ReplacedFiles(before, [], copies, null);
     }
 
     // The keys that other assets of the library name, as their file or a variant's. Only an asset whose key a line named can:
@@ -78,10 +85,10 @@ internal sealed class ReplacedFiles
 
     // The variant rows of an asset that does not own its file, which is going. They go to the asset of the library that owns
     // the file at its key and holds the same bytes, which makes those variants at the same keys, so that its owner deletes the
-    // files with its own. Without such an asset only the rows go, since the files can be another instance's, and so they do
-    // when the owner makes one of those variants itself at the same moment, whose row then beats the save. Answers the rows
-    // removed.
-    internal static async Task<int> HandOverAsync(PluginDbContext<MediaPlugin> database, Asset named, IReadOnlyList<Variant> variants, CancellationToken cancellationToken)
+    // files with its own. Without such an asset only the rows go, since the files can be another instance's. Each row goes on
+    // its own, so that one the owner made at the same moment, which beats the save, is held all the same, and one whose save
+    // fails otherwise stays with the asset for the next run. Answers the variants whose rows may go; it removes none.
+    internal static async Task<List<Variant>> HandOverAsync(PluginDbContext<MediaPlugin> database, Asset named, IReadOnlyList<Variant> variants, CancellationToken cancellationToken)
     {
         // The asset of the key's folder, by its id, and only when that is not it, as after a replace, a holder of its old files.
         var lowered = named.StorageKey.ToLowerInvariant();
@@ -92,31 +99,60 @@ internal sealed class ReplacedFiles
         var owner = await owners.Where(other => other.Id == folder).Select(other => (Guid?)other.Id).FirstOrDefaultAsync(cancellationToken)
             ?? await owners.Where(other => other.DeletedAt != null).OrderBy(other => other.Id).Select(other => (Guid?)other.Id).FirstOrDefaultAsync(cancellationToken);
 #pragma warning restore CA1304, CA1311, CA1862
-        if (owner is { } id)
+        if (owner is not { } id)
         {
-            var held = await database.Set<Variant>().AsNoTracking().Where(variant => variant.AssetId == id).Select(variant => variant.ParamsHash).ToListAsync(cancellationToken);
-            database.AddRange(variants.Where(variant => !held.Contains(variant.ParamsHash)).Select(variant => new Variant { AssetId = id, ParamsHash = variant.ParamsHash, StorageKey = variant.StorageKey, Size = variant.Size, CreatedAt = variant.CreatedAt }));
+            return [.. variants];
+        }
+
+        List<Variant> handed = [];
+        foreach (var variant in variants)
+        {
+            if (await HeldAsync(database, id, variant.ParamsHash, cancellationToken))
+            {
+                handed.Add(variant);
+                continue;
+            }
+
+            var row = Copy(variant, id);
+            database.Add(row);
+            var saved = false;
             try
             {
                 await database.SaveChangesAsync(cancellationToken);
+                saved = true;
             }
             catch (DbUpdateException)
             {
             }
             finally
             {
-                database.ChangeTracker.Clear();
+                database.Entry(row).State = EntityState.Detached;
+            }
+
+            if (saved || await HeldAsync(database, id, variant.ParamsHash, cancellationToken))
+            {
+                handed.Add(variant);
             }
         }
 
-        var hashes = variants.Select(variant => variant.ParamsHash).ToList();
-        return await database.Set<Variant>().Where(variant => variant.AssetId == named.Id && hashes.Contains(variant.ParamsHash)).ExecuteDeleteAsync(cancellationToken);
+        return handed;
     }
 
-    // After the save, with the asset as saved.
-    public async Task DeleteAsync(Asset saved, MediaStorage storages, ILogger logger)
+    // After the save, with the asset as saved. The rows of an asset that does not own its file are handed over; the files
+    // of one that does are deleted, unless an asset names one of their keys by now.
+    public async Task DeleteAsync(PluginDbContext<MediaPlugin> database, Asset saved, MediaStorage storages, ILogger logger)
     {
-        var keys = saved.StorageProvider == _provider
+        if (_holder is null && _keys.Count == 0)
+        {
+            if (!_asset.OwnsFile && _variants.Count > 0)
+            {
+                await HandOverAsync(database, _asset, _variants, CancellationToken.None);
+            }
+
+            return;
+        }
+
+        var keys = saved.StorageProvider == _asset.StorageProvider
             ? _keys.Where(key => !string.Equals(key, saved.StorageKey, StringComparison.OrdinalIgnoreCase)).ToList()
             : _keys;
         if (keys.Count == 0)
@@ -124,11 +160,40 @@ internal sealed class ReplacedFiles
             return;
         }
 
-        if (storages.Find(_provider) is not { } storage)
+        if (_holder is not null && await NamedByOthers(database, saved, keys).AnyAsync(CancellationToken.None))
+        {
+            database.Add(_holder);
+            List<Variant> rows = [.. _variants.Select(variant => Copy(variant, _holder.Id))];
+            database.AddRange(rows);
+            try
+            {
+                await database.SaveChangesAsync(CancellationToken.None);
+            }
+            catch (DbUpdateException exception)
+            {
+                // The files stay, with no row that owns them, rather than go while an asset names them.
+                foreach (var key in keys)
+                {
+                    MediaLog.ReplacedNotDeleted(logger, _asset.Id, _asset.StorageProvider, key, exception);
+                }
+            }
+            finally
+            {
+                database.Entry(_holder).State = EntityState.Detached;
+                foreach (var row in rows)
+                {
+                    database.Entry(row).State = EntityState.Detached;
+                }
+            }
+
+            return;
+        }
+
+        if (storages.Find(_asset.StorageProvider) is not { } storage)
         {
             foreach (var key in keys)
             {
-                MediaLog.ReplacedNotDeleted(logger, _asset, _provider, key, null);
+                MediaLog.ReplacedNotDeleted(logger, _asset.Id, _asset.StorageProvider, key, null);
             }
 
             return;
@@ -142,10 +207,27 @@ internal sealed class ReplacedFiles
             }
             catch (Exception exception)
             {
-                MediaLog.ReplacedNotDeleted(logger, _asset, _provider, key, exception);
+                MediaLog.ReplacedNotDeleted(logger, _asset.Id, _asset.StorageProvider, key, exception);
             }
         }
     }
+
+    private static Task<bool> HeldAsync(PluginDbContext<MediaPlugin> database, Guid asset, string hash, CancellationToken cancellationToken) =>
+        database.Set<Variant>().AsNoTracking().AnyAsync(variant => variant.AssetId == asset && variant.ParamsHash == hash, cancellationToken);
+
+    private static Variant Copy(Variant variant, Guid asset) =>
+        new() { AssetId = asset, ParamsHash = variant.ParamsHash, StorageKey = variant.StorageKey, Size = variant.Size, CreatedAt = variant.CreatedAt };
+
+    // The columns of the file of an asset as read, before a replace changes them.
+    private static Asset Copy(Asset asset) => new()
+    {
+        Id = asset.Id,
+        SiteId = asset.SiteId,
+        StorageProvider = asset.StorageProvider,
+        StorageKey = asset.StorageKey,
+        OwnsFile = asset.OwnsFile,
+        Checksum = asset.Checksum,
+    };
 
     private static IQueryable<string> Naming(PluginDbContext<MediaPlugin> database, IQueryable<Asset> others, List<string> lowered)
     {

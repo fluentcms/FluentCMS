@@ -68,8 +68,15 @@ internal sealed class DeletedSiteMedia(PluginDbContext<MediaPlugin> database, Me
     {
         if (!asset.OwnsFile)
         {
+            // A row whose hand-over failed keeps the asset, a deleted row, for the cleanup to try again.
             var rows = await database.Set<Variant>().AsNoTracking().Where(variant => variant.AssetId == asset.Id).ToListAsync(cancellationToken);
-            await ReplacedFiles.HandOverAsync(database, asset, rows, cancellationToken);
+            var handed = (await ReplacedFiles.HandOverAsync(database, asset, rows, cancellationToken)).Select(variant => variant.ParamsHash).ToList();
+            await database.Set<Variant>().Where(variant => variant.AssetId == asset.Id && handed.Contains(variant.ParamsHash)).ExecuteDeleteAsync(cancellationToken);
+            if (handed.Count < rows.Count)
+            {
+                return false;
+            }
+
             await database.Set<Asset>().Where(item => item.Id == asset.Id).ExecuteDeleteAsync(cancellationToken);
             return true;
         }

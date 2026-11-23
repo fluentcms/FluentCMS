@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
@@ -14,10 +15,12 @@ namespace FluentCMS.Plugins.Media;
 // it is a #fragment of name characters, as written. A <style> element goes, since its rules would apply to the whole page
 // that inlines the SVG; a style attribute, which styles its own element, stays. A value read as CSS, the style attribute
 // and every other attribute kept, goes when it holds a url() to anything but a #fragment, @import, expression(, image(,
-// image-set( or src(, in the value with its CSS comments kept or with them taken out, after CSS escapes are undone; the two
-// forms cover a comment that a string hides and a string that a comment hides; a value with a backslash and a url( goes
-// too. An animation of a link or a handler goes. Scoping then gives every id and every reference to one a prefix of the
-// file, so that an inlined SVG names nothing of the page, on window or in another SVG, and reaches none of its elements.
+// image-set(, src( or element(, in the value with its CSS comments kept or with them taken out, after CSS escapes are
+// undone; the two forms cover a comment that a string hides and a string that a comment hides; a value with a backslash and
+// a url( goes too. The root loses overflow, style and transform, which would paint over the page around it. An animation
+// of a link, a handler, a class or an id goes. Scoping then gives every id and every reference to one a prefix of the file,
+// so that an inlined SVG names nothing of the page, on window or in another SVG, and reaches none of its elements. Save
+// writes what an HTML parser reads as an XML parser does: no CDATA section, comment or prefixed element.
 internal static partial class SvgDocument
 {
     public static readonly XNamespace SvgNamespace = "http://www.w3.org/2000/svg";
@@ -80,8 +83,15 @@ internal static partial class SvgDocument
     // The white space a URL parser takes off the ends of a link; a no-break space is not, so "&#xA0;#a" is a path.
     private static readonly char[] UrlWhiteSpace = [' ', '\t', '\n', '\r', '\f'];
 
-    // CSS that reaches out without url(): an import, an expression, and the functions that take an image or a source as a string.
-    private static readonly string[] ActiveCss = ["@import", "expression(", "image(", "image-set(", "src("];
+    // CSS that reaches out without url(): an import, an expression, the functions that take an image or a source as a string,
+    // and element() and -moz-element(), which paint an element of the page.
+    private static readonly string[] ActiveCss = ["@import", "expression(", "image(", "image-set(", "src(", "element("];
+
+    // The attributes that name an element for the page's CSS and scripts, which an animation may not set.
+    private static readonly HashSet<string> Names = new(StringComparer.OrdinalIgnoreCase) { "class", "id" };
+
+    // The attributes of the root that would let the drawing paint over the page around it when the page inlines it.
+    private static readonly HashSet<string> RootDropped = new(StringComparer.Ordinal) { "overflow", "style", "transform" };
 
     // Attributes that hold ids separated by white space, and those of an animation that can name an element, as id.event.
     private static readonly HashSet<string> IdLists = new(StringComparer.Ordinal) { "aria-labelledby", "aria-describedby" };
@@ -142,43 +152,72 @@ internal static partial class SvgDocument
 
             foreach (var attribute in element.Attributes().ToList())
             {
-                if (!attribute.IsNamespaceDeclaration && !IsKept(attribute))
+                if (!attribute.IsNamespaceDeclaration && (!IsKept(attribute) || (element.Parent is null && attribute.Name.Namespace == XNamespace.None && RootDropped.Contains(attribute.Name.LocalName))))
                 {
                     attribute.Remove();
                 }
             }
         }
+
+        // A CDATA section is its text, which Save escapes; a comment or a processing instruction is nothing of the drawing.
+        foreach (var node in document.DescendantNodes().Where(node => node is XCData or XComment or XProcessingInstruction).ToList())
+        {
+            if (node is XCData data)
+            {
+                node.ReplaceWith(new XText(data.Value));
+            }
+            else
+            {
+                node.Remove();
+            }
+        }
+
+        document.Declaration = null;
     }
 
     // After Sanitize: every id, and every name that a link, a url(), an aria id list or the begin or end of an animation
-    // refers to, takes the prefix fcms-, eight hex digits of the checksum of the file as received, and a hyphen. A reference
-    // to no id of the file takes it too, so that it still finds nothing rather than an element of the page. A file whose ids
-    // all carry one prefix of that form, or with no id whose references all do, keeps it, so that sanitising a sanitised file
-    // gives the same bytes; a name without it then takes it. A value with a url() that this cannot read goes.
-    public static void Scope(XDocument document, string checksum)
+    // refers to, takes the prefix fcms-, sixteen hex digits of the SHA-256 of the file as Save writes it before the prefix,
+    // and a hyphen. A reference to no id of the file takes it too, so that it still finds nothing rather than an element of
+    // the page. A prefix of that form that the file's ids carry already, or with no id its references, is kept only when it
+    // is the one the file without it derives, which is the case for a file this wrote, so that sanitising it gives the same
+    // bytes; any other takes the file's own on top. First the values this cannot rewrite go: a link that is no fragment, a
+    // value whose url() it does not read, and a begin or end with a backslash, whose escapes a browser may read as a name.
+    public static void Scope(XDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
-        ArgumentException.ThrowIfNullOrEmpty(checksum);
 
-        var ids = document.Descendants().Select(element => element.Attribute("id")?.Value).OfType<string>().ToList();
         List<string> names = [];
         Visit(document, name =>
         {
             names.Add(name);
             return name;
-        });
+        }, normalize: true);
 
+        var ids = document.Descendants().Select(element => element.Attribute("id")?.Value).OfType<string>().ToList();
         var named = ids.Count > 0 ? ids : names;
-        var existing = named.Count > 0 ? ScopedPrefix().Match(named[0]) : Match.Empty;
-        var prefix = existing.Success && named.TrueForAll(name => name.StartsWith(existing.Value, StringComparison.Ordinal))
-            ? existing.Value
-            : $"fcms-{checksum[..8].ToLowerInvariant()}-";
-        Visit(document, name => name.StartsWith(prefix, StringComparison.Ordinal) ? name : prefix + name, prefix);
+        if (named.Count == 0)
+        {
+            return;
+        }
+
+        if (ScopedPrefix().Match(named[0]) is { Success: true } existing && named.TrueForAll(name => name.StartsWith(existing.Value, StringComparison.Ordinal)))
+        {
+            var stripped = new XDocument(document);
+            Visit(stripped, name => name.StartsWith(existing.Value, StringComparison.Ordinal) ? name[existing.Value.Length..] : name);
+            if (PrefixOf(stripped) == existing.Value)
+            {
+                return;
+            }
+        }
+
+        var prefix = PrefixOf(document);
+        Visit(document, name => prefix + name);
     }
 
-    // Each name an attribute holds, as the map gives it back. With a prefix, the map rewrites the names, and a value whose
-    // url() does not then name the prefix goes.
-    private static void Visit(XDocument document, Func<string, string> map, string? prefix = null)
+    private static string PrefixOf(XDocument document) => $"fcms-{Convert.ToHexStringLower(SHA256.HashData(Save(document)))[..16]}-";
+
+    // Each name an attribute holds, as the map gives it back. Normalising, the values that cannot be rewritten go.
+    private static void Visit(XDocument document, Func<string, string> map, bool normalize = false)
     {
         foreach (var element in document.Descendants())
         {
@@ -202,7 +241,7 @@ internal static partial class SvgDocument
                     {
                         attribute.Value = "#" + map(link[1..]);
                     }
-                    else if (prefix is not null)
+                    else if (normalize)
                     {
                         attribute.Remove();
                     }
@@ -213,48 +252,123 @@ internal static partial class SvgDocument
                 }
                 else if (plain && Timings.Contains(local) && Animations.Contains(element.Name.LocalName))
                 {
-                    attribute.Value = string.Join(';', attribute.Value.Split(';').Select(timing => Syncbase().Replace(timing, match => match.Groups[1].Value + map(match.Groups[2].Value) + ".", 1)));
-                }
-                else if (plain)
-                {
-                    var value = CssReference().Replace(attribute.Value, match => $"url({match.Groups[1].Value}#{map(match.Groups[2].Value)}{match.Groups[1].Value})");
-                    if (prefix is not null && !NamesOnly(Compact(value, keepComments: true), prefix))
+                    if (normalize && attribute.Value.Contains('\\', StringComparison.Ordinal))
                     {
                         attribute.Remove();
                         continue;
                     }
 
-                    attribute.Value = value;
+                    attribute.Value = string.Join(';', attribute.Value.Split(';').Select(timing => Syncbase().Replace(timing, match => match.Groups[1].Value + map(match.Groups[2].Value) + ".", 1)));
+                }
+                else if (plain)
+                {
+                    if (normalize && Compact(CssReference().Replace(attribute.Value, ""), keepComments: true).Contains("url(", StringComparison.Ordinal))
+                    {
+                        attribute.Remove();
+                        continue;
+                    }
+
+                    attribute.Value = CssReference().Replace(attribute.Value, match => $"url({match.Groups[1].Value}#{map(match.Groups[2].Value)}{match.Groups[1].Value})");
                 }
             }
         }
     }
 
-    // Every url( of a compact value names an id with the prefix.
-    private static bool NamesOnly(ReadOnlySpan<char> compact, string prefix)
+    // The drawing as an HTML parser reads it the same as an XML parser: SVG elements without a prefix under the SVG namespace as
+    // the default, the attributes the lists keep with xlink: and xml: as HTML adjusts them, text and values escaped so that no
+    // <, >, & or quote ends a context, and no declaration, CDATA section, comment or processing instruction. Characters that
+    // XML would normalise are written as references and new lines as \n, so a file is written alike on every platform.
+    public static byte[] Save(XDocument document)
     {
-        for (var url = compact.IndexOf("url(", StringComparison.Ordinal); url >= 0; url = compact.IndexOf("url(", StringComparison.Ordinal))
+        ArgumentNullException.ThrowIfNull(document);
+
+        var text = new StringBuilder();
+        if (document.Root is { } root)
         {
-            compact = compact[(url + 4)..];
-            var name = compact.TrimStart("'\"");
-            if (!name.StartsWith("#" + prefix, StringComparison.Ordinal))
+            var xlink = root.DescendantsAndSelf().Attributes().Any(attribute => attribute.Name.Namespace == XLinkNamespace);
+            Write(root, text, xlink);
+        }
+
+        return new UTF8Encoding(false).GetBytes(text.ToString());
+    }
+
+    private static void Write(XElement element, StringBuilder text, bool? xlink)
+    {
+        if (!IsSvg(element.Name))
+        {
+            return;
+        }
+
+        text.Append('<').Append(element.Name.LocalName);
+        if (xlink is { } declares)
+        {
+            text.Append(" xmlns=\"").Append(SvgNamespace.NamespaceName).Append('"');
+            if (declares)
             {
-                return false;
+                text.Append(" xmlns:xlink=\"").Append(XLinkNamespace.NamespaceName).Append('"');
             }
         }
 
-        return true;
-    }
-
-    public static byte[] Save(XDocument document)
-    {
-        using var output = new MemoryStream();
-        using (var writer = XmlWriter.Create(output, new XmlWriterSettings { Encoding = new UTF8Encoding(false), Indent = false }))
+        foreach (var attribute in element.Attributes())
         {
-            document.Save(writer);
+            var prefix = attribute.Name.Namespace == XNamespace.None ? ""
+                : attribute.Name.Namespace == XLinkNamespace ? "xlink:"
+                : attribute.Name.Namespace == XNamespace.Xml ? "xml:"
+                : null;
+            if (!attribute.IsNamespaceDeclaration && prefix is not null)
+            {
+                text.Append(' ').Append(prefix).Append(attribute.Name.LocalName).Append("=\"");
+                Escape(attribute.Value, text, inAttribute: true);
+                text.Append('"');
+            }
         }
 
-        return output.ToArray();
+        if (!element.Nodes().Any())
+        {
+            text.Append(" />");
+            return;
+        }
+
+        text.Append('>');
+        foreach (var node in element.Nodes())
+        {
+            if (node is XElement child)
+            {
+                Write(child, text, null);
+            }
+            else if (node is XText part)
+            {
+                Escape(part.Value, text, inAttribute: false);
+            }
+        }
+
+        text.Append("</").Append(element.Name.LocalName).Append('>');
+    }
+
+    private static void Escape(string value, StringBuilder text, bool inAttribute)
+    {
+        foreach (var character in value)
+        {
+            var escaped = character switch
+            {
+                '&' => "&amp;",
+                '<' => "&lt;",
+                '>' => "&gt;",
+                '"' when inAttribute => "&quot;",
+                '\t' when inAttribute => "&#x9;",
+                '\n' when inAttribute => "&#xA;",
+                '\r' => "&#xD;",
+                _ => null,
+            };
+            if (escaped is null)
+            {
+                text.Append(character);
+            }
+            else
+            {
+                text.Append(escaped);
+            }
+        }
     }
 
     private static bool IsSvg(XName name) => name.Namespace == SvgNamespace || name.Namespace == XNamespace.None;
@@ -273,7 +387,7 @@ internal static partial class SvgDocument
         }
 
         var local = target[(target.LastIndexOf(':') + 1)..];
-        return !local.StartsWith("on", StringComparison.OrdinalIgnoreCase) && !LinkAttributes.Contains(local);
+        return !local.StartsWith("on", StringComparison.OrdinalIgnoreCase) && !LinkAttributes.Contains(local) && !Names.Contains(local);
     }
 
     private static bool IsKept(XAttribute attribute)
@@ -396,6 +510,6 @@ internal static partial class SvgDocument
     [GeneratedRegex(@"^(\s*)([^\s.;+()\\-][^\s.;+()\\]*)\.(?=[A-Za-z])")]
     private static partial Regex Syncbase();
 
-    [GeneratedRegex("^fcms-[0-9a-f]{8}-")]
+    [GeneratedRegex("^fcms-[0-9a-f]{16}-")]
     private static partial Regex ScopedPrefix();
 }
