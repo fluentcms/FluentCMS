@@ -61,6 +61,27 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
 
     public bool HasOneWriter => true;
 
+    // SQLite locks the database, not a row, so the wait to bound is the one at BEGIN IMMEDIATE for the one write lock, which
+    // any other connection's write transaction holds, of whatever entry or table. Microsoft.Data.Sqlite tries a busy statement
+    // again until the command timeout, which BEGIN takes from the connection's default, so the default is lowered for it alone;
+    // once begun the writer waits for no other writer.
+    public async Task<IDbContextTransaction> BeginWriteAsync(DbContext context, TimeSpan lockTimeout, CancellationToken cancellationToken)
+    {
+        var connection = (SqliteConnection)context.Database.GetDbConnection();
+        var timeout = connection.DefaultTimeout;
+        connection.DefaultTimeout = (int)Math.Min(int.MaxValue, Math.Max(1, Math.Ceiling(lockTimeout.TotalSeconds)));
+        try
+        {
+            return await context.Database.BeginTransactionAsync(cancellationToken);
+        }
+        finally
+        {
+            connection.DefaultTimeout = timeout;
+        }
+    }
+
+    public bool IsLockTimeout(Exception exception) => IsBusy(exception);
+
     // SQLite's LIKE folds the case of ASCII letters only.
     public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)
     {

@@ -71,6 +71,10 @@ internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : TestDataba
 
         public bool HasOneWriter => inner.HasOneWriter;
 
+        public Task<IDbContextTransaction> BeginWriteAsync(DbContext context, TimeSpan lockTimeout, CancellationToken cancellationToken) => inner.BeginWriteAsync(context, lockTimeout, cancellationToken);
+
+        public bool IsLockTimeout(Exception exception) => inner.IsLockTimeout(exception);
+
         public Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => inner.ReadMigrationsLockAsync(context, cancellationToken);
 
         public Task<IDbContextTransaction?> BeginSnapshotAsync(DbContext context, CancellationToken cancellationToken) => inner.BeginSnapshotAsync(context, cancellationToken);
