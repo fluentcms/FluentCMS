@@ -940,9 +940,6 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         return (await JsonAsync(response))["items"]!.AsArray();
     }
 
-    private static Task<HttpResponseMessage> EndConsentAsync(HttpClient caller, Guid id) =>
-        caller.DeleteAsync(new Uri($"/api/management/v1/mcp/consents/{id:D}", UriKind.Relative), Token);
-
     // The authorize request of the configured client, which asks for openid alone, with the redirect URI as given.
     private static Task<HttpResponseMessage> AuthorizeConfiguredAsync(McpAgent agent, string redirectUri)
     {

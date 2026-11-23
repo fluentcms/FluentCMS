@@ -26,6 +26,9 @@ internal enum ConsentGrant
     Granted,
     Refused,
     LimitReached,
+
+    // The lock of the consents was not free within its wait.
+    Busy,
 }
 
 // A client the user has a place for (ClientConsents.PlacesAsync): its id in the store, when the user's newest consent to it
@@ -148,6 +151,11 @@ internal sealed class ClientConsents(
         // The count and the insert run under the lock, as every other consent that takes a place and every end of one
         // (McpClients.EndConsentAsync) do, so two consents at once cannot each find the other's place free (#3441).
         await using var held = await LockAsync(cancellationToken);
+        if (held is null)
+        {
+            return ConsentGrant.Busy;
+        }
+
         if (await CapReachedAsync(userId, applicationId, cancellationToken) is { } max)
         {
             OidcLog.ConsentLimitReached(logger, userId, clientId, max);
@@ -160,10 +168,10 @@ internal sealed class ClientConsents(
 
     // The lock of the consents that take a place: one for the instance, since they are few, bounded by the auth rate limit,
     // and a lock per user would leave a row of cms_lock for each. It is taken before any transaction opens, as the other
-    // locks of identity are, since on SQLite a transaction holds the one writer.
-    internal async Task<IDistributedLockHandle> LockAsync(CancellationToken cancellationToken) =>
-        await locks.TryAcquireAsync(LockName, LockWait, cancellationToken)
-        ?? throw new TimeoutException($"The lock {LockName} was not free within {LockWait.TotalSeconds:0} seconds, so the consent was not changed; try again.");
+    // locks of identity are, since on SQLite a transaction holds the one writer. Null when it was not free within the wait,
+    // which each caller answers as a server that is busy.
+    internal Task<IDistributedLockHandle?> LockAsync(CancellationToken cancellationToken) =>
+        locks.TryAcquireAsync(LockName, LockWait, cancellationToken);
 
     private async Task CreateAsync(Guid userId, string applicationId, object application, ConsentRequest request, CancellationToken cancellationToken)
     {
@@ -203,41 +211,39 @@ internal sealed class ClientConsents(
     // of password therefore frees no place: the client it kept stays for the cleanup's period, first with the revoked
     // authorization and, for the user who first used it, once that is pruned, with its state alone; otherwise one user
     // could consent to the next clients while the last ones wait for the cleanup. The user frees a place by ending it as
-    // such (McpClients.EndConsentAsync).
+    // such (McpClients.EndConsentAsync). It runs under the lock, so it is two queries read without tracking, of the user's
+    // permanent authorizations by client and of those clients, whatever else the user holds, such as sign-ins.
     internal async Task<IReadOnlyList<ConsentPlace>> PlacesAsync(Guid userId, CancellationToken cancellationToken)
     {
-        Dictionary<string, (DateTimeOffset? ConsentedAt, bool Valid)> held = new(StringComparer.Ordinal);
-        await foreach (var authorization in authorizations.FindBySubjectAsync(userId.ToString("D"), cancellationToken))
-        {
-            if (!await authorizations.HasTypeAsync(authorization, AuthorizationTypes.Permanent, cancellationToken)
-                || await authorizations.GetApplicationIdAsync(authorization, cancellationToken) is not { } id)
+        var subject = userId.ToString("D");
+        var consented = await context.Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().AsNoTracking()
+            .Where(authorization => authorization.Subject == subject && authorization.Type == AuthorizationTypes.Permanent && authorization.Application != null)
+            .GroupBy(authorization => authorization.Application!.Id)
+            .Select(group => new
             {
-                continue;
-            }
+                Id = group.Key,
+                At = group.Max(authorization => authorization.CreationDate),
+                Valid = group.Max(authorization => authorization.Status == Statuses.Valid ? 1 : 0),
+            })
+            .ToDictionaryAsync(row => row.Id, cancellationToken);
 
-            var at = await authorizations.GetCreationDateAsync(authorization, cancellationToken);
-            var valid = await authorizations.HasStatusAsync(authorization, Statuses.Valid, cancellationToken);
-            held[id] = held.TryGetValue(id, out var seen)
-                ? (seen.ConsentedAt is { } before && (at is null || before > at) ? before : at, seen.Valid || valid)
-                : (at, valid);
-        }
-
+        var ids = consented.Keys.ToList();
         var marker = McpClientState.UsedByMarker(userId);
-        var firstUsed = await context.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>().AsNoTracking()
-            .Where(used => used.Properties != null && used.Properties.Contains(marker))
-            .Select(used => used.Id)
+        var clients = await context.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>().AsNoTracking()
+            .Where(application => application.Properties != null && (ids.Contains(application.Id) || application.Properties.Contains(marker)))
+            .Select(application => new { application.Id, application.Properties })
             .ToListAsync(cancellationToken);
-        foreach (var id in firstUsed.Select(id => id.ToString("D")))
-        {
-            held.TryAdd(id, (null, false));
-        }
 
         List<ConsentPlace> places = [];
-        foreach (var (id, consent) in held)
+        foreach (var client in clients)
         {
-            if (await applications.FindByIdAsync(id, cancellationToken) is { } application && await IsOpenApprovedAsync(application, cancellationToken))
+            if (McpClientState.OfStored(client.Properties) is { IsApproved: true, ApprovedBy: null })
             {
-                places.Add(new ConsentPlace(id, consent.ConsentedAt, consent.Valid));
+                var consent = consented.GetValueOrDefault(client.Id);
+                places.Add(new ConsentPlace(
+                    client.Id.ToString("D"),
+                    consent?.At is { } at ? new DateTimeOffset(DateTime.SpecifyKind(at, DateTimeKind.Utc)) : null,
+                    consent?.Valid == 1));
             }
         }
 

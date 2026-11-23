@@ -31,12 +31,16 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
     public bool IsUniqueViolation(Exception exception) =>
         (exception as SqlException ?? exception.InnerException as SqlException) is { Number: 2601 or 2627 };
 
-    // 547 is any conflict with a constraint, a CHECK such as the ISJSON of a JSON column included, so the kind the message
-    // names is read too: REFERENCE for a delete a foreign key refuses, FOREIGN KEY for an insert or an update. A server whose
-    // messages word these otherwise has its refusal taken for another failure, which is the safe side.
+    // 547 is any conflict with a constraint, a CHECK such as the ISJSON of a JSON column included, so the message is read
+    // too. It quotes the constraint, and every foreign key of the model is named FK_ by EF's convention, a name no language
+    // of the server translates, while a check constraint is ck_; failing that, the kind the message names, REFERENCE for a
+    // delete and FOREIGN KEY for an insert or an update. A refusal that names neither is taken for another failure and
+    // thrown, which is the safe side.
     public bool IsForeignKeyViolation(Exception exception) =>
         (exception as SqlException ?? exception.InnerException as SqlException) is { Number: 547, Message: var message }
-        && (message.Contains("REFERENCE", StringComparison.Ordinal) || message.Contains("FOREIGN KEY", StringComparison.Ordinal));
+        && (message.Contains("\"FK_", StringComparison.Ordinal)
+            || message.Contains("REFERENCE", StringComparison.Ordinal)
+            || message.Contains("FOREIGN KEY", StringComparison.Ordinal));
 
     // EF's execution strategy wraps a deadlock met in SaveChanges as a transient failure, so the whole chain is read.
     public bool IsDeadlock(Exception exception)

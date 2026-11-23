@@ -297,6 +297,190 @@ public sealed class McpClientConcurrencyTests(McpClientHookFixture fixture) : IC
         (await ConfiguredRedirectUrisAsync(host)).ShouldBe(["https://other.example/cb"]);
     }
 
+    // The cleanup names the user of the oldest authorization as usedBy. A user whose consent ends between that read and
+    // the write must not be named: the write is under the lock of the consents, so the end waits for it and then takes
+    // the user out again, and the user holds no place without a consent.
+    [Fact]
+    public async Task AConsentEndedWhileTheCleanupWritesTheFirstUseLeavesNoPlaceBehind()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, "10.5.0.10");
+        using var admin = await KeyAsync(host);
+        var first = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var second = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var clientId = await agent.RegisteredAsync();
+        var id = await IdOfAsync(admin, clientId);
+        (await GiveConsentAsync(host, first.Id, clientId)).ShouldBe(ConsentGrant.Granted);
+        host.Time.Advance(TimeSpan.FromSeconds(1));
+        (await GiveConsentAsync(host, second.Id, clientId)).ShouldBe(ConsentGrant.Granted);
+        await ForgetFirstUseAsync(host, id);
+        using var asFirst = await host.AsUserAsync(first);
+
+        Task<HttpResponseMessage>? ended = null;
+        fixture.Consents.Arm();
+        try
+        {
+            fixture.Hooks.BeforeNextUpdateOf(id, async () =>
+            {
+                ended = EndConsentAsync(asFirst, id);
+                await Task.WhenAny(ended, fixture.Consents.SecondLock).WaitAsync(Patience, Token);
+            });
+            await using (var scope = host.Services.CreateAsyncScope())
+            {
+                await scope.ServiceProvider.GetRequiredService<IMcpClients>().RemoveUnusedAsync(DateTimeOffset.MinValue, DateTimeOffset.MinValue, Token);
+            }
+        }
+        finally
+        {
+            fixture.Consents.Release();
+        }
+
+        using var answer = await ended.ShouldNotBeNull().WaitAsync(Patience, Token);
+
+        answer.StatusCode.ShouldBe(HttpStatusCode.NoContent, await answer.Content.ReadAsStringAsync(Token));
+        (await StateAsync(host, id)).UsedBy.ShouldNotBe(first.Id);
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            (await scope.ServiceProvider.GetRequiredService<ClientConsents>().PlacesAsync(first.Id, Token)).ShouldBeEmpty();
+        }
+    }
+
+    // A call with an id that counts for no one, or not for the caller, is answered before the lock of the consents, so
+    // that it keeps no consent of another user waiting.
+    [Fact]
+    public async Task AnEndOfAConsentThatCannotCountForTheCallerTakesNoLock()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, "10.5.0.11");
+        using var admin = await KeyAsync(host);
+        var owner = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var stranger = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var clientId = await agent.RegisteredAsync();
+        (await GiveConsentAsync(host, owner.Id, clientId)).ShouldBe(ConsentGrant.Granted);
+        using var asStranger = await host.AsUserAsync(stranger);
+
+        fixture.Consents.Arm();
+        int locks;
+        HttpResponseMessage[] answers;
+        try
+        {
+            answers = [await EndConsentAsync(asStranger, Guid.CreateVersion7()), await EndConsentAsync(asStranger, await IdOfAsync(admin, clientId))];
+            locks = fixture.Consents.Locks;
+        }
+        finally
+        {
+            fixture.Consents.Release();
+        }
+
+        foreach (var answer in answers)
+        {
+            using (answer)
+            {
+                answer.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+                (await CodeAsync(answer)).ShouldBe("FCMS1603");
+            }
+        }
+
+        locks.ShouldBe(0);
+    }
+
+    // The lock of the consents not free within its wait is a defined answer: the consent page ends on the error page with
+    // temporarily_unavailable and records nothing, and the end of a consent is the unavailable problem and ends nothing.
+    [Fact]
+    public async Task ALockOfTheConsentsThatIsNotFreeIsAnsweredAsABusyServer()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, "10.5.0.12");
+        using var admin = await KeyAsync(host);
+        var user = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var kept = await agent.RegisteredAsync("Kept");
+        var asked = await agent.RegisteredAsync("Asked");
+        await agent.TokensAsync(kept, user);
+        using var asUser = await host.AsUserAsync(user);
+        var keptId = await IdOfAsync(admin, kept);
+
+        fixture.Consents.RefuseLock();
+        Authorized refused;
+        HttpResponseMessage busy;
+        try
+        {
+            refused = await agent.AuthorizeAsync(asked);
+            busy = await EndConsentAsync(asUser, keptId);
+        }
+        finally
+        {
+            fixture.Consents.Release();
+        }
+
+        using var errorPage = await agent.Http.GetAsync(new Uri("/account/error?error=temporarily_unavailable", UriKind.Relative), Token);
+        refused.Error.ShouldBe("temporarily_unavailable");
+        (await errorPage.Content.ReadAsStringAsync(Token)).ShouldContain("The server is busy, so nothing was changed.");
+        (await StateAsync(host, await IdOfAsync(admin, asked))).UsedAt.ShouldBeNull();
+        using (busy)
+        {
+            busy.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable, await busy.Content.ReadAsStringAsync(Token));
+            (await CodeAsync(busy)).ShouldBe("FCMS3106");
+        }
+
+        (await StateAsync(host, keptId)).UsedBy.ShouldBe(user.Id);
+        using var later = await EndConsentAsync(asUser, keptId);
+        later.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    // A token issued under the consent while it is deleted makes its foreign key refuse the delete. Nothing is ended, the
+    // answer is the change that crossed another, and the call again ends the consent.
+    [Fact]
+    public async Task AnEndOfAConsentThatCrossesANewTokenIsAConflictAndWorksAgain()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, "10.5.0.13");
+        using var admin = await KeyAsync(host);
+        var user = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var clientId = await agent.RegisteredAsync();
+        var tokens = await agent.TokensAsync(clientId, user);
+        var id = await IdOfAsync(admin, clientId);
+        using var asUser = await host.AsUserAsync(user);
+
+        fixture.Hooks.FailNextAuthorizationDelete();
+        using var crossed = await EndConsentAsync(asUser, id);
+        using var http = agent.Bearer(tokens["access_token"]!.GetValue<string>());
+        using var stillWorking = await PostAsync(http);
+        using var again = await EndConsentAsync(asUser, id);
+
+        crossed.StatusCode.ShouldBe(HttpStatusCode.Conflict, await crossed.Content.ReadAsStringAsync(Token));
+        (await CodeAsync(crossed)).ShouldBe("FCMS1609");
+        stillWorking.StatusCode.ShouldBe(HttpStatusCode.OK);
+        again.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    // The cleanup takes its clients in the order of their ids, and one whose delete fails for another reason than a race
+    // is logged with its id and passed over: the others are removed, and the run then fails, so the job runner tries again.
+    [Fact]
+    public async Task AClientTheCleanupCannotDeleteDoesNotKeepItFromTheOthers()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, "10.5.0.14");
+        using var admin = await KeyAsync(host);
+        var failing = await agent.RegisteredAsync("Fails");
+        var other = await agent.RegisteredAsync("Goes");
+        var failingId = await IdOfAsync(admin, failing);
+        host.Time.Advance(TimeSpan.FromHours(new McpSettings().NeverUsedClientHours) + TimeSpan.FromMinutes(1));
+
+        fixture.Hooks.FailNextDelete(DeleteFailure.OtherConstraint, failingId);
+        var run = await Should.ThrowAsync<DbUpdateException>(() => RunCleanupAsync(host));
+        var left = (await ListAsync(admin)).Select(item => item!["clientId"]!.GetValue<string>()).ToList();
+
+        run.InnerException.ShouldBeOfType<SqliteException>().SqliteExtendedErrorCode.ShouldBe(275);
+        left.ShouldContain(failing);
+        left.ShouldNotContain(other);
+        fixture.Logs.Lines.ShouldContain(line => line.Id == 9013 && line.Level == LogLevel.Error && line.Message.Contains(failingId.ToString("D"), StringComparison.Ordinal));
+    }
+
     // Bounds every wait of the races, so that one that hangs fails its test.
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
 

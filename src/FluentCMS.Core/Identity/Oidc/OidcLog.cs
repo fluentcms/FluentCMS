@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Identity.Oidc;
 
-// 90xx, the event ids of the identity family (FCMS30xx); the authorization server has 9001 to 9003, 9005, 9006, 9008 and 9009.
+// 90xx, the event ids of the identity family (FCMS30xx); the authorization server has 9001 to 9003, 9005, 9006, 9008, 9009 and 9013.
 internal static partial class OidcLog
 {
     public const int PruneScheduleFailedId = 9001;
@@ -12,6 +12,7 @@ internal static partial class OidcLog
     public const int ClientLimitReachedId = 9006;
     public const int ConsentLimitReachedId = 9008;
     public const int ClientDeleteRefusedId = 9009;
+    public const int ClientDeleteFailedId = 9013;
 
     [LoggerMessage(EventId = PruneScheduleFailedId, EventName = "OidcPruneScheduleFailed", Level = LogLevel.Error, Message = "Could not register the recurring prune job of the authorization server; used tokens stay until it is registered.")]
     public static partial void PruneScheduleFailed(ILogger logger, Exception exception);
@@ -33,4 +34,7 @@ internal static partial class OidcLog
 
     [LoggerMessage(EventId = ClientDeleteRefusedId, EventName = "OidcClientDeleteRefused", Level = LogLevel.Warning, Message = "Could not delete the MCP client {Id}: the database refused the delete, as it does when a consent or a token arrives while the client is deleted. The client is left for the next run or call.")]
     public static partial void ClientDeleteRefused(ILogger logger, Exception exception, Guid id);
+
+    [LoggerMessage(EventId = ClientDeleteFailedId, EventName = "OidcClientDeleteFailed", Level = LogLevel.Error, Message = "Could not delete the MCP client {Id}. The cleanup went on with the other clients, and its run fails at the end so that the job runner tries again.")]
+    public static partial void ClientDeleteFailed(ILogger logger, Exception exception, Guid id);
 }

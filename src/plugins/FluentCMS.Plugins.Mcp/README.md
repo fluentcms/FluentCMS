@@ -110,7 +110,7 @@ A client registered, approved, rejected, given another role and removed are the 
 
 A consent keeps a client the `open` policy approved from that cleanup, so a user keeps `maxConsentsPerUser` such clients at most. A consent that would keep one more is refused: the hosted error page tells the user to end a consent they no longer use or to ask an administrator, the log has event 9008, and the client, which nobody consented to, goes after `neverUsedClientHours`. Consents given at the same moment are counted one at a time, so together they never pass the cap. A client counts for a user who consented to it while the user holds the consent, also one ended by its session or by a change of password until the prune of the authorization server removes it 14 days later, and for the user whose consent first used it (`usedBy`) for as long as it is there, so ending sessions makes no room for other clients. Allowing a client again that already counts is always possible. A client an administrator approved, registered or gave a role does not count.
 
-A place is free again once its client is removed, by an administrator or by the cleanup, or once the user ends the consent with `DELETE /mcp/consents/{id}`. That deletes the user's authorizations of the client with every token issued under them, so the client's access tokens of the user are refused from the next request on, and the client no longer names the user as `usedBy`; other users' consents to it stay. A client that then holds no consent or token of anyone is taken for one never used, so the cleanup removes it `neverUsedClientHours` after it registered: a user who ends a consent cannot keep the client alive without it counting. The end of a consent that was valid is the activity row `user.sessions_ended` with the reason `revoked`. `FCMS1603` answers a client that does not count for the caller.
+A place is free again once its client is removed, by an administrator or by the cleanup, or once the user ends the consent with `DELETE /mcp/consents/{id}`. That deletes the user's authorizations of the client with every token issued under them, so the client's access tokens of the user are refused from the next request on, and the client no longer names the user as `usedBy`; other users' consents to it stay. A client that then holds no consent or token of anyone is taken for one never used, so the cleanup removes it `neverUsedClientHours` after it registered: a user who ends a consent cannot keep the client alive without it counting. The end of a consent that was valid is the activity row `user.sessions_ended` with the reason `revoked`. `FCMS1603` answers a client that does not count for the caller, and `FCMS1609` an end that crossed another change, such as a token issued under the consent meanwhile, which ends nothing and works when sent again. Consents that take a place and their ends run one at a time; when the others keep one waiting for 45 seconds, the end answers 503 with `FCMS3106` and the consent page ends on the hosted error page with `temporarily_unavailable`, and nothing is changed.
 
 ## Content and media tools
 
@@ -195,7 +195,7 @@ An agent acts fast and can be wrong. The tools that remove an entry or change ma
   "count": 1,
   "entries": [{ "id": "0192f2a4-7b1c-7d2e-9f10-2a3b4c5d6e7f", "title": "Ada", "status": "published", "version": 3 }],
   "references": [{ "type": "post", "id": "0192f2a5-1c0d-7e3f-8a21-3b4c5d6e7f80", "title": "By Ada", "field": "author" }],
-  "confirmationToken": "v1.1794312300.â€¦",
+  "confirmationToken": "v1.1794312300.…",
   "expiresAt": "2026-11-10T12:05:00Z"
 }
 ```
@@ -245,7 +245,7 @@ The limits are counted per instance, as core's are, so a client spread over thre
 - A request to `/mcp` whose body is over `MaxRequestBytes` is refused before it is read, with 413 and `FCMS3111`, the code of core's body cap. Core's cap (`FluentCms:Limits:MaxBodySize`) applies as well, so the lower of the two holds.
 - `{type}_list`, `{type}_search` and `query` page by `page` and `pageSize` or by `cursor`. A page has the engine's default size and at most its largest (`FluentCms:Query:DefaultPageSize` and `MaxPageSize`, 20 and 100), which the input schema names.
 - A list over `MaxResultBytes` as it is sent, its JSON as structured content and again as text, ends at an entry, never inside one, with `"truncated": true`, the number of entries it kept as `pageSize` and the `nextCursor` of the rest; the next call sends that cursor and goes on from there. An entry that is over the limit alone is answered alone.
-- In a list, a text longer than `MaxListTextLength` is shortened and ends with a marker that says how long it is, such as `â€¦ [shortened: 4210 characters in all; post_get reads it whole]`. `{type}_get` answers it whole, and so does `query` for a type over `MaxExposedTypes`, which has no `{type}_get`.
+- In a list, a text longer than `MaxListTextLength` is shortened and ends with a marker that says how long it is, such as `… [shortened: 4210 characters in all; post_get reads it whole]`. `{type}_get` answers it whole, and so does `query` for a type over `MaxExposedTypes`, which has no `{type}_get`.
 - The media lists are pages of at most 100 assets and are not cut.
 
 ## Adding tools, resources and prompts

@@ -70,7 +70,8 @@ public interface IMcpClients
     /// <summary>
     /// Removes the clients the open policy approved, which no administrator looked at or changed, that have no token or
     /// authorization left: one no user ever consented to when it registered before one time, and any other when it
-    /// registered before another. It raises no event.
+    /// registered before another. It raises no event. A client whose delete a consent or a token arriving meanwhile
+    /// refuses is left for the next call; any other failure of a delete is thrown once the other clients were tried.
     /// </summary>
     /// <param name="neverUsedBefore">The time before which a client no user ever consented to is removed.</param>
     /// <param name="unusedBefore">The time before which a client whose tokens and authorizations are all gone is removed.</param>
@@ -83,7 +84,8 @@ public interface IMcpClients
     /// and tokens as <see cref="RevokeAsync"/> removes one. A client an administrator approved, registered or gave a role
     /// is never removed, nor is a pending or rejected one. Raises <see cref="Events.McpClientRevokedEvent"/> for each.
     /// A call removes <paramref name="limit"/> clients at most, since each is a change of its own, so a caller that gets
-    /// that number back calls again for the rest.
+    /// that number back calls again for the rest. A client whose delete a consent or a token arriving meanwhile refuses is
+    /// left; any other failure of a delete is thrown, and the clients removed before it stay removed.
     /// </summary>
     /// <param name="registeredFrom">The time from which a client registered, or <see langword="null"/> for no start.</param>
     /// <param name="registeredBefore">The time before which a client registered, or <see langword="null"/> for no end.</param>
@@ -107,7 +109,9 @@ public interface IMcpClients
     /// <see cref="ListConsentsAsync"/> lists: the user's authorizations of the client are deleted with every token issued
     /// under them, so its access tokens stop at once, and the client no longer names the user as the one who first used it.
     /// A client that then holds no grant of anyone is taken for one never used, which the cleanup removes. Nothing of
-    /// another user changes. Raises <see cref="Events.UserSessionsEndedEvent"/> for each consent that was valid.
+    /// another user changes. Raises <see cref="Events.UserSessionsEndedEvent"/> for each consent that was valid. It runs
+    /// one at a time with the consents that take a place, and fails as a service that is unavailable when they keep it
+    /// waiting too long.
     /// </summary>
     /// <param name="userId">The user whose consent ends.</param>
     /// <param name="id">The id of the client.</param>

@@ -133,6 +133,25 @@ public sealed class ApplicationManagerHooks
             Interlocked.Increment(ref _finds);
         }
     }
+
+    private Func<Task>? _beforeUpdate;
+    private Guid _beforeUpdateOf;
+    private int _failAuthorizationDelete;
+
+    // Work just before the next update of that application is saved, after the caller read what it writes.
+    public void BeforeNextUpdateOf(Guid application, Func<Task> work)
+    {
+        _beforeUpdateOf = application;
+        _beforeUpdate = work;
+    }
+
+    // A refusal of the next delete of an authorization by its foreign key, as when a token of it was issued meanwhile.
+    public void FailNextAuthorizationDelete() => _failAuthorizationDelete = 1;
+
+    internal Func<Task>? TakeBeforeUpdate(Guid application) =>
+        _beforeUpdateOf == application ? Interlocked.Exchange(ref _beforeUpdate, null) : null;
+
+    internal bool TakeFailAuthorizationDelete() => Interlocked.Exchange(ref _failAuthorizationDelete, 0) == 1;
 }
 
 public enum DeleteFailure
@@ -183,6 +202,7 @@ public sealed class ConsentGate
     public void Release()
     {
         Interlocked.Exchange(ref _armed, 0);
+        Interlocked.Exchange(ref _refused, 0);
         _released.TrySetResult();
     }
 
@@ -197,12 +217,28 @@ public sealed class ConsentGate
         return _released.Task;
     }
 
-    internal void AtLock(string name)
+    // How many times the lock of the consents was asked for since Arm.
+    public int Locks => Volatile.Read(ref _locks);
+
+    // The lock of the consents is answered as not free, as it is once its wait has run out, until Release.
+    public void RefuseLock() => Interlocked.Exchange(ref _refused, 1);
+
+    private int _refused;
+
+    // False when the lock is to be answered as not free.
+    internal bool AtLock(string name)
     {
-        if (Volatile.Read(ref _armed) == 1 && name == ClientConsents.LockName && Interlocked.Increment(ref _locks) == 2)
+        if (name != ClientConsents.LockName)
+        {
+            return true;
+        }
+
+        if (Volatile.Read(ref _armed) == 1 && Interlocked.Increment(ref _locks) == 2)
         {
             _secondLock.TrySetResult();
         }
+
+        return Volatile.Read(ref _refused) == 0;
     }
 
     private static TaskCompletionSource Done()
@@ -215,11 +251,8 @@ public sealed class ConsentGate
 
 internal sealed class ArrivalsLock(IDistributedLock inner, ConsentGate gate) : IDistributedLock
 {
-    public Task<IDistributedLockHandle?> TryAcquireAsync(string name, TimeSpan timeout, CancellationToken cancellationToken = default)
-    {
-        gate.AtLock(name);
-        return inner.TryAcquireAsync(name, timeout, cancellationToken);
-    }
+    public Task<IDistributedLockHandle?> TryAcquireAsync(string name, TimeSpan timeout, CancellationToken cancellationToken = default) =>
+        gate.AtLock(name) ? inner.TryAcquireAsync(name, timeout, cancellationToken) : Task.FromResult<IDistributedLockHandle?>(null);
 }
 
 internal sealed class HookedAuthorizationManager(
@@ -227,13 +260,19 @@ internal sealed class HookedAuthorizationManager(
     ILogger<OpenIddictAuthorizationManager<OpenIddictEntityFrameworkCoreAuthorization<Guid>>> logger,
     IOptionsMonitor<OpenIddictCoreOptions> options,
     IOpenIddictAuthorizationStore<OpenIddictEntityFrameworkCoreAuthorization<Guid>> store,
-    ConsentGate gate) : OpenIddictAuthorizationManager<OpenIddictEntityFrameworkCoreAuthorization<Guid>>(cache, logger, options, store)
+    ConsentGate gate,
+    ApplicationManagerHooks hooks) : OpenIddictAuthorizationManager<OpenIddictEntityFrameworkCoreAuthorization<Guid>>(cache, logger, options, store)
 {
     public override async ValueTask CreateAsync(OpenIddictEntityFrameworkCoreAuthorization<Guid> authorization, CancellationToken cancellationToken = default)
     {
         await gate.AtInsertAsync();
         await base.CreateAsync(authorization, cancellationToken);
     }
+
+    public override ValueTask DeleteAsync(OpenIddictEntityFrameworkCoreAuthorization<Guid> authorization, CancellationToken cancellationToken = default) =>
+        hooks.TakeFailAuthorizationDelete()
+            ? ValueTask.FromException(new DbUpdateException("The delete crossed a token issued under the authorization.", new SqliteException("SQLite Error 19: 'FOREIGN KEY constraint failed'.", 19, 787)))
+            : base.DeleteAsync(authorization, cancellationToken);
 }
 
 internal sealed class HookedApplicationManager(
@@ -281,10 +320,20 @@ internal sealed class HookedApplicationManager(
     }
 
     // Every update of an application ends here, the one with a descriptor included.
-    public override ValueTask UpdateAsync(OpenIddictEntityFrameworkCoreApplication<Guid> application, CancellationToken cancellationToken = default) =>
-        hooks.TakeFailUpdate()
-            ? ValueTask.FromException(new OpenIddictExceptions.ConcurrencyException("The application was changed by another request."))
-            : base.UpdateAsync(application, cancellationToken);
+    public override async ValueTask UpdateAsync(OpenIddictEntityFrameworkCoreApplication<Guid> application, CancellationToken cancellationToken = default)
+    {
+        if (hooks.TakeBeforeUpdate(application.Id) is { } work)
+        {
+            await work();
+        }
+
+        if (hooks.TakeFailUpdate())
+        {
+            throw new OpenIddictExceptions.ConcurrencyException("The application was changed by another request.");
+        }
+
+        await base.UpdateAsync(application, cancellationToken);
+    }
 }
 
 // What an authorization request came to: a code at the client's redirect URI, the error the client or the error page
@@ -517,6 +566,10 @@ internal static class McpClientTesting
 
     public static Task<HttpResponseMessage> RejectAsync(HttpClient admin, Guid id) =>
         admin.PostAsync(new Uri($"{ClientsPath}/{id:D}/reject", UriKind.Relative), null, Token);
+
+    // The end of the caller's own consent to a client, which frees its place.
+    public static Task<HttpResponseMessage> EndConsentAsync(HttpClient caller, Guid id) =>
+        caller.DeleteAsync(new Uri($"/api/management/v1/mcp/consents/{id:D}", UriKind.Relative), Token);
 
     public static Task<HttpResponseMessage> RevokeAsync(HttpClient admin, Guid id) =>
         admin.DeleteAsync(new Uri($"{ClientsPath}/{id:D}", UriKind.Relative), Token);

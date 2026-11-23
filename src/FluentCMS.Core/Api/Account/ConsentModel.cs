@@ -76,6 +76,8 @@ public sealed class ConsentModel : AccountPageModel
                 return NotAClient();
             case ConsentGrant.LimitReached:
                 return Redirect(Request.PathBase + HostedPagePaths.Error + QueryString.Create(Parameters.Error, ClientConsents.LimitReachedError));
+            case ConsentGrant.Busy:
+                return Redirect(Request.PathBase + HostedPagePaths.Error + QueryString.Create(Parameters.Error, Errors.TemporarilyUnavailable));
         }
 
         // Consent was just given, so the request goes back without the prompt for it.

@@ -79,10 +79,12 @@ public class ForeignKeyViolationTests
     public void PostgreSqlTellsAnotherErrorApart(string sqlState) =>
         PostgreSql.IsForeignKeyViolation(Saved(PostgreSqlError(sqlState))).ShouldBeFalse();
 
-    // Predictions of the server's messages: 547 is every conflict with a constraint, and the kind is in its text.
+    // Predictions of the server's messages: 547 is every conflict with a constraint, and the constraint it quotes, or the
+    // kind its text names, tells a foreign key, in a message of another language too.
     [Theory]
     [InlineData("The DELETE statement conflicted with the REFERENCE constraint \"FK_cms_oidc_authorization_cms_oidc_application_application_id\". The conflict occurred in database \"cms\", table \"dbo.cms_oidc_authorization\", column 'application_id'.")]
     [InlineData("The INSERT statement conflicted with the FOREIGN KEY constraint \"FK_cms_oidc_token_cms_oidc_application_application_id\". The conflict occurred in database \"cms\", table \"dbo.cms_oidc_application\", column 'id'.")]
+    [InlineData("Die DELETE-Anweisung steht in Konflikt mit der Einschränkung \"FK_cms_oidc_authorization_cms_oidc_application_application_id\".")]
     public void SqlServerKnowsAForeignKeyOf547(string message)
     {
         SqlServer.IsForeignKeyViolation(SqlServerError(547, message)).ShouldBeTrue();
