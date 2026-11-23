@@ -14,6 +14,7 @@ namespace FluentCMS.Core.Api.Common;
 // that a repeat runs again. The lease of the key is renewed while the request runs, however long it takes, and a request
 // whose key a repeat took over all the same, after renewals failed for a whole lease, is cancelled; one whose work answered
 // first answers what its work answered and keeps nothing. A key removed under its request, past its window, is put back.
+// The answer of work that answered is kept also when the client went away meanwhile, so a retry is answered it.
 internal static class IdempotentRequests
 {
     public const string ReplayedHeader = "Idempotent-Replayed";
@@ -63,8 +64,9 @@ internal static class IdempotentRequests
                     }
                 }
 
-                // The work has answered, so what it committed stands: a key lost from here on no longer stops the answer.
-                response = await CaptureAsync(httpContext, result);
+                // The work has answered, so what it committed stands: a key lost from here on no longer stops the answer, and
+                // neither does the client going away, so that a retry is answered what the write answered (#3485).
+                response = await CaptureAsync(httpContext, result, store, claim, aborted);
             }
             finally
             {
@@ -73,9 +75,9 @@ internal static class IdempotentRequests
         }
         catch (OperationCanceledException) when (aborted.IsCancellationRequested)
         {
-            // The client went away, perhaps after the work committed: the key stays held until its lease runs out, which is
-            // renewed for as long as the work ran, so that a retry never runs it a second time while the first may have
-            // succeeded or may still be running.
+            // The client went away before the work answered, perhaps after it committed, or the capture of its answer ran past
+            // its bound: the key stays held until its lease runs out, which is renewed for as long as the work ran, so that a
+            // retry never runs it a second time while the first may have succeeded or may still be running.
             throw;
         }
         catch (OperationCanceledException) when (lost.IsCancellationRequested)
@@ -132,20 +134,30 @@ internal static class IdempotentRequests
     private static string? MediaType(string? contentType) =>
         MediaTypeHeaderValue.TryParse(contentType, out var parsed) ? parsed.MediaType.Value?.ToLowerInvariant() : contentType;
 
-    // Writes the result into memory, so that what the client gets and what a repeat gets are the same bytes.
-    private static async Task<StoredResponse> CaptureAsync(HttpContext httpContext, IResult result)
+    // Writes the result into memory, so that what the client gets and what a repeat gets are the same bytes. Memory needs no
+    // client, so the client going away does not stop the capture at once, only InProgressTimeout later, so that a request
+    // whose client is gone holds its key no longer than a lease.
+    private static async Task<StoredResponse> CaptureAsync(HttpContext httpContext, IResult result, IdempotencyStore store, IdempotencyClaim claim, CancellationToken aborted)
     {
         var response = httpContext.Response;
         var original = response.Body;
         using var buffer = new MemoryStream();
+        using var capture = store.CaptureBound(aborted);
         response.Body = buffer;
+        httpContext.RequestAborted = capture.Token;
         try
         {
             await result.ExecuteAsync(httpContext);
-            await response.BodyWriter.FlushAsync(httpContext.RequestAborted);
+            await response.BodyWriter.FlushAsync(capture.Token);
+        }
+        catch (OperationCanceledException) when (capture.IsCancellationRequested)
+        {
+            store.NotCaptured(claim);
+            throw;
         }
         finally
         {
+            httpContext.RequestAborted = aborted;
             response.Body = original;
         }
 

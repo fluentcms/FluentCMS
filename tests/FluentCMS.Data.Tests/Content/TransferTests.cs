@@ -13,6 +13,7 @@ using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Core.Tests.Transfer;
 using FluentCMS.Core.Transfer;
 using FluentCMS.Data.Tests.Authorization;
+using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Hooks;
 using FluentCMS.Providers;
@@ -120,6 +121,95 @@ public sealed class TransferTests : IDisposable
         during.ShouldBe(before);
         during.ShouldContain(grace.ToString("D"));
         Entries(await ExportAsync(source, new TransferExportRequest { Types = ["author"] }))[TransferPackage.ContentPath("author")].ShouldContain("Ada changed");
+    }
+
+    // #3485: a reader that stalls does not keep the snapshot of an export open. At FluentCms:Transfer:ExportSnapshotTimeout
+    // the export stops and ends its output, as the endpoint aborts the response, even where the write it waits in heeds
+    // no token, and the snapshot ends with it.
+    [Fact]
+    public async Task AStalledReaderDoesNotHoldTheSnapshotPastTheBound()
+    {
+        var clock = new ManualTimeProvider(new DateTimeOffset(2027, 3, 1, 8, 0, 0, TimeSpan.Zero));
+        var source = new ServiceDatabase(cms =>
+        {
+            Configure(cms);
+            cms.Services.AddSingleton<TimeProvider>(clock);
+        });
+        _targets.Add(source);
+        if (TestProvider.IsSqlServer)
+        {
+            source.Read(context => context.Database.ExecuteSqlRaw("ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON"));
+        }
+
+        await CreateAsSystemAsync(source, "author", new ContentDocument { ["name"] = "Ada" });
+        var output = new StalledOutput();
+
+        var exporting = source.AsAsync(Admin, async services =>
+        {
+            var exporter = services.GetRequiredService<TransferExporter>();
+            var run = await exporter.PrepareAsync(new TransferExportRequest { Types = ["author"] }, Token);
+            var context = services.GetRequiredService<CmsDbContext>();
+            output.InSnapshot = () => context.Database.CurrentTransaction is not null;
+            await Should.ThrowAsync<IOException>(() => exporter.WriteAsync(run, output, output.Abort, Token));
+            return context.Database.CurrentTransaction is null;
+        });
+        await output.Stalled.Task.WaitAsync(RowLocks.Limit, Token);
+        exporting.IsCompleted.ShouldBeFalse();
+
+        clock.Advance(TimeSpan.FromHours(1));
+
+        (await exporting.WaitAsync(RowLocks.Limit, Token)).ShouldBeTrue();
+    }
+
+    // An output whose reader stops reading while the export holds its snapshot: its write waits, whatever its token says,
+    // until the output is aborted, and then fails as a write to a response whose client is gone does.
+    private sealed class StalledOutput : Stream
+    {
+        private readonly TaskCompletionSource _aborted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Func<bool> InSnapshot { get; set; } = () => false;
+
+        public TaskCompletionSource Stalled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override bool CanRead => false;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => true;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public void Abort() => _aborted.TrySetResult();
+
+        public override void Flush()
+        {
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => WaitAsync().GetAwaiter().GetResult();
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => WaitAsync();
+
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => await WaitAsync();
+
+        private async Task WaitAsync()
+        {
+            if (!InSnapshot())
+            {
+                return;
+            }
+
+            Stalled.TrySetResult();
+            await _aborted.Task;
+            throw new IOException("The reader of the export is gone.");
+        }
     }
 
     // #3305: a line of a type that is not localized names a locale only in a package made by hand; it is reported as an

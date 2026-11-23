@@ -16,7 +16,7 @@ public sealed class AiRetentionTests(AiHost ai) : IClassFixture<AiHost>
     [Fact]
     public async Task TheRetentionJobRemovesTheRowsOlderThanNinetyDays()
     {
-        var site = Guid.CreateVersion7();
+        var site = await ai.SiteAsync();
         var now = ai.Host.Time.GetUtcNow();
         await using (var scope = ai.Services.CreateAsyncScope())
         {

@@ -78,7 +78,7 @@ public sealed class WebhookDeliveryTests(WebhookFixture hosts) : IClassFixture<W
         {
             var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>();
             var webhook = await database.Set<Webhook>().FindAsync([Id(other)], Token);
-            webhook!.SiteId = Guid.CreateVersion7();
+            webhook!.SiteId = (await scope.ServiceProvider.GetRequiredService<SiteManager>().CreateAsync("Other", $"other-{Guid.NewGuid():N}"[..20], "en", Token)).Id;
             await database.SaveChangesAsync(Token);
         }
 

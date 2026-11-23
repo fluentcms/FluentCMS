@@ -35,6 +35,7 @@ internal sealed class TransferExporter(
     TransferContributors contributors,
     IDistributedLock locks,
     IActivityLog activity,
+    TransferOptions options,
     TimeProvider time,
     ILogger<TransferExporter> logger)
 {
@@ -83,10 +84,16 @@ internal sealed class TransferExporter(
         return new TransferExportRun(operation, request, site, types, enabled, held);
     }
 
-    public async Task WriteAsync(TransferExportRun run, Stream output, CancellationToken cancellationToken)
+    public Task WriteAsync(TransferExportRun run, Stream output, CancellationToken cancellationToken) =>
+        WriteAsync(run, output, static () => { }, cancellationToken);
+
+    // abort ends the output at once, as HttpContext.Abort ends the response, for a write the token does not stop: one that
+    // waits for a reader that stalled, which the snapshot must not wait for.
+    public async Task WriteAsync(TransferExportRun run, Stream output, Action abort, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(run);
         ArgumentNullException.ThrowIfNull(output);
+        ArgumentNullException.ThrowIfNull(abort);
 
         await using var held = run.Lock;
         using var span = FluentCmsTelemetry.Start("transfer", "export", null, run.Operation);
@@ -124,7 +131,9 @@ internal sealed class TransferExporter(
 
             // The entries of every type come from one snapshot, so that a save during the export changes nothing in the
             // package and no reference points at an entry the package lacks. The settings, roles and contributors' files are
-            // read after it, each as it is then.
+            // read after it, each as it is then. The snapshot is held for ExportSnapshotTimeout at most, however slowly the
+            // package is read: then the export stops and its output is ended, so the reader gets no package that a zip reader
+            // opens, since the central directory is the last thing a package has.
             await using (var consistent = await entries.BeginSnapshotAsync(token))
             {
                 if (consistent is null)
@@ -132,7 +141,18 @@ internal sealed class TransferExporter(
                     TransferLog.ExportWithoutSnapshot(logger, site.Value);
                 }
 
-                await WriteContentAsync(archive, run, site, () => count++, token);
+                using var bound = consistent is null ? new CancellationTokenSource() : new CancellationTokenSource(options.ExportSnapshotTimeout, time);
+                using var reading = CancellationTokenSource.CreateLinkedTokenSource(token, bound.Token);
+                using var ended = bound.Token.Register(abort);
+                try
+                {
+                    await WriteContentAsync(archive, run, site, () => count++, reading.Token);
+                }
+                catch (Exception exception) when (bound.IsCancellationRequested && exception is OperationCanceledException or IOException)
+                {
+                    TransferLog.ExportSnapshotTimedOut(logger, site.Value, options.ExportSnapshotTimeout);
+                    throw;
+                }
             }
 
             var documents = await settings.SiteDocumentsAsync(site, token);

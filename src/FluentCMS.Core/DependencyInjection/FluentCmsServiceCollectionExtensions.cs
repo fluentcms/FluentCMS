@@ -316,6 +316,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<OutboxWriter>();
         services.AddScoped<EventBuffer>();
         services.AddScoped<PluginTransactions>();
+        services.AddSingleton<PluginSiteHold>();
         services.AddScoped<ITransactionProbe, ContentTransactionProbe>();
         services.TryAddScoped<IEventBus, EventBus>();
         services.AddScoped<EntryChangeSink>();

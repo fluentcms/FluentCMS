@@ -366,6 +366,78 @@ public sealed class IdempotencyStoreTests : IDisposable
         _logs.Of(9146).ShouldBeEmpty();
     }
 
+    // #3485: a client that goes away after the write committed and before its answer was captured does not leave the key
+    // held without an answer. The answer is captured all the same, since it is written to memory, and kept, so a retry with
+    // the key is answered it, replayed, and the write runs once.
+    [Fact]
+    public async Task ARetryAfterTheClientWentAwayOnceTheWriteCommittedGetsItsAnswerAndRunsNothing()
+    {
+        var writes = 0;
+        using var client = new CancellationTokenSource();
+        using (var scope = _database.Database.NewScope())
+        {
+            var http = Request(scope, "key-aborted");
+            http.RequestAborted = client.Token;
+            await IdempotentRequests.RunAsync(http, async () =>
+            {
+                writes++;
+                await client.CancelAsync();
+                return Results.Json(new { id = "1" }, statusCode: StatusCodes.Status201Created);
+            });
+        }
+
+        Rows().ShouldHaveSingleItem().ResponseStatus.ShouldBe(StatusCodes.Status201Created);
+        using var retryScope = _database.Database.NewScope();
+        var retry = Request(retryScope, "key-aborted");
+        var answer = await IdempotentRequests.RunAsync(retry, () =>
+        {
+            writes++;
+            return Task.FromResult(Results.Ok());
+        });
+
+        await answer.ExecuteAsync(retry);
+        writes.ShouldBe(1);
+        retry.Response.StatusCode.ShouldBe(StatusCodes.Status201Created);
+        retry.Response.Headers[IdempotentRequests.ReplayedHeader].ToString().ShouldBe("true");
+        Encoding.UTF8.GetString(((MemoryStream)retry.Response.Body).ToArray()).ShouldBe("""{"id":"1"}""");
+    }
+
+    // #3485: the capture after the client went away is bounded by InProgressTimeout, so that an answer that never ends does
+    // not hold the request: it stops, keeps nothing, and leaves the key held until its lease runs out, as before.
+    [Fact]
+    public async Task ACaptureAfterTheClientWentAwayStopsAtInProgressTimeout()
+    {
+        using var scope = _database.Database.NewScope();
+        var http = Request(scope, "key-endless");
+        using var client = new CancellationTokenSource();
+        http.RequestAborted = client.Token;
+        var others = _clock.Timers;
+        var capturing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var running = IdempotentRequests.RunAsync(http, async () =>
+        {
+            await client.CancelAsync();
+            return new Endless(capturing);
+        });
+        await capturing.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        await TurnSetAsync(others + 1);
+        _clock.Advance(TimeSpan.FromMinutes(5));
+
+        await Should.ThrowAsync<OperationCanceledException>(() => running.WaitAsync(TimeSpan.FromSeconds(30), Token));
+        _logs.Of(9147).ShouldHaveSingleItem();
+        Rows().ShouldHaveSingleItem().ResponseStatus.ShouldBeNull();
+    }
+
+    // An answer that writes until the request's token stops it.
+    private sealed class Endless(TaskCompletionSource capturing) : IResult
+    {
+        public async Task ExecuteAsync(HttpContext httpContext)
+        {
+            capturing.TrySetResult();
+            await Task.Delay(Timeout.Infinite, httpContext.RequestAborted);
+        }
+    }
+
     private DefaultHttpContext Request(IServiceScope scope, string key)
     {
         var http = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
