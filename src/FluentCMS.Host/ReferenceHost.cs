@@ -163,7 +163,10 @@ public static class ReferenceHost
     private static void ProtectKeyRing(IServiceCollection services, ConfigurationManager configuration)
     {
         var path = configuration[KeyRingCertificatePathKey];
-        var previous = configuration.GetSection(PreviousKeyRingCertificatesSection).GetChildren().ToList();
+        // An entry whose every member is empty is absent, as an empty current Path is, so that the environment can blank one.
+        var previous = configuration.GetSection(PreviousKeyRingCertificatesSection).GetChildren()
+            .Where(entry => entry.AsEnumerable().Any(member => !string.IsNullOrWhiteSpace(member.Value)))
+            .ToList();
         if (string.IsNullOrWhiteSpace(path))
         {
             if (previous.Count > 0)
@@ -183,7 +186,7 @@ public static class ReferenceHost
 
         X509Certificate2[] readers = [.. previous.Select(LoadPreviousKeyRingCertificate)];
         protection.UnprotectKeysWithAnyCertificate(readers);
-        services.AddSingleton<IInsecureDefaultSource>(provider => new PreviousKeyRingCertificatesReport([.. readers.Select(reader => reader.Thumbprint)], provider.GetRequiredService<IHostEnvironment>()));
+        services.AddSingleton<IInsecureDefaultSource>(provider => new PreviousKeyRingCertificatesReport([.. readers.Select(reader => reader.Thumbprint).Distinct(StringComparer.OrdinalIgnoreCase)], provider.GetRequiredService<IHostEnvironment>()));
     }
 
     private static X509Certificate2 LoadPreviousKeyRingCertificate(IConfigurationSection entry)

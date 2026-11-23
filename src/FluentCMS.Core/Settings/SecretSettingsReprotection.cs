@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -6,8 +7,10 @@ namespace FluentCMS.Core.Settings;
 
 // A stored document that still needs an older key of the ring, by its area and scope. Unreadable names the secret keys the
 // key ring cannot unprotect, which leave the whole row as it is; Unreached names the keys that hold a protected value
-// the class does not read as a secret, such as a key it no longer has, which the pass does not protect again. A row of
-// an area that no class of the host registers is left as it is, and its keys are not known.
+// the class does not read as a secret, such as a key it no longer has, which the pass does not protect again. Every row of
+// an area that no class of the host registers is left as it is and listed, since which of its keys are secrets is not
+// known, nor whether the plugin that owns it is only not loaded in this run; it still needs an older key only when one of
+// its protected values, which are then in Unreached, is not under the default key.
 internal sealed record SecretSettingsLeft(string Area, Guid? Site, bool Registered, IReadOnlyList<string> Unreadable, IReadOnlyList<string> Unreached);
 
 internal sealed record SecretSettingsReprotected(int Documents, IReadOnlyList<SecretSettingsLeft> Left);
@@ -33,11 +36,7 @@ internal sealed class SecretSettingsReprotection(SystemDbContext context, Settin
         {
             if (registry.Find(row.Key) is not { } descriptor)
             {
-                if (row.Json.Contains(SettingsProtection.Prefix, StringComparison.Ordinal))
-                {
-                    left.Add(new SecretSettingsLeft(row.Key, row.SiteId, Registered: false, [], []));
-                }
-
+                left.Add(new SecretSettingsLeft(row.Key, row.SiteId, Registered: false, [], protection.Unreached(row.Key, FrozenSet<string>.Empty, row.Json, row.SiteId)));
                 continue;
             }
 
@@ -55,30 +54,6 @@ internal sealed class SecretSettingsReprotection(SystemDbContext context, Settin
         }
 
         return new SecretSettingsReprotected(documents, left);
-    }
-
-    // Removes every stored document of an area that no class of the host registers, such as that of a plugin the host no
-    // longer runs, which neither the API nor a reset reaches. Returns the scopes removed; a registered area is refused.
-    public async Task<IReadOnlyList<Guid?>> RemoveUnregisteredAsync(string area, CancellationToken cancellationToken)
-    {
-        if (registry.Find(area) is not null)
-        {
-            throw new InvalidOperationException($"The settings area '{area}' is registered.");
-        }
-
-        var rows = await context.Set<SettingRow>().AsNoTracking()
-            .Where(row => row.Key == area)
-            .OrderBy(row => row.SiteId)
-            .Select(row => new { row.Id, row.SiteId })
-            .ToListAsync(cancellationToken);
-        if (rows.Count == 0)
-        {
-            return [];
-        }
-
-        var ids = rows.Select(row => row.Id).ToList();
-        await context.Set<SettingRow>().Where(row => ids.Contains(row.Id)).ExecuteDeleteAsync(cancellationToken);
-        return [.. rows.Select(row => row.SiteId)];
     }
 
     // Null when the row was written again; otherwise the keys the key ring cannot unprotect, none when there was nothing to do.

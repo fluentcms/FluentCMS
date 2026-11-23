@@ -637,14 +637,18 @@ public sealed class ReferenceHostTests : IAsyncDisposable
     }
 
     // The replacement of docs/docker.md: the new certificate with the old one as previous reads the keys the old one protected,
-    // and a key made from then on is encrypted for the new certificate alone.
-    [Fact]
-    public async Task APreviousCertificateReadsTheKeysItProtectedAndNewKeysAreProtectedWithTheCurrentOneOnly()
+    // and a key made from then on is encrypted for the new certificate alone. The old one has often expired by then, and is
+    // listed twice here, as two configuration sources can name it.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task APreviousCertificateReadsTheKeysItProtectedAndNewKeysAreProtectedWithTheCurrentOneOnly(bool expired)
     {
-        var old = WriteRingCertificate("old.pfx", "old-ring-password");
+        var old = WriteRingCertificate("old.pfx", "old-ring-password", expired);
         var current = WriteRingCertificate("current.pfx", "current-ring-password");
         var logs = new RingLogs();
         var settings = Operator.Settings();
+        settings["Logging:LogLevel:Default"] = "Trace";
         settings[ReferenceHost.KeyRingCertificatePathKey] = old.Path;
         settings[ReferenceHost.KeyRingCertificatePasswordKey] = old.Password;
         settings["FluentCms:Security:AllowUnencryptedKeyRing"] = "false";
@@ -669,6 +673,8 @@ public sealed class ReferenceHostTests : IAsyncDisposable
 
         settings[$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Path"] = old.Path;
         settings[$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Password"] = old.Password;
+        settings[$"{ReferenceHost.PreviousKeyRingCertificatesSection}:1:Path"] = old.Path;
+        settings[$"{ReferenceHost.PreviousKeyRingCertificatesSection}:1:Password"] = old.Password;
         var app = await _host.StartAsync(settings, services => services.AddSingleton<ILoggerProvider>(logs));
         var before = RingXml();
 
@@ -683,10 +689,13 @@ public sealed class ReferenceHostTests : IAsyncDisposable
 
         var report = await Operator.ReportAsync(_host);
         var line = report["insecureDefaults"]!.AsArray().Single(item => item!["id"]!.GetValue<string>() == "data-protection-previous-certificates")!["message"]!.GetValue<string>();
-        line.ShouldContain(old.Thumbprint);
+        line.ShouldContain($"1 previous certificate of {ReferenceHost.PreviousKeyRingCertificatesSection} (thumbprint {old.Thumbprint})");
+        line.Split(old.Thumbprint).Length.ShouldBe(2);
         line.ShouldNotContain(current.Thumbprint);
         Operator.InsecureDefaults(report).ShouldNotContain("data-protection-keys-unencrypted");
 
+        // The capture holds Data Protection's own Debug and Trace lines, so the assertions below cover them too.
+        logs.Lines.ShouldContain(entry => entry.Category.StartsWith("Microsoft.AspNetCore.DataProtection", StringComparison.Ordinal) && entry.Level <= LogLevel.Debug);
         foreach (var text in new[] { logs.All, report.ToJsonString() })
         {
             text.ShouldNotContain(RingSecret);
@@ -774,6 +783,30 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         error.Message.ShouldNotContain("old-ring-password");
     }
 
+    // As a compose file passes `${OLD_RING_CERTIFICATE:-}`, or an operator blanks an entry of appsettings.json from the
+    // environment: an entry whose every member is empty is absent, as an empty current Path is.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void APreviousCertificateEntryWithEveryMemberEmptyIsAbsent(bool withCurrent)
+    {
+        Dictionary<string, string?> settings = new()
+        {
+            [$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Path"] = "",
+            [$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Password"] = " ",
+        };
+        if (withCurrent)
+        {
+            var current = WriteRingCertificate("current.pfx", "current-ring-password");
+            settings[ReferenceHost.KeyRingCertificatePathKey] = current.Path;
+            settings[ReferenceHost.KeyRingCertificatePasswordKey] = current.Password;
+        }
+
+        var app = _host.Build(settings);
+
+        app.Services.GetServices<FluentCMS.Diagnostics.IInsecureDefaultSource>().OfType<PreviousKeyRingCertificatesReport>().ShouldBeEmpty();
+    }
+
     // Previous certificates alone would leave nothing to protect a new key with.
     [Fact]
     public void APreviousCertificateWithoutACurrentOneStopsTheHost()
@@ -846,11 +879,11 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         return path;
     }
 
-    private RingCertificate WriteRingCertificate(string name, string password)
+    private RingCertificate WriteRingCertificate(string name, string password, bool expired = false)
     {
         using var rsa = RSA.Create(2048);
         using var certificate = new CertificateRequest($"CN=FluentCMS test key ring {name}", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
-            .CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(30));
+            .CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(expired ? -60 : -1), DateTimeOffset.UtcNow.AddDays(expired ? -1 : 30));
         var path = Path.Combine(_host.Root, name);
         var file = certificate.Export(X509ContentType.Pkcs12, password);
         File.WriteAllBytes(path, file);
@@ -860,19 +893,23 @@ public sealed class ReferenceHostTests : IAsyncDisposable
     // Certificate is the public certificate as the ring embeds it; PrivateKey and File are what must never be logged.
     private sealed record RingCertificate(string Path, string Password, string Thumbprint, string Certificate, string PrivateKey, string File);
 
+    private sealed record RingLogLine(string Category, LogLevel Level, string Text);
+
     private sealed class RingLogs : ILoggerProvider
     {
-        private readonly ConcurrentQueue<string> _lines = new();
+        private readonly ConcurrentQueue<RingLogLine> _lines = new();
 
-        public string All => string.Join('\n', _lines);
+        public IReadOnlyList<RingLogLine> Lines => [.. _lines];
 
-        public ILogger CreateLogger(string categoryName) => new Logger(_lines);
+        public string All => string.Join('\n', _lines.Select(line => line.Text));
+
+        public ILogger CreateLogger(string categoryName) => new Logger(categoryName, _lines);
 
         public void Dispose()
         {
         }
 
-        private sealed class Logger(ConcurrentQueue<string> lines) : ILogger
+        private sealed class Logger(string category, ConcurrentQueue<RingLogLine> lines) : ILogger
         {
             public IDisposable? BeginScope<TState>(TState state)
                 where TState : notnull => null;
@@ -880,7 +917,7 @@ public sealed class ReferenceHostTests : IAsyncDisposable
             public bool IsEnabled(LogLevel logLevel) => true;
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
-                lines.Enqueue($"{eventId.Id} {formatter(state, exception)} {exception}");
+                lines.Enqueue(new RingLogLine(category, logLevel, $"{eventId.Id} {formatter(state, exception)} {exception}"));
         }
     }
 

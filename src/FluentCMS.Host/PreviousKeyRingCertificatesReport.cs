@@ -12,10 +12,13 @@ internal sealed class PreviousKeyRingCertificatesReport(IReadOnlyList<string> th
     {
         if (!environment.IsDevelopment())
         {
+            var named = thumbprints.Count == 1
+                ? $"1 previous certificate of {ReferenceHost.PreviousKeyRingCertificatesSection} (thumbprint {thumbprints[0]}), which never protects"
+                : $"{thumbprints.Count} previous certificates of {ReferenceHost.PreviousKeyRingCertificatesSection} (thumbprints {string.Join(", ", thumbprints)}), which never protect";
             yield return new InsecureDefault
             {
                 Id = Id,
-                Message = $"The Data Protection key ring is also read with {thumbprints.Count} previous certificates of {ReferenceHost.PreviousKeyRingCertificatesSection} (thumbprints {string.Join(", ", thumbprints)}), which never protect a new key. Remove them once a key of the current certificate is the default, 'fluentcms settings reprotect' ends with exit code 0, and nothing else protected under the older keys is still needed.",
+                Message = $"The Data Protection key ring is also read with {named} a new key. Remove a previous certificate once a key of the current certificate is the default, 'fluentcms settings reprotect' ends with exit code 0, and nothing else protected under the older keys is still needed.",
             };
         }
     }

@@ -47,7 +47,6 @@ public sealed partial class ParserTests : IDisposable
     [InlineData("seed", "--url", "https://cms.example.com")]
     [InlineData("settings", "reprotect", "--url", "https://cms.example.com")]
     [InlineData("settings", "reprotect", "--force")]
-    [InlineData("settings", "reprotect", "--remove-area")]
     [InlineData("mcp")]
     [InlineData("mcp", "--project", ".")]
     [InlineData("schema", "apply", "--output", "schema.sql")]
@@ -105,7 +104,6 @@ public sealed partial class ParserTests : IDisposable
     [InlineData(new[] { "jobs", "list", "--status", "dead_lettered" }, new[] { "jobs", "list", "--status", "dead_lettered" })]
     [InlineData(new[] { "seed", "--name", "BlogSeeder" }, new[] { "seed", "--name", "BlogSeeder" })]
     [InlineData(new[] { "settings", "reprotect", "--no-build" }, new[] { "settings", "reprotect" })]
-    [InlineData(new[] { "settings", "reprotect", "--remove-area", "old-plugin" }, new[] { "settings", "reprotect", "--remove-area", "old-plugin" })]
     public async Task TheCommandIsHandedOnWithoutTheToolsOwnOptions(string[] args, string[] handedOn)
     {
         (await RunAsync([.. args, "--assembly", ToolRun.HostAssembly])).ShouldBe(RecordingLauncher.ExitCode);
