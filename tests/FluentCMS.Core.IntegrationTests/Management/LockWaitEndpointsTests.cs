@@ -12,7 +12,8 @@ using Xunit;
 namespace FluentCMS.Core.IntegrationTests.Management;
 
 // #3573 over HTTP on a SQLite file: a write that waits past the lock timeout, here for a publish held in its after hook,
-// answers 503 FCMS2411 with Retry-After and changes nothing, and its retry runs once the holder is done.
+// answers 503 FCMS2411 with Retry-After and changes nothing, and its retry runs once the holder is done. On a SQLite file the
+// one second lock timeout is waited in the 5 second steps of the busy timeout.
 public sealed class LockWaitEndpointsTests : IAsyncLifetime
 {
     private readonly HeldPublish _held = new();

@@ -97,12 +97,12 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
         }
     }
 
-    // 1222 is a lock request that ran out of its LOCK_TIMEOUT; a deadlock victim is 1205.
+    // 1222 is a lock request that ran out of its LOCK_TIMEOUT, among any errors the batch reported; a deadlock victim is 1205.
     public bool IsLockTimeout(Exception exception)
     {
         for (Exception? current = exception; current is not null; current = current.InnerException)
         {
-            if (current is SqlException { Number: 1222 })
+            if (current is SqlException sql && (sql.Number == 1222 || sql.Errors.Cast<SqlError>().Any(error => error.Number == 1222)))
             {
                 return true;
             }

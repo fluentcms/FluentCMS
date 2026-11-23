@@ -63,13 +63,15 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
 
     // SQLite locks the database, not a row, so the wait to bound is the one at BEGIN IMMEDIATE for the one write lock, which
     // any other connection's write transaction holds, of whatever entry or table. Microsoft.Data.Sqlite tries a busy statement
-    // again until the command timeout, which BEGIN takes from the connection's default, so the default is lowered for it alone;
-    // once begun the writer waits for no other writer.
+    // again until the command timeout, which BEGIN takes from the connection's default, so the default is lowered for it alone,
+    // never raised (0 waits without end); once begun the writer waits for no other writer. On a file each try also waits up to
+    // the busy timeout inside SQLite (SqliteWriteAheadLog), so the wait ends at the first try past the bound.
     public async Task<IDbContextTransaction> BeginWriteAsync(DbContext context, TimeSpan lockTimeout, CancellationToken cancellationToken)
     {
         var connection = (SqliteConnection)context.Database.GetDbConnection();
         var timeout = connection.DefaultTimeout;
-        connection.DefaultTimeout = (int)Math.Min(int.MaxValue, Math.Max(1, Math.Ceiling(lockTimeout.TotalSeconds)));
+        var bound = (int)Math.Min(int.MaxValue, Math.Max(1, Math.Ceiling(lockTimeout.TotalSeconds)));
+        connection.DefaultTimeout = timeout > 0 ? Math.Min(timeout, bound) : bound;
         try
         {
             return await context.Database.BeginTransactionAsync(cancellationToken);
