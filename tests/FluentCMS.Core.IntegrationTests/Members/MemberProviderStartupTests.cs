@@ -169,6 +169,60 @@ public sealed class MemberProviderStartupTests : IAsyncDisposable
         }
     }
 
+    // A delegate a host sets on the events of an OpenID Connect provider after AddFluentCms runs after FluentCMS's, so the
+    // logout paths stay unserved; Events or an EventsType set there would drop FluentCMS's events, so the host does not
+    // start (#3526, #3531).
+    [Fact]
+    public async Task ADelegateTheHostSetsAfterAddFluentCmsLeavesTheLogoutPathsUnserved()
+    {
+        var ran = 0;
+        var app = _host.Build(Environments.Development, Settings(("corp:Type", "Oidc"), ("corp:ClientId", "corp-id"), ("corp:Authority", "https://id.example.com/")), builder =>
+            builder.Services.PostConfigure<OpenIdConnectOptions>("member-corp", options =>
+            {
+                options.Events.OnRemoteSignOut = _ =>
+                {
+                    Interlocked.Increment(ref ran);
+                    return Task.CompletedTask;
+                };
+                options.Events.OnSignedOutCallbackRedirect = options.Events.OnRemoteSignOut;
+            }));
+        await app.StartAsync(Token);
+
+        using var client = app.GetTestClient();
+        foreach (var path in new[] { "/account/members/sso/corp/signout?sid=s1&iss=https%3A%2F%2Fid.example.com%2F", "/account/members/sso/corp/signed-out" })
+        {
+            using var answer = await client.GetAsync(new Uri(path, UriKind.Relative), Token);
+            answer.StatusCode.ShouldBe(System.Net.HttpStatusCode.NotFound, path);
+        }
+
+        Volatile.Read(ref ran).ShouldBe(2);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EventsTheHostReplacesAfterAddFluentCmsStopTheHostWithItsCode(bool asType)
+    {
+        var app = _host.Build(Environments.Production, Settings(("corp:Type", "Oidc"), ("corp:ClientId", "corp-id"), ("corp:Authority", "https://id.example.com/")), builder =>
+            builder.Services.PostConfigure<OpenIdConnectOptions>("member-corp", options =>
+            {
+                if (asType)
+                {
+                    options.EventsType = typeof(OpenIdConnectEvents);
+                }
+                else
+                {
+                    options.Events = new OpenIdConnectEvents();
+                }
+            }));
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => app.StartAsync(Token));
+
+        exception.Code.ShouldBe("FCMS3180");
+        exception.Message.ShouldStartWith("FCMS3180: FluentCms:Members:Providers:corp: the Events or EventsType of the provider's OpenIdConnectOptions were replaced");
+        File.Exists(_host.DatabaseFile).ShouldBeFalse();
+    }
+
     private static Dictionary<string, string?> Settings(params (string Key, string Value)[] values) =>
         values.ToDictionary(pair => Providers + pair.Key, pair => (string?)pair.Value);
 }

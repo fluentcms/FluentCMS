@@ -604,6 +604,90 @@ public sealed partial class MemberProviderTests
         told.ShouldAllBe(entry => entry.Level == LogLevel.Trace && entry.Category.StartsWith(AppleLogLevel.Category, StringComparison.Ordinal));
     }
 
+    // A host's own events on an OpenID Connect provider, as Events or as EventsType, keep FluentCMS's: the login's key from
+    // sub, the provider's name in the ticket, the way back to the login page after a failure, and the logout paths left
+    // unserved; the host's run after them (#3526). The test host registers a host's services before AddFluentCms, so they
+    // are set in a PostConfigure, which runs after every Configure as a host's Configure after AddFluentCms does.
+    [Fact]
+    public async Task AHostsOwnEventsOnAnOidcProviderKeepItsChecks()
+    {
+        foreach (var asType in new[] { false, true })
+        {
+            var events = new HostEvents();
+            await using var host = NewHost(fixture.Providers, fixture.Oidc, fixture.Emails).WithServices(services =>
+            {
+                services.AddSingleton(events);
+                services.PostConfigure<OpenIdConnectOptions>(MemberProvider.SchemeOf(Corp), options =>
+                {
+                    if (asType)
+                    {
+                        options.EventsType = typeof(HostEvents);
+                    }
+                    else
+                    {
+                        options.Events = events;
+                    }
+                });
+            });
+
+            var address = MemberFixture.NewAddress();
+            using (var browser = new HostedPagesBrowser(host, "10.7.9.1"))
+            {
+                using var back = await SignInWithAsync(browser, Corp, FakeAccount.Of(address));
+                (await DecideAsync(browser, back)).ShouldBe("/", asType.ToString());
+                browser.HasCookie(MemberCookie).ShouldBeTrue();
+            }
+
+            events.TokensValidated.ShouldBe(1);
+            var member = (await MemberAsync(host, address)).ShouldNotBeNull();
+            (await LoginsAsync(host, member.Id)).ShouldHaveSingleItem().LoginProvider.ShouldBe(Corp);
+
+            using var visitor = new HostedPagesBrowser(host, "10.7.9.2");
+            using (var failed = await SignInWithAsync(visitor, Corp, FakeAccount.Of(MemberFixture.NewAddress()), error: "server_error"))
+            {
+                failed.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+                failed.Headers.Location!.OriginalString.ShouldStartWith("/account/members/login?");
+                failed.Headers.Location.OriginalString.ShouldContain("Status=external-failed");
+            }
+
+            foreach (var path in new[] { $"/account/members/sso/{Corp}/signout?sid=s1&iss={Uri.EscapeDataString(fixture.Oidc.Issuer)}", $"/account/members/sso/{Corp}/signed-out" })
+            {
+                using var answer = await visitor.GetAsync(path);
+                answer.StatusCode.ShouldBe(HttpStatusCode.NotFound, path);
+            }
+
+            events.SignOuts.ShouldBe(2);
+        }
+    }
+
+    private sealed class HostEvents : OpenIdConnectEvents
+    {
+        private int _tokensValidated;
+        private int _signOuts;
+
+        public int TokensValidated => Volatile.Read(ref _tokensValidated);
+
+        public int SignOuts => Volatile.Read(ref _signOuts);
+
+        public override Task TokenValidated(TokenValidatedContext context)
+        {
+            Interlocked.Increment(ref _tokensValidated);
+            return base.TokenValidated(context);
+        }
+
+        public override Task RemoteSignOut(RemoteSignOutContext context)
+        {
+            Interlocked.Increment(ref _signOuts);
+            return base.RemoteSignOut(context);
+        }
+
+        public override Task SignedOutCallbackRedirect(RemoteSignOutContext context)
+        {
+            Interlocked.Increment(ref _signOuts);
+            return base.SignedOutCallbackRedirect(context);
+        }
+    }
+
     private async Task ChangeAsync(string memberId, Func<MemberManager, CmsMember, Task> change)
     {
         await using var scope = fixture.Host.Services.CreateAsyncScope();

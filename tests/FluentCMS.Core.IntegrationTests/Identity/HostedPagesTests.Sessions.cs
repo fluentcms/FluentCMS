@@ -3,12 +3,16 @@ using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.IntegrationTests.Diagnostics;
+using FluentCMS.Core.Storage;
 using FluentCMS.Events;
 using FluentCMS.Testing;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Shouldly;
 using Xunit;
@@ -131,7 +135,9 @@ public sealed partial class HostedPagesTests
 
     // A host that sets its own events on a provider, as Events or as EventsType, keeps the check of the remote sign-out and
     // the sid and iss that the sign-in keeps; the host's events run after FluentCMS's (#3225). The end is an activity row of
-    // the system (#3207).
+    // the system (#3207). The test host registers a host's services before AddFluentCms, where a Configure of the events
+    // would run before FluentCMS's, so they are set in a PostConfigure, which runs after every Configure as a host's
+    // Configure after AddFluentCms does (#3531).
     [Fact]
     public async Task AHostsOwnEventsKeepTheCheckOfTheRemoteSignOut()
     {
@@ -142,7 +148,7 @@ public sealed partial class HostedPagesTests
             await using var host = SsoHost(idp).WithServices(services =>
             {
                 services.AddSingleton(events);
-                services.Configure<OpenIdConnectOptions>(Corp, options =>
+                services.PostConfigure<OpenIdConnectOptions>(Corp, options =>
                 {
                     if (asType)
                     {
@@ -181,6 +187,90 @@ public sealed partial class HostedPagesTests
             Details(ended)["reason"].ShouldBe(SessionEndReasons.RemoteSignOut);
             ended.Details!.ShouldNotContain(ann.Sid!);
         }
+    }
+
+    // A sign-out whose activity row cannot be written still deletes the cookie of the sign-in whose tokens it revoked, and
+    // answers as it otherwise does; the missing row is logged, with no token (#3531). The confirmed logout and a provider's
+    // remote sign-out.
+    [Fact]
+    public async Task ASignOutWhoseRowCannotBeWrittenStillDeletesItsCookie()
+    {
+        using var idp = new FakeOidcProvider();
+        var failure = new SessionRowFailure(() => new DbUpdateException("The save fails for the test.", new DiskFullException()));
+        var logs = new LogCapture();
+        await using var host = SsoHost(idp)
+            .WithServices(services => services.AddLogging(logging => logging.AddProvider(logs)))
+            .Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(failure)));
+
+        var editor = await CreateUserAsync(host);
+        using var browser = new HostedPagesBrowser(host);
+        await SignInAsync(browser, editor.Email);
+        var tokens = await CodeFlowAsync(host, browser);
+        await SignOutAsync(browser);
+        browser.HasCookie(SignInCookie).ShouldBeFalse();
+        (await RefusedAsync(host, Text(tokens, "refresh_token"))).ShouldBe("invalid_grant");
+
+        var ann = FakeIdentity.Of(UniqueAddress("ann")) with { Sid = "idp-session-" + Guid.NewGuid().ToString("N") };
+        using var sso = await ProviderSignInAsync(host, idp, ann, Corp);
+        var ssoTokens = await CodeFlowAsync(host, sso);
+        using (var signedOut = await sso.GetAsync($"/account/sso/{Corp}/signout?sid={ann.Sid}&iss={Uri.EscapeDataString(idp.Issuer)}"))
+        {
+            signedOut.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        sso.HasCookie(SignInCookie).ShouldBeFalse();
+        (await RefusedAsync(host, Text(ssoTokens, "refresh_token"))).ShouldBe("invalid_grant");
+
+        failure.Failed.ShouldBe(2);
+        (await ActivityAsync(host, "user.sessions_ended", count: 0)).ShouldBeEmpty();
+        var user = await LinkedUserAsync(host, Corp, ann.Subject);
+        var missing = logs.Entries.Where(entry => entry.EventId.Id == AccountLog.SessionEndNotRecordedId).ToList();
+        missing.Select(entry => (entry.Level, entry.State["Pool"] as string, entry.State["Id"] as Guid?, entry.State["Reason"] as string)).ShouldBe(
+            [(LogLevel.Error, "user", editor.Id, SessionEndReasons.SignedOut), (LogLevel.Error, "user", user.Id, SessionEndReasons.RemoteSignOut)]);
+        missing.ShouldAllBe(entry => !entry.Message.Contains(Text(tokens, "refresh_token")) && !entry.Message.Contains(ann.Sid!));
+        missing.ShouldAllBe(entry => entry.Exception == null && (string?)entry.State["ExceptionType"] == typeof(DiskFullException).FullName);
+        missing.ShouldAllBe(entry => (string?)entry.State["SqlState"] == "53100" && (int?)entry.State["ErrorCode"] == 28);
+        missing.ShouldAllBe(entry => !entry.Message.Contains("The disk is full", StringComparison.Ordinal));
+    }
+
+    // Whatever the provider throws for a write it could not make finishes the sign-out too: SqlClient's timeout for a
+    // connection of an exhausted pool is a bare InvalidOperationException (#3531).
+    [Fact]
+    public async Task ASignOutWhoseRowFailsWithAnExceptionOfNoDatabaseTypeStillDeletesItsCookie()
+    {
+        var failure = new SessionRowFailure(() => new InvalidOperationException("Timeout expired. The timeout period elapsed prior to obtaining a connection from the pool."));
+        var logs = new LogCapture();
+        await using var host = NewHost(new CapturedEmails())
+            .WithServices(services => services.AddLogging(logging => logging.AddProvider(logs)))
+            .Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(failure)));
+
+        var editor = await CreateUserAsync(host);
+        using var browser = new HostedPagesBrowser(host);
+        await SignInAsync(browser, editor.Email);
+        var tokens = await CodeFlowAsync(host, browser);
+        await SignOutAsync(browser);
+
+        browser.HasCookie(SignInCookie).ShouldBeFalse();
+        (await RefusedAsync(host, Text(tokens, "refresh_token"))).ShouldBe("invalid_grant");
+        failure.Failed.ShouldBe(1);
+        var missing = logs.Entries.Where(entry => entry.EventId.Id == AccountLog.SessionEndNotRecordedId).ShouldHaveSingleItem();
+        ((string?)missing.State["ExceptionType"]).ShouldBe(typeof(InvalidOperationException).FullName);
+        missing.State["SqlState"].ShouldBeNull();
+        missing.Exception.ShouldBeNull();
+    }
+
+    // Only a write of the row that the database failed is let off: a fault of the code on that path, as the row written
+    // inside another transaction, fails the request as before (#3531).
+    [Fact]
+    public async Task AFaultOfTheCodeThatWritesTheRowOfASignInThatEndedIsNotSwallowed()
+    {
+        await using var scope = _host.Services.CreateAsyncScope();
+        await using var transaction = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.BeginTransactionAsync(Token);
+
+        var refused = await Should.ThrowAsync<InvalidOperationException>(() => scope.ServiceProvider.GetRequiredService<SessionEvents>()
+            .SignInEndedAsync(new Microsoft.AspNetCore.Http.DefaultHttpContext(), members: false, Guid.NewGuid(), "nobody", SessionEndReasons.SignedOut));
+
+        refused.Message.ShouldStartWith(IdentityErrorCodes.WriteInTransaction);
     }
 
     private sealed class HostEvents : OpenIdConnectEvents
