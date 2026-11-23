@@ -1113,14 +1113,15 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
     }
 
     // The first save that adds the asset runs the other import before it goes on, as when two imports find no row of the
-    // asset and the other saves first.
-    private sealed class RacingSave(Guid asset) : SaveChangesInterceptor
+    // asset and the other saves first. It runs as the transaction in which the save holds its site begins (#3586), since on
+    // SQLite the other work could not write while that transaction holds the database.
+    private sealed class RacingSave(Guid asset) : DbTransactionInterceptor
     {
         private int _armed = 1;
 
         public Func<Task>? Before { get; set; }
 
-        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        public override async ValueTask<InterceptionResult<DbTransaction>> TransactionStartingAsync(DbConnection connection, TransactionStartingEventData eventData, InterceptionResult<DbTransaction> result, CancellationToken cancellationToken = default)
         {
             if (Before is { } before
                 && eventData.Context!.ChangeTracker.Entries<Asset>().Any(entry => entry.State == EntityState.Added && entry.Entity.Id == asset)
@@ -1129,7 +1130,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
                 await before();
             }
 
-            return await base.SavingChangesAsync(eventData, result, cancellationToken);
+            return await base.TransactionStartingAsync(connection, eventData, result, cancellationToken);
         }
     }
 
