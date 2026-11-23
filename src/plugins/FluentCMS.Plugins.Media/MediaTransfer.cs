@@ -28,6 +28,7 @@ internal sealed class MediaTransfer(
     ISettings<MediaSettings> settings,
     IEventBus events,
     IImageProcessor processor,
+    TimeProvider time,
     ILogger<MediaTransfer> logger) : ITransferContributor
 {
     public const string FilesOption = "mediaFiles";
@@ -287,7 +288,7 @@ internal sealed class MediaTransfer(
         // file, but only the files the instance wrote: a key that a line named, and the variants beside it, may be files of
         // another instance, so only their rows go, and no later replace deletes them.
         var replaced = existing is not null && replacesFile && !SameKey(existing, stored)
-            ? await DatabaseAsync(() => ReplacedFiles.TakeAsync(database, existing, existing.OwnsFile, cancellationToken))
+            ? await DatabaseAsync(() => ReplacedFiles.TakeAsync(database, existing, existing.OwnsFile, time.GetUtcNow(), cancellationToken))
             : null;
 
         // A file the import wrote is deleted again when its row is not saved, as for an upload.
@@ -311,9 +312,20 @@ internal sealed class MediaTransfer(
             asset.Version++;
         }
 
+        // The asset that owns a key the line names is held by the save, so that a delete of it after the check, which the
+        // cleanup could follow by deleting the file before this row names it, fails the line instead.
+        if (stored.Owner is { } owner)
+        {
+            Hold(owner);
+        }
+
         try
         {
             await SaveAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException exception) when (stored.Owner is { } held && exception.Entries.Any(entry => entry.Entity is Asset other && other.Id == held.Id))
+        {
+            throw Refused(MediaErrorCodes.TransferFileMissing, $"The asset {held.Id:D} that owns the file at {stored.Key} changed while the line was imported, as when it was deleted; import the package again, or export with {FilesOption}=true to bring the file.");
         }
         catch
         {
@@ -369,6 +381,17 @@ internal sealed class MediaTransfer(
     }
 
     private Task<int> SaveAsync(CancellationToken cancellationToken) => DatabaseAsync(() => database.SaveChangesAsync(cancellationToken));
+
+    // The row as read, with its version as the condition of the save and nothing else written.
+    private void Hold(Asset owner)
+    {
+        if (database.ChangeTracker.Entries<Asset>().FirstOrDefault(entry => entry.Entity.Id == owner.Id) is { } tracked)
+        {
+            tracked.State = EntityState.Detached;
+        }
+
+        database.Attach(owner).Property(item => item.Version).IsModified = true;
+    }
 
     // Any failure of a read or of the save of an item is one of the database, so that the item is reported by the step that
     // failed.
@@ -549,6 +572,7 @@ internal sealed class MediaTransfer(
         }
 
         Take(taken, $"storage/{provider}/{key}", key, line.Id);
+        var owner = await OwnerAsync(line, library, provider, key, cancellationToken);
 
         await using var content = await storage.OpenReadAsync(key, cancellationToken);
         if (content is null)
@@ -562,7 +586,38 @@ internal sealed class MediaTransfer(
             throw Refused(MediaErrorCodes.TransferFileMissing, $"The file at {key} in the storage is not the file of the asset {line.Id:D} as the media settings of the site store it; export with {FilesOption}=true to bring it.");
         }
 
-        return new StoredFile(provider, key, file, owned: false);
+        return new StoredFile(provider, key, file, owned: false) { Owner = owner };
+    }
+
+    // The asset of this instance in whose folder the key is, read before the file is checked, which is the one that can delete
+    // the file there. A deleted one is about to, with the daily cleanup, and so is a holder of its old files when the key is
+    // no longer its own, so the line is refused; one that owns the key is held by the save of the line. A key in the folder
+    // of no asset of this instance is another instance's, which this instance never deletes.
+    private async Task<Asset?> OwnerAsync(AssetLine line, Guid library, string provider, string key, CancellationToken cancellationToken)
+    {
+        if (ReplacedFiles.FolderOf(key) is not { } folder || folder == line.Id
+            || await DatabaseAsync(() => database.Set<Asset>().AsNoTracking().FirstOrDefaultAsync(asset => asset.Id == folder && asset.SiteId == library, cancellationToken)) is not { } asset)
+        {
+            return null;
+        }
+
+        if (asset.DeletedAt is not null)
+        {
+            throw Refused(MediaErrorCodes.TransferFileMissing, $"The file at {key} in the storage is a file of the asset {folder:D}, which is deleted in this instance and goes with it; export with {FilesOption}=true to bring it.");
+        }
+
+        var lowered = key.ToLowerInvariant();
+#pragma warning disable CA1304, CA1311, CA1862 // The database lowers the column, where lower() takes no culture.
+        var names = asset.StorageProvider == provider
+            && (string.Equals(asset.StorageKey, key, StringComparison.OrdinalIgnoreCase)
+                || await DatabaseAsync(() => database.Set<Variant>().AnyAsync(variant => variant.AssetId == folder && variant.StorageKey.ToLower() == lowered, cancellationToken)));
+#pragma warning restore CA1304, CA1311, CA1862
+        if (!names)
+        {
+            throw Refused(MediaErrorCodes.TransferFileMissing, $"The file at {key} in the storage is no longer a file of the asset {folder:D} of this instance, which may delete it; export with {FilesOption}=true to bring it.");
+        }
+
+        return asset.OwnsFile ? asset : null;
     }
 
     private static bool SameKey(Asset asset, StoredFile file) =>
@@ -681,6 +736,9 @@ internal sealed class MediaTransfer(
             : this(file.FileName, provider, key, owned, file.Type.MimeType, file.Size, file.Checksum, file.Dimensions?.Width, file.Dimensions?.Height, null)
         {
         }
+
+        // For a key a line named: the asset of this instance that owns the file there, as read before the file was checked.
+        public Asset? Owner { get; init; }
 
         public static StoredFile Of(Asset asset) =>
             new(asset.FileName, asset.StorageProvider, asset.StorageKey, asset.OwnsFile, asset.MimeType, asset.Size, asset.Checksum, asset.Width, asset.Height, asset.Duration);

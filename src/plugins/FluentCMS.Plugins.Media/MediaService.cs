@@ -538,7 +538,7 @@ internal sealed class MediaService(
             ReplacedFiles? replaced = null;
             var asset = await WriteAssetAsync(library, id, reach, expectedVersion, async asset =>
             {
-                replaced = await ReplacedFiles.TakeAsync(database, asset, asset.OwnsFile, cancellationToken);
+                replaced = await ReplacedFiles.TakeAsync(database, asset, asset.OwnsFile, time.GetUtcNow(), cancellationToken);
                 asset.FileName = prepared.FileName;
                 asset.StorageProvider = storages.Current.Name;
                 asset.StorageKey = key;
@@ -1065,6 +1065,7 @@ internal sealed class MediaService(
                     }
 
                     SvgDocument.Sanitize(svg);
+                    SvgDocument.Scope(svg, checksum);
                     var sanitized = SvgDocument.Save(svg);
                     await content.DisposeAsync();
                     content = new MemoryStream(sanitized, writable: false);

@@ -1,4 +1,6 @@
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Shouldly;
@@ -103,12 +105,11 @@ public sealed class MediaFileTests
         SvgDocument.Sanitize(svg);
         var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
 
-        text.ShouldContain("rect { fill: red; }");
         text.ShouldContain("<rect width=\"5\" height=\"5\" />");
         text.ShouldContain("<g><text>link</text></g>");
         text.ShouldContain("attributeName=\"opacity\"");
         text.ShouldContain("<circle r=\"1\"");
-        foreach (var gone in (string[])["@import", "javascript", "onmouseover", "OnLoad", "<image", "data:image", "onclick", "alert(6)", "inkscape:label"])
+        foreach (var gone in (string[])["<style", "fill: red", "@import", "javascript", "onmouseover", "OnLoad", "<image", "data:image", "onclick", "alert(6)", "inkscape:label"])
         {
             text.ShouldNotContain(gone);
         }
@@ -179,6 +180,98 @@ public sealed class MediaFileTests
         text.ShouldContain("xlink:href=\" #dot\"");
         text.ShouldContain("fill=\"url(#g)\" style=\"stroke: url('#g')\"");
         text.ShouldNotContain("data:image");
+    }
+
+    // A page that inlines the SVG would apply a <style> to itself, and find an id on window and in getElementById, so a
+    // <style> goes whatever it holds, and every id and reference takes the prefix of the file: none names the page's
+    // globals, its elements or another SVG's ids, a reference to no id of the file included.
+    [Fact]
+    public void AnInlinedSvgReachesNoStyleNameOrElementOfThePage()
+    {
+        var svg = SvgDocument.Parse(new MemoryStream(Files.Svg("""
+            <style>body { display: none } svg { position: fixed }</style>
+            <g id="config"><rect id="location" width="1" height="1" style="fill: red"/></g>
+            <use href="#login-form"/>
+            <rect width="1" height="1" fill="url(#page-gradient)" aria-labelledby="page-label"/>
+            <animate attributeName="opacity" to="0" begin="page-button.click" dur="1s"/>
+            """))).ShouldNotBeNull();
+
+        SvgDocument.Sanitize(svg);
+        SvgDocument.Scope(svg, Checksum);
+        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
+
+        text.ShouldNotContain("<style");
+        text.ShouldNotContain("display: none");
+        text.ShouldContain("""<rect id="fcms-0a1b2c3d-location" width="1" height="1" style="fill: red" />""");
+        text.ShouldContain("""<g id="fcms-0a1b2c3d-config">""");
+        text.ShouldContain("""<use href="#fcms-0a1b2c3d-login-form" />""");
+        text.ShouldContain("""fill="url(#fcms-0a1b2c3d-page-gradient)" aria-labelledby="fcms-0a1b2c3d-page-label" """);
+        text.ShouldContain("""begin="fcms-0a1b2c3d-page-button.click" """);
+        foreach (var name in Names(text))
+        {
+            name.ShouldStartWith("fcms-0a1b2c3d-");
+        }
+    }
+
+    // A drawing that refers to its own elements in every way an SVG can still finds each of them, and a clock value, an
+    // event of the element itself and a quoted url() keep their meaning.
+    [Fact]
+    public void ScopingKeepsEveryReferenceOfTheSvgToItsOwnElements()
+    {
+        var svg = SvgDocument.Parse(new MemoryStream(Files.Svg("""
+            <title id="t">Logo</title>
+            <defs>
+              <linearGradient id="g"><stop offset="0"/></linearGradient>
+              <linearGradient id="g2" href="#g"/>
+              <clipPath id="c"><rect width="5" height="5"/></clipPath>
+              <mask id="m"><rect width="5" height="5" fill="white"/></mask>
+              <marker id="k"><path d="M0 0"/></marker>
+              <filter id="f"><feGaussianBlur stdDeviation="1"/></filter>
+              <path id="p" d="M0 0 L5 5"/>
+              <circle id="dot" r="1"/>
+            </defs>
+            <g aria-labelledby="t" clip-path="url(#c)" mask="url( '#m' )" filter="URL(#f)">
+              <use xlink:href=" #dot"/>
+              <path d="M0 0" marker-end="url(#k)" style="stroke: url(&quot;#g2&quot;)"/>
+              <text><textPath href="#p">x</textPath></text>
+              <animate id="a" attributeName="opacity" values="0;1" dur="1s"/>
+              <animate attributeName="fill" values="url(#g);url(#g2)" begin="a.end+1.5s; 2s; click; a.repeat(2)" end="indefinite" dur="1s"/>
+            </g>
+            """))).ShouldNotBeNull();
+
+        SvgDocument.Sanitize(svg);
+        SvgDocument.Scope(svg, Checksum);
+        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
+
+        var ids = Ids(text);
+        ids.ShouldBe(["t", "g", "g2", "c", "m", "k", "f", "p", "dot", "a"], ignoreOrder: true);
+        var names = Names(text);
+        names.Count.ShouldBe(13);
+        foreach (var name in names)
+        {
+            name.ShouldStartWith("fcms-0a1b2c3d-");
+            ids.ShouldContain(name["fcms-0a1b2c3d-".Length..]);
+        }
+
+        Ids(Encoding.UTF8.GetString(Sanitized(Encoding.UTF8.GetBytes(text), Checksum))).ShouldBe(ids, ignoreOrder: true);
+
+        text.ShouldContain("""begin="fcms-0a1b2c3d-a.end+1.5s; 2s; click; fcms-0a1b2c3d-a.repeat(2)" end="indefinite" """);
+        text.ShouldContain("""xlink:href="#fcms-0a1b2c3d-dot" """);
+    }
+
+    // Sanitising a sanitised file changes nothing, so that an import can take its key; a file whose names carry one prefix
+    // keeps it, and a reference of it without the prefix takes it.
+    [Fact]
+    public void ScopingAScopedFileChangesNothingAndAReferenceWithoutThePrefixTakesIt()
+    {
+        var once = Sanitized(Files.Svg("""<defs><circle id="dot" r="1"/></defs><use href="#dot"/><rect width="1" height="1" fill="url(#dot)"/>"""), Checksum);
+
+        Sanitized(once, new string('f', 64)).ShouldBe(once);
+
+        var crafted = Sanitized(Files.Svg("""<circle id="fcms-12345678-dot" r="1"/><use href="#fcms-12345678-dot"/><use href="#page"/>"""), Checksum);
+        var text = Encoding.UTF8.GetString(crafted);
+        text.ShouldContain("""<use href="#fcms-12345678-dot" />""");
+        text.ShouldContain("""<use href="#fcms-12345678-page" />""");
     }
 
     // What the review of #3309 found past a pass by names it drops: a string that hides a comment, a comment that hides a
@@ -268,6 +361,57 @@ public sealed class MediaFileTests
         text.ShouldNotContain("<style");
         text.ShouldNotContain("evil.example", Case.Insensitive);
         text.ShouldContain("""<circle id="kept" r="1" />""");
+    }
+
+    private const string Checksum = "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9";
+
+    private static byte[] Sanitized(byte[] bytes, string checksum)
+    {
+        var svg = SvgDocument.Parse(new MemoryStream(bytes)).ShouldNotBeNull();
+        SvgDocument.Sanitize(svg);
+        SvgDocument.Scope(svg, checksum);
+        return SvgDocument.Save(svg);
+    }
+
+    // The ids, each of which must carry the prefix of Checksum, without it.
+    private static List<string> Ids(string text)
+    {
+        List<string> ids = [];
+        foreach (var id in XDocument.Parse(text).Descendants().Select(element => element.Attribute("id")?.Value).OfType<string>())
+        {
+            id.ShouldStartWith("fcms-0a1b2c3d-");
+            ids.Add(id["fcms-0a1b2c3d-".Length..]);
+        }
+
+        return ids;
+    }
+
+    // Each name that a link, a url(), an aria id list or the begin or end of an animation refers to.
+    private static List<string> Names(string text)
+    {
+        List<string> names = [];
+        foreach (var attribute in XDocument.Parse(text).Descendants().SelectMany(element => element.Attributes()))
+        {
+            var value = attribute.Value.Trim();
+            if (attribute.Name.LocalName == "href")
+            {
+                names.Add(value[1..]);
+            }
+            else if (attribute.Name.LocalName is "aria-labelledby" or "aria-describedby")
+            {
+                names.AddRange(value.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            }
+            else if (attribute.Name.LocalName is "begin" or "end")
+            {
+                names.AddRange(value.Split(';').Select(timing => timing.Trim()).Where(timing => timing.Contains('.', StringComparison.Ordinal) && char.IsLetter(timing[timing.IndexOf('.', StringComparison.Ordinal) + 1])).Select(timing => timing[..timing.IndexOf('.', StringComparison.Ordinal)]));
+            }
+            else
+            {
+                names.AddRange(Regex.Matches(value, @"url\(['""]?#([^'"")]+)").Select(match => match.Groups[1].Value));
+            }
+        }
+
+        return names;
     }
 
     [Theory]

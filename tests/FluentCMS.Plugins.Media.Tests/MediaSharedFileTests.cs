@@ -97,6 +97,97 @@ public sealed class MediaSharedFileTests(PerSiteMediaHost media) : IClassFixture
         FilesOf(null, shared.Owner).ShouldBeEmpty();
     }
 
+    // A replace of the owner leaves its old file and variants, which others name, to a holder: a deleted row that owns
+    // them. The variant no other names goes at the next cleanup, and the rest only once the last asset that names each is
+    // gone, whatever the retention says.
+    [Fact]
+    public async Task AReplacedFileThatOthersNameGoesWithItsVariantsOnceTheLastOfThemGoes()
+    {
+        using var admin = await media.AdminAsync();
+        var shared = await SharedAsync(admin, null, Guid.CreateVersion7());
+        var other = await NameAsync(shared.Owner, Guid.CreateVersion7());
+
+        await ReplaceAsync(admin, shared.Owner, Bands(12, 4));
+
+        var holder = (await HolderAsync(shared.Key)).ShouldNotBeNull();
+        holder.Id.ShouldNotBeOneOf(shared.Owner, shared.Named, other);
+        (await VariantKeysAsync(holder.Id)).ShouldBe([shared.SharedVariant, shared.OwnVariant], ignoreOrder: true);
+        (await VariantKeysAsync(shared.Owner)).ShouldBeEmpty();
+        Exists(shared.Key, shared.SharedVariant, shared.OwnVariant).ShouldBe([true, true, true]);
+
+        await CleanupAsync();
+
+        Exists(shared.Key, shared.SharedVariant, shared.OwnVariant).ShouldBe([true, true, false]);
+        await ServesAsync(admin, null, shared.Named);
+
+        media.Host.Time.Advance(PastRetention);
+        await CleanupAsync();
+
+        Exists(shared.Key, shared.SharedVariant).ShouldBe([true, true]);
+        (await RowAsync(holder.Id)).ShouldNotBeNull();
+
+        await DeleteAsync(admin, shared.Named);
+        media.Host.Time.Advance(PastRetention);
+        await CleanupAsync();
+
+        (await RowAsync(shared.Named)).ShouldBeNull();
+        Exists(shared.Key, shared.SharedVariant).ShouldBe([true, false]);
+        (await RowAsync(holder.Id)).ShouldNotBeNull();
+
+        await DeleteAsync(admin, other);
+        media.Host.Time.Advance(PastRetention);
+        await CleanupAsync();
+        await CleanupAsync();
+
+        (await RowAsync(holder.Id)).ShouldBeNull();
+        Exists(shared.Key).ShouldBe([false]);
+        var owner = (await RowAsync(shared.Owner)).ShouldNotBeNull();
+        FilesOf(null, shared.Owner).Select(Path.GetFileName).ShouldBe([Path.GetFileName(owner.StorageKey)]);
+    }
+
+    // The owner that holds the bytes of its old file again makes its variants at the keys its holder names, which the
+    // holder then leaves to it.
+    [Fact]
+    public async Task AVariantTheOwnerMakesAgainAtTheKeyOfItsHolderStays()
+    {
+        using var admin = await media.AdminAsync();
+        var shared = await SharedAsync(admin, null, Guid.CreateVersion7());
+        await ReplaceAsync(admin, shared.Owner, Bands(12, 4));
+        await ReplaceAsync(admin, shared.Owner, Bands(8, 8));
+        await VariantAsync(admin, null, shared.Owner, 4);
+        (await VariantKeysAsync(shared.Owner)).ShouldBe([shared.OwnVariant]);
+
+        await CleanupAsync();
+
+        Exists(shared.Key, shared.SharedVariant, shared.OwnVariant).ShouldBe([true, true, true]);
+        await ServesAsync(admin, null, shared.Owner);
+    }
+
+    // An asset on the owner's key makes variants in the owner's folder; when it goes, they go to the owner, and with it.
+    [Fact]
+    public async Task TheVariantsThatAnAssetOnTheKeyMadeGoToTheOwnerAndGoWithIt()
+    {
+        using var admin = await media.AdminAsync();
+        var shared = await SharedAsync(admin, null, Guid.CreateVersion7());
+        await VariantAsync(admin, null, shared.Named, 6);
+        var made = (await VariantKeysAsync(shared.Named)).Where(key => key != shared.SharedVariant).ShouldHaveSingleItem();
+
+        await DeleteAsync(admin, shared.Named);
+        await CleanupAsync();
+
+        (await VariantKeysAsync(shared.Named)).ShouldBeEmpty();
+        (await VariantKeysAsync(shared.Owner)).ShouldBe([shared.SharedVariant, shared.OwnVariant, made], ignoreOrder: true);
+        Exists(made).ShouldBe([true]);
+
+        await DeleteAsync(admin, shared.Owner);
+        media.Host.Time.Advance(PastRetention);
+        await CleanupAsync();
+
+        (await RowAsync(shared.Owner)).ShouldBeNull();
+        (await RowAsync(shared.Named)).ShouldBeNull();
+        FilesOf(null, shared.Owner).ShouldBeEmpty();
+    }
+
     // The ids put the asset that names the key before the owner, or after it; either way it goes first.
     [Theory]
     [InlineData(true)]
@@ -106,6 +197,7 @@ public sealed class MediaSharedFileTests(PerSiteMediaHost media) : IClassFixture
         var site = await MediaLibraryTesting.CreateSiteAsync(media);
         using var admin = await MediaLibraryTesting.InSiteAsync(media, site);
         var shared = await SharedAsync(admin, site, namedFirst ? Guid.CreateVersion7(DateTimeOffset.UnixEpoch) : Guid.CreateVersion7(DateTimeOffset.MaxValue.AddYears(-1)));
+        await VariantAsync(admin, site, shared.Named, 6);
 
         await using (var scope = media.Services.CreateAsyncScope())
         {
@@ -176,6 +268,36 @@ public sealed class MediaSharedFileTests(PerSiteMediaHost media) : IClassFixture
         (await VariantKeysAsync(shared.Owner)).ShouldBe([shared.SharedVariant, shared.OwnVariant], ignoreOrder: true);
     }
 
+    // A gone asset made the variants in its own folder; one beside another asset's key it made for a key a line named, which
+    // can be another instance's, so only its row goes.
+    [Fact]
+    public async Task AVariantOfAGoneAssetBesideAnotherAssetsKeyKeepsItsFile()
+    {
+        using var admin = await media.AdminAsync();
+        var shared = await SharedAsync(admin, null, Guid.CreateVersion7(), withVariants: false);
+        var gone = Guid.CreateVersion7();
+        var beside = $"{DefaultSite.Id:N}/{shared.Owner:N}/{new string('b', 64)}.png";
+        var own = $"{DefaultSite.Id:N}/{gone:N}/{new string('c', 64)}.png";
+        Directory.CreateDirectory(Path.Combine(media.StorageRoot, DefaultSite.Id.ToString("N"), gone.ToString("N")));
+        foreach (var key in (string[])[beside, own])
+        {
+            await File.WriteAllBytesAsync(Path.Combine(media.StorageRoot, key), Bands(2, 2), Token);
+        }
+
+        await using (var scope = media.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+            database.Add(new Variant { AssetId = gone, ParamsHash = new string('b', 64), StorageKey = beside, Size = 1, CreatedAt = media.Host.Time.GetUtcNow() });
+            database.Add(new Variant { AssetId = gone, ParamsHash = new string('c', 64), StorageKey = own, Size = 1, CreatedAt = media.Host.Time.GetUtcNow() });
+            await database.SaveChangesAsync(Token);
+        }
+
+        await CleanupAsync();
+
+        (await VariantKeysAsync(gone)).ShouldBeEmpty();
+        Exists(beside, own).ShouldBe([true, false]);
+    }
+
     // An uploaded image and an asset with the given id on its key, as an import leaves one; with variants, the owner's two
     // and four pixels wide and the other's two pixels wide, which takes the key of the owner's.
     private async Task<(Guid Owner, Guid Named, string Key, string SharedVariant, string OwnVariant)> SharedAsync(HttpClient admin, Guid? site, Guid named, bool withVariants = true)
@@ -228,6 +350,37 @@ public sealed class MediaSharedFileTests(PerSiteMediaHost media) : IClassFixture
         (await VariantKeysAsync(id)).ShouldContain(key => File.Exists(Path.Combine(media.StorageRoot, key)));
         var row = (await RowAsync(id)).ShouldNotBeNull();
         File.Exists(Path.Combine(media.StorageRoot, row.StorageKey)).ShouldBeTrue();
+    }
+
+    // Another asset on the owner's key, as an import leaves one.
+    private async Task<Guid> NameAsync(Guid owner, Guid named)
+    {
+        await using var scope = media.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+        var row = await database.Set<Asset>().AsNoTracking().SingleAsync(asset => asset.Id == owner, Token);
+        row.Id = named;
+        row.OwnsFile = false;
+        database.Add(row);
+        await database.SaveChangesAsync(Token);
+        return named;
+    }
+
+    // The deleted row that owns a file a replace left.
+    private async Task<Asset?> HolderAsync(string key)
+    {
+        await using var scope = media.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().AsNoTracking()
+            .SingleOrDefaultAsync(asset => asset.StorageKey == key && asset.OwnsFile && asset.DeletedAt != null, Token);
+    }
+
+    private static async Task ReplaceAsync(HttpClient admin, Guid id, byte[] png)
+    {
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(png);
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        form.Add(file, "file", "new.png");
+        using var replaced = await admin.PostAsync(new Uri($"{Root}/{id:D}/replace", UriKind.Relative), form, Token);
+        replaced.StatusCode.ShouldBe(HttpStatusCode.OK, await replaced.Content.ReadAsStringAsync(Token));
     }
 
     private static async Task DeleteAsync(HttpClient admin, Guid id)

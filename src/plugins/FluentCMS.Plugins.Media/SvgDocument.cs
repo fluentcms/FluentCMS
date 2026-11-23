@@ -11,11 +11,13 @@ namespace FluentCMS.Plugins.Media;
 // the elements and attributes it keeps: names are compared in their exact case, so that no element or attribute turns into
 // something else when an HTML page inlines the SVG and reads its names in lower case. An <a> becomes a <g>; <title> and
 // <desc> keep their text only, since an HTML page parses their content as HTML. A link (href or xlink:href) stays only when
-// it is a #fragment of name characters, as written. A value read as CSS, the style attribute, a <style> element and every
-// other attribute kept, goes when it holds a url() to anything but a #fragment, @import, expression(, image(, image-set(
-// or src(, in the value with its CSS comments kept or with them taken out, after CSS escapes are undone; the two forms
-// cover a comment that a string hides and a string that a comment hides; a value with a backslash and a url( goes too. An
-// animation of a link or a handler goes.
+// it is a #fragment of name characters, as written. A <style> element goes, since its rules would apply to the whole page
+// that inlines the SVG; a style attribute, which styles its own element, stays. A value read as CSS, the style attribute
+// and every other attribute kept, goes when it holds a url() to anything but a #fragment, @import, expression(, image(,
+// image-set( or src(, in the value with its CSS comments kept or with them taken out, after CSS escapes are undone; the two
+// forms cover a comment that a string hides and a string that a comment hides; a value with a backslash and a url( goes
+// too. An animation of a link or a handler goes. Scoping then gives every id and every reference to one a prefix of the
+// file, so that an inlined SVG names nothing of the page, on window or in another SVG, and reaches none of its elements.
 internal static partial class SvgDocument
 {
     public static readonly XNamespace SvgNamespace = "http://www.w3.org/2000/svg";
@@ -24,7 +26,7 @@ internal static partial class SvgDocument
 
     private static readonly HashSet<string> Elements = new(StringComparer.Ordinal)
     {
-        "svg", "g", "defs", "symbol", "use", "switch", "view", "title", "desc", "style",
+        "svg", "g", "defs", "symbol", "use", "switch", "view", "title", "desc",
         "path", "rect", "circle", "ellipse", "line", "polyline", "polygon", "text", "tspan", "textPath",
         "linearGradient", "radialGradient", "stop", "pattern", "clipPath", "mask", "marker",
         "filter", "feBlend", "feColorMatrix", "feComponentTransfer", "feComposite", "feConvolveMatrix", "feDiffuseLighting",
@@ -80,6 +82,11 @@ internal static partial class SvgDocument
 
     // CSS that reaches out without url(): an import, an expression, and the functions that take an image or a source as a string.
     private static readonly string[] ActiveCss = ["@import", "expression(", "image(", "image-set(", "src("];
+
+    // Attributes that hold ids separated by white space, and those of an animation that can name an element, as id.event.
+    private static readonly HashSet<string> IdLists = new(StringComparer.Ordinal) { "aria-labelledby", "aria-describedby" };
+
+    private static readonly HashSet<string> Timings = new(StringComparer.Ordinal) { "begin", "end" };
 
     public static XDocument? Parse(Stream stream)
     {
@@ -143,6 +150,102 @@ internal static partial class SvgDocument
         }
     }
 
+    // After Sanitize: every id, and every name that a link, a url(), an aria id list or the begin or end of an animation
+    // refers to, takes the prefix fcms-, eight hex digits of the checksum of the file as received, and a hyphen. A reference
+    // to no id of the file takes it too, so that it still finds nothing rather than an element of the page. A file whose ids
+    // all carry one prefix of that form, or with no id whose references all do, keeps it, so that sanitising a sanitised file
+    // gives the same bytes; a name without it then takes it. A value with a url() that this cannot read goes.
+    public static void Scope(XDocument document, string checksum)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentException.ThrowIfNullOrEmpty(checksum);
+
+        var ids = document.Descendants().Select(element => element.Attribute("id")?.Value).OfType<string>().ToList();
+        List<string> names = [];
+        Visit(document, name =>
+        {
+            names.Add(name);
+            return name;
+        });
+
+        var named = ids.Count > 0 ? ids : names;
+        var existing = named.Count > 0 ? ScopedPrefix().Match(named[0]) : Match.Empty;
+        var prefix = existing.Success && named.TrueForAll(name => name.StartsWith(existing.Value, StringComparison.Ordinal))
+            ? existing.Value
+            : $"fcms-{checksum[..8].ToLowerInvariant()}-";
+        Visit(document, name => name.StartsWith(prefix, StringComparison.Ordinal) ? name : prefix + name, prefix);
+    }
+
+    // Each name an attribute holds, as the map gives it back. With a prefix, the map rewrites the names, and a value whose
+    // url() does not then name the prefix goes.
+    private static void Visit(XDocument document, Func<string, string> map, string? prefix = null)
+    {
+        foreach (var element in document.Descendants())
+        {
+            foreach (var attribute in element.Attributes().ToList())
+            {
+                if (attribute.IsNamespaceDeclaration)
+                {
+                    continue;
+                }
+
+                var local = attribute.Name.LocalName;
+                var plain = attribute.Name.Namespace == XNamespace.None;
+                if (plain && local == "id")
+                {
+                    attribute.Value = map(attribute.Value);
+                }
+                else if (local == "href" && (plain || attribute.Name.Namespace == XLinkNamespace))
+                {
+                    var link = attribute.Value.Trim(UrlWhiteSpace);
+                    if (Fragment().IsMatch(link))
+                    {
+                        attribute.Value = "#" + map(link[1..]);
+                    }
+                    else if (prefix is not null)
+                    {
+                        attribute.Remove();
+                    }
+                }
+                else if (plain && IdLists.Contains(local))
+                {
+                    attribute.Value = string.Join(' ', attribute.Value.Split(UrlWhiteSpace, StringSplitOptions.RemoveEmptyEntries).Select(map));
+                }
+                else if (plain && Timings.Contains(local) && Animations.Contains(element.Name.LocalName))
+                {
+                    attribute.Value = string.Join(';', attribute.Value.Split(';').Select(timing => Syncbase().Replace(timing, match => match.Groups[1].Value + map(match.Groups[2].Value) + ".", 1)));
+                }
+                else if (plain)
+                {
+                    var value = CssReference().Replace(attribute.Value, match => $"url({match.Groups[1].Value}#{map(match.Groups[2].Value)}{match.Groups[1].Value})");
+                    if (prefix is not null && !NamesOnly(Compact(value, keepComments: true), prefix))
+                    {
+                        attribute.Remove();
+                        continue;
+                    }
+
+                    attribute.Value = value;
+                }
+            }
+        }
+    }
+
+    // Every url( of a compact value names an id with the prefix.
+    private static bool NamesOnly(ReadOnlySpan<char> compact, string prefix)
+    {
+        for (var url = compact.IndexOf("url(", StringComparison.Ordinal); url >= 0; url = compact.IndexOf("url(", StringComparison.Ordinal))
+        {
+            compact = compact[(url + 4)..];
+            var name = compact.TrimStart("'\"");
+            if (!name.StartsWith("#" + prefix, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public static byte[] Save(XDocument document)
     {
         using var output = new MemoryStream();
@@ -162,11 +265,6 @@ internal static partial class SvgDocument
         if (!IsSvg(element.Name) || !Elements.Contains(name))
         {
             return false;
-        }
-
-        if (name == "style")
-        {
-            return !element.HasElements && !IsActiveCss(element.Value);
         }
 
         if (!Animations.Contains(name) || element.Attribute("attributeName")?.Value.Trim() is not { } target)
@@ -288,4 +386,16 @@ internal static partial class SvgDocument
     // What follows url( in the compact form: a #fragment, bare or quoted, and the parenthesis that closes it.
     [GeneratedRegex(@"^(['""]?)#[\p{L}\p{N}_.:-]+\1\)")]
     private static partial Regex CssFragment();
+
+    // A url() of a #fragment as written in a value that Sanitize kept, which has no escape there.
+    [GeneratedRegex(@"(?i:url)\([\t\n\f\r ]*(['""]?)#([\p{L}\p{N}_.:-]+)\1[\t\n\f\r ]*\)")]
+    private static partial Regex CssReference();
+
+    // The element of a begin or end value, id.event, id.begin, id.end or id.repeat(n), where a clock value such as 1.5s is
+    // no id since what follows its dot is no letter.
+    [GeneratedRegex(@"^(\s*)([^\s.;+()\\-][^\s.;+()\\]*)\.(?=[A-Za-z])")]
+    private static partial Regex Syncbase();
+
+    [GeneratedRegex("^fcms-[0-9a-f]{8}-")]
+    private static partial Regex ScopedPrefix();
 }

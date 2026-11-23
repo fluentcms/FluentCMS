@@ -7,7 +7,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Sites;
+using FluentCMS.Jobs;
 using FluentCMS.Media;
 using FluentCMS.Providers;
 using FluentCMS.Settings;
@@ -111,7 +113,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
     {
         await using var rules = await media.ConfigureAsync(settings => settings.Svg = SvgHandling.Sanitize);
         using var admin = await media.AdminAsync();
-        var svg = Files.Svg("""<rect width="10" height="10"/><script>alert(1)</script>""");
+        var svg = Files.Svg("""<style>rect { fill: red }</style><defs><linearGradient id="g"/></defs><rect width="10" height="10" fill="url(#g)"/><script>alert(1)</script>""");
         var id = Guid.CreateVersion7();
         var package = await PackageAsync(admin, [Line(id, "logo.svg", "image/png", svg)], (FileOf(id, ".svg"), svg));
 
@@ -121,7 +123,12 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         stored.MimeType.ShouldBe("image/svg+xml");
         stored.StorageKey.ShouldMatch($@"^{DefaultSite.Id:N}/{id:N}/original-[0-9a-f]{{32}}\.svg$");
         var bytes = await StoredAsync(stored.StorageKey);
-        Encoding.UTF8.GetString(bytes).ShouldNotContain("script");
+        var text = Encoding.UTF8.GetString(bytes);
+        text.ShouldNotContain("script");
+        text.ShouldNotContain("<style");
+        var prefix = $"fcms-{Sha256(svg)[..8]}-";
+        text.ShouldContain($"""<linearGradient id="{prefix}g" />""");
+        text.ShouldContain($"""fill="url(#{prefix}g)" """);
         (stored.Size, stored.Checksum).ShouldBe((bytes.LongLength, Sha256(bytes)));
 
         // A sanitised file is sanitised to the same bytes, so a line can take its key as it is.
@@ -698,6 +705,71 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         FilesOf(media, uploaded.Id).ShouldBe([key]);
     }
 
+    // The daily cleanup deletes the file of a deleted asset, and a file that a replace left to a holder, once no other asset
+    // names it, so a line that names either is refused, in a dry run too.
+    [Fact]
+    public async Task ALineThatNamesAFileTheCleanupCanDeleteIsRefused()
+    {
+        using var admin = await media.AdminAsync();
+        var bands = Bands(8, 8);
+        var deleted = await UploadAsync(admin, bands, "deleted.png");
+        var deletedKey = (await AssetAsync(deleted.Id)).ShouldNotBeNull().StorageKey;
+        using (var response = await admin.DeleteAsync(new Uri($"{Root}/{deleted.Id:D}", UriKind.Relative), Token))
+        {
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        }
+
+        var replaced = await UploadAsync(admin, bands, "replaced.png");
+        var replacedKey = (await AssetAsync(replaced.Id)).ShouldNotBeNull().StorageKey;
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(Guid.CreateVersion7(), "shared.png", "image/png", bands, key: replacedKey)]))).ShouldBe((1, 0, 0));
+        await ReplaceThroughTheServiceAsync(admin, replaced.Id, Files.Png(5, 5));
+        var (first, second) = (Guid.CreateVersion7(), Guid.CreateVersion7());
+        var package = await PackageAsync(admin, [Line(first, "first.png", "image/png", bands, key: deletedKey), Line(second, "second.png", "image/png", bands, key: replacedKey)]);
+
+        foreach (var dryRun in (bool[])[true, false])
+        {
+            Items(await ImportAsync(admin, package, dryRun)).ShouldBe(new Dictionary<Guid, (string, string?)>
+            {
+                [first] = ("error", MediaErrorCodes.TransferFileMissing),
+                [second] = ("error", MediaErrorCodes.TransferFileMissing),
+            });
+        }
+
+        (await AssetAsync(first)).ShouldBeNull();
+        (await AssetAsync(second)).ShouldBeNull();
+    }
+
+    // The owner of the key a line names is deleted, and its file purged, after the line read the file and before it is
+    // saved. The save is conditional on the owner as the line read it, so the line is refused and no asset names a file that
+    // is gone.
+    [Fact]
+    public async Task ALineWhoseOwnerIsDeletedAndPurgedWhileItIsImportedIsRefused()
+    {
+        var sharing = Guid.CreateVersion7();
+        var race = new RacingSave(sharing);
+        await using var host = new MediaHost();
+        host.Host.Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(race)));
+        using var admin = await host.AdminAsync();
+        var bands = Bands(8, 8);
+        var owner = await UploadAsync(admin, bands, "owner.png");
+        var key = (await AssetAsync(host, owner.Id)).ShouldNotBeNull().StorageKey;
+        var package = await PackageAsync(admin, [Line(sharing, "shared.png", "image/png", bands, key: key)]);
+        race.Before = async () =>
+        {
+            using var response = await admin.DeleteAsync(new Uri($"{Root}/{owner.Id:D}", UriKind.Relative), Token);
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            host.Host.Time.Advance(new MediaOptions().DeletedRetention + TimeSpan.FromDays(1));
+            await CleanupAsync(host);
+            (await AssetAsync(host, owner.Id)).ShouldBeNull();
+        };
+
+        var report = await ImportAsync(admin, package);
+
+        Items(report).ShouldBe(new Dictionary<Guid, (string, string?)> { [sharing] = ("error", MediaErrorCodes.TransferFileMissing) });
+        (await AssetAsync(host, sharing)).ShouldBeNull();
+        File.Exists(Path.Combine(host.StorageRoot, key)).ShouldBeFalse();
+    }
+
     // The import is still updated when the old file cannot be deleted, as a replace is, and the file stays.
     [Fact]
     public async Task AnOldFileTheStorageFailsToDeleteStaysAndTheItemIsUpdated()
@@ -1100,6 +1172,16 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         using var response = await FetchAsync(anonymous, await UrlAsync(host, asset, new MediaImageOptions { Width = 2 }));
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await VariantsAsync(host, id)).ShouldBe(1);
+    }
+
+    private static async Task CleanupAsync(MediaHost host)
+    {
+        await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<MediaVariantCleanupJob, MediaVariantCleanupPayload>(new MediaVariantCleanupPayload(), cancellationToken: Token);
+        await using var scope = host.Services.CreateAsyncScope();
+        var executor = scope.ServiceProvider.GetRequiredService<JobExecutor>();
+        while (await executor.RunNextAsync(JobRunnerOptions.DefaultQueue, "test", Token))
+        {
+        }
     }
 
     private static async Task<int> VariantsAsync(MediaHost host, Guid id)

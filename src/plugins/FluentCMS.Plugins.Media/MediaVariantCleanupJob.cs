@@ -14,7 +14,9 @@ internal sealed record MediaVariantCleanupPayload;
 // FluentCms:Media:DeletedRetention whose variants are gone, in the same way: the original file, then the row. Each file is
 // deleted from the storage its asset recorded. Files go as after a replace (ReplacedFiles): only the rows of an asset whose
 // key a line named, and a file that another asset names keeps its row too, so that the asset that owns it deletes it once
-// no other names it. The assets whose key a line named are purged first, so that the owner of their key can go in the run.
+// no other names it. The variant rows of an asset whose key a line named go to the asset that owns that key, when it holds
+// the same bytes, so that their files go with its own. The assets whose key a line named are purged first, so that the
+// owner of their key can go in the run.
 internal sealed class MediaVariantCleanupJob(PluginDbContext<MediaPlugin> database, MediaStorage storages, IOptions<MediaOptions> options, TimeProvider time, ILogger<MediaVariantCleanupJob> logger)
     : IJob<MediaVariantCleanupPayload>
 {
@@ -53,21 +55,30 @@ internal sealed class MediaVariantCleanupJob(PluginDbContext<MediaPlugin> databa
             foreach (var variants in batch.GroupBy(variant => variant.AssetId))
             {
                 var asset = assets.GetValueOrDefault(variants.Key);
-                var keys = variants.Select(variant => variant.StorageKey).ToList();
-                var named = asset is { OwnsFile: false } ? []
+                if (asset is { OwnsFile: false })
+                {
+                    done += await ReplacedFiles.HandOverAsync(database, asset, [.. variants], cancellationToken);
+                    continue;
+                }
+
+                // A gone asset owned the variants in its own folder only; one beside another asset's key was made for a key
+                // that a line of an import named.
+                var owned = variants.Where(variant => asset is not null || ReplacedFiles.FolderOf(variant.StorageKey) == variants.Key).ToList();
+                var keys = owned.Select(variant => variant.StorageKey).ToList();
+                var named = keys.Count == 0 ? []
                     : (await (asset is null ? ReplacedFiles.NamedByAny(database, variants.Key, keys) : ReplacedFiles.NamedByOthers(database, asset, keys)).ToListAsync(cancellationToken))
                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
                 foreach (var variant in variants)
                 {
                     if (named.Contains(variant.StorageKey))
                     {
-                        // The owner keeps the row, to delete the file once no other names it; a gone asset owns nothing.
+                        // The owner keeps the row, to delete the file once no other names it; a gone asset's row goes alone.
                         if (asset is not null)
                         {
                             continue;
                         }
                     }
-                    else if (asset is not { OwnsFile: false })
+                    else if (owned.Contains(variant))
                     {
                         var provider = asset?.StorageProvider ?? storages.Current.Name;
                         if (storages.Find(provider) is not { } storage)

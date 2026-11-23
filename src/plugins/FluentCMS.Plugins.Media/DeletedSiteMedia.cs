@@ -13,7 +13,7 @@ namespace FluentCMS.Plugins.Media;
 // outbox's attempts is left to the cleanup in the same way, since every asset was marked first. A shared library is the default
 // site's, which cannot be deleted, so only rows a site kept while the library was per site are found. Files go as after a
 // replace (ReplacedFiles): only the rows of an asset whose key a line named, which go first, so that the asset that owns the
-// key then finds no other that names it.
+// key then finds no other that names it; its variant rows go to that asset, whose files then go with its own.
 internal sealed class DeletedSiteMedia(PluginDbContext<MediaPlugin> database, MediaStorage storages, TimeProvider time, ILogger<DeletedSiteMedia> logger)
     : IOutboxEventHandler<SiteDeletedEvent>
 {
@@ -68,7 +68,8 @@ internal sealed class DeletedSiteMedia(PluginDbContext<MediaPlugin> database, Me
     {
         if (!asset.OwnsFile)
         {
-            await database.Set<Variant>().Where(variant => variant.AssetId == asset.Id).ExecuteDeleteAsync(cancellationToken);
+            var rows = await database.Set<Variant>().AsNoTracking().Where(variant => variant.AssetId == asset.Id).ToListAsync(cancellationToken);
+            await ReplacedFiles.HandOverAsync(database, asset, rows, cancellationToken);
             await database.Set<Asset>().Where(item => item.Id == asset.Id).ExecuteDeleteAsync(cancellationToken);
             return true;
         }
