@@ -105,9 +105,11 @@ internal sealed class TransferExporter(
         var previous = accessor.Current;
         accessor.Current = run.Operation with { Principal = Principal.System, Actor = run.Operation.AuditPrincipal };
         var count = 0;
+        var package = new ExportOutput(output);
+        ZipArchive? archive = null;
         try
         {
-            await using var archive = await ZipArchive.CreateAsync(output, ZipArchiveMode.Create, leaveOpen: true, entryNameEncoding: null, token);
+            archive = await ZipArchive.CreateAsync(package, ZipArchiveMode.Create, leaveOpen: true, entryNameEncoding: null, token);
             var snapshot = SchemaSnapshot.Of(schema);
             List<string> sections = [TransferPackage.Schema, .. run.Types.Select(type => TransferPackage.ContentPath(type.Name)), TransferPackage.Settings];
             if (run.Request.Roles)
@@ -131,9 +133,8 @@ internal sealed class TransferExporter(
 
             // The entries of every type come from one snapshot, so that a save during the export changes nothing in the
             // package and no reference points at an entry the package lacks. The settings, roles and contributors' files are
-            // read after it, each as it is then. The snapshot is held for ExportSnapshotTimeout at most, however slowly the
-            // package is read: then the export stops and its output is ended, so the reader gets no package that a zip reader
-            // opens, since the central directory is the last thing a package has.
+            // read after it, each as it is then. The snapshot is held for ExportSnapshotTimeout at most from its first read,
+            // however slowly the package is read: then the output is cut and ended and the export stops.
             await using (var consistent = await entries.BeginSnapshotAsync(token))
             {
                 if (consistent is null)
@@ -143,16 +144,25 @@ internal sealed class TransferExporter(
 
                 using var bound = consistent is null ? new CancellationTokenSource() : new CancellationTokenSource(options.ExportSnapshotTimeout, time);
                 using var reading = CancellationTokenSource.CreateLinkedTokenSource(token, bound.Token);
-                using var ended = bound.Token.Register(abort);
+                using var ended = bound.Token.Register(() =>
+                {
+                    package.Cut();
+                    abort();
+                });
                 try
                 {
                     await WriteContentAsync(archive, run, site, () => count++, reading.Token);
                 }
-                catch (Exception exception) when (bound.IsCancellationRequested && exception is OperationCanceledException or IOException)
+                catch (Exception exception) when (package.IsCut && exception is OperationCanceledException or IOException)
                 {
-                    TransferLog.ExportSnapshotTimedOut(logger, site.Value, options.ExportSnapshotTimeout);
-                    throw;
+                    throw SnapshotTimedOut(site, exception);
                 }
+            }
+
+            // A write that the abort ended may return as if it went through, so the bound is asked once the entries are written.
+            if (package.IsCut)
+            {
+                throw SnapshotTimedOut(site, null);
             }
 
             var documents = await settings.SiteDocumentsAsync(site, token);
@@ -170,10 +180,25 @@ internal sealed class TransferExporter(
             {
                 await contributor.Contributor.ExportAsync(new ExportContext(archive, contributor.Name, site, run.Request.Options ?? new Dictionary<string, string>()), token);
             }
+
+            // Writes the central directory, the end of the package, by which a reader opens a zip.
+            await archive.DisposeAsync();
         }
-        catch (Exception exception) when (exception is OperationCanceledException or IOException)
+        catch (Exception exception)
         {
-            TransferLog.ExportStopped(logger, exception, site.Value);
+            // A package that stopped is not completed: its output is cut before the archive is let go, so no central directory
+            // is written after the files that went out, and no reader takes them for a whole package.
+            package.Cut();
+            if (archive is not null)
+            {
+                await archive.DisposeAsync();
+            }
+
+            if (exception is OperationCanceledException or IOException)
+            {
+                TransferLog.ExportStopped(logger, exception, site.Value);
+            }
+
             throw;
         }
         finally
@@ -203,6 +228,12 @@ internal sealed class TransferExporter(
                 },
                 cancellationToken);
         }
+    }
+
+    private OperationCanceledException SnapshotTimedOut(SiteId site, Exception? inner)
+    {
+        TransferLog.ExportSnapshotTimedOut(logger, site.Value, options.ExportSnapshotTimeout);
+        return new OperationCanceledException($"The export held its snapshot for {options.ExportSnapshotTimeout}, FluentCms:Transfer:ExportSnapshotTimeout, and was stopped; the package is not complete.", inner);
     }
 
     private static string Version =>

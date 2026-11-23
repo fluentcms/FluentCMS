@@ -242,12 +242,10 @@ public sealed class SearchIndexProviderTests : IDisposable
             new() { DocumentId = Guid.CreateVersion7(), Locale = locale, State = state, Type = type, SiteId = site, Field = "title", Text = "common words", UpdatedAt = later };
         await using (var scope = _host.Services.CreateAsyncScope())
         {
-            // A row of a site that does not exist is refused (#3485).
-            var other = (await scope.ServiceProvider.GetRequiredService<SiteManager>().CreateAsync("Other", "other", "en", Token)).Id;
             var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<SearchPlugin>>();
             database.AddRange(
-                Row("article", "en", SearchStates.Published, other),
-                Row("article", "en", SearchStates.Published, other),
+                Row("article", "en", SearchStates.Published, Guid.CreateVersion7()),
+                Row("article", "en", SearchStates.Published, Guid.CreateVersion7()),
                 Row("article", "fr", SearchStates.Published, DefaultSite.Id),
                 Row("article", "fr", SearchStates.Published, DefaultSite.Id),
                 Row("tag", "en", SearchStates.Published, DefaultSite.Id),

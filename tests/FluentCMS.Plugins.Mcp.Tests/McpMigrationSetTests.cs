@@ -1,5 +1,4 @@
 using FluentCMS.Core.Plugins;
-using FluentCMS.Core.Sites;
 using FluentCMS.Plugins.Tests;
 using FluentCMS.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -42,8 +41,8 @@ public sealed class McpMigrationSetTests
     public async Task TheSqliteSetAppliesAndASiteHoldsOneRowOfGuidelinesOneOfInstructionsPerTypeAndOnePromptPerName()
     {
         await using var host = McpSiteTesting.Host();
-        var site = await SiteAsync(host);
-        var other = await SiteAsync(host);
+        var site = Guid.CreateVersion7();
+        var other = Guid.CreateVersion7();
 
         await SaveAsync(host, Instruction(site, null), Instruction(site, "article"), Instruction(site, "page"), Instruction(other, null), Instruction(other, "article"));
         await SaveAsync(host, Prompt(site, "summarize"), Prompt(site, "review"), Prompt(other, "summarize"));
@@ -64,13 +63,6 @@ public sealed class McpMigrationSetTests
 
     private static McpPrompt Prompt(Guid site, string name) =>
         new() { Id = Guid.CreateVersion7(), SiteId = site, Name = name, Template = "Sum {{entry}} up." };
-
-    // A row of a site that does not exist is refused (#3485).
-    private static async Task<Guid> SiteAsync(FluentCmsTestHost host)
-    {
-        await using var scope = host.Services.CreateAsyncScope();
-        return (await scope.ServiceProvider.GetRequiredService<SiteManager>().CreateAsync("Other", $"site-{Guid.NewGuid():N}"[..20], "en", Token)).Id;
-    }
 
     private static async Task SaveAsync(FluentCmsTestHost host, params object[] rows)
     {

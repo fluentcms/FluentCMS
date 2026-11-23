@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Data.Common;
 using System.IO.Compression;
 using System.Text.Json;
@@ -24,6 +25,7 @@ using FluentCMS.Transfer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Data.Tests.Content.ServiceDatabase;
@@ -124,16 +126,23 @@ public sealed class TransferTests : IDisposable
     }
 
     // #3485: a reader that stalls does not keep the snapshot of an export open. At FluentCms:Transfer:ExportSnapshotTimeout
-    // the export stops and ends its output, as the endpoint aborts the response, even where the write it waits in heeds
-    // no token, and the snapshot ends with it.
-    [Fact]
-    public async Task AStalledReaderDoesNotHoldTheSnapshotPastTheBound()
+    // the export stops and ends its output, as the endpoint aborts the response, even where the write it waits in heeds no
+    // token, and the snapshot ends with it. The stall is at the last write of the snapshot, as a first export with the same
+    // entries counts them. A write that the abort ends may throw or return as if it went through, and either way the export
+    // is not finished: 9190 is logged, no transfer.exported row is written, and the output keeps what it got before the abort,
+    // without the central directory, so the import refuses those bytes even where a transport kept them.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AStalledReaderDoesNotHoldTheSnapshotPastTheBound(bool throwsWhenAborted)
     {
         var clock = new ManualTimeProvider(new DateTimeOffset(2027, 3, 1, 8, 0, 0, TimeSpan.Zero));
+        var logs = new ExportLogs();
         var source = new ServiceDatabase(cms =>
         {
             Configure(cms);
             cms.Services.AddSingleton<TimeProvider>(clock);
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
         });
         _targets.Add(source);
         if (TestProvider.IsSqlServer)
@@ -142,34 +151,64 @@ public sealed class TransferTests : IDisposable
         }
 
         await CreateAsSystemAsync(source, "author", new ContentDocument { ["name"] = "Ada" });
-        var output = new StalledOutput();
-
-        var exporting = source.AsAsync(Admin, async services =>
+        var counted = new StalledOutput(throwsWhenAborted, stallAt: int.MaxValue);
+        await source.AsAsync(Admin, async services =>
         {
-            var exporter = services.GetRequiredService<TransferExporter>();
-            var run = await exporter.PrepareAsync(new TransferExportRequest { Types = ["author"] }, Token);
-            var context = services.GetRequiredService<CmsDbContext>();
-            output.InSnapshot = () => context.Database.CurrentTransaction is not null;
-            await Should.ThrowAsync<IOException>(() => exporter.WriteAsync(run, output, output.Abort, Token));
-            return context.Database.CurrentTransaction is null;
-        });
+            var (exporter, run) = await StartExportAsync(services, counted);
+            await exporter.WriteAsync(run, counted, counted.Abort, Token);
+            return 0;
+        }).WaitAsync(RowLocks.Limit, Token);
+        Exported(source).ShouldBe(1);
+        var output = new StalledOutput(throwsWhenAborted, stallAt: counted.SnapshotWrites);
+
+        // On a thread of its own, since the stalled write can be one that blocks, which SQLite reaches without a yield.
+        var exporting = Task.Run(() => source.AsAsync(Admin, async services =>
+        {
+            var (exporter, run) = await StartExportAsync(services, output);
+            await Should.ThrowAsync<OperationCanceledException>(() => exporter.WriteAsync(run, output, output.Abort, Token));
+            return services.GetRequiredService<CmsDbContext>().Database.CurrentTransaction is null;
+        }), Token);
         await output.Stalled.Task.WaitAsync(RowLocks.Limit, Token);
         exporting.IsCompleted.ShouldBeFalse();
 
         clock.Advance(TimeSpan.FromHours(1));
 
         (await exporting.WaitAsync(RowLocks.Limit, Token)).ShouldBeTrue();
+        logs.Of(9190).ShouldHaveSingleItem();
+        logs.Of(9181).ShouldHaveSingleItem();
+        Exported(source).ShouldBe(1);
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(Target(), output.Received.ToArray()));
+        refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
     }
 
+    private static async Task<(TransferExporter Exporter, TransferExportRun Run)> StartExportAsync(IServiceProvider services, StalledOutput output)
+    {
+        var exporter = services.GetRequiredService<TransferExporter>();
+        var run = await exporter.PrepareAsync(new TransferExportRequest { Types = ["author"] }, Token);
+        var context = services.GetRequiredService<CmsDbContext>();
+        output.InSnapshot = () => context.Database.CurrentTransaction is not null;
+        return (exporter, run);
+    }
+
+    private static int Exported(ServiceDatabase database) =>
+        database.Read(context => context.Set<ActivityRow>().Count(row => row.Action == "transfer.exported"));
+
     // An output whose reader stops reading while the export holds its snapshot: its write waits, whatever its token says,
-    // until the output is aborted, and then fails as a write to a response whose client is gone does.
-    private sealed class StalledOutput : Stream
+    // until the output is aborted, and then fails as a write to a response whose client is gone does, or goes through. Every
+    // write that does not fail is kept, after the abort too, as by a transport that keeps every write.
+    private sealed class StalledOutput(bool throwsWhenAborted, int stallAt) : Stream
     {
         private readonly TaskCompletionSource _aborted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _snapshotWrites;
 
         public Func<bool> InSnapshot { get; set; } = () => false;
 
         public TaskCompletionSource Stalled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public MemoryStream Received { get; } = new();
+
+        // The writes made while the export held its snapshot.
+        public int SnapshotWrites => Volatile.Read(ref _snapshotWrites);
 
         public override bool CanRead => false;
 
@@ -193,22 +232,57 @@ public sealed class TransferTests : IDisposable
 
         public override void SetLength(long value) => throw new NotSupportedException();
 
-        public override void Write(byte[] buffer, int offset, int count) => WaitAsync().GetAwaiter().GetResult();
+        public override void Write(byte[] buffer, int offset, int count) => WriteAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
 
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => WaitAsync();
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
 
-        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => await WaitAsync();
-
-        private async Task WaitAsync()
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
         {
-            if (!InSnapshot())
+            if (InSnapshot() && Interlocked.Increment(ref _snapshotWrites) == stallAt)
             {
-                return;
+                Stalled.TrySetResult();
+                await _aborted.Task;
+                if (throwsWhenAborted)
+                {
+                    throw new IOException("The reader of the export is gone.");
+                }
             }
 
-            Stalled.TrySetResult();
-            await _aborted.Task;
-            throw new IOException("The reader of the export is gone.");
+            lock (Received)
+            {
+                Received.Write(buffer.Span);
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Received.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+
+    private sealed class ExportLogs : ILoggerProvider, ILogger
+    {
+        private readonly ConcurrentQueue<(int Id, string Message)> _logged = new();
+
+        public List<string> Of(int id) => [.. _logged.Where(entry => entry.Id == id).Select(entry => entry.Message)];
+
+        public ILogger CreateLogger(string categoryName) => this;
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            _logged.Enqueue((eventId.Id, formatter(state, exception)));
+
+        public void Dispose()
+        {
         }
     }
 

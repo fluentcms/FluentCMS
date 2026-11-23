@@ -366,11 +366,11 @@ public sealed class IdempotencyStoreTests : IDisposable
         _logs.Of(9146).ShouldBeEmpty();
     }
 
-    // #3485: a client that goes away after the write committed and before its answer was captured does not leave the key
-    // held without an answer. The answer is captured all the same, since it is written to memory, and kept, so a retry with
-    // the key is answered it, replayed, and the write runs once.
+    // #3485: a client that goes away once the work has answered, while its answer is captured, does not leave the key held
+    // without an answer. The answer is captured all the same, since it is written to memory, and kept, so a retry with the
+    // key is answered it, replayed, and the write runs once.
     [Fact]
-    public async Task ARetryAfterTheClientWentAwayOnceTheWriteCommittedGetsItsAnswerAndRunsNothing()
+    public async Task ARetryAfterTheClientWentAwayWhileTheAnswerWasWrittenGetsItAndRunsNothing()
     {
         var writes = 0;
         using var client = new CancellationTokenSource();
@@ -378,11 +378,10 @@ public sealed class IdempotencyStoreTests : IDisposable
         {
             var http = Request(scope, "key-aborted");
             http.RequestAborted = client.Token;
-            await IdempotentRequests.RunAsync(http, async () =>
+            await IdempotentRequests.RunAsync(http, () =>
             {
                 writes++;
-                await client.CancelAsync();
-                return Results.Json(new { id = "1" }, statusCode: StatusCodes.Status201Created);
+                return Task.FromResult<IResult>(new GoneWhileWritten(client, Results.Json(new { id = "1" }, statusCode: StatusCodes.Status201Created)));
             });
         }
 
@@ -414,11 +413,7 @@ public sealed class IdempotencyStoreTests : IDisposable
         var others = _clock.Timers;
         var capturing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        var running = IdempotentRequests.RunAsync(http, async () =>
-        {
-            await client.CancelAsync();
-            return new Endless(capturing);
-        });
+        var running = IdempotentRequests.RunAsync(http, () => Task.FromResult<IResult>(new GoneWhileWritten(client, new Endless(capturing))));
         await capturing.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
         await TurnSetAsync(others + 1);
         _clock.Advance(TimeSpan.FromMinutes(5));
@@ -426,6 +421,101 @@ public sealed class IdempotencyStoreTests : IDisposable
         await Should.ThrowAsync<OperationCanceledException>(() => running.WaitAsync(TimeSpan.FromSeconds(30), Token));
         _logs.Of(9147).ShouldHaveSingleItem();
         Rows().ShouldHaveSingleItem().ResponseStatus.ShouldBeNull();
+    }
+
+    // #3485: a bulk whose client went away while it ran answers 200 with the rest of its items not run, and does not throw.
+    // That answer is of work cut short, so it is not kept: the key stays held until its lease runs out, and a retry then
+    // runs the bulk again, the items not run among them.
+    [Fact]
+    public async Task ABulkCutShortByItsClientKeepsNothingAndARetryAfterTheLeaseRunsIt()
+    {
+        List<int> ran = [];
+        using var client = new CancellationTokenSource();
+        using (var scope = _database.Database.NewScope())
+        {
+            var http = Request(scope, "key-bulk");
+            http.RequestAborted = client.Token;
+            await Should.ThrowAsync<OperationCanceledException>(() => IdempotentRequests.RunAsync(http, () => BulkAsync(http, ran, () => ran.Count == 2 ? client.CancelAsync() : Task.CompletedTask)));
+        }
+
+        ran.ShouldBe([0, 1]);
+        var row = Rows().ShouldHaveSingleItem();
+        row.ResponseStatus.ShouldBeNull();
+        (await RefusedAsync(() => BeginAsync("key-bulk", row.RequestHash))).ShouldBe(IdempotencyErrorCodes.InProgress);
+
+        _clock.Advance(TimeSpan.FromMinutes(5));
+        using var retryScope = _database.Database.NewScope();
+        var retry = Request(retryScope, "key-bulk");
+        await (await IdempotentRequests.RunAsync(retry, () => BulkAsync(retry, ran, () => Task.CompletedTask))).ExecuteAsync(retry);
+
+        ran.ShouldBe([0, 1, 0, 1, 2, 3]);
+        retry.Response.Headers[IdempotentRequests.ReplayedHeader].ShouldBeEmpty();
+        Rows().ShouldHaveSingleItem().ResponseStatus.ShouldBe(StatusCodes.Status200OK);
+    }
+
+    // #3485: a create whose client went away before its commit throws on its token; nothing is kept, the key stays held until
+    // its lease runs out, and a retry then runs the write.
+    [Fact]
+    public async Task ACreateStoppedByItsClientBeforeItsCommitKeepsNothingAndARetryAfterTheLeaseRunsIt()
+    {
+        var writes = 0;
+        using var client = new CancellationTokenSource();
+        using (var scope = _database.Database.NewScope())
+        {
+            var http = Request(scope, "key-before");
+            http.RequestAborted = client.Token;
+            await Should.ThrowAsync<OperationCanceledException>(() => IdempotentRequests.RunAsync(http, async () =>
+            {
+                await client.CancelAsync();
+                http.RequestAborted.ThrowIfCancellationRequested();
+                writes++;
+                return Results.Json(new { id = "1" }, statusCode: StatusCodes.Status201Created);
+            }));
+        }
+
+        writes.ShouldBe(0);
+        Rows().ShouldHaveSingleItem().ResponseStatus.ShouldBeNull();
+
+        _clock.Advance(TimeSpan.FromMinutes(5));
+        using var retryScope = _database.Database.NewScope();
+        var retry = Request(retryScope, "key-before");
+        await AnswersCreatedAsync(retry, await IdempotentRequests.RunAsync(retry, () =>
+        {
+            writes++;
+            return Task.FromResult(Results.Json(new { id = "1" }, statusCode: StatusCodes.Status201Created));
+        }));
+        writes.ShouldBe(1);
+    }
+
+    // Four items, as ContentService.RunBulkAsync runs them: an item after the token was cancelled is not run, and the answer
+    // is 200 with every item, whether or not all ran.
+    private static async Task<IResult> BulkAsync(HttpContext http, List<int> ran, Func<Task> afterEach)
+    {
+        List<object> results = [];
+        for (var index = 0; index < 4; index++)
+        {
+            if (http.RequestAborted.IsCancellationRequested)
+            {
+                results.Add(new { index, status = "notRun" });
+                continue;
+            }
+
+            ran.Add(index);
+            results.Add(new { index, status = "succeeded" });
+            await afterEach();
+        }
+
+        return Results.Json(new { items = results, cancelled = http.RequestAborted.IsCancellationRequested });
+    }
+
+    // An answer whose client goes away as it begins to be written, once the work has answered.
+    private sealed class GoneWhileWritten(CancellationTokenSource client, IResult answer) : IResult
+    {
+        public async Task ExecuteAsync(HttpContext httpContext)
+        {
+            await client.CancelAsync();
+            await answer.ExecuteAsync(httpContext);
+        }
     }
 
     // An answer that writes until the request's token stops it.
