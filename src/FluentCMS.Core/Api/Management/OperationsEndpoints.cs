@@ -31,6 +31,10 @@ namespace FluentCMS.Core.Api.Management;
 // /me/preferences how a user wants the admin shown, /me/two-factor its second factor and /me/logins its external logins.
 internal static class OperationsEndpoints
 {
+    private const string ReplacePreferences = "Replaces every preference: one left out or null is no longer chosen. With If-Match, the ETag of a read, the write is refused with FCMS3105 (412) once another write has changed the preferences.";
+
+    private const string ChangePreferences = "Changes the preferences the body names and keeps the others as they are stored; null makes one no longer chosen. With If-Match, the ETag of a read, the write is refused with FCMS3105 (412) once another write has changed the preferences.";
+
     public static IServiceCollection AddManagementOperationsApi(this IServiceCollection services) =>
         services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Management, Map);
 
@@ -78,8 +82,11 @@ internal static class OperationsEndpoints
         me.MapGet("", MeAsync).Produces<MeResponse>();
         me.MapGet("/sites", MySitesAsync).Produces<ItemList<MySiteInfo>>();
         me.MapGet("/access", MyAccessAsync).Produces<CallerAccessResponse>();
-        me.MapGet("/preferences", PreferencesAsync).Produces<UserPreferencesInfo>();
-        me.MapPut("/preferences", SetPreferencesAsync).Takes<PreferencesRequest>().Produces<UserPreferencesInfo>();
+        me.MapGet("/preferences", PreferencesAsync).Produces<UserPreferencesInfo>().GivesETag();
+        me.MapPut("/preferences", SetPreferencesAsync).Takes<PreferencesRequest>().WithParameter(SharedComponents.PreferencesIfMatch)
+            .Produces<UserPreferencesInfo>().GivesETag().WithDescription(ReplacePreferences);
+        me.MapPatch("/preferences", ChangePreferencesAsync).Takes<PreferencesRequest>().WithParameter(SharedComponents.PreferencesIfMatch)
+            .Produces<UserPreferencesInfo>().GivesETag().WithDescription(ChangePreferences);
         me.MapGet("/sessions", MySessionsAsync).Produces<ItemList<UserSession>>();
         me.MapDelete("/sessions/{sessionId}", RevokeMySessionAsync).Produces(StatusCodes.Status204NoContent);
         me.MapGet("/two-factor", TwoFactorAsync).Produces<TwoFactorStatus>();
@@ -204,16 +211,40 @@ internal static class OperationsEndpoints
     private static async Task<IResult> PreferencesAsync(HttpContext httpContext, [FromServices] CurrentUser current)
     {
         ManagementQuery.Only(httpContext.Request);
-        return AdminJson.Ok(await current.PreferencesAsync(httpContext.RequestAborted));
+        return Preferences(httpContext, await current.PreferencesAsync(httpContext.RequestAborted));
     }
 
-    private static async Task<IResult> SetPreferencesAsync(HttpContext httpContext, [FromServices] CurrentUser current)
+    private static Task<IResult> SetPreferencesAsync(HttpContext httpContext, [FromServices] CurrentUser current) =>
+        WritePreferencesAsync(httpContext, current, partial: false);
+
+    // A member left out keeps its value and null clears it, as fallbacks in PATCH /sites/{id}/locales/{code}.
+    private static Task<IResult> ChangePreferencesAsync(HttpContext httpContext, [FromServices] CurrentUser current) =>
+        WritePreferencesAsync(httpContext, current, partial: true);
+
+    private static async Task<IResult> WritePreferencesAsync(HttpContext httpContext, CurrentUser current, bool partial)
     {
         ManagementQuery.Only(httpContext.Request);
+        var expected = IfMatch.OptionalTag(httpContext.Request);
         var body = await BodyReader.ReadAsync(httpContext.Request, "culture", "timeZone", "dateFormat", "numberFormat");
-        var wanted = new UserPreferencesInfo(body.String("culture"), body.String("timeZone"), body.String("dateFormat"), body.String("numberFormat"));
+        var values = new UserPreferencesInfo(body.String("culture"), body.String("timeZone"), body.String("dateFormat"), body.String("numberFormat"));
         body.ThrowIfInvalid();
-        return AdminJson.Ok(await current.SetPreferencesAsync(wanted, httpContext.RequestAborted));
+        var change = partial
+            ? new UserPreferencesChange
+            {
+                Values = values,
+                SetsCulture = body.Has("culture"),
+                SetsTimeZone = body.Has("timeZone"),
+                SetsDateFormat = body.Has("dateFormat"),
+                SetsNumberFormat = body.Has("numberFormat"),
+            }
+            : UserPreferencesChange.All(values);
+        return Preferences(httpContext, await current.SetPreferencesAsync(change, expected, httpContext.RequestAborted));
+    }
+
+    private static IResult Preferences(HttpContext httpContext, UserPreferencesInfo preferences)
+    {
+        httpContext.Response.Headers.ETag = $"\"{UserPreferences.Tag(preferences)}\"";
+        return AdminJson.Ok(preferences);
     }
 
     private static async Task<IResult> MySessionsAsync(HttpContext httpContext, [FromServices] CurrentUser current)

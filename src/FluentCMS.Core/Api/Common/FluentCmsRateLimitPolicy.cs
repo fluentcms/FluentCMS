@@ -17,6 +17,7 @@ internal static class RateLimitPolicyNames
     public const string Caller = PluginRateLimits.CallerPolicy;
     public const string PreAuth = "pre-auth";
     public const string Health = "health";
+    public const string StaticFiles = "static-files";
 }
 
 // One policy of the ASP.NET Core rate limiter, a token bucket per caller. Responses carry the IETF draft fields
@@ -169,6 +170,12 @@ internal sealed class PreAuthRateLimitPolicy(RateLimitOptions options, TimeProvi
 
 // The probes' own partition of the check before authentication, with no headers either.
 internal sealed class HealthRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(RateLimitPolicyNames.Health, options.Health.PermitLimit, time, reportsHeaders: false)
+{
+    protected override (string Key, int Limit) Partition(HttpContext context) => (Address(context), DefaultLimit);
+}
+
+// The partition of the check before authentication for the static files a surface marks, with no headers either.
+internal sealed class StaticFilesRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(RateLimitPolicyNames.StaticFiles, options.StaticFiles.PermitLimit, time, reportsHeaders: false)
 {
     protected override (string Key, int Limit) Partition(HttpContext context) => (Address(context), DefaultLimit);
 }

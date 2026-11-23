@@ -91,6 +91,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         "patch /sites/{id}", "post /sites/{id}/locales", "patch /sites/{id}/locales/{code}", "put /settings/{area}", "put /settings/{area}/defaults",
         "put /plugins/{name}/sites/{site}",
         "post /me/two-factor/verify", "post /me/two-factor/recovery-codes", "post /me/two-factor/disable", "put /me/preferences",
+        "patch /me/preferences",
     ];
 
     private JsonObject Document => fixture.Document;
@@ -569,6 +570,31 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         Resolve(write["requestBody"]!["content"]!["application/json"]!["schema"]!)["properties"]!.AsObject().Select(item => item.Key)
             .ShouldBe(["culture", "timeZone", "dateFormat", "numberFormat"]);
         Response(write, "200")["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["culture", "timeZone", "dateFormat", "numberFormat"]);
+    }
+
+    // A change of one preference, and the ETag a write may send back as If-Match, which none of them needs (#3450).
+    [Fact]
+    public void TheChangeOfOnePreferenceAndTheETagOfThePreferencesAreDescribed()
+    {
+        var path = Paths[$"{Management}/me/preferences"]!;
+        var change = path["patch"]!;
+        change["operationId"]!.GetValue<string>().ShouldBe("patchMePreferences");
+        change["description"]!.GetValue<string>().ShouldContain("keeps the others");
+        Resolve(change["requestBody"]!["content"]!["application/json"]!["schema"]!)["properties"]!.AsObject().Select(item => item.Key)
+            .ShouldBe(["culture", "timeZone", "dateFormat", "numberFormat"]);
+        Response(change, "200")["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["culture", "timeZone", "dateFormat", "numberFormat"]);
+        path["put"]!["description"]!.GetValue<string>().ShouldContain("Replaces every preference");
+
+        var header = Parameters["preferences-if-match"]!;
+        header["name"]!.GetValue<string>().ShouldBe("If-Match");
+        header["in"]!.GetValue<string>().ShouldBe("header");
+        (header["required"]?.GetValue<bool>() ?? false).ShouldBeFalse();
+        header["description"]!.GetValue<string>().ShouldContain("hash");
+        foreach (var method in new[] { "get", "put", "patch" })
+        {
+            path[method]!["responses"]!["200"]!["headers"]!["ETag"].ShouldNotBeNull(method);
+            path[method]!["parameters"]!.ToJsonString().Contains("#/components/parameters/preferences-if-match\"", StringComparison.Ordinal).ShouldBe(method != "get", method);
+        }
     }
 
     // A locale another one names as a fallback is not removed, and no chain changes with a removal (#3517).

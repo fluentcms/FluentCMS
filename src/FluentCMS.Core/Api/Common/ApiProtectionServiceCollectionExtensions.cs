@@ -18,6 +18,7 @@ internal static class ApiProtectionServiceCollectionExtensions
         services.AddSingleton(provider => new PreAuthRateLimitPolicy(provider.GetRequiredService<RateLimitOptions>(), provider.GetRequiredService<TimeProvider>()));
         services.AddSingleton(provider => new HealthRateLimitPolicy(provider.GetRequiredService<RateLimitOptions>(), provider.GetRequiredService<TimeProvider>()));
         services.AddSingleton(provider => new AuthRateLimitPolicy(provider.GetRequiredService<RateLimitOptions>(), provider.GetRequiredService<TimeProvider>()));
+        services.AddSingleton(provider => new StaticFilesRateLimitPolicy(provider.GetRequiredService<RateLimitOptions>(), provider.GetRequiredService<TimeProvider>()));
         services.AddSingleton<PreAuthRateLimiter>();
 
         // UseFluentCms adds UseAuthorization, which needs these whether or not the host has policies of its own.

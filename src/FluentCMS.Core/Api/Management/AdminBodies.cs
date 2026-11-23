@@ -294,7 +294,8 @@ internal sealed record MeResponse
 
 internal sealed record PrincipalResponse(Guid Id, PrincipalKind Kind, string Name);
 
-// PUT /me/preferences replaces every value; one left out or null is not chosen.
+// PUT /me/preferences replaces every value, so one left out or null is not chosen; PATCH changes the members it names and
+// keeps the others, and null there is not chosen.
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record PreferencesRequest
 {

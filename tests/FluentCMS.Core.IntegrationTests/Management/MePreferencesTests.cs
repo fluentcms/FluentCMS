@@ -6,8 +6,8 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Management;
 
-// GET and PUT /me/preferences over HTTP on SQLite (#3096): a user's admin preferences, kept for every session of the user
-// and for nobody else, and refused to a key.
+// GET, PUT and PATCH /me/preferences over HTTP on SQLite (#3096, #3450): a user's admin preferences, kept for every session
+// of the user and for nobody else, and refused to a key.
 public sealed class MePreferencesTests(AdminFixture fixture) : IClassFixture<AdminFixture>
 {
     private const string Nothing = """{"culture":null,"timeZone":null,"dateFormat":null,"numberFormat":null}""";
@@ -36,6 +36,108 @@ public sealed class MePreferencesTests(AdminFixture fixture) : IClassFixture<Adm
         var changed = await fixture.PutAsync("me/preferences", """{ "timeZone": "America/New_York", "dateFormat": null }""", phone);
         changed.Json.ToJsonString().ShouldBe("""{"culture":null,"timeZone":"America/New_York","dateFormat":null,"numberFormat":null}""");
         (await fixture.GetAsync("me/preferences", laptop)).Json["timeZone"]!.GetValue<string>().ShouldBe("America/New_York");
+    }
+
+    // Two tabs of one user, each changing one preference, as the account page does (#3450).
+    [Fact]
+    public async Task APatchChangesTheMembersItNamesAndKeepsTheOthersAsStored()
+    {
+        var user = await fixture.Host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        using var first = await fixture.Host.AsUserAsync(user);
+        using var second = await fixture.Host.AsUserAsync(user);
+
+        var created = await fixture.PatchAsync("me/preferences", """{ "timeZone": "Europe/Berlin" }""", first);
+        created.Status.ShouldBe(HttpStatusCode.OK, created.Body?.ToJsonString());
+        created.Json.ToJsonString().ShouldBe("""{"culture":null,"timeZone":"Europe/Berlin","dateFormat":null,"numberFormat":null}""");
+        (await fixture.PutAsync("me/preferences", """{ "culture": "en-US", "timeZone": "Europe/Berlin", "dateFormat": "en-GB", "numberFormat": "fr-FR" }""", first)).Status.ShouldBe(HttpStatusCode.OK);
+
+        // Each tab last read the four values above; neither sends the other's.
+        var changes = await Task.WhenAll(
+            fixture.PatchAsync("me/preferences", """{ "timeZone": "Asia/Tokyo" }""", first),
+            fixture.PatchAsync("me/preferences", """{ "culture": "de-de" }""", second));
+
+        changes.ShouldAllBe(change => change.Status == HttpStatusCode.OK);
+        (await fixture.GetAsync("me/preferences", first)).Json.ToJsonString()
+            .ShouldBe("""{"culture":"de-DE","timeZone":"Asia/Tokyo","dateFormat":"en-GB","numberFormat":"fr-FR"}""");
+
+        var cleared = await fixture.PatchAsync("me/preferences", """{ "dateFormat": null }""", second);
+        cleared.Json.ToJsonString().ShouldBe("""{"culture":"de-DE","timeZone":"Asia/Tokyo","dateFormat":null,"numberFormat":"fr-FR"}""");
+        (await fixture.PatchAsync("me/preferences", "{}", second)).Json.ToJsonString().ShouldBe(cleared.Json.ToJsonString());
+
+        var refused = await fixture.PatchAsync("me/preferences", """{ "culture": "not a culture", "numberFormat": null }""", first);
+        refused.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, refused.Body?.ToJsonString());
+        (await fixture.PatchAsync("me/preferences", """{ "theme": "dark" }""", first)).Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        (await fixture.GetAsync("me/preferences", first)).Json.ToJsonString().ShouldBe(cleared.Json.ToJsonString());
+    }
+
+    // A write that names the ETag it read is refused once another tab changed the preferences, and that tab's change stays.
+    [Fact]
+    public async Task AWriteBasedOnAStaleETagIsRefusedAndNothingIsLost()
+    {
+        var user = await fixture.Host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        using var first = await fixture.Host.AsUserAsync(user);
+        using var second = await fixture.Host.AsUserAsync(user);
+
+        var empty = await fixture.GetAsync("me/preferences", first);
+        empty.ETag.ShouldNotBeNull();
+        var saved = await AdminFixture.SendAsync(first, HttpMethod.Put, "me/preferences", """{ "culture": "en-US", "timeZone": "Europe/Berlin" }""", empty.ETag);
+        saved.Status.ShouldBe(HttpStatusCode.OK, saved.Body?.ToJsonString());
+        saved.ETag.ShouldNotBe(empty.ETag);
+
+        var read = await fixture.GetAsync("me/preferences", first);
+        read.ETag.ShouldBe(saved.ETag);
+        (await fixture.GetAsync("me/preferences", second)).ETag.ShouldBe(read.ETag);
+
+        var changed = await AdminFixture.SendAsync(second, HttpMethod.Patch, "me/preferences", """{ "timeZone": "Asia/Tokyo" }""", read.ETag);
+        changed.Status.ShouldBe(HttpStatusCode.OK, changed.Body?.ToJsonString());
+        changed.ETag.ShouldNotBe(read.ETag);
+
+        foreach (var method in new[] { HttpMethod.Patch, HttpMethod.Put })
+        {
+            var stale = await AdminFixture.SendAsync(first, method, "me/preferences", """{ "culture": "fr-FR" }""", read.ETag);
+            stale.Status.ShouldBe(HttpStatusCode.PreconditionFailed, stale.Body?.ToJsonString());
+            stale.Json["code"]!.GetValue<string>().ShouldBe("FCMS3105");
+        }
+
+        var stored = await fixture.GetAsync("me/preferences", first);
+        stored.Json.ToJsonString().ShouldBe("""{"culture":"en-US","timeZone":"Asia/Tokyo","dateFormat":null,"numberFormat":null}""");
+        stored.ETag.ShouldBe(changed.ETag);
+
+        var again = await AdminFixture.SendAsync(first, HttpMethod.Patch, "me/preferences", """{ "culture": "fr-FR" }""", $"W/{stored.ETag}");
+        again.Status.ShouldBe(HttpStatusCode.OK, again.Body?.ToJsonString());
+        again.Json["timeZone"]!.GetValue<string>().ShouldBe("Asia/Tokyo");
+        (await AdminFixture.SendAsync(first, HttpMethod.Patch, "me/preferences", """{ "dateFormat": "de-DE" }""", "*")).Status.ShouldBe(HttpStatusCode.OK);
+
+        var invalid = await AdminFixture.SendAsync(first, HttpMethod.Patch, "me/preferences", """{ "dateFormat": null }""", "unquoted");
+        invalid.Status.ShouldBe(HttpStatusCode.BadRequest, invalid.Body?.ToJsonString());
+        invalid.Json["code"]!.GetValue<string>().ShouldBe("FCMS3131");
+        (await AdminFixture.SendAsync(first, HttpMethod.Patch, "me/preferences", "{}", $"{stored.ETag}, {again.ETag}")).Status.ShouldBe(HttpStatusCode.BadRequest);
+        (await fixture.GetAsync("me/preferences", first)).Json["dateFormat"]!.GetValue<string>().ShouldBe("de-DE");
+    }
+
+    // The tag is of the values alone, so it says nothing of the user, and the same values give the same tag.
+    [Fact]
+    public async Task TheETagFollowsTheValuesAndNothingElse()
+    {
+        using var one = await fixture.ClientForAsync(BuiltInRoles.EditorName);
+        using var other = await fixture.ClientForAsync(BuiltInRoles.EditorName);
+        const string Values = """{ "culture": "en-GB", "timeZone": "Europe/London", "dateFormat": null, "numberFormat": null }""";
+
+        var first = await fixture.PutAsync("me/preferences", Values, one);
+        (await fixture.PutAsync("me/preferences", Values, other)).ETag.ShouldBe(first.ETag);
+        (await fixture.PutAsync("me/preferences", Values, one)).ETag.ShouldBe(first.ETag);
+
+        string?[] tags =
+        [
+            first.ETag,
+            (await fixture.PatchAsync("me/preferences", """{ "culture": "en-US" }""", one)).ETag,
+            (await fixture.PatchAsync("me/preferences", """{ "timeZone": "Europe/Paris" }""", one)).ETag,
+            (await fixture.PatchAsync("me/preferences", """{ "dateFormat": "en-US" }""", one)).ETag,
+            (await fixture.PatchAsync("me/preferences", """{ "numberFormat": "en-US" }""", one)).ETag,
+            (await fixture.PatchAsync("me/preferences", """{ "numberFormat": null }""", one)).ETag,
+        ];
+        tags.Distinct().Count().ShouldBe(tags.Length - 1);
+        tags[^1].ShouldBe(tags[3]);
     }
 
     [Fact]
@@ -84,6 +186,7 @@ public sealed class MePreferencesTests(AdminFixture fixture) : IClassFixture<Adm
         read.Status.ShouldBe(HttpStatusCode.Forbidden, read.Body?.ToJsonString());
         read.Json["code"]!.GetValue<string>().ShouldBe("FCMS3103");
         (await fixture.PutAsync("me/preferences", """{ "culture": "en-US" }""", client)).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await fixture.PatchAsync("me/preferences", """{ "culture": "en-US" }""", client)).Status.ShouldBe(HttpStatusCode.Forbidden);
 
         using var anonymous = fixture.Host.CreateClient();
         (await fixture.GetAsync("me/preferences", anonymous)).Status.ShouldBe(HttpStatusCode.Unauthorized);
