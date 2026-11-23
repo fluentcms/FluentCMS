@@ -64,7 +64,19 @@ internal sealed class McpInstructionService(
 
         try
         {
-            await database.SaveChangesAsync(cancellationToken);
+            if (added)
+            {
+                // A new row holds its site to its commit, so that the site's deletion waits for it and it goes with
+                // DeletedSiteMcpData, or it finds the site gone and is refused with FCMS2301 (#3586).
+                await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+                await database.HoldSiteAsync(site, cancellationToken);
+                await database.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(CancellationToken.None);
+            }
+            else
+            {
+                await database.SaveChangesAsync(cancellationToken);
+            }
         }
         catch (DbUpdateException) when (added)
         {

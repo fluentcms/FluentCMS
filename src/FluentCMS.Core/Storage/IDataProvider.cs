@@ -100,10 +100,16 @@ public interface IDataProvider
     // committed when it ran.
     Task<IDbContextTransaction?> BeginSnapshotAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<IDbContextTransaction?>(null);
 
-    // Locks the row of a site in cms_site to the end of the transaction of the context, so that a write that adds an entry to
+    // Locks the row of a site in cms_site to the end of the transaction of the context, so that a write that adds a row to
     // the site and the deletion of the site wait for each other: shared for the writes, which do not wait for one another,
-    // and exclusive for the deletion. False when there is no such site. The default reads the row without a lock, which is
-    // enough where the database has one writer.
+    // and exclusive for the deletion. False when there is no such site. The context may be a plugin's, whose model has no
+    // cms_site (PluginDbContext<T>.HoldSiteAsync). The default reads the row without a lock, which is enough where the
+    // database has one writer.
     Task<bool> LockSiteAsync(DbContext context, Guid site, bool exclusive, CancellationToken cancellationToken) =>
-        context.Set<Entities.Site>().AnyAsync(row => row.Id == site, cancellationToken);
+        context.Model.FindEntityType(typeof(Entities.Site)) is null
+            ? ReadSiteAsync(context, site, cancellationToken)
+            : context.Set<Entities.Site>().AnyAsync(row => row.Id == site, cancellationToken);
+
+    private static async Task<bool> ReadSiteAsync(DbContext context, Guid site, CancellationToken cancellationToken) =>
+        (await context.Database.SqlQuery<int>($"""SELECT 1 AS "Value" FROM cms_site WHERE id = {site}""").ToListAsync(cancellationToken)).Count > 0;
 }

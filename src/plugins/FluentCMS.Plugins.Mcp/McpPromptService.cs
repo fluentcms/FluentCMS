@@ -69,7 +69,7 @@ internal sealed partial class McpPromptService(
 
         var prompt = new McpPrompt { Id = Guid.CreateVersion7(), SiteId = site.Value };
         database.Add(prompt);
-        await SaveAsync(site, prompt, valid, cancellationToken);
+        await SaveAsync(site, prompt, valid, added: true, cancellationToken);
         McpLog.PromptChanged(logger, "created", prompt.Name, site.Value);
         await events.PublishAsync(new McpPromptCreatedEvent(prompt.Id, prompt.Name), cancellationToken);
         return Info(prompt);
@@ -82,7 +82,7 @@ internal sealed partial class McpPromptService(
 
         var site = await RequireAsync(cancellationToken);
         var prompt = await FindAsync(site, id, tracked: true, cancellationToken);
-        await SaveAsync(site, prompt, Validate(request), cancellationToken);
+        await SaveAsync(site, prompt, Validate(request), added: false, cancellationToken);
         McpLog.PromptChanged(logger, "updated", prompt.Name, site.Value);
         await events.PublishAsync(new McpPromptUpdatedEvent(prompt.Id, prompt.Name), cancellationToken);
         return Info(prompt);
@@ -122,8 +122,10 @@ internal sealed partial class McpPromptService(
         return await prompts.FirstOrDefaultAsync(prompt => prompt.Id == id && prompt.SiteId == site.Value, cancellationToken) ?? throw NotFound(id);
     }
 
-    // Two writers that both found the name free meet at the unique index.
-    private async Task SaveAsync(SiteId site, McpPrompt prompt, ValidRequest valid, CancellationToken cancellationToken)
+    // Two writers that both found the name free meet at the unique index. A new prompt holds its site to its commit, so that
+    // the site's deletion waits for it and it goes with DeletedSiteMcpData, or it finds the site gone and is refused with
+    // FCMS2301 (#3586).
+    private async Task SaveAsync(SiteId site, McpPrompt prompt, ValidRequest valid, bool added, CancellationToken cancellationToken)
     {
         if (await ProviderListsAsync(valid.Name, cancellationToken))
         {
@@ -145,7 +147,17 @@ internal sealed partial class McpPromptService(
 
         try
         {
-            await database.SaveChangesAsync(cancellationToken);
+            if (added)
+            {
+                await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+                await database.HoldSiteAsync(site, cancellationToken);
+                await database.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(CancellationToken.None);
+            }
+            else
+            {
+                await database.SaveChangesAsync(cancellationToken);
+            }
         }
         catch (DbUpdateException)
         {
