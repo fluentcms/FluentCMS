@@ -196,7 +196,7 @@ public sealed partial class HostedPagesTests
     public async Task ASignOutWhoseRowCannotBeWrittenStillDeletesItsCookie()
     {
         using var idp = new FakeOidcProvider();
-        var failure = new SessionRowFailure();
+        var failure = new SessionRowFailure(() => new DbUpdateException("The save fails for the test.", new DiskFullException()));
         var logs = new LogCapture();
         await using var host = SsoHost(idp)
             .WithServices(services => services.AddLogging(logging => logging.AddProvider(logs)))
@@ -228,7 +228,35 @@ public sealed partial class HostedPagesTests
         missing.Select(entry => (entry.Level, entry.State["Pool"] as string, entry.State["Id"] as Guid?, entry.State["Reason"] as string)).ShouldBe(
             [(LogLevel.Error, "user", editor.Id, SessionEndReasons.SignedOut), (LogLevel.Error, "user", user.Id, SessionEndReasons.RemoteSignOut)]);
         missing.ShouldAllBe(entry => !entry.Message.Contains(Text(tokens, "refresh_token")) && !entry.Message.Contains(ann.Sid!));
-        missing.ShouldAllBe(entry => entry.Exception == null && (string?)entry.State["ExceptionType"] == typeof(DbUpdateException).FullName);
+        missing.ShouldAllBe(entry => entry.Exception == null && (string?)entry.State["ExceptionType"] == typeof(DiskFullException).FullName);
+        missing.ShouldAllBe(entry => (string?)entry.State["SqlState"] == "53100" && (int?)entry.State["ErrorCode"] == 28);
+        missing.ShouldAllBe(entry => !entry.Message.Contains("The disk is full", StringComparison.Ordinal));
+    }
+
+    // Whatever the provider throws for a write it could not make finishes the sign-out too: SqlClient's timeout for a
+    // connection of an exhausted pool is a bare InvalidOperationException (#3531).
+    [Fact]
+    public async Task ASignOutWhoseRowFailsWithAnExceptionOfNoDatabaseTypeStillDeletesItsCookie()
+    {
+        var failure = new SessionRowFailure(() => new InvalidOperationException("Timeout expired. The timeout period elapsed prior to obtaining a connection from the pool."));
+        var logs = new LogCapture();
+        await using var host = NewHost(new CapturedEmails())
+            .WithServices(services => services.AddLogging(logging => logging.AddProvider(logs)))
+            .Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(failure)));
+
+        var editor = await CreateUserAsync(host);
+        using var browser = new HostedPagesBrowser(host);
+        await SignInAsync(browser, editor.Email);
+        var tokens = await CodeFlowAsync(host, browser);
+        await SignOutAsync(browser);
+
+        browser.HasCookie(SignInCookie).ShouldBeFalse();
+        (await RefusedAsync(host, Text(tokens, "refresh_token"))).ShouldBe("invalid_grant");
+        failure.Failed.ShouldBe(1);
+        var missing = logs.Entries.Where(entry => entry.EventId.Id == AccountLog.SessionEndNotRecordedId).ShouldHaveSingleItem();
+        ((string?)missing.State["ExceptionType"]).ShouldBe(typeof(InvalidOperationException).FullName);
+        missing.State["SqlState"].ShouldBeNull();
+        missing.Exception.ShouldBeNull();
     }
 
     // Only a write of the row that the database failed is let off: a fault of the code on that path, as the row written

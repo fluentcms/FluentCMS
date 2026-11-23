@@ -2,9 +2,8 @@ using System.Data.Common;
 using System.Security.Claims;
 using FluentCMS.Content;
 using FluentCMS.Events;
+using FluentCMS.Core.Events;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Identity;
@@ -45,16 +44,32 @@ internal sealed class SessionEvents(IdentityChanges changes, TimeProvider time, 
         {
             await changes.RecordAsync(ended with { Source = source }, CancellationToken.None);
         }
-        catch (Exception exception) when (IsFailedWrite(exception))
+        catch (Exception exception) when (exception is not OutOfMemoryException && !IsFaultOfTheCode(exception))
         {
-            // The type only: with EF's sensitive data logging, the message can carry the row, a name or an address.
-            AccountLog.SessionEndNotRecorded(logger, members ? "member" : "user", id, reason, (exception.InnerException ?? exception).GetType().FullName);
+            // The type and the database's codes only: with EF's sensitive data logging, the message can carry the row, a
+            // name or an address.
+            var database = Database(exception);
+            AccountLog.SessionEndNotRecorded(logger, members ? "member" : "user", id, reason, (exception.InnerException ?? exception).GetType().FullName, database?.SqlState, database?.ErrorCode);
         }
     }
 
-    // What the database's write can raise; anything else, as a write inside another transaction, is a fault of the code
-    // and fails the request as before.
-    private static bool IsFailedWrite(Exception exception) => exception
-        is DbException or DbUpdateException or RetryLimitExceededException or TimeoutException
-        or InvalidOperationException { InnerException: DbException };
+    // A write inside a transaction of someone else's is refused before the database is asked, and fails the request as it
+    // did before; every other failure is the write's, whatever the provider throws for it (#3531).
+    private static bool IsFaultOfTheCode(Exception exception) =>
+        exception is InvalidOperationException { Message: var message }
+        && (message.StartsWith(IdentityErrorCodes.WriteInTransaction, StringComparison.Ordinal)
+            || message.StartsWith(EventErrorCodes.PublishInForeignTransaction, StringComparison.Ordinal));
+
+    private static DbException? Database(Exception? exception)
+    {
+        for (; exception is not null; exception = exception.InnerException)
+        {
+            if (exception is DbException database)
+            {
+                return database;
+            }
+        }
+
+        return null;
+    }
 }
