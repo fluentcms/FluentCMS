@@ -153,8 +153,10 @@ internal sealed class TransferExporter(
                 {
                     await WriteContentAsync(archive, run, site, () => count++, reading.Token);
                 }
-                catch (Exception exception) when (package.IsCut && exception is OperationCanceledException or IOException)
+                catch (Exception exception) when (package.IsCut)
                 {
+                    // Whatever the provider throws for a read the bound cancelled, such as SqlClient's "Operation cancelled
+                    // by user", the bound ended it.
                     throw SnapshotTimedOut(site, exception);
                 }
             }

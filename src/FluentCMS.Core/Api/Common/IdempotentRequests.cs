@@ -81,8 +81,9 @@ internal static class IdempotentRequests
         catch (OperationCanceledException) when (aborted.IsCancellationRequested)
         {
             // The client went away before the work answered, perhaps after it committed or with a part of it done, or the
-            // capture of its answer ran past its bound: the key stays held until its lease runs out, which is renewed for as long as the work ran, so that a
-            // retry never runs it a second time while the first may have succeeded or may still be running.
+            // capture of its answer ran past its bound: the key stays held until its lease runs out, which is renewed for as
+            // long as the work ran, so that a retry never runs it a second time while the first may have succeeded or may
+            // still be running.
             throw;
         }
         catch (OperationCanceledException) when (lost.IsCancellationRequested)

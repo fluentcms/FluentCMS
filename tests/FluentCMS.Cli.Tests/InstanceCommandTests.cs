@@ -305,6 +305,31 @@ public sealed class InstanceCommandTests(InstanceFixture instance) : IClassFixtu
         }
     }
 
+    // #3485: an export the instance stops at its snapshot's bound reaches the tool as a reset connection, which the handler
+    // can report as the plain IOException of the transport: it is a connection that stopped answering, and the file being
+    // written beside the target goes.
+    [Fact]
+    public async Task AnExportWhoseConnectionIsResetWhileItIsReadIsUnreachableAndLeavesNothing()
+    {
+        var directory = Directory.CreateTempSubdirectory("fluentcms-export-reset-");
+        try
+        {
+            var target = Path.Combine(directory.FullName, "site.zip");
+            using var output = new StringWriter();
+            using var error = new StringWriter();
+
+            var exit = await CommandLine.RunAsync(["export", "--output", target, "--url", "https://cms.example.com", "--token", "fcms_mk_secret"], output, error, launcher: null, _ => new HttpClient(new ResetPackage()), Token);
+
+            exit.ShouldBe(1);
+            error.ToString().ShouldStartWith($"{CliErrorCodes.TransferUnreachable}: ");
+            Directory.EnumerateFileSystemEntries(directory.FullName).ShouldBeEmpty();
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
     private sealed class JsonAnswer(string body) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
@@ -365,6 +390,63 @@ public sealed class InstanceCommandTests(InstanceFixture instance) : IClassFixtu
 
         private static Task<HttpResponseMessage> Json(JsonObject body) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body.ToJsonString(), System.Text.Encoding.UTF8, "application/json") });
+    }
+
+    // A package whose connection is reset after the start of a zip, as the socket reports it.
+    private sealed class ResetPackage : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var content = new StreamContent(new ResetStream());
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        }
+    }
+
+    private sealed class ResetStream : Stream
+    {
+        private int _reads;
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            byte[] start = [0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x08, 0x00];
+            switch (_reads++)
+            {
+                case 0:
+                    start.AsSpan(0, 4).CopyTo(buffer.Span);
+                    return ValueTask.FromResult(4);
+                case 1:
+                    start.AsSpan(4).CopyTo(buffer.Span);
+                    return ValueTask.FromResult(4);
+                default:
+                    throw new IOException("Unable to read data from the transport connection: An existing connection was forcibly closed by the remote host.", new System.Net.Sockets.SocketException(10054));
+            }
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 
     // A package whose answer stalls after the signature of a zip, until the export is cancelled.

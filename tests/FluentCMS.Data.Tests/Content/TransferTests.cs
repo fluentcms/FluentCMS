@@ -161,24 +161,119 @@ public sealed class TransferTests : IDisposable
         Exported(source).ShouldBe(1);
         var output = new StalledOutput(throwsWhenAborted, stallAt: counted.SnapshotWrites);
 
-        // On a thread of its own, since the stalled write can be one that blocks, which SQLite reaches without a yield.
+        // On a thread of its own, since the stalled write can be one that blocks, which SQLite reaches without a yield. A
+        // failed assertion still lets the write go, so that no snapshot is left open.
         var exporting = Task.Run(() => source.AsAsync(Admin, async services =>
         {
             var (exporter, run) = await StartExportAsync(services, output);
             await Should.ThrowAsync<OperationCanceledException>(() => exporter.WriteAsync(run, output, output.Abort, Token));
             return services.GetRequiredService<CmsDbContext>().Database.CurrentTransaction is null;
         }), Token);
-        await output.Stalled.Task.WaitAsync(RowLocks.Limit, Token);
-        exporting.IsCompleted.ShouldBeFalse();
+        try
+        {
+            await output.Stalled.Task.WaitAsync(RowLocks.Limit, Token);
+            exporting.IsCompleted.ShouldBeFalse();
 
-        clock.Advance(TimeSpan.FromHours(1));
+            clock.Advance(TimeSpan.FromHours(1));
 
-        (await exporting.WaitAsync(RowLocks.Limit, Token)).ShouldBeTrue();
+            (await exporting.WaitAsync(RowLocks.Limit, Token)).ShouldBeTrue();
+        }
+        finally
+        {
+            output.Abort();
+        }
+
         logs.Of(9190).ShouldHaveSingleItem();
         logs.Of(9181).ShouldHaveSingleItem();
         Exported(source).ShouldBe(1);
         var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(Target(), output.Received.ToArray()));
         refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
+    }
+
+    // #3485: the bound ends a read too. What the provider throws for a read it cancelled need not be a cancellation, as
+    // SqlClient's "Operation cancelled by user" is not, and the export still ends as one the bound stopped: 9190 and 9182,
+    // no transfer.exported row, and a cancellation that names the option.
+    [Fact]
+    public async Task ABoundThatEndsAReadStopsTheExportAsBoundedWhateverTheProviderThrows()
+    {
+        var clock = new ManualTimeProvider(new DateTimeOffset(2027, 3, 1, 8, 0, 0, TimeSpan.Zero));
+        var logs = new ExportLogs();
+        var read = new ReadGate();
+        var source = new ServiceDatabase(cms =>
+        {
+            Configure(cms);
+            cms.Services.AddSingleton<TimeProvider>(clock);
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+            cms.Services.ConfigureDbContext<CmsDbContext>(options => options.AddInterceptors(read));
+        });
+        _targets.Add(source);
+        if (TestProvider.IsSqlServer)
+        {
+            source.Read(context => context.Database.ExecuteSqlRaw("ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON"));
+        }
+
+        await CreateAsSystemAsync(source, "author", new ContentDocument { ["name"] = "Ada" });
+        using var output = new MemoryStream();
+
+        var exporting = Task.Run(() => source.AsAsync(Admin, async services =>
+        {
+            var exporter = services.GetRequiredService<TransferExporter>();
+            var run = await exporter.PrepareAsync(new TransferExportRequest { Types = ["author"] }, Token);
+            read.Armed = true;
+
+            // Caught here, since Shouldly answers a cancelled task with a cancellation of its own, without the message.
+            try
+            {
+                await exporter.WriteAsync(run, output, () => { }, Token);
+                return null;
+            }
+            catch (OperationCanceledException exception)
+            {
+                return exception;
+            }
+        }), Token);
+        try
+        {
+            await read.Reached.Task.WaitAsync(RowLocks.Limit, Token);
+            clock.Advance(TimeSpan.FromHours(1));
+        }
+        finally
+        {
+            read.Release.TrySetResult();
+        }
+
+        (await exporting.WaitAsync(RowLocks.Limit, Token)).ShouldNotBeNull().Message.ShouldContain("ExportSnapshotTimeout");
+        logs.Of(9190).ShouldHaveSingleItem();
+        logs.Of(9182).ShouldHaveSingleItem();
+        Exported(source).ShouldBe(0);
+    }
+
+    // Holds the first read of cms_document inside the export's snapshot until the test lets it go, and then fails it as
+    // SqlClient fails a command whose token was cancelled.
+    private sealed class ReadGate : DbCommandInterceptor
+    {
+        private int _passed;
+
+        public volatile bool Armed;
+
+        public TaskCompletionSource Reached { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (Armed && eventData.Context?.Database.CurrentTransaction is not null && command.CommandText.Contains("cms_document", StringComparison.Ordinal) && Interlocked.Exchange(ref _passed, 1) == 0)
+            {
+                Reached.TrySetResult();
+                await Release.Task;
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    throw new InvalidOperationException("Operation cancelled by user.");
+                }
+            }
+
+            return result;
+        }
     }
 
     private static async Task<(TransferExporter Exporter, TransferExportRun Run)> StartExportAsync(IServiceProvider services, StalledOutput output)
