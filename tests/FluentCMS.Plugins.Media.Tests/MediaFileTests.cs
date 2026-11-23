@@ -377,18 +377,66 @@ public sealed class MediaFileTests
             <animateMotion path="M0 0 L-500 -500" dur="1s"/>
             <animate attributeName="style" to="position:fixed" dur="1s"/>
             <g><animate href="#root" attributeName="filter" to="drop-shadow(0 0 5000px white)" dur="1s"/></g>
+            <set attributeName="width" to="5000"/>
+            <g><set xlink:href="#root" attributeName="height" to="5000" xmlns:xlink="http://www.w3.org/1999/xlink"/></g>
+            <g id="inner"><set href="#inner" xlink:href="#root" attributeName="width" to="4000" xmlns:xlink="http://www.w3.org/1999/xlink"/></g>
             <set attributeName="opacity" to="0.5"/>
             <g><animateTransform attributeName="transform" type="rotate" to="90" dur="1s"/></g>
+            <g><set attributeName="width" to="3"/></g>
             </svg>
             """)));
 
-        foreach (var gone in (string[])["overflow", "translate", "animateMotion", "position", "drop-shadow"])
+        foreach (var gone in (string[])["overflow", "translate", "animateMotion", "position", "drop-shadow", "5000", "4000"])
         {
             text.ShouldNotContain(gone);
         }
 
         text.ShouldContain("""<set attributeName="opacity" to="0.5" />""");
         text.ShouldContain("""<g><animateTransform attributeName="transform" type="rotate" to="90" dur="1s" /></g>""");
+        text.ShouldContain("""<g><set attributeName="width" to="3" /></g>""");
+    }
+
+    // A CDATA section that is empty goes, so that the element is written alike on every pass and the prefix does not move.
+    [Fact]
+    public void AnEmptyCdataSectionGivesTheSameBytesOnEveryPass()
+    {
+        var once = Sanitized(Files.Svg("""<g id="box"><![CDATA[]]></g><use href="#box"/><title><![CDATA[]]></title>"""));
+
+        Encoding.UTF8.GetString(once).ShouldContain($"""<g id="{Prefix(Encoding.UTF8.GetString(once))}box" />""");
+        var twice = Sanitized(once);
+        twice.ShouldBe(once);
+        Sanitized(twice).ShouldBe(once);
+    }
+
+    // Removing nodes one at a time walked their siblings each time; each element's children are now set again once, so a
+    // file of many removed siblings near the node limit takes a time in proportion to its size.
+    [Theory]
+    [InlineData("<g/><b data-padding=\"aaaa\"/>", 49_999)]
+    [InlineData("<g/><![CDATA[aaaaaaaa]]>", 49_999)]
+    [InlineData("<g/><set attributeName=\"overflow\" to=\"visible\"/>", 49_999)]
+    public void ManyRemovedSiblingsAreSanitisedInTimeInProportionToTheirNumber(string pair, int count)
+    {
+        var bytes = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\">" + string.Concat(Enumerable.Repeat(pair, count)) + "</svg>");
+        bytes.Length.ShouldBeGreaterThan(900_000);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+
+        var text = Encoding.UTF8.GetString(Sanitized(bytes));
+
+        watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
+        Regex.Count(text, "<g />").ShouldBe(count);
+        text.ShouldNotContain("<b");
+        text.ShouldNotContain("overflow");
+    }
+
+    // More elements and CDATA sections than MaxNodes are no SVG, so that whatever else a file holds the passes over it cost
+    // a bounded time; a file at the limit is taken.
+    [Fact]
+    public void AFileAtTheNodeLimitIsTakenAndOneOverItIsNot()
+    {
+        static byte[] Flat(int nodes) => Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\">" + string.Concat(Enumerable.Repeat("<g/>", nodes - 2)) + "<![CDATA[x]]></svg>");
+
+        Regex.Count(Encoding.UTF8.GetString(Sanitized(Flat(SvgDocument.MaxNodes))), "<g />").ShouldBe(SvgDocument.MaxNodes - 2);
+        SvgDocument.Parse(new MemoryStream(Flat(SvgDocument.MaxNodes + 1))).ShouldBeNull();
     }
 
     // A file nests at most MaxDepth levels of elements, so that no pass over its tree, which recurses, runs out of stack or
@@ -420,6 +468,9 @@ public sealed class MediaFileTests
     [InlineData("2s; b(.end")]
     [InlineData("a..click")]
     [InlineData("\\submit.click")]
+    [InlineData("wallclock(victim.click)")]
+    [InlineData("2s; wallclock(2026-01-01T00:00:00Z)")]
+    [InlineData("accessKey(x)")]
     public void ABeginOrEndThatIsNotReadWholeGoes(string begin)
     {
         var text = Encoding.UTF8.GetString(Sanitized(Files.Svg($"""<animate id="a" attributeName="opacity" to="0" begin="{begin}" end="{begin}" dur="1s"/>""")));
@@ -432,10 +483,10 @@ public sealed class MediaFileTests
     [Fact]
     public void EveryFormOfABeginOrEndListIsReadAndItsIdsTakeThePrefix()
     {
-        var text = Encoding.UTF8.GetString(Sanitized(Files.Svg("""<animate id="a" attributeName="opacity" to="0" begin="a.end+1.5s; 2s; -0.5s; 1:02:03.5; click; a.repeat(2); accessKey(x); wallclock(2026-01-01T00:00:00Z); indefinite; a.begin - 2min" dur="1s"/>""")));
+        var text = Encoding.UTF8.GetString(Sanitized(Files.Svg("""<animate id="a" attributeName="opacity" to="0" begin="a.end+1.5s; 2s; -0.5s; 1:02:03.5; click; a.repeat(2); indefinite; a.begin - 2min" dur="1s"/>""")));
 
         var prefix = Prefix(text);
-        text.ShouldContain($"""begin="{prefix}a.end+1.5s; 2s; -0.5s; 1:02:03.5; click; {prefix}a.repeat(2); accessKey(x); wallclock(2026-01-01T00:00:00Z); indefinite; {prefix}a.begin - 2min" """);
+        text.ShouldContain($"""begin="{prefix}a.end+1.5s; 2s; -0.5s; 1:02:03.5; click; {prefix}a.repeat(2); indefinite; {prefix}a.begin - 2min" """);
     }
 
     // The uploader can give the ids the file's own prefix, which the pass would derive, and leave the references plain, or

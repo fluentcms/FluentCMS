@@ -28,6 +28,10 @@ internal static partial class SvgDocument
     // drawing needs as many, and the passes over the tree, Save's included, recurse as deep as it nests.
     public const int MaxDepth = 128;
 
+    // The most elements and CDATA sections a file holds, which bounds what the passes over the tree cost whatever else the
+    // file holds; a drawing has far fewer. A file with more is no SVG the plugin takes.
+    public const int MaxNodes = 100_000;
+
     public static readonly XNamespace SvgNamespace = "http://www.w3.org/2000/svg";
 
     private static readonly XNamespace XLinkNamespace = "http://www.w3.org/1999/xlink";
@@ -99,6 +103,10 @@ internal static partial class SvgDocument
     // an animation of the root may not set either; animateTransform and animateMotion of the root move it as transform does.
     private static readonly HashSet<string> RootDropped = new(StringComparer.OrdinalIgnoreCase) { "overflow", "style", "transform", "filter" };
 
+    // What an animation of the root may not set: those, and its size and place, which the root keeps as written but which an
+    // animation would grow past the size the page's CSS gives it.
+    private static readonly HashSet<string> RootAnimated = new([.. RootDropped, "width", "height", "x", "y", "viewBox", "preserveAspectRatio"], StringComparer.OrdinalIgnoreCase);
+
     // The white space of a begin or end list; a no-break space is none, so that it is no part of a value that is read whole.
     private static readonly char[] TimingSpace = [' ', '\t', '\n', '\r'];
 
@@ -119,15 +127,22 @@ internal static partial class SvgDocument
             CloseInput = false,
         };
 
-        // The depth is read first, without building the tree, so that a file nested past the limit costs one pass of the reader.
+        // The depth and the count are read first, without building the tree, so that a file past a limit costs one pass of the
+        // reader.
         var seekable = stream.CanSeek ? stream : Buffered(stream);
         var start = seekable.Position;
         try
         {
             using (var scan = XmlReader.Create(seekable, settings))
             {
+                var nodes = 0;
                 while (scan.Read())
                 {
+                    if ((scan.NodeType is XmlNodeType.Element or XmlNodeType.CDATA) && ++nodes > MaxNodes)
+                    {
+                        return null;
+                    }
+
                     if (scan.NodeType == XmlNodeType.Element && scan.Depth >= MaxDepth)
                     {
                         return null;
@@ -154,67 +169,68 @@ internal static partial class SvgDocument
         return copy;
     }
 
+    // From the root down, each element's children are read once and set again once, the kept ones only: removing nodes one
+    // at a time walks the list of siblings each time, which takes a time that grows with the square of their number. A
+    // CDATA section becomes its text, which Save escapes, and goes when it is empty, so that a second pass writes the same
+    // empty element; a comment or a processing instruction is nothing of the drawing.
     public static void Sanitize(XDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
 
-        foreach (var element in document.Descendants().ToList())
+        document.Declaration = null;
+        if (document.Root is not { } root)
         {
-            // Inside an element that was already taken out.
-            if (element.Document is null)
-            {
-                continue;
-            }
+            return;
+        }
 
-            if (element.Name.LocalName == "a" && IsSvg(element.Name))
+        KeepAttributes(root, isRoot: true);
+        var rootId = root.Attribute("id")?.Value;
+        Stack<XElement> pending = new([root]);
+        while (pending.TryPop(out var element))
+        {
+            var textOnly = TextOnly.Contains(element.Name.LocalName);
+            List<XNode> kept = [];
+            foreach (var node in element.Nodes())
             {
-                element.Name = element.Name.Namespace + "g";
-            }
-
-            if (!IsKept(element))
-            {
-                element.Remove();
-                continue;
-            }
-
-            if (TextOnly.Contains(element.Name.LocalName))
-            {
-                element.Elements().Remove();
-            }
-
-            foreach (var attribute in element.Attributes().ToList())
-            {
-                if (!attribute.IsNamespaceDeclaration && (!IsKept(attribute) || (element.Parent is null && attribute.Name.Namespace == XNamespace.None && RootDropped.Contains(attribute.Name.LocalName))))
+                switch (node)
                 {
-                    attribute.Remove();
+                    case XCData data when data.Value.Length > 0:
+                        kept.Add(new XText(data.Value));
+                        break;
+                    case XCData:
+                        break;
+                    case XText text:
+                        kept.Add(text);
+                        break;
+                    case XElement child when !textOnly:
+                        if (child.Name.LocalName == "a" && IsSvg(child.Name))
+                        {
+                            child.Name = child.Name.Namespace + "g";
+                        }
+
+                        if (IsKept(child) && !(Animations.Contains(child.Name.LocalName) && Targets(child, root, rootId) && MovesTheBox(child)))
+                        {
+                            KeepAttributes(child, isRoot: false);
+                            kept.Add(child);
+                        }
+
+                        break;
                 }
             }
-        }
 
-        if (document.Root is { } root)
-        {
-            var rootId = root.Attribute("id")?.Value;
-            foreach (var animation in root.Descendants().Where(element => Animations.Contains(element.Name.LocalName) && Targets(element, root, rootId) && MovesTheBox(element)).ToList())
+            element.ReplaceNodes(kept);
+            foreach (var child in element.Elements())
             {
-                animation.Remove();
+                pending.Push(child);
             }
         }
-
-        // A CDATA section is its text, which Save escapes; a comment or a processing instruction is nothing of the drawing.
-        foreach (var node in document.DescendantNodes().Where(node => node is XCData or XComment or XProcessingInstruction).ToList())
-        {
-            if (node is XCData data)
-            {
-                node.ReplaceWith(new XText(data.Value));
-            }
-            else
-            {
-                node.Remove();
-            }
-        }
-
-        document.Declaration = null;
     }
+
+    // Set again once, as the children are.
+    private static void KeepAttributes(XElement element, bool isRoot) =>
+        element.ReplaceAttributes(element.Attributes()
+            .Where(attribute => attribute.IsNamespaceDeclaration || (IsKept(attribute) && !(isRoot && attribute.Name.Namespace == XNamespace.None && RootDropped.Contains(attribute.Name.LocalName))))
+            .ToList());
 
     // After Sanitize: every id, and every name that a link, a url(), an aria id list or the begin or end of an animation
     // refers to, takes the prefix fcms_, sixteen hex digits of the SHA-256 of the file as Save writes it before the prefix,
@@ -370,7 +386,8 @@ internal static partial class SvgDocument
             }
         }
 
-        if (!element.Nodes().Any())
+        // An empty text is no content, so that an element is written alike whether or not one was left in it.
+        if (!element.Nodes().Any(node => node is XElement || (node is XText text && text.Value.Length > 0)))
         {
             text.Append(" />");
             return;
@@ -421,14 +438,19 @@ internal static partial class SvgDocument
     private static bool IsSvg(XName name) => name.Namespace == SvgNamespace || name.Namespace == XNamespace.None;
 
     // An animation without a link animates its parent; one with a link, the element of that id.
-    private static bool Targets(XElement animation, XElement root, string? rootId) =>
-        (animation.Attribute("href") ?? animation.Attribute(XLinkNamespace + "href")) is { } link
-            ? rootId is not null && link.Value.Trim(UrlWhiteSpace) == "#" + rootId
-            : animation.Parent == root;
+    // An animation without a link animates its parent; one with a link, the element of that id. With both links, either
+    // naming the root counts, since browsers differ on which one wins.
+    private static bool Targets(XElement animation, XElement root, string? rootId)
+    {
+        XAttribute?[] links = [animation.Attribute("href"), animation.Attribute(XLinkNamespace + "href")];
+        return links.All(link => link is null)
+            ? animation.Parent == root
+            : rootId is not null && links.Any(link => link is not null && link.Value.Trim(UrlWhiteSpace) == "#" + rootId);
+    }
 
     private static bool MovesTheBox(XElement animation) =>
         animation.Name.LocalName is "animateTransform" or "animateMotion"
-        || (animation.Attribute("attributeName")?.Value.Trim() is { } target && RootDropped.Contains(target[(target.LastIndexOf(':') + 1)..]));
+        || (animation.Attribute("attributeName")?.Value.Trim() is { } target && RootAnimated.Contains(target[(target.LastIndexOf(':') + 1)..]));
 
     private static bool IsKept(XElement element)
     {
@@ -563,9 +585,10 @@ internal static partial class SvgDocument
     private static partial Regex CssReference();
 
     // One value of a begin or end list, read whole: an event, begin, end or repeat(n) with an optional id and a dot before
-    // it, accessKey(c) or wallclock(...), each with an optional offset; or a clock value, with an optional sign; or
-    // indefinite, which reads as an event. Anything else is a value a browser may read otherwise.
-    [GeneratedRegex(@"^[ \t\r\n]*(?:(?:(?:(?<id>[\p{L}_][\p{L}\p{N}_:-]*)\.)?(?:repeat\([0-9]+\)|[A-Za-z]+)|accessKey\(.\)|wallclock\([^()]*\))(?:[ \t\r\n]*[+-][ \t\r\n]*" + Clock + ")?|[+-]?[ \t\r\n]*" + Clock + @")[ \t\r\n]*$")]
+    // it, with an optional offset; or a clock value, with an optional sign; or indefinite, which reads as an event. Anything
+    // else is a value a browser may read otherwise, accessKey(c) and wallclock(...) included: a browser reads an id and an
+    // event inside wallclock(), and accessKey() listens to keys on the whole page.
+    [GeneratedRegex(@"^[ \t\r\n]*(?:(?:(?<id>[\p{L}_][\p{L}\p{N}_:-]*)\.)?(?:repeat\([0-9]+\)|[A-Za-z]+)(?:[ \t\r\n]*[+-][ \t\r\n]*" + Clock + ")?|[+-]?[ \t\r\n]*" + Clock + @")[ \t\r\n]*$")]
     private static partial Regex Timing();
 
     private const string Clock = @"(?:[0-9]+:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?|[0-9]+:[0-9]{2}(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?(?:h|min|s|ms)?)";
