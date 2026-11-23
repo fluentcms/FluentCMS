@@ -29,9 +29,9 @@ public interface IDataProvider
     // what a writer gets that lost a race to the row its checks found free (spec 4.4).
     bool IsUniqueViolation(Exception exception);
 
-    // The same, for the one key of the model given: the key the database reports, by its name or by its columns, never by
-    // a part of its message, which may repeat the duplicate value. False by default, so that a provider that does not tell
-    // keys apart has every such failure thrown.
+    // The same, for the one key of the model given: the key the database reports, by its name or by its columns. A provider
+    // that reads them in the error's message never reads the part of it that repeats the duplicate value. False by default,
+    // so that a provider that does not tell keys apart has every such failure thrown.
     bool IsUniqueViolation(Exception exception, IUniqueConstraint key) => false;
 
     // Whether the exception, or the database error that a DbUpdateException wraps, is a write that a foreign key refused:

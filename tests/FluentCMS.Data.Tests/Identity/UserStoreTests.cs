@@ -605,8 +605,8 @@ public sealed class UserStoreTests : IDisposable
     }
 
     // The token table's key is told by the key the provider reports, never by a duplicate value that names the table or the
-    // key (#3447). The errors of PostgreSQL and SQL Server are built as their drivers build them, with messages that are
-    // predictions of a server's.
+    // key, in a message of another language too (#3447). The errors of PostgreSQL and SQL Server are built as their drivers
+    // build them, with messages that are predictions of a server's; the German ones are built here, not taken from a server.
     [Fact]
     public async Task TheTokenKeyIsToldByTheKeyTheProviderReportsAndNotByADuplicateValue()
     {
@@ -619,6 +619,8 @@ public sealed class UserStoreTests : IDisposable
             var store = (CmsUserStore)services.GetRequiredService<IUserStore<CmsUser>>();
             store.IsTokenKeyViolation(sqlServer, Saved(UniqueViolationTests.SqlServerError(2627, "Violation of PRIMARY KEY constraint 'PK_cms_user_token'. Cannot insert duplicate key in object 'dbo.cms_user_token'. The duplicate key value is (u, p, n)."))).ShouldBeTrue();
             store.IsTokenKeyViolation(sqlServer, Saved(UniqueViolationTests.SqlServerError(2627, $"Violation of PRIMARY KEY constraint 'PK_cms_user_login'. Cannot insert duplicate key in object 'dbo.cms_user_login'. The duplicate key value is (entra, {NamesTheTokenKey})."))).ShouldBeFalse();
+            store.IsTokenKeyViolation(sqlServer, Saved(UniqueViolationTests.SqlServerError(2627, "Verletzung der PRIMARY KEY-Einschränkung 'PK_cms_user_token'. Ein doppelter Schlüssel kann in das dbo.cms_user_token-Objekt nicht eingefügt werden. Der doppelte Schlüsselwert ist (u, p, n)."))).ShouldBeTrue();
+            store.IsTokenKeyViolation(sqlServer, Saved(UniqueViolationTests.SqlServerError(2627, $"Verletzung der PRIMARY KEY-Einschränkung 'PK_cms_user_login'. Ein doppelter Schlüssel kann in das dbo.cms_user_login-Objekt nicht eingefügt werden. Der doppelte Schlüsselwert ist (entra, {NamesTheTokenKey})."))).ShouldBeFalse();
             store.IsTokenKeyViolation(postgreSql, Saved(UniqueViolationTests.PostgreSqlError(Npgsql.PostgresErrorCodes.UniqueViolation, "PK_cms_user_token", "Key (user_id, login_provider, name)=(u, p, n) already exists."))).ShouldBeTrue();
             store.IsTokenKeyViolation(postgreSql, Saved(UniqueViolationTests.PostgreSqlError(Npgsql.PostgresErrorCodes.UniqueViolation, "PK_cms_user_login", $"Key (login_provider, provider_key)=(entra, {NamesTheTokenKey}) already exists."))).ShouldBeFalse();
             return Task.FromResult(true);
@@ -713,30 +715,83 @@ public sealed class UserStoreTests : IDisposable
         (await _fixture.UsersAsync(users => users.CheckPasswordAsync(stored, "Another-horse-2"))).ShouldBeTrue();
     }
 
-    // Saves that keep losing, as under a flood of other saves of the user, end the change with the concurrency failure after
-    // the same number of tries whether the password was right or wrong, and store nothing (#3447).
+    // Saves that keep losing, as under a flood of other saves of the user. A guess whose place in the count is never saved
+    // is never checked: it ends with the concurrency failure after the same saves whether it was right or wrong. A guess
+    // that holds its place is checked once, and a wrong one is answered then; a right one checks the password and hashes the
+    // new one again on every try of its save, and when they run out it is answered as a wrong one, its place counted. The
+    // answers are the same, the work is not, and only a guess that holds a place does more (#3447).
     [Fact]
     public async Task AChangeWhoseSavesKeepLosingAnswersTheSameForARightAndAWrongPassword()
     {
         var losing = new LosingSaves();
-        using var fixture = new IdentityFixture(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(losing)));
-        var user = await fixture.CreateUserAsync("ann");
-        async Task<(string Code, int Saves)> ChangeAsync(string current)
+        var hasher = new CountingHasher();
+        using var fixture = new IdentityFixture(cms =>
         {
-            losing.Arm();
+            cms.Services.AddSingleton<IPasswordHasher<CmsUser>>(hasher);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(losing));
+        });
+        var user = await fixture.CreateUserAsync("ann");
+        var tries = 2 * new AdminUserOptions().Lockout.MaxFailedAccessAttempts;
+        async Task<(string Code, int Saves, int Checks, int Hashes)> ChangeAsync(string current, int passing)
+        {
+            hasher.Clear();
+            losing.Arm(passing);
             var result = await fixture.UsersAsync(async users => await users.ChangePasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, current, "Another-horse-2"));
-            return (result.Errors.ShouldHaveSingleItem().Code, losing.Disarm());
+            return (result.Errors.ShouldHaveSingleItem().Code, losing.Disarm(), hasher.Verified.Count, hasher.Hashed);
         }
 
-        var right = await ChangeAsync(Password);
-        var wrong = await ChangeAsync("wrong");
-
-        right.Code.ShouldBe(nameof(IdentityErrorDescriber.ConcurrencyFailure));
+        var right = await ChangeAsync(Password, passing: 0);
+        var wrong = await ChangeAsync("wrong", passing: 0);
+        right.ShouldBe((nameof(IdentityErrorDescriber.ConcurrencyFailure), tries, 0, 0));
         wrong.ShouldBe(right);
-        right.Saves.ShouldBe(2 * new AdminUserOptions().Lockout.MaxFailedAccessAttempts);
+
+        right = await ChangeAsync(Password, passing: 1);
+        wrong = await ChangeAsync("wrong", passing: 1);
+        right.ShouldBe((nameof(IdentityErrorDescriber.PasswordMismatch), 1 + tries, tries, tries));
+        wrong.ShouldBe((nameof(IdentityErrorDescriber.PasswordMismatch), 1 + tries, 1, 0));
+
         var stored = await fixture.FindAsync(user.Id);
         stored.AccessFailedCount.ShouldBe(0);
+        (await fixture.UsersAsync(users => users.GetAuthenticationTokenAsync(stored, "[AspNetUserStore]", "SignedInFailures"))).ShouldBe("2:");
         (await fixture.UsersAsync(users => users.CheckPasswordAsync(stored, Password))).ShouldBeTrue();
+    }
+
+    // Far more guesses than the tries of a save, sent at once with the right one among them. A guess takes its place in the
+    // count before it is checked, so no more than the limit are checked against the password, whatever the new password: one
+    // the policy refuses is refused before any guess is checked, so its answer never depends on the guess. Only a checked
+    // guess can have an answer that depends on it (#3447).
+    [Theory]
+    [InlineData("a")]
+    [InlineData("Another-horse-2")]
+    public async Task GuessesFarAboveTheTriesSentAtOnceAreCheckedNoMoreThanTheLimit(string next)
+    {
+        var hasher = new CountingHasher();
+        using var fixture = new IdentityFixture(cms => cms.Services.AddSingleton<IPasswordHasher<CmsUser>>(hasher));
+        var user = await fixture.CreateUserAsync("ann");
+        var original = (await fixture.FindAsync(user.Id)).PasswordHash!;
+        var limit = new AdminUserOptions().Lockout.MaxFailedAccessAttempts;
+        List<string> guesses = [.. Enumerable.Range(0, 15).Select(index => $"wrong-{index}"), Password, .. Enumerable.Range(15, 15).Select(index => $"wrong-{index}")];
+        var gate = new Gate(guesses.Count);
+
+        var answers = await Task.WhenAll(guesses.Select(guess => fixture.UsersAsync(async users =>
+        {
+            var ann = (await users.FindByIdAsync(user.Id.ToString("D")))!;
+            await gate.PassAsync();
+            var result = await users.ChangePasswordAsync(ann, guess, next);
+            return (Guess: guess, Answer: result.Succeeded ? "" : string.Join(" ", result.Errors.Select(error => error.Code)));
+        }))).WaitAsync(TimeSpan.FromMinutes(2), Token);
+
+        var checkedGuesses = hasher.Verified.Where(verified => verified.Hash == original).Select(verified => verified.Provided).ToHashSet();
+        checkedGuesses.Count.ShouldBeLessThanOrEqualTo(limit, string.Join(", ", answers));
+        string[] refusals = next == "a"
+            ? [answers[0].Answer]
+            : [CmsUserManager.LockedOutCode, nameof(IdentityErrorDescriber.ConcurrencyFailure)];
+        answers.Where(answer => !checkedGuesses.Contains(answer.Guess)).ShouldAllBe(answer => refusals.Contains(answer.Answer), string.Join(", ", answers));
+        if (next == "a")
+        {
+            checkedGuesses.ShouldBeEmpty();
+            answers[0].Answer.ShouldContain(nameof(IdentityErrorDescriber.PasswordTooShort));
+        }
     }
 
     // Codes sent at once are counted as passwords are, apart from them: each wrong one counts, and those past the limit are
@@ -771,16 +826,71 @@ public sealed class UserStoreTests : IDisposable
         (await _fixture.UsersAsync(users => users.GetAuthenticationTokenAsync(stored, "[AspNetUserStore]", "SignedInFailures"))).ShouldBeNull();
     }
 
+    // Far more codes than the tries of a save, sent at once with the right one among them. A code takes its place in the
+    // count before it is checked, so no more than the limit are checked before a right one is taken, and a right one is
+    // answered only once the save that takes it went through. A right one starts the count of codes again, by design, so
+    // codes still in flight then may take places of the new count (#3447).
+    [Fact]
+    public async Task CodesFarAboveTheTriesSentAtOnceAreCheckedNoMoreThanTheLimit()
+    {
+        var counting = new CountingAuthenticator();
+        using var fixture = new IdentityFixture(cms => cms.Services.PostConfigure<IdentityOptions>(options =>
+        {
+            counting.Inner = options.Tokens.ProviderMap[options.Tokens.AuthenticatorTokenProvider].ProviderInstance as IUserTwoFactorTokenProvider<CmsUser>;
+            options.Tokens.ProviderMap[options.Tokens.AuthenticatorTokenProvider] = new TokenProviderDescriptor(typeof(CountingAuthenticator)) { ProviderInstance = counting };
+        }));
+        counting.Clock = fixture.Clock;
+        var user = await fixture.CreateUserAsync("ann");
+        var limit = new AdminUserOptions().Lockout.MaxFailedAccessAttempts;
+        var key = await fixture.UsersAsync(async users =>
+        {
+            var ann = (await users.FindByIdAsync(user.Id.ToString("D")))!;
+            Succeeded(await users.SetPendingAuthenticatorKeyAsync(ann));
+            Succeeded(await users.SetTwoFactorEnabledAsync(ann, true));
+            return (await users.GetAuthenticatorKeyAsync(ann))!;
+        });
+        var right = CountingAuthenticator.Code(key, Start.ToUnixTimeSeconds() / 30);
+        var valid = Enumerable.Range(-2, 5).Select(offset => CountingAuthenticator.Code(key, (Start.ToUnixTimeSeconds() / 30) + offset)).ToHashSet();
+        List<string> wrong = [.. Enumerable.Range(100_000, 100).Select(code => code.ToString(System.Globalization.CultureInfo.InvariantCulture)).Where(code => !valid.Contains(code)).Take(30)];
+        List<string> codes = [.. wrong[..15], right, .. wrong[15..]];
+        var gate = new Gate(codes.Count);
+
+        var answers = await Task.WhenAll(codes.Select(code => fixture.WithAsync(async services =>
+        {
+            var ann = (await services.GetRequiredService<CmsUserManager>().FindByIdAsync(user.Id.ToString("D")))!;
+            await gate.PassAsync();
+            try
+            {
+                await services.GetRequiredService<TwoFactorService>().RegenerateRecoveryCodesAsync(ann, code);
+                return "";
+            }
+            catch (FluentCMS.Content.ValidationException refused)
+            {
+                return refused.Errors.ShouldHaveSingleItem().Code;
+            }
+        }))).WaitAsync(TimeSpan.FromMinutes(2), Token);
+
+        var checks = counting.Checked.ToList();
+        checks.TakeWhile(check => !check.Right).Count().ShouldBeLessThanOrEqualTo(limit, string.Join(", ", checks));
+        answers.Count(answer => answer == "").ShouldBe(checks.Count(check => check.Right));
+        answers.Where(answer => answer != "").ShouldAllBe(answer => answer == IdentityErrorCodes.InvalidTwoFactorCode || answer == IdentityErrorCodes.InvalidUser, string.Join(", ", answers));
+        if (!checks.Any(check => check.Right))
+        {
+            checks.Count.ShouldBeLessThanOrEqualTo(limit);
+        }
+    }
+
     // A failed save that reloaded the user with what another request stored puts nothing the call changed back over it, so a
-    // later save of the scope keeps the other request's flag and deactivation (#3447).
+    // later save of the scope keeps the other request's flag, deactivation or reactivation. No caller of core saves again
+    // after such a failure, so this was latent (#3447).
     [Fact]
     public async Task AFailedSaveKeepsTheFlagAndTheDeactivationAnotherRequestStored()
     {
         var user = await _fixture.CreateUserAsync("ann");
-        async Task<CmsUser> AfterAnotherSaveAsync(bool flag, Action<UpdateSettersBuilder<CmsUser>> other, Func<CmsUserManager, CmsUser, string, Task<IdentityResult>> call)
+        async Task<CmsUser> AfterAnotherSaveAsync(bool flag, DateTimeOffset? deactivated, Action<UpdateSettersBuilder<CmsUser>> other, Func<CmsUserManager, CmsUser, string, Task<IdentityResult>> call)
         {
             _fixture.Read(context => context.Set<CmsUser>().Where(row => row.Id == user.Id)
-                .ExecuteUpdate(setters => setters.SetProperty(row => row.MustChangePassword, flag).SetProperty(row => row.DeactivatedAt, (DateTimeOffset?)null)));
+                .ExecuteUpdate(setters => setters.SetProperty(row => row.MustChangePassword, flag).SetProperty(row => row.DeactivatedAt, deactivated)));
             await _fixture.UsersAsync(async users =>
             {
                 var ann = (await users.FindByIdAsync(user.Id.ToString("D")))!;
@@ -799,12 +909,93 @@ public sealed class UserStoreTests : IDisposable
             return await _fixture.FindAsync(user.Id);
         }
 
-        var set = await AfterAnotherSaveAsync(false, setters => setters.SetProperty(row => row.MustChangePassword, true), (users, ann, _) => users.SetPasswordAsync(ann, "Temporary-horse-3"));
-        var reset = await AfterAnotherSaveAsync(true, setters => setters.SetProperty(row => row.MustChangePassword, false), (users, ann, token) => users.ResetPasswordAsync(ann, token, "Another-horse-2"));
-        var required = await AfterAnotherSaveAsync(false, setters => setters.SetProperty(row => row.MustChangePassword, true), (users, ann, _) => users.RequirePasswordChangeAsync(ann));
-        var deactivated = await AfterAnotherSaveAsync(false, setters => setters.SetProperty(row => row.DeactivatedAt, Start), (users, ann, _) => users.DeactivateAsync(ann));
+        var set = await AfterAnotherSaveAsync(false, null, setters => setters.SetProperty(row => row.MustChangePassword, true), (users, ann, _) => users.SetPasswordAsync(ann, "Temporary-horse-3"));
+        var reset = await AfterAnotherSaveAsync(true, null, setters => setters.SetProperty(row => row.MustChangePassword, false), (users, ann, token) => users.ResetPasswordAsync(ann, token, "Another-horse-2"));
+        var required = await AfterAnotherSaveAsync(false, null, setters => setters.SetProperty(row => row.MustChangePassword, true), (users, ann, _) => users.RequirePasswordChangeAsync(ann));
+        var deactivated = await AfterAnotherSaveAsync(false, null, setters => setters.SetProperty(row => row.DeactivatedAt, Start), (users, ann, _) => users.DeactivateAsync(ann));
+        var reactivated = await AfterAnotherSaveAsync(false, Start, setters => setters.SetProperty(row => row.DeactivatedAt, (DateTimeOffset?)null), (users, ann, _) => users.ReactivateAsync(ann));
 
-        (set.MustChangePassword, reset.MustChangePassword, required.MustChangePassword, deactivated.DeactivatedAt).ShouldBe((true, false, true, (DateTimeOffset?)Start));
+        (set.MustChangePassword, reset.MustChangePassword, required.MustChangePassword, deactivated.DeactivatedAt, reactivated.DeactivatedAt).ShouldBe((true, false, true, (DateTimeOffset?)Start, (DateTimeOffset?)null));
+    }
+
+    // Identity's hasher, which records each check of a password: the hash it was checked against, and the guess.
+    private sealed class CountingHasher : IPasswordHasher<CmsUser>
+    {
+        private readonly PasswordHasher<CmsUser> _inner = new();
+        private int _hashed;
+
+        public System.Collections.Concurrent.ConcurrentQueue<(string Hash, string Provided)> Verified { get; } = new();
+
+        public int Hashed => Volatile.Read(ref _hashed);
+
+        public void Clear()
+        {
+            Verified.Clear();
+            Interlocked.Exchange(ref _hashed, 0);
+        }
+
+        public string HashPassword(CmsUser user, string password)
+        {
+            Interlocked.Increment(ref _hashed);
+            return _inner.HashPassword(user, password);
+        }
+
+        public PasswordVerificationResult VerifyHashedPassword(CmsUser user, string hashedPassword, string providedPassword)
+        {
+            Verified.Enqueue((hashedPassword, providedPassword));
+            return _inner.VerifyHashedPassword(user, hashedPassword, providedPassword);
+        }
+    }
+
+    // The authenticator's provider of core, which records each code it checks, in the order the checks end, and whether it
+    // was taken.
+    private sealed class CountingAuthenticator : IUserTwoFactorTokenProvider<CmsUser>
+    {
+        public IUserTwoFactorTokenProvider<CmsUser>? Inner { get; set; }
+
+        public TimeProvider Clock { get; set; } = TimeProvider.System;
+
+        public System.Collections.Concurrent.ConcurrentQueue<(string Code, bool Right)> Checked { get; } = new();
+
+        private IUserTwoFactorTokenProvider<CmsUser> Provider => Inner ?? new OneTimeAuthenticatorTokenProvider(Clock);
+
+        public Task<string> GenerateAsync(string purpose, UserManager<CmsUser> manager, CmsUser user) => Provider.GenerateAsync(purpose, manager, user);
+
+        public Task<bool> CanGenerateTwoFactorTokenAsync(UserManager<CmsUser> manager, CmsUser user) => Provider.CanGenerateTwoFactorTokenAsync(manager, user);
+
+        public async Task<bool> ValidateAsync(string purpose, string token, UserManager<CmsUser> manager, CmsUser user)
+        {
+            var right = await Provider.ValidateAsync(purpose, token, manager, user);
+            Checked.Enqueue((token, right));
+            return right;
+        }
+
+        // RFC 6238 with SHA-1, 30 second steps and six digits, as authenticator apps and core compute it.
+        public static string Code(string key, long step)
+        {
+            const string Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+            List<byte> secret = [];
+            int buffer = 0, bits = 0;
+            foreach (var character in key.TrimEnd('=').ToUpperInvariant())
+            {
+                buffer = ((buffer << 5) | Alphabet.IndexOf(character, StringComparison.Ordinal)) & 0xffff;
+                bits += 5;
+                if (bits >= 8)
+                {
+                    secret.Add((byte)(buffer >> (bits - 8)));
+                    bits -= 8;
+                }
+            }
+
+            var counter = new byte[8];
+            System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(counter, step);
+#pragma warning disable CA5350 // RFC 6238 uses HMAC-SHA1.
+            var hash = System.Security.Cryptography.HMACSHA1.HashData(secret.ToArray(), counter);
+#pragma warning restore CA5350
+            var offset = hash[^1] & 0x0f;
+            var value = (System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(hash.AsSpan(offset)) & 0x7fffffff) % 1_000_000;
+            return value.ToString("D6", System.Globalization.CultureInfo.InvariantCulture);
+        }
     }
 
     // Lets the requests go on only once each has read the user, so that all of them read it as it was before any saved.
@@ -830,9 +1021,15 @@ public sealed class UserStoreTests : IDisposable
     private sealed class LosingSaves : Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor
     {
         private int _armed;
+        private int _passing;
         private int _saves;
 
-        public void Arm() => Volatile.Write(ref _armed, 1);
+        // The first saves, as many as passing, go through.
+        public void Arm(int passing = 0)
+        {
+            Volatile.Write(ref _passing, passing);
+            Volatile.Write(ref _armed, 1);
+        }
 
         public int Disarm()
         {
@@ -849,8 +1046,10 @@ public sealed class UserStoreTests : IDisposable
             {
                 foreach (var entry in eventData.Context!.ChangeTracker.Entries<CmsUser>().Where(entry => entry.State == EntityState.Modified))
                 {
-                    entry.Property(user => user.ConcurrencyStamp).OriginalValue = "another-request";
-                    Interlocked.Increment(ref _saves);
+                    if (Interlocked.Increment(ref _saves) > Volatile.Read(ref _passing))
+                    {
+                        entry.Property(user => user.ConcurrencyStamp).OriginalValue = "another-request";
+                    }
                 }
             }
 

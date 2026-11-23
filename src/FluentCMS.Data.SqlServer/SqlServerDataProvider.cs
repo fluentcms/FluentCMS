@@ -32,9 +32,11 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
     public bool IsUniqueViolation(Exception exception) =>
         (exception as SqlException ?? exception.InnerException as SqlException) is { Number: 2601 or 2627 };
 
-    // 2627 quotes the constraint and then its table, 2601 the table and then the index, each between single quotes and
-    // before the duplicate value, which comes last and may hold anything, so only those first two names are read. A message
-    // worded or quoted otherwise, as a server of another language may answer, names no key, and the failure is thrown.
+    // 2627 names the constraint and 2601 the index, quoted, in any language of the server, and both end with the duplicate
+    // value in parentheses, which may hold anything, the name of the key included. So the key's name is looked for quoted,
+    // in single or double quotes, and only in the text before the message's first parenthesis, which the value cannot reach
+    // into, whatever words or order a language gives the rest. A message that quotes it otherwise, or only after a
+    // parenthesis, names no key, and the failure is thrown.
     public bool IsUniqueViolation(Exception exception, IUniqueConstraint key)
     {
         if (key is null || (exception as SqlException ?? exception.InnerException as SqlException)?.Errors.Cast<SqlError>().FirstOrDefault(error => error.Number is 2601 or 2627) is not { } error)
@@ -42,8 +44,9 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
             return false;
         }
 
-        var quoted = error.Message.Split('\'');
-        return quoted.Length >= 5 && (string.Equals(quoted[1], key.Name, StringComparison.Ordinal) || string.Equals(quoted[3], key.Name, StringComparison.Ordinal));
+        var message = error.Message;
+        var named = message.IndexOf('(', StringComparison.Ordinal) is var value and >= 0 ? message[..value] : message;
+        return named.Contains($"'{key.Name}'", StringComparison.Ordinal) || named.Contains($"\"{key.Name}\"", StringComparison.Ordinal);
     }
 
     // 547 is any conflict with a constraint, a CHECK such as the ISJSON of a JSON column included, so the message is read

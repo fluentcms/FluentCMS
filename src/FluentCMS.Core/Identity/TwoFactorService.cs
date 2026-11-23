@@ -1,7 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Core.Identity;
@@ -17,8 +16,6 @@ internal sealed record AuthenticatorSetup(string SharedKey, string Authenticator
 internal sealed class TwoFactorService(CmsUserManager users, SystemDbContext context)
 {
     public const int RecoveryCodeCount = 10;
-
-    private static readonly IdentityResult Refused = IdentityResult.Failed();
 
     public async Task<bool> IsRequiredAsync(Guid userId, CancellationToken cancellationToken) =>
         await context.Set<CmsUserRole>().AsNoTracking()
@@ -118,44 +115,40 @@ internal sealed class TwoFactorService(CmsUserManager users, SystemDbContext con
         }
     }
 
-    // The caller is signed in, so the lockout, which anyone who knows the user name raises, does not refuse it: a wrong code
-    // counts as a failed sign-in and towards the count of codes of the user's sessions, which bounds their guessing (#3371),
-    // and a right one starts that count again, and no other (#3447). A code whose save lost to another request's is checked
-    // again on what is stored, so that codes sent at once are all counted (CmsUserManager.GuessAsync).
+    // The caller is signed in, so the lockout, which anyone who knows the user name raises, does not refuse it. A code takes
+    // its place in the count of codes of the user's sessions before it is checked, so that they check no more codes than the
+    // lockout's limit in its time, however many come at once (#3371, #3447). A wrong one keeps its place and counts as a
+    // failed sign-in; a right one is taken in the save of its step, or of its recovery code, before anything answers it, and
+    // then starts the count of codes again, and no other. One that loses that save is refused like a wrong one, since a code
+    // is taken once.
     private async Task RequireCodeAsync(CmsUser user, string? code, bool recoveryCode)
     {
         // Identity's recovery codes are upper case.
         var compact = (code ?? "").Replace(" ", "", StringComparison.Ordinal).ToUpperInvariant();
-        var result = compact.Length > 0 ? await users.GuessAsync(user, () => CheckCodeAsync(user, compact, recoveryCode)) : Refused;
-        if (!ReferenceEquals(result, Refused))
+        if (compact.Length > 0)
         {
-            UserViews.Check(result);
-            return;
+            var place = await users.TakeCodePlaceAsync(user);
+            if (place.Succeeded)
+            {
+                var authenticator = compact.Replace("-", "", StringComparison.Ordinal);
+                if (await users.VerifyTwoFactorTokenAsync(user, users.Options.Tokens.AuthenticatorTokenProvider, authenticator)
+                    || (recoveryCode && (await users.RedeemTwoFactorRecoveryCodeAsync(user, compact)).Succeeded))
+                {
+                    // Its failure leaves the count as it was, which only keeps the sessions out sooner.
+                    await users.ResetSignedInCodeFailuresAsync(user);
+                    return;
+                }
+
+                await users.CountFailedSignInAsync(user);
+            }
+            else if (!place.Errors.Any(error => error.Code == CmsUserManager.LockedOutCode))
+            {
+                // Its tries ran out before the code was checked.
+                UserViews.Check(place);
+            }
         }
 
         throw new ValidationException([new ValidationError("code", IdentityErrorCodes.InvalidTwoFactorCode, "The code is not right, or the account is locked out for now.")]);
-    }
-
-    // A right code is taken in the save of its step, and one that loses that save to another request is refused like a wrong
-    // one, since a code is taken once.
-    private async Task<IdentityResult> CheckCodeAsync(CmsUser user, string compact, bool recoveryCode)
-    {
-        if (await users.IsSignedInLockedOutAsync(user))
-        {
-            return Refused;
-        }
-
-        var authenticator = compact.Replace("-", "", StringComparison.Ordinal);
-        if (await users.VerifyTwoFactorTokenAsync(user, users.Options.Tokens.AuthenticatorTokenProvider, authenticator)
-            || (recoveryCode && (await users.RedeemTwoFactorRecoveryCodeAsync(user, compact)).Succeeded))
-        {
-            // Its failure leaves the count as it was, which only keeps the sessions out sooner.
-            await users.ResetSignedInCodeFailuresAsync(user);
-            return IdentityResult.Success;
-        }
-
-        var counted = await users.SignedInCodeFailedAsync(user);
-        return counted.Succeeded ? Refused : counted;
     }
 
     private static AuthenticatorSetup Setup(CmsUser user, string key, string issuer)

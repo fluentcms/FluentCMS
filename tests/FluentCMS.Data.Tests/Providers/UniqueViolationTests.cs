@@ -158,14 +158,20 @@ public class UniqueViolationTests
         PostgreSql.IsUniqueViolation(Saved(PostgreSqlError(PostgresErrorCodes.ForeignKeyViolation, "PK_cms_user_token", "")), TokenKey).ShouldBeFalse();
     }
 
-    // Predictions of the server's messages: 2627 quotes the constraint and its table, 2601 the table and its index, and the
-    // duplicate value comes last, where it may repeat either name.
+    // Predictions of the server's messages. The English ones fill in the text sys.messages has for 2627 and 2601, as the
+    // documentation of the Database Engine's errors lists it; those of other languages are built here, not taken from a
+    // server: they name the key quoted, with other words around it and the table unquoted or elsewhere. Every one ends with
+    // the duplicate value in parentheses, where it may repeat the key's name.
     [Theory]
     [InlineData(2627, "Violation of PRIMARY KEY constraint 'PK_cms_user_token'. Cannot insert duplicate key in object 'dbo.cms_user_token'. The duplicate key value is (0198a3c4-0000-7000-8000-000000000001, [AspNetUserStore], SignedInFailures).", true)]
     [InlineData(2601, "Cannot insert duplicate key row in object 'dbo.cms_user_token' with unique index 'PK_cms_user_token'. The duplicate key value is (u, p, n).", true)]
+    [InlineData(2627, "Verletzung der PRIMARY KEY-Einschränkung 'PK_cms_user_token'. Ein doppelter Schlüssel kann in das dbo.cms_user_token-Objekt nicht eingefügt werden. Der doppelte Schlüsselwert ist (u, p, n).", true)]
+    [InlineData(2627, "Violation de la contrainte PRIMARY KEY « \"PK_cms_user_token\" ». Impossible d'insérer une clé en double dans l'objet « dbo.cms_user_token ». Valeur de clé dupliquée : (u, p, n).", true)]
     [InlineData(2627, "Violation of PRIMARY KEY constraint 'PK_cms_user_login'. Cannot insert duplicate key in object 'dbo.cms_user_login'. The duplicate key value is (cms_user_token, 'PK_cms_user_token').", false)]
     [InlineData(2601, "Cannot insert duplicate key row in object 'dbo.cms_user' with unique index 'ix_cms_user_normalized_email'. The duplicate key value is ('PK_cms_user_token').", false)]
+    [InlineData(2627, "Verletzung der PRIMARY KEY-Einschränkung 'PK_cms_user_login'. Ein doppelter Schlüssel kann in das dbo.cms_user_login-Objekt nicht eingefügt werden. Der doppelte Schlüsselwert ist (entra, cms_user_token 'PK_cms_user_token').", false)]
     [InlineData(2627, "Verletzung der PRIMARY KEY-Einschränkung „PK_cms_user_token“. Ein doppelter Schlüssel kann in das dbo.cms_user_token-Objekt nicht eingefügt werden.", false)]
+    [InlineData(2627, "Violation of PRIMARY KEY constraint 'PK_cms_user_token_old'. Cannot insert duplicate key in object 'dbo.cms_user_token'. The duplicate key value is (u, p, n).", false)]
     [InlineData(547, "The INSERT statement conflicted with the FOREIGN KEY constraint 'PK_cms_user_token'.", false)]
     public void SqlServerKnowsAKeyByTheNameItQuotesBeforeTheValue(int number, string message, bool token)
     {
