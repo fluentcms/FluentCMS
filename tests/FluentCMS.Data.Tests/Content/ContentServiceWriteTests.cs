@@ -308,8 +308,9 @@ public sealed class ContentServiceWriteTests : IDisposable
         var leftStore = left.ServiceProvider.GetRequiredService<EntryStore>();
         var rightStore = right.ServiceProvider.GetRequiredService<EntryStore>();
 
-        (await leftStore.AdvanceVersionAsync(id, "en", 1, EntryStatus.Draft, DateTimeOffset.UtcNow, Editor.Id, Token)).ShouldBeTrue();
-        (await rightStore.AdvanceVersionAsync(id, "en", 1, EntryStatus.Draft, DateTimeOffset.UtcNow, Editor.Id, Token)).ShouldBeFalse();
+        var row = _database.Document(id);
+        (await leftStore.AdvanceVersionAsync(row, 1, EntryStatus.Draft, DateTimeOffset.UtcNow, Editor.Id, Token)).ShouldBeTrue();
+        (await rightStore.AdvanceVersionAsync(row, 1, EntryStatus.Draft, DateTimeOffset.UtcNow, Editor.Id, Token)).ShouldBeFalse();
         (await rightStore.DraftVersionAsync(id, "en", Token)).ShouldBe(2);
     }
 

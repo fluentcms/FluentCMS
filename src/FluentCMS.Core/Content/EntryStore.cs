@@ -79,9 +79,11 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
     }
 
     // What an import keeps of the package once its writes are done: the times, the authors, and an Unpublished status.
-    public Task SettleImportedAsync(Guid id, string locale, ImportedState state, CancellationToken cancellationToken) =>
-        context.Documents
-            .Where(document => document.DocumentId == id && document.Locale == locale)
+    public Task SettleImportedAsync(Document row, ImportedState state, CancellationToken cancellationToken)
+    {
+        var key = row.Id;
+        return context.Documents
+            .Where(document => document.Id == key)
             .ExecuteUpdateAsync(
                 set => set
                     .SetProperty(document => document.Status, state.Status)
@@ -94,6 +96,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
                     .SetProperty(document => document.PublishedAt, state.PublishedAt)
                     .SetProperty(document => document.FirstPublishedAt, state.FirstPublishedAt),
                 cancellationToken);
+    }
 
     // Moves the versions of one locale to new numbers, through negative ones so that no two rows ever share a number.
     public async Task RenumberVersionsAsync(Guid id, string locale, IReadOnlyDictionary<int, int> numbers, CancellationToken cancellationToken)
@@ -308,12 +311,30 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
         return read;
     }
 
-    // The compare and swap that makes one of two concurrent writers lose. The filter on Document keeps trash out.
-    public async Task<bool> AdvanceVersionAsync(Guid id, string locale, int expected, EntryStatus status, DateTimeOffset at, Guid by, CancellationToken cancellationToken)
+    // Every statement that locks one row of cms_document finds it by its primary key, which is the clustered key on SQL
+    // Server. Found through uq_cms_document_document_locale it takes the lock of that index's key first, and a writer that
+    // waits for the row would hold it, so the holder's next statement on that row, through the same index, waited for the
+    // waiter: a deadlock that PostgreSQL, which locks the row alone, does not have (#3524). By its key a waiter holds nothing
+    // of the row. The statements of many rows by document id come only once those rows are held.
+
+    // The compare and swap that makes one of two concurrent writers lose. The filter on Document keeps trash out. With
+    // stored, it compares the published version and the status the write decided its status from too, which a publish or
+    // an unpublish of the locale moves without the draft version.
+    public async Task<bool> AdvanceVersionAsync(Document row, int expected, EntryStatus status, DateTimeOffset at, Guid by, CancellationToken cancellationToken, StoredState? stored = null)
     {
+        var key = row.Id;
         var next = expected + 1;
-        var affected = await context.Documents
-            .Where(document => document.DocumentId == id && document.Locale == locale && document.DraftVersion == expected)
+        var rows = context.Documents.Where(document => document.Id == key && document.DraftVersion == expected);
+        if (stored is { PublishedVersion: { } version, Status: var was })
+        {
+            rows = rows.Where(document => document.PublishedVersion == version && document.Status == was);
+        }
+        else if (stored is { Status: var unpublished })
+        {
+            rows = rows.Where(document => document.PublishedVersion == null && document.Status == unpublished);
+        }
+
+        var affected = await rows
             .ExecuteUpdateAsync(
                 set => set
                     .SetProperty(document => document.DraftVersion, next)
@@ -326,11 +347,12 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
     }
 
     // Another locale's swap when the shared fields move under it: its version, not its status, which the recompute decides.
-    public async Task<bool> AdvanceDraftVersionAsync(Guid id, string locale, int expected, DateTimeOffset at, Guid by, CancellationToken cancellationToken)
+    public async Task<bool> AdvanceDraftVersionAsync(Document row, int expected, DateTimeOffset at, Guid by, CancellationToken cancellationToken)
     {
+        var key = row.Id;
         var next = expected + 1;
         var affected = await context.Documents
-            .Where(document => document.DocumentId == id && document.Locale == locale && document.DraftVersion == expected)
+            .Where(document => document.Id == key && document.DraftVersion == expected)
             .ExecuteUpdateAsync(
                 set => set
                     .SetProperty(document => document.DraftVersion, next)
@@ -342,14 +364,42 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
     }
 
     // A compare that locks the row and changes nothing, for a write that moves its own row after the ones ordered behind it.
-    public async Task<bool> HoldVersionAsync(Guid id, string locale, int expected, CancellationToken cancellationToken)
+    public async Task<bool> HoldVersionAsync(Document row, int expected, CancellationToken cancellationToken)
     {
+        var key = row.Id;
         var affected = await context.Documents
-            .Where(document => document.DocumentId == id && document.Locale == locale && document.DraftVersion == expected)
+            .Where(document => document.Id == key && document.DraftVersion == expected)
             .ExecuteUpdateAsync(set => set.SetProperty(document => document.DraftVersion, expected), cancellationToken);
 
         return affected == 1;
     }
+
+    // A lock on the row that changes nothing, in the trash too, for a path that takes a row in its place in the lock order
+    // (ContentService.HoldInOrderAsync) before it writes it.
+    public Task HoldAsync(Document row, CancellationToken cancellationToken)
+    {
+        var key = row.Id;
+        return context.Documents.IgnoreQueryFilters()
+            .Where(document => document.Id == key)
+            .ExecuteUpdateAsync(set => set.SetProperty(document => document.DraftVersion, document => document.DraftVersion), cancellationToken);
+    }
+
+    // What a write decides its status from, as stored now.
+    public async Task<StoredState> StateAsync(Document row, CancellationToken cancellationToken)
+    {
+        var key = row.Id;
+        return await context.Documents.IgnoreQueryFilters().AsNoTracking()
+            .Where(document => document.Id == key)
+            .Select(document => new StoredState(document.PublishedVersion, document.Status))
+            .FirstAsync(cancellationToken);
+    }
+
+    // The draft version of a row outside the trash, or null for none.
+    public async Task<int?> LiveDraftVersionAsync(Guid id, string locale, CancellationToken cancellationToken) =>
+        await context.Documents.AsNoTracking()
+            .Where(document => document.DocumentId == id && document.Locale == locale)
+            .Select(document => (int?)document.DraftVersion)
+            .FirstOrDefaultAsync(cancellationToken);
 
     public Task SetTrashedAsync(Guid id, DateTimeOffset? at, Guid? by, CancellationToken cancellationToken) =>
         context.Documents.IgnoreQueryFilters()
@@ -375,6 +425,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
     // and, when a cutoff is given, were put there before it, so that an entry trashed again since it was read as due is not
     // taken; the caller compares the count with the rows it saw and rolls back on a difference. References to the entry from
     // others are theirs: they are the values of those entries' fields, and a read leaves out a target that is not there.
+    // The schedules and their jobs go last, in the lock order.
     public async Task<int> PurgeAsync(SchemaType type, Guid id, DateTimeOffset? trashedBefore, CancellationToken cancellationToken)
     {
         var typeName = type.Name;
@@ -385,7 +436,6 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
         }
 
         var removed = await documents.ExecuteDeleteAsync(cancellationToken);
-        await PurgeSchedulesAsync(id, cancellationToken);
         await context.Versions.Where(version => version.DocumentId == id).ExecuteDeleteAsync(cancellationToken);
         await context.References.Where(reference => reference.SourceType == typeName && reference.SourceDocumentId == id).ExecuteDeleteAsync(cancellationToken);
         if (type.Localized)
@@ -394,6 +444,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
         }
 
         await context.Rows(StorageNames.Table(type)).Where(row => EF.Property<Guid>(row, StorageNames.DocumentId) == id).ExecuteDeleteAsync(cancellationToken);
+        await PurgeSchedulesAsync(id, cancellationToken);
         return removed;
     }
 
@@ -523,12 +574,13 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
     // A draft version the row must still hold: one that lost the swap has changed nothing.
     public async Task<bool> MarkPublishedAsync(Document row, DateTimeOffset at, Guid by, CancellationToken cancellationToken)
     {
+        var key = row.Id;
         var id = row.DocumentId;
         var locale = row.Locale;
         var version = row.DraftVersion;
         var first = row.FirstPublishedAt ?? at;
         var affected = await context.Documents
-            .Where(document => document.DocumentId == id && document.Locale == locale && document.DraftVersion == version)
+            .Where(document => document.Id == key && document.DraftVersion == version)
             .ExecuteUpdateAsync(
                 set => set
                     .SetProperty(document => document.Status, EntryStatus.Published)
@@ -560,11 +612,10 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
 
     public async Task<bool> MarkUnpublishedAsync(Document row, DateTimeOffset at, Guid by, CancellationToken cancellationToken)
     {
-        var id = row.DocumentId;
-        var locale = row.Locale;
+        var key = row.Id;
         var version = row.PublishedVersion;
         var affected = await context.Documents
-            .Where(document => document.DocumentId == id && document.Locale == locale && document.PublishedVersion == version)
+            .Where(document => document.Id == key && document.PublishedVersion == version)
             .ExecuteUpdateAsync(
                 set => set
                     .SetProperty(document => document.Status, EntryStatus.Unpublished)
@@ -587,10 +638,13 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
         return true;
     }
 
-    public Task SetStatusAsync(Guid id, string locale, EntryStatus status, CancellationToken cancellationToken) =>
-        context.Documents
-            .Where(document => document.DocumentId == id && document.Locale == locale)
+    public Task SetStatusAsync(Document row, EntryStatus status, CancellationToken cancellationToken)
+    {
+        var key = row.Id;
+        return context.Documents
+            .Where(document => document.Id == key)
             .ExecuteUpdateAsync(set => set.SetProperty(document => document.Status, status), cancellationToken);
+    }
 
     // Without the snapshot, the large column of cms_version.
     public Task<List<VersionInfo>> VersionsAsync(Guid id, string locale, CancellationToken cancellationToken) =>
@@ -1073,6 +1127,9 @@ internal enum ReferenceTargetState
 }
 
 internal sealed record ReferenceTargetRow(string Locale, bool IsPublished);
+
+// The published version and the status a write read, for a swap that compares them.
+internal sealed record StoredState(int? PublishedVersion, EntryStatus Status);
 
 // The content rows of one draft as a transaction read them: the shared row, and the locale row of a localized type. Null
 // is no row. None is a draft that has no rows yet.

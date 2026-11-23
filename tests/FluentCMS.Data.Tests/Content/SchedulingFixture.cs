@@ -89,9 +89,10 @@ internal sealed class SchedulingFixture : IDisposable
     }
 
     // The job body on its own, under the operation the runner gives it, for a job that is not the one a schedule names or that fails.
-    public async Task<ScheduleOutcome> RunAsync(Guid schedule, Guid job, Principal? actor, ScheduleAction action = ScheduleAction.Publish, bool lastAttempt = false)
+    public async Task<ScheduleOutcome> RunAsync(Guid schedule, Guid job, Principal? actor, ScheduleAction action = ScheduleAction.Publish, bool lastAttempt = false, Action<IServiceProvider>? prepare = null)
     {
         using var scope = Database.Database.NewScope();
+        prepare?.Invoke(scope.ServiceProvider);
         var accessor = scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>();
         accessor.Current = new OperationContext(Principal.System, Origin.Job, SiteA, "en", null, "test", DateTimeOffset.UtcNow)
         {

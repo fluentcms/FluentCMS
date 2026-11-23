@@ -85,6 +85,8 @@ internal sealed partial class ContentService
             {
                 var (documents, row, _) = await ReachAllLocalesAsync(write, ContentOperation.Purge, id, trashed: true, cancellationToken);
 
+                // Its rows go in one statement and its schedules after, so the rows are held first, in the lock order.
+                await HoldEveryRowAsync(id, documents, () => TrashConflictAsync(write, id, row), cancellationToken);
                 if (await store.PurgeAsync(write.Type, id, trashedBefore, cancellationToken) != documents.Count)
                 {
                     throw new EntryNotFoundException(write.Type.Name, id);
