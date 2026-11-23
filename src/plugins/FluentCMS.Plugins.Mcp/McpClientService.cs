@@ -126,7 +126,7 @@ internal sealed class McpClientService(IMcpClients clients, IPermissionChecker p
             case McpClientChangeOutcome.Done:
                 return;
             case McpClientChangeOutcome.ChangedMeanwhile:
-                throw new PluginException(McpErrorCodes.ClientChangedMeanwhile, $"The MCP client {id:D} or your consent to it was changed by another request at the same time; read your consents again.");
+                throw new PluginException(McpErrorCodes.ClientChangedMeanwhile, $"The MCP client {id:D} or your consent to it was changed by another request at the same time, so its place was not freed; send the request again.");
             default:
                 throw new PluginException(McpErrorCodes.ClientNotFound, $"No MCP client {id:D} counts toward your consents.");
         }

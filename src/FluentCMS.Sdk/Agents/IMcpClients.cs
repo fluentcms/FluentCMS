@@ -109,7 +109,10 @@ public interface IMcpClients
     /// <see cref="ListConsentsAsync"/> lists: the user's authorizations of the client are deleted with every token issued
     /// under them, so its access tokens stop at once, and the client no longer names the user as the one who first used it.
     /// A client that then holds no grant of anyone is taken for one never used, which the cleanup removes. Nothing of
-    /// another user changes. Raises <see cref="Events.UserSessionsEndedEvent"/> for each consent that was valid. It runs
+    /// another user changes. Raises <see cref="Events.UserSessionsEndedEvent"/> for each consent that was valid, which is
+    /// revoked with its tokens and committed before the delete, so that a refresh of the client that crosses the end gets
+    /// no token that works; a delete that crosses one is <see cref="McpClientChangeOutcome.ChangedMeanwhile"/>, leaves the
+    /// place taken and the consent revoked, and the same call again frees the place. It runs
     /// one at a time with the consents that take a place, and fails as a service that is unavailable when they keep it
     /// waiting too long.
     /// </summary>

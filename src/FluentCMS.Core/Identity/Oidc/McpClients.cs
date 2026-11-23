@@ -498,6 +498,11 @@ internal sealed class McpClients(
     // long period. It runs under the lock of the consents that take a place, so a consent of the user at the same moment
     // counts what this left (#3441). A client that cannot count for the user is answered before the lock, so that a call
     // with any id keeps no consent waiting, and everything is read again under it.
+    // The valid consents are revoked with their tokens and committed first, and only then deleted. A refresh that crosses
+    // the delete, by a token it inserts or the one it redeems, makes the delete roll back, and a status update in the same
+    // transaction would not keep its insert out on PostgreSQL; committed before, the revoke leaves such a token dead and
+    // lets no later refresh through, so the client cannot keep the consent by refreshing, and the next call frees the
+    // place (#3594).
     public async Task<McpClientChange> EndConsentAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
     {
         var subject = userId.ToString("D");
@@ -517,20 +522,42 @@ internal sealed class McpClients(
             ?? throw new ServiceUnavailableException($"Other consents to MCP clients are being changed, so the consent to {id:D} was not ended; try again in a moment.");
         try
         {
-            return await changes.RunAsync(
+            var revoked = await changes.RunAsync(
                 async () =>
                 {
-                    if (await FindAsync(id, cancellationToken) is not var (application, client, state)
-                        || state is not { IsApproved: true, ApprovedBy: null })
+                    if (await ConsentOfAsync(userId, id, cancellationToken) is not var (_, client, _, granted))
                     {
                         return new McpClientChange(McpClientChangeOutcome.NotFound, null);
                     }
 
-                    var granted = await context.Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().AsNoTracking()
-                        .Where(authorization => authorization.Application != null && authorization.Application.Id == id && authorization.Subject == subject)
-                        .Select(authorization => new { authorization.Id, authorization.Status })
-                        .ToListAsync(cancellationToken);
-                    if (granted.Count == 0 && state.UsedBy != userId)
+                    var name = await context.Set<CmsUser>().AsNoTracking().Where(user => user.Id == userId).Select(user => user.UserName).FirstOrDefaultAsync(cancellationToken);
+                    foreach (var grant in granted)
+                    {
+                        if (grant.Status != Statuses.Valid || await authorizations.FindByIdAsync(grant.Id.ToString("D"), cancellationToken) is not { } authorization)
+                        {
+                            continue;
+                        }
+
+                        var ended = await authorizations.TryRevokeAsync(authorization, cancellationToken);
+                        await tokens.RevokeByAuthorizationIdAsync(grant.Id.ToString("D"), cancellationToken);
+                        if (ended)
+                        {
+                            await changes.RaiseAsync(new UserSessionsEndedEvent(userId, name ?? "", SessionEndReasons.Revoked, grant.Id), cancellationToken);
+                        }
+                    }
+
+                    return new McpClientChange(McpClientChangeOutcome.Done, client);
+                },
+                cancellationToken);
+            if (revoked.Outcome != McpClientChangeOutcome.Done)
+            {
+                return revoked;
+            }
+
+            return await changes.RunAsync(
+                async () =>
+                {
+                    if (await ConsentOfAsync(userId, id, cancellationToken) is not var (application, client, state, granted))
                     {
                         return new McpClientChange(McpClientChangeOutcome.NotFound, null);
                     }
@@ -554,23 +581,40 @@ internal sealed class McpClients(
                         await StoreAsync(application, freed, cancellationToken);
                     }
 
-                    var name = await context.Set<CmsUser>().AsNoTracking().Where(user => user.Id == userId).Select(user => user.UserName).FirstOrDefaultAsync(cancellationToken);
-                    foreach (var ended in granted.Where(grant => grant.Status == Statuses.Valid))
-                    {
-                        await changes.RaiseAsync(new UserSessionsEndedEvent(userId, name ?? "", SessionEndReasons.Revoked, ended.Id), cancellationToken);
-                    }
-
                     return new McpClientChange(McpClientChangeOutcome.Done, With(client, freed));
                 },
                 cancellationToken);
         }
         catch (Exception exception) when (exception is OpenIddictExceptions.ConcurrencyException || (exception is DbUpdateException && CrossedAGrant(exception)))
         {
-            // The client or a consent changed since it was read, or a token of the consent was issued while it was
-            // deleted, which the foreign key refuses; the transaction rolled back whole, so nothing was ended, and the
-            // caller tries again.
+            // The client or a consent changed since it was read, or a token of the consent was issued or redeemed while
+            // it was deleted, which the foreign key or the token's concurrency check refuses. The delete rolled back
+            // whole, so the place is still taken, but what the revoke committed stays: the caller tries again.
             return new McpClientChange(McpClientChangeOutcome.ChangedMeanwhile, null);
         }
+    }
+
+    // The client, when it is one the open policy approved, and the user's authorizations of it, valid or not; null when
+    // it does not count for the user.
+    private async Task<(object Application, McpClient Client, McpClientState State, IReadOnlyList<(Guid Id, string? Status)> Granted)?> ConsentOfAsync(Guid userId, Guid id, CancellationToken cancellationToken)
+    {
+        if (await FindAsync(id, cancellationToken) is not var (application, client, state)
+            || state is not { IsApproved: true, ApprovedBy: null })
+        {
+            return null;
+        }
+
+        var subject = userId.ToString("D");
+        var granted = await context.Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().AsNoTracking()
+            .Where(authorization => authorization.Application != null && authorization.Application.Id == id && authorization.Subject == subject)
+            .Select(authorization => new { authorization.Id, authorization.Status })
+            .ToListAsync(cancellationToken);
+        if (granted.Count == 0 && state.UsedBy != userId)
+        {
+            return null;
+        }
+
+        return (application, client, state, [.. granted.Select(grant => (grant.Id, grant.Status))]);
     }
 
     private async Task<bool> HasGrantsAsync(Guid id, CancellationToken cancellationToken) =>

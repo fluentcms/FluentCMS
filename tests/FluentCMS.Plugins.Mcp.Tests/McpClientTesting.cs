@@ -16,6 +16,7 @@ using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
+using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Providers;
 using FluentCMS.Settings;
@@ -65,7 +66,7 @@ public sealed class McpClientHookFixture : IAsyncDisposable
             services.AddScoped<OpenIddictAuthorizationManager<OpenIddictEntityFrameworkCoreAuthorization<Guid>>, HookedAuthorizationManager>();
             services.AddSingleton<IDistributedLock>(provider => new ArrivalsLock(ActivatorUtilities.CreateInstance<DatabaseDistributedLock>(provider), Consents));
             services.AddSingleton<ILoggerProvider>(Logs);
-        });
+        }).Configure(cms => cms.Events.AddHandler<UserSessionsEndedEvent, SessionsEndedHook>());
     }
 
     public FluentCmsTestHost Host { get; }
@@ -145,13 +146,36 @@ public sealed class ApplicationManagerHooks
         _beforeUpdate = work;
     }
 
-    // A refusal of the next delete of an authorization by its foreign key, as when a token of it was issued meanwhile.
-    public void FailNextAuthorizationDelete() => _failAuthorizationDelete = 1;
+    // A refusal of a delete of an authorization by its foreign key, as when a token of it was issued meanwhile: the next
+    // one, or the one after as many as passed go through.
+    public void FailNextAuthorizationDelete(int passed = 0) => _failAuthorizationDelete = passed + 1;
+
+    // Work once the next end of a session has committed, as UserSessionsEndedEvent is heard after its commit.
+    public void AfterNextSessionsEnded(Func<Task> work) => _afterSessionsEnded = work;
+
+    private Func<Task>? _afterSessionsEnded;
 
     internal Func<Task>? TakeBeforeUpdate(Guid application) =>
         _beforeUpdateOf == application ? Interlocked.Exchange(ref _beforeUpdate, null) : null;
 
-    internal bool TakeFailAuthorizationDelete() => Interlocked.Exchange(ref _failAuthorizationDelete, 0) == 1;
+    internal bool TakeFailAuthorizationDelete()
+    {
+        var left = Volatile.Read(ref _failAuthorizationDelete);
+        return left > 0 && Interlocked.Decrement(ref _failAuthorizationDelete) == 0;
+    }
+
+    internal Func<Task>? TakeAfterSessionsEnded() => Interlocked.Exchange(ref _afterSessionsEnded, null);
+}
+
+internal sealed class SessionsEndedHook(ApplicationManagerHooks hooks) : IEventHandler<UserSessionsEndedEvent>
+{
+    public async ValueTask HandleAsync(UserSessionsEndedEvent message, CancellationToken cancellationToken)
+    {
+        if (hooks.TakeAfterSessionsEnded() is { } work)
+        {
+            await work();
+        }
+    }
 }
 
 public enum DeleteFailure
