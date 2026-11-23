@@ -10,7 +10,7 @@ namespace FluentCMS.Plugins.Mcp;
 // The settings area "mcp" (settings.mcp.manage). How MCP clients register themselves at the authorization server is a
 // matter of the instance, which has one authorization server, so the instance defaults are what is read; what a site
 // sets for itself here changes nothing of it.
-[Settings("mcp")]
+[Settings("mcp", InstanceOnly = true)]
 public sealed class McpSettings
 {
     // Approval: a registration waits for an administrator. Open: it is approved at once with DefaultClientRole. Off: no

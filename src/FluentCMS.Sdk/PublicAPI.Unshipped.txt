@@ -2683,6 +2683,8 @@ FluentCMS.Settings.SettingsAccessDeniedException.SettingsAccessDeniedException(s
 FluentCMS.Settings.SettingsAccessDeniedException.Site.get -> FluentCMS.Sites.SiteId?
 FluentCMS.Settings.SettingsAttribute
 FluentCMS.Settings.SettingsAttribute.Area.get -> string!
+FluentCMS.Settings.SettingsAttribute.InstanceOnly.get -> bool
+FluentCMS.Settings.SettingsAttribute.InstanceOnly.set -> void
 FluentCMS.Settings.SettingsAttribute.SettingsAttribute(string! area) -> void
 FluentCMS.Settings.SettingsSecretAttribute
 FluentCMS.Settings.SettingsSecretAttribute.SettingsSecretAttribute() -> void

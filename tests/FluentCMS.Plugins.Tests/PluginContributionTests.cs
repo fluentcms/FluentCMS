@@ -380,7 +380,8 @@ public sealed class PluginContributionTests(PluginContributionFixture fixture) :
         var body = await response.Content.ReadAsStringAsync(Token);
         response.StatusCode.ShouldBe(HttpStatusCode.OK, body);
         var items = JsonNode.Parse(body)!["items"]!.AsArray();
-        items.Single(item => item!["area"]!.GetValue<string>() == "sample")!["plugin"]!.GetValue<string>().ShouldBe("sample");
+        var sample = items.Single(item => item!["area"]!.GetValue<string>() == "sample")!;
+        (sample["plugin"]!.GetValue<string>(), sample["instanceOnly"]!.GetValue<bool>()).ShouldBe(("sample", false));
         items.Single(item => item!["area"]!.GetValue<string>() == "branding")!["plugin"].ShouldBeNull();
     }
 

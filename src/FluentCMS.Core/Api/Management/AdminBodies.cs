@@ -143,6 +143,8 @@ internal sealed record CreatedApiKeyResponse(
     Guid CreatedBy,
     IReadOnlyList<string>? AllowedAddresses,
     DateTimeOffset? PreviousKeyExpiresAt,
+    [property: Description("The longest overlap a rotation takes, in seconds: the configured RotationOverlap, which a rotation that leaves overlapSeconds out gets. A longer one is refused with FCMS3026.")]
+    int MaxOverlapSeconds,
     string Secret)
 {
     public static CreatedApiKeyResponse From(CreatedApiKey created)
@@ -150,7 +152,7 @@ internal sealed record CreatedApiKeyResponse(
         ArgumentNullException.ThrowIfNull(created);
 
         var key = created.Key;
-        return new(key.Id, key.Name, key.Class, key.KeyPrefix, key.RoleId, key.SiteIds, key.TypeNames, key.ExpiresAt, key.LastUsedAt, key.RateLimit, key.RevokedAt, key.CreatedAt, key.CreatedBy, key.AllowedAddresses, key.PreviousKeyExpiresAt, created.Secret);
+        return new(key.Id, key.Name, key.Class, key.KeyPrefix, key.RoleId, key.SiteIds, key.TypeNames, key.ExpiresAt, key.LastUsedAt, key.RateLimit, key.RevokedAt, key.CreatedAt, key.CreatedBy, key.AllowedAddresses, key.PreviousKeyExpiresAt, key.MaxOverlapSeconds, created.Secret);
     }
 
     public override string ToString() => $"{nameof(CreatedApiKeyResponse)} {{ Id = {Id} }}";

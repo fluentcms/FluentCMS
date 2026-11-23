@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Net;
 using System.Text.Json;
 using FluentCMS.Content;
@@ -41,12 +42,15 @@ internal sealed record ApiKeyInfo(
     DateTimeOffset CreatedAt,
     Guid CreatedBy,
     IReadOnlyList<string>? AllowedAddresses,
-    DateTimeOffset? PreviousKeyExpiresAt)
+    DateTimeOffset? PreviousKeyExpiresAt,
+    [property: Description("The longest overlap a rotation takes, in seconds: the configured RotationOverlap, which a rotation that leaves overlapSeconds out gets. A longer one is refused with FCMS3026.")]
+    int MaxOverlapSeconds)
 {
     // PreviousKeyExpiresAt only while the secret a rotation replaced is still accepted.
-    public static ApiKeyInfo From(ApiKey key, DateTimeOffset now) =>
+    public static ApiKeyInfo From(ApiKey key, DateTimeOffset now, ApiKeyOptions options) =>
         new(key.Id, key.Name, key.Class, key.KeyPrefix, key.RoleId, ApiKeyClaims.SitesOf(key), ApiKeyClaims.TypesOf(key), key.ExpiresAt, key.LastUsedAt, key.RateLimit, key.RevokedAt, key.CreatedAt, key.CreatedBy,
-            ApiKeyAddresses.Of(key), key.PreviousKeyHash is not null && key.PreviousKeyExpiresAt > now && key.IsActive(now) ? key.PreviousKeyExpiresAt : null);
+            ApiKeyAddresses.Of(key), key.PreviousKeyHash is not null && key.PreviousKeyExpiresAt > now && key.IsActive(now) ? key.PreviousKeyExpiresAt : null,
+            (int)options.RotationOverlap.TotalSeconds);
 }
 
 // The only place the secret is, and only on the call that created it. It is kept out of ToString, so a log of this cannot show it.
@@ -180,7 +184,7 @@ internal sealed class ApiKeyService(
             },
             cancellationToken);
 
-        return new CreatedApiKey(ApiKeyInfo.From(key, now), secret);
+        return new CreatedApiKey(ApiKeyInfo.From(key, now, options), secret);
     }
 
     // The keys the caller manages. One with no permission for any of them is refused rather than shown an empty list.
@@ -190,7 +194,7 @@ internal sealed class ApiKeyService(
 
         var now = time.GetUtcNow();
         List<ApiKeyInfo> managed = [];
-        foreach (var key in keys.Select(key => ApiKeyInfo.From(key, now)))
+        foreach (var key in keys.Select(key => ApiKeyInfo.From(key, now, options)))
         {
             if (await ManagesAsync(key.SiteIds, cancellationToken))
             {
@@ -212,7 +216,7 @@ internal sealed class ApiKeyService(
         await RequireAnyAsync(cancellationToken);
         return await context.Set<ApiKey>().AsNoTracking().FirstOrDefaultAsync(key => key.Id == id, cancellationToken) is { } key
             && await ManagesAsync(ApiKeyClaims.SitesOf(key), cancellationToken)
-                ? ApiKeyInfo.From(key, time.GetUtcNow())
+                ? ApiKeyInfo.From(key, time.GetUtcNow(), options)
                 : null;
     }
 
@@ -322,7 +326,7 @@ internal sealed class ApiKeyService(
                 key.PreviousKeyHash = previousHash;
                 key.PreviousKeyExpiresAt = previousExpires;
                 await changes.RaiseAsync(new ApiKeyRotatedEvent(key.Id, key.Name, previousExpires), cancellationToken);
-                return new CreatedApiKey(ApiKeyInfo.From(key, now), secret);
+                return new CreatedApiKey(ApiKeyInfo.From(key, now, options), secret);
             },
             cancellationToken);
     }
@@ -359,7 +363,7 @@ internal sealed class ApiKeyService(
 
                 key.AllowedAddresses = json;
                 await changes.RaiseAsync(new ApiKeyAllowedAddressesChangedEvent(key.Id, key.Name, addresses), cancellationToken);
-                return ApiKeyInfo.From(key, time.GetUtcNow());
+                return ApiKeyInfo.From(key, time.GetUtcNow(), options);
             },
             cancellationToken);
     }

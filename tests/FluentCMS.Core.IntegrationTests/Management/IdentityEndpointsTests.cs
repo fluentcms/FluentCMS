@@ -288,6 +288,14 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         tooLong.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
         tooLong.Body!.ToJsonString().ShouldContain("FCMS3026");
 
+        // The range a rotation takes is in every answer of the key, the list's included: up to RotationOverlap, a day here.
+        var longest = (await fixture.GetAsync($"api-keys/{id}")).Json["maxOverlapSeconds"]!.GetValue<int>();
+        longest.ShouldBe(86400);
+        (await fixture.GetAsync("api-keys")).Json["items"]!.AsArray().Single(item => item!["id"]!.GetValue<string>() == id)!["maxOverlapSeconds"]!.GetValue<int>().ShouldBe(longest);
+        (now.Json["maxOverlapSeconds"]!.GetValue<int>(), created.Json["maxOverlapSeconds"]!.GetValue<int>()).ShouldBe((longest, longest));
+        (await fixture.PostAsync($"api-keys/{id}/rotate", $$"""{ "overlapSeconds": {{longest}} }""")).Status.ShouldBe(HttpStatusCode.OK);
+        (await fixture.PostAsync($"api-keys/{id}/rotate", $$"""{ "overlapSeconds": {{longest + 1}} }""")).Json["code"]!.GetValue<string>().ShouldBe("FCMS3026");
+
         (await fixture.DeleteAsync($"api-keys/{id}")).Status.ShouldBe(HttpStatusCode.NoContent);
         var revoked = await fixture.PostAsync($"api-keys/{id}/rotate");
         revoked.Status.ShouldBe(HttpStatusCode.Conflict);
