@@ -280,6 +280,9 @@ internal sealed class ApiKeyService(
     // rotations at once one wins and the other is refused rather than losing the secret it returned.
     public async Task<CreatedApiKey> RotateAsync(Guid id, TimeSpan? overlap = null, CancellationToken cancellationToken = default)
     {
+        // apikeys.manage in the site of the request, then the key's reach, before the overlap, as on create: a caller without
+        // the permission gets 403, and one out of the key's reach 404, for any overlapSeconds that binds.
+        await ManagedAsync(id, cancellationToken);
         var window = overlap ?? options.RotationOverlap;
         if (window < TimeSpan.Zero || window > options.RotationOverlap)
         {
@@ -287,7 +290,6 @@ internal sealed class ApiKeyService(
                 $"The overlap is from 0 to {(long)options.RotationOverlap.TotalSeconds} seconds, the configured RotationOverlap.")]);
         }
 
-        await ManagedAsync(id, cancellationToken);
         return await changes.RunAsync(
             async () =>
             {
