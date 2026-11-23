@@ -50,14 +50,15 @@ internal sealed record AiCall(
     AiReservation? Reservation);
 
 // The actions of spec 5.5, in the site of the current operation. PrepareAsync checks, in this order: ai.use in the site,
-// that the site's settings opt the field in, and that the caller may update that field, since a suggestion is for a field
-// the caller edits. It then checks the body; altText on an asset alone has no field, so the site's assetAltText stands for
-// the opt-in and the media service's own check of an update of the asset for the right to update. It then takes the call
-// from the call limit, asks the slot for the site's client and reserves the call's estimate against the site's daily
-// budget, so that a caller who is over either is refused before any work is done for it, and reads what the action works on as the caller, through the content and media
-// services. A call refused on the way is given back to the limit and the budget. RunAsync sends it and writes its usage row: one for
-// every call that is sent, whether it succeeds, fails, times out or is cancelled. The plugin writes nothing to content, and the text
-// and the suggestion go to the provider and the caller only: never to a row, a log line or a span.
+// that the site's settings opt the field in, for altText that they let images go with assetAltText, and that the caller
+// may update that field, since a suggestion is for a field the caller edits. It then checks the body; altText on an asset
+// alone has no field, so the media service's own check of an update of the asset stands for the right to update. It then
+// takes the call from the call limit, asks the slot for the site's client and reserves the call's estimate against the
+// site's daily budget, so that a caller who is over either is refused before any work is done for it, and reads what the
+// action works on as the caller, through the content and media services. A call refused on the way is given back to the
+// limit and the budget. RunAsync sends it and writes its usage row: one for every call that is sent, whether it succeeds,
+// fails, times out or is cancelled. The plugin writes nothing to content, and the text and the suggestion go to the
+// provider and the caller only: never to a row, a log line or a span.
 internal sealed class AiAssistService(
     IOperationContextAccessor operations,
     IPermissionChecker permissions,
@@ -158,9 +159,12 @@ internal sealed class AiAssistService(
                 throw new PluginException(AiErrorCodes.FieldNotOptedIn, "The AI settings of the site do not opt this field in. A field that takes AI actions is a text, long text or rich text field of a content type, named under 'fields'.");
             }
         }
-        else if (!current.AssetAltText)
+
+        // altText sends an image of the media library, and only it does, whether for a field or for an asset alone: an
+        // opted-in text field does not opt in the images the caller may read.
+        if (action == AiActions.AltText && !current.AssetAltText)
         {
-            throw new PluginException(AiErrorCodes.FieldNotOptedIn, "The AI settings of the site do not turn on alt text for an asset alone. An administrator turns it on with 'assetAltText' in the AI settings of the site.");
+            throw new PluginException(AiErrorCodes.FieldNotOptedIn, "The AI settings of the site do not let images of the media library go to the provider for alt text. An administrator turns it on with 'assetAltText' in the AI settings of the site.");
         }
 
         // The locale comes before the right to update, because a grant may be limited to locales: the right is asked in
@@ -666,7 +670,7 @@ internal sealed class AiAssistService(
                 SiteId = call.Site.Value,
                 PrincipalKind = AiUsageService.KindOf(call.Principal.Kind),
                 PrincipalId = call.Principal.Id,
-                PrincipalName = Limit(activity.ActorName(call.Principal.Name), AiUsageModel.PrincipalNameMaxLength),
+                PrincipalName = activity.ActorName(call.Principal.Name),
                 Action = call.Action,
                 Type = call.Type,
                 Field = call.Field,

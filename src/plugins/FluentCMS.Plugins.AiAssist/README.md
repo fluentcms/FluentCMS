@@ -19,7 +19,7 @@ The settings area `ai` (`GET` and `PUT /api/management/v1/settings/ai`, permissi
 | `requestTimeout` | `60` | How long a call may take, in seconds, from 1 to 600. |
 | `callsPerMinute` | `20` | The calls a principal may make in a minute in the site, counted on each instance. |
 | `dailyTokenBudget` | `0` | The prompt and completion tokens the site may use in a day, from midnight UTC. 0 sets no budget. A call that does not go with a credential of the site's own is also held by `FluentCms:Ai:DailyTokenBudget`, which this may lower and not raise. |
-| `assetAltText` | `false` | Lets `altText` run for an asset alone, which sends any image of the media library that the caller may update to the provider, with no field opted in. Off, such a call is refused with `FCMS1683`. |
+| `assetAltText` | `false` | Lets images of the media library go to the provider: it covers every `altText`, for a field and for an asset alone, the only action that sends an image. An opted-in field opts in its text, not the images the caller may read. Off, every `altText` is refused with `FCMS1683`; the text actions are not affected. A site whose settings were saved before the setting existed reads it off. |
 | `fields` | empty | The opt-in: a map of content type to the fields that take actions, such as `{ "article": ["title", "summary", "body"] }`. |
 
 A field that takes actions is a text, long text or rich text field of a content type. A rich text field is sent and answered as Markdown.
@@ -103,8 +103,8 @@ A key in the instance defaults of the settings is the operator's as well. A site
 - `text` is the text to work on. `documentId` in its place names an entry, and the plugin reads that field of its draft, as the caller.
 - `locale` is the locale the suggestion is for, an enabled locale of the site: the draft is read in it and the right to update is asked in it. Left out, it is the locale of the request.
 - `translate` takes `options.targetLocale`, an enabled locale of the site.
-- `altText` takes `options.mediaId`, an image of the media library, and needs no text. The plugin sends a copy of the image that fits 1024 by 1024 pixels and carries no metadata, read through the media service as the caller.
-- `altText` with neither `type` nor `field` is for the asset alone: its own alt text in `locale`, as the media field and the library edit it with `PATCH /media/{id}`. It takes no `documentId`, and runs only where the site's `assetAltText` is on. The plugin never writes the asset; the caller saves the suggestion if it keeps it.
+- `altText` takes `options.mediaId`, an image of the media library, and needs no text. It runs only where the site's `assetAltText` is on. The plugin sends a copy of the image that fits 1024 by 1024 pixels and carries no metadata, read through the media service as the caller.
+- `altText` with neither `type` nor `field` is for the asset alone: its own alt text in `locale`, as the media field and the library edit it with `PATCH /media/{id}`. It takes no `documentId`. The plugin never writes the asset; the caller saves the suggestion if it keeps it.
 
 The answer:
 
@@ -139,12 +139,12 @@ data: {"suggestion":"Ships are large vessels.","usage":{"provider":"openAi","mod
 The checks run in this order:
 
 1. the permission `ai.use` in the site;
-2. the type and field opted in under `fields` (`FCMS1683`);
+2. the type and field opted in under `fields` (`FCMS1683`), and for `altText` the site's `assetAltText` too (`FCMS1683` when it is off, before the image or anything of the asset is read);
 3. the caller's right to update that field of the type in the locale of the suggestion, since a suggestion is for a field the caller edits (`FCMS3103`). A grant limited to locales gives suggestions for those locales only.
 
 With `documentId` the content service decides whether the caller may read the draft, and with `mediaId` the media service whether it may read the image.
 
-For `altText` on an asset alone, step 2 gives way to the site's `assetAltText` (`FCMS1683` when it is off, whatever the asset), and step 3 to the check of `PATCH /media/{id}`, made by the media service itself after the body is read: without `media.update` in the site the call is refused with `FCMS3103`, and an asset outside the folders of a limited grant is not found (`FCMS1585`), as an asset that does not exist is.
+For `altText` on an asset alone, which names no field, step 2 is the site's `assetAltText` alone, and step 3 gives way to the check of `PATCH /media/{id}`, made by the media service itself after the body is read: without `media.update` in the site the call is refused with `FCMS3103`, and an asset outside the folders of a limited grant is not found (`FCMS1585`), as an asset that does not exist is.
 
 The first time the plugin starts on an instance, the built-in Editor and Author get `ai.use` with no constraints. The default is given once, so a grant you take away later is not given back at the next start, and a role that already holds a limited grant of an AI permission does not get it. `ai.usage.read` goes to no role by default.
 
@@ -166,6 +166,8 @@ The first time the plugin starts on an instance, the built-in Editor and Author 
 - `fields` maps each content type to the fields, in the order of the schema, that pass the checks above for the caller in that locale: opted in, a field that takes actions, and one the caller may update. A type the caller may not read is left out, and so is a field it may set on a new entry only, which an action refuses too.
 - `assets` is whether the caller may ask for the alt text of an asset alone: the site is on and so is its `assetAltText`, the media plugin is enabled for it, and the caller holds `media.read` and `media.update` there, for every folder or some. Whether a given asset is in those folders is learnt at the call.
 
+`fields` does not follow `assetAltText`, since the text actions do not: where it is off, `altText` for a listed field is refused.
+
 The answer holds nothing of the provider's configuration: not the provider, the model, the endpoint or the key, nor whether a key is set. A provider that is not configured well enough to answer is learnt at the call (`FCMS1684`, `FCMS1685`).
 
 ### Limits
@@ -175,7 +177,7 @@ The answer holds nothing of the provider's configuration: not the provider, the 
 - A call ends at `requestTimeout` (`FCMS1688`) or when the caller goes away.
 - A principal makes at most `callsPerMinute` calls in a site (`FCMS1687`). The count is kept in memory on each instance. A call is counted before its draft is read or its image decoded, so calls sent together pass only as often as the limit allows, and a call refused before it is sent is not counted.
 - A site's daily token budget is the lower of its `dailyTokenBudget` and, for a call with the operator's credential, `FluentCms:Ai:DailyTokenBudget`. The default factory says a call goes with the site's own credential only for a key the site set itself at an endpoint that bills the holder of the key: OpenAI's own, or one of `FluentCms:Ai:SiteBilledEndpoints`. At an endpoint the operator runs, such as a local Ollama, any key the site types stays under the ceiling. A factory of the host's own counts as the operator's unless it sets `SiteCredential`. It is counted from the site's usage rows since midnight UTC and the calls in flight (`FCMS1693`, whose detail says when it resets, logged as event 9369 once a day for the site on each instance). The `dailyTokenBudget` of the instance defaults holds the sites that follow the defaults, not a site that saved settings of its own.
-- A budgeted call reserves an estimate while it is in flight: a token for each UTF-8 byte of its instructions and text (until a draft named by `documentId` is read, `MaxInputLength` characters of three bytes; a call that reads none, such as `altText` with no text, reckons only the text it was given), 25,600 for an image (gpt-4o-mini's count of the 1024 by 1024 copy at high detail, the most of the models whose formula is published: an estimate, not a bound for any model) and `maxOutputTokens`. A call with the operator's credential that ends before the provider reports its usage, whose provider reports none, or that is reported at 0 for a prompt or for an answer with text, is written to the usage log at that estimate; the answer gives what the provider reported. So a site passes its budget by at most one call on each instance, of at most that estimate, as long as the provider counts no more than that. A row is written within five seconds; one that fails or takes longer is not written (event 9365) and still counts for its day on the instance. A call with the site's own credential is written as its provider reported it. The Management rate limit holds beside it.
+- A budgeted call reserves an estimate while it is in flight: a token for each UTF-8 byte of its instructions and text (until a draft named by `documentId` is read, `MaxInputLength` characters of three bytes; a call that reads none, such as `altText` with no text, reckons only the text it was given), 25,600 for an image (gpt-4o-mini's count of the 1024 by 1024 copy at high detail, the most of the models whose formula is published: an estimate, not a bound for any model, so on a provider that counts an image as more, image calls in flight together can each pass the budget by the excess) and `maxOutputTokens`. A call with the operator's credential that ends before the provider reports its usage, whose provider reports none, or that is reported at 0 for a prompt or for an answer with text, is written to the usage log at that estimate; the answer gives what the provider reported. So a site passes its budget by at most one call on each instance, of at most that estimate, as long as the provider counts no more than that. A row is written within five seconds; one that fails or takes longer is not written (event 9365) and still counts for its day on the instance. A call with the site's own credential is written as its provider reported it. The Management rate limit holds beside it.
 - A call is one request to the provider: the retries of the client package are off.
 
 ### The text is content
@@ -243,7 +245,7 @@ CI calls no provider. [Verifying AI assist against real endpoints](../../../docs
 | `FCMS1680` | 422 | A request that cannot be read: a missing type, field, text, locale or option, or a parameter of the usage list. |
 | `FCMS1681` | 404 | No such action. |
 | `FCMS1682` | 409 | The site has no provider. |
-| `FCMS1683` | 403 | The field is not opted in, or `assetAltText` is off for the alt text of an asset alone. |
+| `FCMS1683` | 403 | The field is not opted in, or `assetAltText` is off for `altText`. |
 | `FCMS1684` | 409 | The endpoint of the site is not on the allow-list. |
 | `FCMS1685` | 409 | The provider of the site has no model, key or endpoint. |
 | `FCMS1686` | 413 | The text is over the input limit. |

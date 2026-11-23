@@ -321,6 +321,63 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
         one["totals"]!["groupsTruncated"]!.GetValue<bool>().ShouldBeFalse();
     }
 
+    // At the bound: exactly MaxGroups groups are all answered and not cut, one more cuts the lightest, and of two groups with
+    // the same tokens at the cut the one with more calls is kept.
+    [Fact]
+    public async Task TheGroupsAreCutOnlyPastTheirBoundAndATieOfTokensKeepsTheMoreCalls()
+    {
+        var exactly = await _ai.SiteAsync();
+        var oneMore = await _ai.SiteAsync();
+        var tie = await _ai.SiteAsync();
+        var combinations = Enumerable.Range(0, 12).Select(_ => Guid.CreateVersion7()).SelectMany(principal => AiActions.Names.Select(action => (Principal: principal, Action: action))).ToList();
+        await RowsAsync(exactly, combinations.Take(AiUsageService.MaxGroups).Select((group, index) => (group.Principal, group.Action, 100L + index)));
+        await RowsAsync(oneMore, combinations.Take(AiUsageService.MaxGroups + 1).Select((group, index) => (group.Principal, group.Action, 100L + index)));
+        var (more, fewer) = (combinations[^2], combinations[^1]);
+        await RowsAsync(tie, [
+            .. combinations.Take(AiUsageService.MaxGroups - 1).Select((group, index) => (group.Principal, group.Action, 1000L + index)),
+            (fewer.Principal, fewer.Action, 10L),
+            (more.Principal, more.Action, 5L),
+            (more.Principal, more.Action, 5L)]);
+
+        foreach (var (site, truncated, left) in new[] { (exactly, false, (Guid?)null), (oneMore, true, combinations[0].Principal), (tie, true, fewer.Principal) })
+        {
+            using var auditor = await _ai.CallerAsync(site, (AiPermissions.ReadUsage, null));
+            var page = await UsageAsync(auditor, "?pageSize=1");
+            var groups = Groups(page);
+            groups.Count.ShouldBe(AiUsageService.MaxGroups);
+            page["totals"]!["groupsTruncated"]!.GetValue<bool>().ShouldBe(truncated);
+            groups.ShouldBe(InOrder(groups));
+            if (left is { } principal)
+            {
+                groups.ShouldNotContain(group => group.Principal == principal && group.Action == (site == tie ? fewer.Action : combinations[0].Action));
+            }
+        }
+
+        using var reader = await _ai.CallerAsync(tie, (AiPermissions.ReadUsage, null));
+        Groups(await UsageAsync(reader, "")).ShouldContain(("apiKey", more.Principal, more.Action, 2L, 10L, 0L));
+    }
+
+    private async Task RowsAsync(Guid site, IEnumerable<(Guid Principal, string Action, long PromptTokens)> rows)
+    {
+        await using var scope = _ai.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<AiAssistPlugin>>();
+        database.AddRange(rows.Select(row => new AiUsage
+        {
+            Id = Guid.CreateVersion7(),
+            SiteId = site,
+            PrincipalKind = "apiKey",
+            PrincipalId = row.Principal,
+            PrincipalName = "Key",
+            Action = row.Action,
+            Provider = ScriptedFactory.Provider,
+            Model = "test-model",
+            PromptTokens = row.PromptTokens,
+            Succeeded = true,
+            CreatedAt = _ai.Host.Time.GetUtcNow(),
+        }));
+        await database.SaveChangesAsync(Token);
+    }
+
     private static HttpClient InSite(HttpClient client, Guid site)
     {
         client.DefaultRequestHeaders.Add("X-Cms-Site", site.ToString());

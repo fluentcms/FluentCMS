@@ -1,9 +1,17 @@
+using System.Data.Common;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Plugins.Media;
+using FluentCMS.Settings;
+using FluentCMS.Sites;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using SkiaSharp;
 using Xunit;
@@ -211,7 +219,7 @@ public sealed class AiActionTests : IClassFixture<AiHost>
     [Fact]
     public async Task AltTextDescribesAReducedCopyOfAnImageOfTheMediaLibraryReadAsTheCaller()
     {
-        var site = await _ai.SiteAsync();
+        var site = await _ai.SiteAsync(settings => settings.AssetAltText = true);
         using var admin = await _ai.AdminAsync(site);
         var image = await UploadAsync(admin, "harbour.png", Picture(2000, 1000));
         var document = await UploadAsync(admin, "notes.pdf", "%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n"u8.ToArray());
@@ -351,54 +359,103 @@ public sealed class AiActionTests : IClassFixture<AiHost>
         _ai.Chat.Calls.ShouldBeEmpty();
     }
 
-    // #3449: an asset alone sends an image that no field opted in, so the site turns it on with assetAltText, which is off by
-    // default. Off, the call is refused as a field that is not opted in, before the asset is looked at, so the answer is the
-    // same for an asset that does not exist, and it takes nothing from the call limit. The alt text of a field still runs.
+    // #3449: altText sends an image of the media library that no field opted in, for an asset alone or for a field, so the
+    // site turns it on with assetAltText, which is off by default. Off, the call is refused as a field that is not opted in
+    // before the asset is looked at: the answer is the same for an asset that does not exist, the media library is not read,
+    // the provider is not called, and the call takes nothing from the limit. On, both routes run.
     [Fact]
-    public async Task AltTextForAnAssetAloneIsRefusedUntilTheSiteTurnsItOn()
+    public async Task AltTextIsRefusedForAFieldAndForAnAssetAloneUntilTheSiteTurnsItOn()
     {
-        var site = await _ai.SiteAsync(settings => settings.CallsPerMinute = 1);
-        using var admin = await _ai.AdminAsync(site);
+        var reads = new MediaReads();
+        await using var ai = new AiHost();
+        ai.Host.WithServices(services => services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(reads)));
+        var site = await ai.SiteAsync(settings => settings.CallsPerMinute = 1);
+        var on = await ai.SiteAsync(settings => (settings.CallsPerMinute, settings.AssetAltText) = (2, true));
+        using var admin = await ai.AdminAsync(site);
+        using var adminOn = await ai.AdminAsync(on);
         var image = await UploadAsync(admin, "harbour.png", Picture(40, 20));
+        var imageOn = await UploadAsync(adminOn, "harbour.png", Picture(40, 20));
+        using var editor = await ai.CallerAsync(site, (AiPermissions.Use, null), ("content.article.read", null), ("content.article.update", null), ("media.read", null));
 
+        reads.Count = 0;
         using var existing = await ActAsync(admin, "altText", new { options = new { mediaId = image } });
         using var absent = await ActAsync(admin, "altText", new { options = new { mediaId = Guid.CreateVersion7() } });
-        var (one, other) = (await JsonAsync(existing, HttpStatusCode.Forbidden), await JsonAsync(absent, HttpStatusCode.Forbidden));
+        using var forField = await ActAsync(editor, "altText", new { type = "article", field = "summary", options = new { mediaId = image } });
+        using var forFieldAbsent = await ActAsync(editor, "altText", new { type = "article", field = "summary", text = "The harbour.", options = new { mediaId = Guid.CreateVersion7() } });
+        var refusals = (List<JsonNode>)[await JsonAsync(existing, HttpStatusCode.Forbidden), await JsonAsync(absent, HttpStatusCode.Forbidden), await JsonAsync(forField, HttpStatusCode.Forbidden), await JsonAsync(forFieldAbsent, HttpStatusCode.Forbidden)];
 
         new AiSettings().AssetAltText.ShouldBeFalse();
-        (one["code"]!.GetValue<string>(), other["code"]!.GetValue<string>()).ShouldBe(("FCMS1683", "FCMS1683"));
-        one["detail"]!.GetValue<string>().ShouldBe(other["detail"]!.GetValue<string>());
-        _ai.Chat.Calls.ShouldBeEmpty();
-        (await _ai.UsageAsync(site)).ShouldBeEmpty();
-        await SuggestAsync(admin, "altText", new { type = "article", field = "summary", options = new { mediaId = image } });
-        _ai.Chat.Calls.ShouldHaveSingleItem();
+        refusals.Select(refused => refused["code"]!.GetValue<string>()).ShouldAllBe(code => code == "FCMS1683");
+        refusals.Select(refused => refused["detail"]!.GetValue<string>()).Distinct().ShouldHaveSingleItem();
+        reads.Count.ShouldBe(0);
+        ai.Chat.Calls.ShouldBeEmpty();
+        (await ai.UsageAsync(site)).ShouldBeEmpty();
+        await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = "Ships are big boats." });
+
+        await SuggestAsync(adminOn, "altText", new { options = new { mediaId = imageOn } });
+        await SuggestAsync(adminOn, "altText", new { type = "article", field = "summary", options = new { mediaId = imageOn } });
+        reads.Count.ShouldBeGreaterThan(0);
+        ai.Chat.Calls.Count(call => call.Messages[1].Contents.OfType<DataContent>().Any()).ShouldBe(2);
+    }
+
+    // The switch holds images only: the text actions of an opted-in field run where it is off.
+    [Fact]
+    public async Task TheTextActionsOfAnOptedInFieldDoNotDependOnTheSwitch()
+    {
+        var site = await _ai.SiteAsync(null, "fr");
+        using var admin = await _ai.AdminAsync(site);
+        _ai.Chat.Answer = """{"metaTitle":"Ships","metaDescription":"Ships are big boats."}""";
+
+        foreach (var action in AiActions.Names.Where(action => action != AiActions.AltText))
+        {
+            object body = action == AiActions.Translate
+                ? new { type = "article", field = "summary", text = "Ships are big boats.", options = new { targetLocale = "fr" } }
+                : new { type = "article", field = "summary", text = "Ships are big boats." };
+            using var response = await ActAsync(admin, action, body);
+            response.StatusCode.ShouldBe(HttpStatusCode.OK, action);
+        }
+
+        _ai.Chat.Calls.Count.ShouldBe(AiActions.Names.Count - 1);
     }
 
     // The switch is a setting as any other: a site that follows the instance defaults has theirs, and one that saved settings
-    // of its own has what it saved.
+    // of its own has what it saved. Settings are a site's whole, so a site whose stored settings were saved before the switch
+    // existed reads it off, as the class defaults it, whatever the instance defaults say.
     [Fact]
-    public async Task AltTextForAnAssetAloneFollowsTheInstanceDefaultsUntilASiteSavesItsOwn()
+    public async Task AltTextFollowsTheInstanceDefaultsUntilASiteSavesItsOwn()
     {
         await using var ai = new AiHost();
         await ai.SetDefaultsAsync(new AiSettings { Provider = AiProvider.OpenAi, Model = "test-model", AssetAltText = true });
         var following = await ai.BareSiteAsync();
         var saved = await ai.SiteAsync();
+        var older = await ai.BareSiteAsync();
+        await ai.StoreSettingsAsync(older, """{"provider":"openAi","model":"test-model","fields":{"article":["summary"]}}""");
         using var admin = await ai.AdminAsync(following);
         using var other = await ai.AdminAsync(saved);
+        using var olderAdmin = await ai.AdminAsync(older);
         var image = await UploadAsync(admin, "harbour.png", Picture(40, 20));
         var elsewhere = await UploadAsync(other, "harbour.png", Picture(40, 20));
+        var ofOlder = await UploadAsync(olderAdmin, "harbour.png", Picture(40, 20));
 
         await SuggestAsync(admin, "altText", new { options = new { mediaId = image } });
         using var refused = await ActAsync(other, "altText", new { options = new { mediaId = elsewhere } });
+        using var refusedOlder = await ActAsync(olderAdmin, "altText", new { type = "article", field = "summary", options = new { mediaId = ofOlder } });
 
         (await RefusedAsync(refused, HttpStatusCode.Forbidden)).ShouldBe("FCMS1683");
+        (await RefusedAsync(refusedOlder, HttpStatusCode.Forbidden)).ShouldBe("FCMS1683");
+        await using (var scope = ai.Services.CreateAsyncScope())
+        {
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(older));
+            (await scope.ServiceProvider.GetRequiredService<ISettings<AiSettings>>().GetAsync(new SiteId(older), Token)).AssetAltText.ShouldBeFalse();
+        }
+
         ai.Chat.Calls.ShouldHaveSingleItem();
     }
 
     [Fact]
     public async Task AltTextIsRefusedWhereTheMediaPluginIsDisabled()
     {
-        var site = await _ai.SiteAsync();
+        var site = await _ai.SiteAsync(settings => settings.AssetAltText = true);
         using var admin = await _ai.AdminAsync(site);
         var image = await UploadAsync(admin, "harbour.png", Picture(40, 20));
         await _ai.SetEnabledAsync("media", site, false);
@@ -431,6 +488,30 @@ public sealed class AiActionTests : IClassFixture<AiHost>
         using var response = await client.GetAsync(new Uri($"/api/management/v1/media/{id:D}", UriKind.Relative), Token);
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         return response.Headers.ETag!.Tag;
+    }
+
+    // Counts the commands of the media plugin's database, which every read of an asset makes.
+    private sealed class MediaReads : DbCommandInterceptor
+    {
+        private int _count;
+
+        public int Count
+        {
+            get => Volatile.Read(ref _count);
+            set => Volatile.Write(ref _count, value);
+        }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _count);
+            return ValueTask.FromResult(result);
+        }
+
+        public override ValueTask<InterceptionResult<object>> ScalarExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<object> result, CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _count);
+            return ValueTask.FromResult(result);
+        }
     }
 
     private static async Task<string> EntryAsync(HttpClient client, Guid id)
