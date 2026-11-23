@@ -84,9 +84,13 @@ internal sealed partial class ContentService
     }
 
     // The published states go first, each written as the draft and published, so that a locale whose draft has moved on is
-    // then written again with its draft. A locale the package does not publish is unpublished.
+    // then written again with its draft. A locale the package does not publish is unpublished. The locales are written in
+    // the order of the package, so every row the entry has is held first, in the lock order (#3524), and what each write
+    // reads of them stays until the commit.
     private async Task WriteImportedAsync(SchemaType type, TransferEntry entry, List<Document> before, bool authorsFromImporter, CancellationToken cancellationToken)
     {
+        await HoldInOrderAsync(entry.Id, (await store.AllRowsAsync(entry.Id, cancellationToken)).Select(row => row.Locale), cancellationToken);
+
         var named = entry.Locales.Select(locale => locale.Locale).ToHashSet(StringComparer.Ordinal);
         foreach (var locale in entry.Locales.Where(locale => locale.Published is not null))
         {

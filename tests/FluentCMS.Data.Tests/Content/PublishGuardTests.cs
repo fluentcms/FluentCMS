@@ -25,12 +25,19 @@ public sealed class PublishGuardTests
     {
         public Func<IServiceProvider, Task>? Run { get; set; }
 
-        public async ValueTask RunAsync(IServiceProvider services)
+        // What a hook then changes in the entry it publishes.
+        public Action<ContentDocument>? Change { get; set; }
+
+        public async ValueTask RunAsync(IServiceProvider services, ContentDocument? entry = null)
         {
             if (Run is { } run)
             {
                 Run = null;
                 await run(services);
+                if (entry is not null)
+                {
+                    Change?.Invoke(entry);
+                }
             }
         }
     }
@@ -43,7 +50,7 @@ public sealed class PublishGuardTests
 
     private sealed class BetweenHook(IServiceProvider services, Between between) : IBeforePublishHook<ContentDocument>
     {
-        public ValueTask BeforePublishAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken) => between.RunAsync(services);
+        public ValueTask BeforePublishAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken) => between.RunAsync(services, context.Entry);
     }
 
     private static ServiceDatabase WithoutHooks(Between between) => new(cms =>
@@ -376,5 +383,66 @@ public sealed class PublishGuardTests
         var failed = fixture.Schedules(id).Single();
         (failed.Status, failed.Error).ShouldBe((ScheduleRow.Failed, $"HookRejectedException {ContentErrorCodes.DraftMovedByHook}"));
         fixture.Database.Document(id).DraftVersion.ShouldBe(1);
+    }
+
+    // #3546: a hook that saves the same values moves the version and leaves the draft as it was read, so the guard passes, and
+    // the publish's swap then loses to this transaction: where the publish takes its row, or where its write over the draft,
+    // for what the hook then changed in the entry, does. A 412 would name a version rolled back with the publish.
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task AHookThatSavesTheSameValuesIsRefusedAsTheHookAtEitherSwap(bool hookChangesTheEntry, bool inCallersTransaction)
+    {
+        var between = new Between();
+        using var database = WithHook(between);
+        var id = await EnglishAndFrenchAsync(database);
+        between.Run = services => PatchAsAsync(services, "fr", id, new() { ["title"] = "Bonjour" }, 1);
+        between.Change = hookChangesTheEntry ? entry => entry["subtitle"] = "Changed" : null;
+        var before = database.Trace(id);
+
+        var refused = await Should.ThrowAsync<HookRejectedException>(() => database.AsAsync(Editor, async services =>
+        {
+            await using var transaction = inCallersTransaction ? await services.GetRequiredService<CmsDbContext>().Database.BeginTransactionAsync(Token) : null;
+            return await Content(services).PublishAsync("article", id, new LocaleWriteOptions { Locale = "fr" }, Token);
+        }));
+
+        refused.Code.ShouldBe(ContentErrorCodes.DraftMovedByHook);
+        between.Run.ShouldBeNull();
+        database.Trace(id).ShouldBe(before);
+    }
+
+    // #3546: in a transaction the publish did not begin, it cannot roll that back to read what is stored, so the 412 reads as
+    // that transaction sees it, and the transaction stays the caller's to go on with. On SQLite the caller holds the one write
+    // lock, so it lets it go for the other request and takes it again, with the publish's savepoint.
+    [Fact]
+    public async Task APublishRefusedForAnotherRequestsChangeInACallersTransactionLeavesItOpen()
+    {
+        var between = new Between();
+        using var database = WithoutHooks(between);
+        var id = await EnglishAndFrenchAsync(database);
+
+        var author = await database.AsAsync(Editor, async services =>
+        {
+            var context = services.GetRequiredService<CmsDbContext>();
+            await using var transaction = await context.Database.BeginTransactionAsync(Token);
+            between.Run = publish => RowLocks.CommittedMeanwhileAsync(context, () => database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 2), "cms_content_1");
+
+            var conflict = await Should.ThrowAsync<VersionConflictException>(() => Content(services).PublishAsync("article", id, new LocaleWriteOptions { Locale = "fr" }, Token));
+
+            (conflict.ExpectedVersion, conflict.CurrentVersion).ShouldBe((1, 2));
+            conflict.Current.ShouldNotBeNull()["views"].ShouldBe(2L);
+            context.Database.CurrentTransaction.ShouldBeSameAs(transaction);
+            transaction.GetDbTransaction().Connection.ShouldNotBeNull();
+            var created = await Content(services).CreateAsync("author", new() { ["name"] = "Ada" }, Token);
+            await transaction.CommitAsync(Token);
+            return IdOf(created);
+        });
+
+        between.Run.ShouldBeNull();
+        database.Read(context => context.Documents.Count(document => document.DocumentId == author)).ShouldBe(1);
+        database.Document(id, "fr").PublishedVersion.ShouldBeNull();
+        database.PublishedRow("cms_article", id).ShouldBeNull();
     }
 }

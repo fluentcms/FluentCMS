@@ -49,6 +49,10 @@ internal sealed partial class ContentService
         var document = await InTransactionAsync(
             async () =>
             {
+                // The row of the locale is held before the version and shared hash are read, in the lock order: a write that
+                // moves them, such as one that adds a locale, commits first and is read, or waits and then moves this
+                // schedule with the others (#3534).
+                await HoldInOrderAsync(id, [write.DocumentLocale], cancellationToken);
                 var (documents, document, target) = await ReachLocaleAsync(write, kind, id, cancellationToken);
                 string? shared = null;
                 if (kind == ContentOperation.Publish)
@@ -115,6 +119,8 @@ internal sealed partial class ContentService
         await InTransactionAsync(
             async () =>
             {
+                // The schedule is ended before its mirror on the row is cleared, so the row is held first, in the lock order.
+                await HoldInOrderAsync(id, [write.DocumentLocale], cancellationToken);
                 var (documents, document, target) = await ReachLocaleAsync(write, kind, id, cancellationToken);
                 if (kind == ContentOperation.Publish)
                 {
@@ -170,9 +176,18 @@ internal sealed partial class ContentService
         }
     }
 
-    private async Task<ScheduleOutcome> RunClaimedAsync(OperationContext operation, ScheduleRow row, ScheduleAction action, Guid jobId, CancellationToken cancellationToken)
+    // The entry's rows are held first, in the lock order, every locale since the publish takes the published ones, and the
+    // schedule is read again under them: a write that moved it since the read before the transaction, such as one that
+    // added a locale and moved its version, has committed, and one after waits for the job (#3524, #3534).
+    private async Task<ScheduleOutcome> RunClaimedAsync(OperationContext operation, ScheduleRow found, ScheduleAction action, Guid jobId, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
+        await HoldInOrderAsync(found.DocumentId, (await store.AllRowsAsync(found.DocumentId, cancellationToken)).Select(document => document.Locale), cancellationToken);
+        if (await schedules.FindAsync(found.Id, cancellationToken) is not { Status: ScheduleRow.Pending } row || row.JobId != jobId)
+        {
+            return ScheduleOutcome.Superseded;
+        }
+
         var state = await context.Documents.IgnoreQueryFilters().AsNoTracking()
             .Where(document => document.DocumentId == row.DocumentId && document.Locale == row.Locale)
             .Select(document => new { document.Type, document.DeletedAt })

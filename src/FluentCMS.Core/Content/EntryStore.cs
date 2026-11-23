@@ -308,12 +308,23 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
         return read;
     }
 
-    // The compare and swap that makes one of two concurrent writers lose. The filter on Document keeps trash out.
-    public async Task<bool> AdvanceVersionAsync(Guid id, string locale, int expected, EntryStatus status, DateTimeOffset at, Guid by, CancellationToken cancellationToken)
+    // The compare and swap that makes one of two concurrent writers lose. The filter on Document keeps trash out. With
+    // published, it compares the published version the status was decided from too, which a publish or an unpublish of the
+    // locale moves without the draft version.
+    public async Task<bool> AdvanceVersionAsync(Guid id, string locale, int expected, EntryStatus status, DateTimeOffset at, Guid by, CancellationToken cancellationToken, PublishedAs? published = null)
     {
         var next = expected + 1;
-        var affected = await context.Documents
-            .Where(document => document.DocumentId == id && document.Locale == locale && document.DraftVersion == expected)
+        var rows = context.Documents.Where(document => document.DocumentId == id && document.Locale == locale && document.DraftVersion == expected);
+        if (published is { Version: { } version })
+        {
+            rows = rows.Where(document => document.PublishedVersion == version);
+        }
+        else if (published is not null)
+        {
+            rows = rows.Where(document => document.PublishedVersion == null);
+        }
+
+        var affected = await rows
             .ExecuteUpdateAsync(
                 set => set
                     .SetProperty(document => document.DraftVersion, next)
@@ -350,6 +361,19 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
 
         return affected == 1;
     }
+
+    // A lock on the row that changes nothing, in the trash too, for a path that takes a row in its place in the lock order
+    // (ContentService.HoldInOrderAsync) before it writes it.
+    public Task HoldAsync(Guid id, string locale, CancellationToken cancellationToken) =>
+        context.Documents.IgnoreQueryFilters()
+            .Where(document => document.DocumentId == id && document.Locale == locale)
+            .ExecuteUpdateAsync(set => set.SetProperty(document => document.DraftVersion, document => document.DraftVersion), cancellationToken);
+
+    public Task<int?> PublishedVersionAsync(Guid id, string locale, CancellationToken cancellationToken) =>
+        context.Documents.AsNoTracking()
+            .Where(document => document.DocumentId == id && document.Locale == locale)
+            .Select(document => document.PublishedVersion)
+            .FirstOrDefaultAsync(cancellationToken);
 
     public Task SetTrashedAsync(Guid id, DateTimeOffset? at, Guid? by, CancellationToken cancellationToken) =>
         context.Documents.IgnoreQueryFilters()
@@ -1073,6 +1097,9 @@ internal enum ReferenceTargetState
 }
 
 internal sealed record ReferenceTargetRow(string Locale, bool IsPublished);
+
+// The published version a write read, null for none, for a swap that compares it.
+internal sealed record PublishedAs(int? Version);
 
 // The content rows of one draft as a transaction read them: the shared row, and the locale row of a localized type. Null
 // is no row. None is a draft that has no rows yet.

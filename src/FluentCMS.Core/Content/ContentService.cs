@@ -244,6 +244,9 @@ internal sealed partial class ContentService(
                 var working = ContentCopy.Of(stored);
                 var locales = LocalesOf(documents);
                 await hooks.RunAsync(HookKind.BeforeDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
+
+                // One statement marks every row, in whatever order the database takes them, so each is held first in the lock order.
+                await HoldInOrderAsync(id, locales, cancellationToken);
                 await store.SetTrashedAsync(id, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken);
                 await hooks.RunAsync(HookKind.AfterDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
 
@@ -268,6 +271,7 @@ internal sealed partial class ContentService(
                 var working = ContentCopy.Of(stored);
                 var locales = LocalesOf(documents);
                 await hooks.RunAsync(HookKind.BeforeRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
+                await HoldInOrderAsync(id, locales, cancellationToken);
                 await store.SetTrashedAsync(id, null, null, cancellationToken);
                 await hooks.RunAsync(HookKind.AfterRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
 
@@ -791,20 +795,21 @@ internal sealed partial class ContentService(
 
                 var sharedChanged = SharedChanged(type, fields, stored);
                 var next = expectedVersion + 1;
-                var status = document.Status;
-                if (document.PublishedVersion is not null)
-                {
-                    // A Published entry's draft is what is published, so only a Modified one needs the published state read.
-                    var published = document.Status == EntryStatus.Published ? stored : await store.ReadAsync(type, document, ContentState.Published, cancellationToken);
-                    status = SameFields(type, fields, published) ? EntryStatus.Published : EntryStatus.Modified;
-                }
+                var (published, read) = (document.PublishedVersion, document.Status);
+
+                // A Published entry's draft is what is published. A Modified one is decided once its swap holds the row.
+                var status = published is null ? read : read == EntryStatus.Published && SameFields(type, fields, stored) ? EntryStatus.Published : EntryStatus.Modified;
 
                 // Adding a locale writes the shared row as this write read it, so it moves the other locales as a change would.
                 var movesShared = sharedChanged || addsLocale;
-                var advanced = await AdvanceVersionsAsync(write, id, addsLocale ? null : document, expectedVersion, status, movesShared ? documents : [], cancellationToken);
+                var advanced = await AdvanceVersionsAsync(write, id, addsLocale ? null : document, expectedVersion, status, movesShared ? documents : [], cancellationToken, comparesPublished: true);
                 if (addsLocale)
                 {
                     document.DraftVersion = next;
+                }
+                else
+                {
+                    await SettleOwnStatusAsync(write, document, published, read, fields, cancellationToken);
                 }
 
                 // The write changes a row of its own type, which a row rule on a relation to that type may read.
