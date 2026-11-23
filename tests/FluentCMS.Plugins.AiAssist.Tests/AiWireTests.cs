@@ -121,7 +121,7 @@ public sealed class AiWireTests : IAsyncLifetime
     [Fact]
     public async Task AltTextSendsTheReducedCopyAsAnImagePartOfTheUserMessage()
     {
-        var site = await SiteAsync();
+        var site = await SiteAsync(altText: true);
         using var admin = await _ai.AdminAsync(site);
         var image = await UploadAsync(admin, "harbour.png", Picture(2000, 1000));
 
@@ -266,8 +266,8 @@ public sealed class AiWireTests : IAsyncLifetime
         ShouldHoldNothingOfTheCall();
     }
 
-    private async Task<Guid> SiteAsync(int timeout = 60, bool legacyMaxTokens = false) =>
-        await _ai.SiteAsync(settings => (settings.Provider, settings.Model, settings.Endpoint, settings.ApiKey, settings.RequestTimeout, settings.LegacyMaxTokens) = (AiProvider.OpenAiCompatible, "a-model", _stub.Url("v1"), null, timeout, legacyMaxTokens));
+    private async Task<Guid> SiteAsync(int timeout = 60, bool legacyMaxTokens = false, bool altText = false) =>
+        await _ai.SiteAsync(settings => (settings.Provider, settings.Model, settings.Endpoint, settings.ApiKey, settings.RequestTimeout, settings.LegacyMaxTokens, settings.AssetAltText) = (AiProvider.OpenAiCompatible, "a-model", _stub.Url("v1"), null, timeout, legacyMaxTokens, altText));
 
     private static object Body() => new { type = "article", field = "summary", text = Text };
 

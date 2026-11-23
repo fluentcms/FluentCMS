@@ -520,7 +520,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
         StatusAfter = row.Status == EntryStatus.Published ? EntryStatus.Modified : row.Status,
         AuthorId = author.ActorId,
         AuthorKind = author.ActorKind,
-        AuthorName = ActivityText.Required(author.ActorName, ActivityText.ActorNameMaxLength),
+        AuthorName = ActivityText.ActorName(author.ActorName),
         Origin = author.Origin,
         ClientId = author.ClientId,
         Message = message,

@@ -37,6 +37,9 @@ internal static class ActivityText
     // The text of a column that cannot be null.
     public static string Required(string? text, int maxLength) => Cut(SecretScrubber.Of(text ?? ""), maxLength);
 
+    // An actor's name as an activity row, a version's author and, through IActivityLog.ActorName, a plugin's row store it.
+    public static string ActorName(string? name) => Required(name, ActorNameMaxLength);
+
     public static string? Details(IReadOnlyDictionary<string, string?>? details)
     {
         if (details is not { Count: > 0 })

@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Net;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
@@ -204,6 +205,31 @@ public sealed class AiBudgetTests
         ai.Logs.Of(9365).Count.ShouldBe(3);
     }
 
+    // #3449: altText with no text and no draft sends its instructions and the image alone, so it reserves that and the
+    // maxOutputTokens, not MaxInputLength characters of a draft it does not read. Its reservation is held here while the
+    // usage of the day is read, and a call sent meanwhile fits the budget beside it; at 60,000 tokens more it did not.
+    [Fact]
+    public async Task AltTextWithNoTextAndNoDraftReservesWhatItSends()
+    {
+        var reads = new UsageReads();
+        await using var ai = new AiHost();
+        ai.Host.WithServices(services => services.ConfigureDbContext<PluginDbContext<AiAssistPlugin>>(options => options.AddInterceptors(reads)));
+        var site = await ai.SiteAsync(settings => (settings.DailyTokenBudget, settings.AssetAltText) = (50_000, true));
+        using var admin = await ai.AdminAsync(site);
+        var image = await UploadAsync(admin, "harbour.png", Picture(40, 20));
+
+        reads.Hold = true;
+        var asset = ActAsync(admin, "altText", new { options = new { mediaId = image } });
+        await reads.Entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        using var meanwhile = await ActAsync(admin, "rewrite", Body);
+        reads.Release.TrySetResult();
+        using var described = await asset.WaitAsync(TimeSpan.FromSeconds(30), Token);
+
+        (await JsonAsync(meanwhile))["suggestion"]!.GetValue<string>().ShouldBe("A suggestion.");
+        (await JsonAsync(described))["suggestion"]!.GetValue<string>().ShouldBe("A suggestion.");
+        ai.Chat.Calls.Count.ShouldBe(2);
+    }
+
     [Fact]
     public void AnEstimateIsATokenForEachUtf8ByteAndARowThatCouldNotBeWrittenStillCountsForItsDay()
     {
@@ -284,6 +310,38 @@ public sealed class AiBudgetTests
         }
 
         return (most, null);
+    }
+
+    // Holds the first read of the day's usage once Hold is set, which a budgeted call makes after it has reserved.
+    private sealed class UsageReads : DbCommandInterceptor
+    {
+        public volatile bool Hold;
+
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            await HoldAsync(command, cancellationToken);
+            return result;
+        }
+
+        public override async ValueTask<InterceptionResult<object>> ScalarExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<object> result, CancellationToken cancellationToken = default)
+        {
+            await HoldAsync(command, cancellationToken);
+            return result;
+        }
+
+        private async Task HoldAsync(DbCommand command, CancellationToken cancellationToken)
+        {
+            if (Hold && command.CommandText.Contains("SUM(", StringComparison.OrdinalIgnoreCase) && command.CommandText.Contains(AiUsageModel.UsageTable, StringComparison.Ordinal))
+            {
+                Hold = false;
+                Entered.TrySetResult();
+                await Release.Task.WaitAsync(cancellationToken);
+            }
+        }
     }
 
     private sealed class UsageWrites : SaveChangesInterceptor

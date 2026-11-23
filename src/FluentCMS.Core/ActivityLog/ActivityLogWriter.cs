@@ -27,6 +27,8 @@ internal sealed class ActivityLogWriter(IServiceScopeFactory scopes, ITransactio
         return WriteAsync(entry, source, Guid.CreateVersion7(), cancellationToken);
     }
 
+    public string ActorName(string? name) => ActivityText.ActorName(name);
+
     // A row with this id is written once: a delivery that is repeated finds its row and leaves it.
     public async ValueTask WriteAsync(ActivityEntry entry, EventSource source, Guid id, CancellationToken cancellationToken)
     {
@@ -40,7 +42,7 @@ internal sealed class ActivityLogWriter(IServiceScopeFactory scopes, ITransactio
             OccurredAt = source.OccurredAt.ToUniversalTime(),
             ActorType = source.ActorKind,
             ActorId = source.ActorId,
-            ActorName = ActivityText.Required(source.ActorName, ActivityText.ActorNameMaxLength),
+            ActorName = ActivityText.ActorName(source.ActorName),
             Origin = source.Origin,
             ClientId = ActivityText.Of(source.ClientId, ActivityText.ClientIdMaxLength),
             Action = ActivityText.Action(entry.Action),

@@ -78,6 +78,7 @@ FluentCMS.Activity.ActivityItem.TargetLabel.init -> void
 FluentCMS.Activity.ActivityItem.TargetType.get -> string?
 FluentCMS.Activity.ActivityItem.TargetType.init -> void
 FluentCMS.Activity.IActivityLog
+FluentCMS.Activity.IActivityLog.ActorName(string? name) -> string!
 FluentCMS.Activity.IActivityLog.WriteAsync(FluentCMS.Activity.ActivityEntry! entry, FluentCMS.Events.EventSource! source, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Activity.IActivityLog.WriteAsync(FluentCMS.Activity.ActivityEntry! entry, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Activity.IActivityQuery
