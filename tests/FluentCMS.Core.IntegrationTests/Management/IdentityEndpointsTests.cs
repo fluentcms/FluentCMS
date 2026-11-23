@@ -459,6 +459,42 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         revoked.Json["code"]!.GetValue<string>().ShouldBe("FCMS3025");
     }
 
+    // #3570: a rotation checks apikeys.manage before the overlap it asks for, as a create checks it before the ids it names.
+    [Fact]
+    public async Task ACallerWithoutThePermissionIsRefusedARotationWhateverOverlapItAsksFor()
+    {
+        var created = await fixture.PostAsync("api-keys", $$"""{ "name": "Rotated by another", "class": "delivery", "roleId": "{{BuiltInRoles.Editor:D}}" }""");
+        using var reader = await fixture.ClientWithAsync("content.page.read");
+
+        foreach (var id in new[] { created.Json["id"]!.GetValue<string>(), Guid.CreateVersion7().ToString("D") })
+        {
+            var refused = await fixture.PostAsync($"api-keys/{id}/rotate", """{ "overlapSeconds": 999999999 }""", reader);
+            refused.Status.ShouldBe(HttpStatusCode.Forbidden, refused.Body?.ToJsonString());
+            refused.Body!.ToJsonString().ShouldNotContain("FCMS3026");
+        }
+    }
+
+    [Fact]
+    public async Task ACallerWithThePermissionIsRefusedALongerOverlapOnlyForAKeyInItsReach()
+    {
+        var roleName = await fixture.RoleWithAsync(CorePermissions.ApiKeysManage, "content.page.read");
+        var roleId = (await fixture.GetAsync("roles")).Json["items"]!.AsArray().Single(item => item!["name"]!.GetValue<string>() == roleName)!["id"]!.GetValue<string>();
+        var bound = await fixture.PostAsync("api-keys", $$"""{ "name": "Site key manager", "class": "management", "roleId": "{{roleId}}", "siteIds": ["{{DefaultSite.Id:D}}"] }""");
+        var within = await fixture.PostAsync("api-keys", $$"""{ "name": "In the site", "class": "delivery", "roleId": "{{roleId}}", "siteIds": ["{{DefaultSite.Id:D}}"] }""");
+        var beyond = await fixture.PostAsync("api-keys", $$"""{ "name": "Of the instance", "class": "delivery", "roleId": "{{roleId}}" }""");
+        using var key = fixture.Host.CreateClient();
+        key.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("ApiKey", bound.Json["secret"]!.GetValue<string>());
+        const string tooLong = """{ "overlapSeconds": 999999999 }""";
+
+        var refused = await fixture.PostAsync($"api-keys/{within.Json["id"]!.GetValue<string>()}/rotate", tooLong, key);
+        refused.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, refused.Body?.ToJsonString());
+        refused.Json["code"]!.GetValue<string>().ShouldBe("FCMS3026");
+
+        var hidden = await fixture.PostAsync($"api-keys/{beyond.Json["id"]!.GetValue<string>()}/rotate", tooLong, key);
+        hidden.Status.ShouldBe(HttpStatusCode.NotFound, hidden.Body?.ToJsonString());
+        hidden.Json["code"]!.GetValue<string>().ShouldBe("FCMS3015");
+    }
+
     private async Task<HttpResponseMessage> DeliveryAsync(string secret, string address)
     {
         var server = (TestServer)fixture.Host.Services.GetRequiredService<IServer>();
