@@ -776,8 +776,6 @@ Service accounts are clients from configuration and are neither listed nor chang
 | Page `/ai/usage` | usage per user and action: each row names its principal by kind and the name it had at the call (`principalName`), and the totals of the filter come in all and per principal and action (`totals.groups`, by kind and id) | `GET /ai/usage` (`ai.usage.read`) | exists |
 | Settings page for `ai` | provider, model, endpoint, key as a secret, opted-in fields | `/settings/ai` | exists |
 
-Waits for #3101 and #3103 (`ai.use` for the built-in roles); its contract tests need #3104.
-
 ### 5.6 Multi-site
 
 `FluentCMS.Plugins.MultiSite.Admin`. Rows 7.10, 7.11, 3.17.

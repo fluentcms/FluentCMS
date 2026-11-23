@@ -49,6 +49,10 @@ public sealed class AiSettings : IValidatableObject
     [Range(0, int.MaxValue)]
     public int DailyTokenBudget { get; set; }
 
+    // Lets altText run for an asset alone, which sends any image the caller may update to the provider, with no field opted
+    // in. Off by default, so that the images of a site go to a provider only once the site says so.
+    public bool AssetAltText { get; set; }
+
     // The opt-in: the fields that take actions, by content type.
     public Dictionary<string, List<string>> Fields { get; set; } = [];
 

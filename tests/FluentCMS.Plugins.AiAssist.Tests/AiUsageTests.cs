@@ -3,9 +3,12 @@ using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Sites;
 using FluentCMS.Testing;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -248,6 +251,74 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
         (await _ai.UsageAsync(site)).ShouldHaveSingleItem().PrincipalName.ShouldBe(kept);
         AiAssistService.Limit(kept + "\U0001F6A2", AiUsageModel.PrincipalNameMaxLength).ShouldBe(kept);
         AiAssistService.Limit(kept + "b\U0001F6A2", AiUsageModel.PrincipalNameMaxLength).ShouldBe(kept + "b");
+    }
+
+    // #3449: the name is written through IActivityLog.ActorName, as core writes the author of a version: a value shaped like
+    // a secret is masked, and a name past 128 characters is cut, here before a surrogate pair it would cut in two.
+    [Fact]
+    public async Task ANameIsStoredAsCoreStoresTheAuthorOfAVersion()
+    {
+        var site = await _ai.SiteAsync();
+        var user = await _ai.Host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token);
+        var kept = new string('a', AiUsageModel.PrincipalNameMaxLength - 1);
+        List<string> authors = [];
+
+        foreach (var name in (string[])["Build token=s3cr3t-value", kept + "\U0001F6A2 and more"])
+        {
+            var actor = _ai.Host.As(user with { Principal = new Principal(PrincipalKind.AdminUser, user.Id, name, user.Principal.Claims) }).In(new SiteId(site));
+            await actor.RunAsync<AiAssistService, AiActionResult>(async ai =>
+                await ai.RunAsync(await ai.PrepareAsync("title", new AiActionRequest("article", "summary", null, "Ships are big boats.", null, null), Token), null, Token));
+            var article = await actor.Content<Article>().CreateAsync(new Article { Title = "Ships" }, Token);
+            await using var scope = _ai.Services.CreateAsyncScope();
+            authors.Add(await scope.ServiceProvider.GetRequiredService<CmsDbContext>().Set<ContentVersion>().Where(version => version.DocumentId == article.Id).Select(version => version.AuthorName).SingleAsync(Token));
+        }
+
+        authors.ShouldBe(["Build token=***", kept]);
+        (await _ai.UsageAsync(site)).Select(row => row.PrincipalName).ShouldBe(authors, ignoreOrder: true);
+    }
+
+    // #3449: totals.groups holds the MaxGroups groups of principal and action that used the most tokens, ordered by kind, id
+    // and action, and groupsTruncated says that the filter matched more; the totals still count every row. A filter that
+    // matches fewer groups has them all.
+    [Fact]
+    public async Task TheGroupsAreThoseThatUsedTheMostTokensUpToTheirBound()
+    {
+        var site = await _ai.SiteAsync();
+        using var auditor = await _ai.CallerAsync(site, (AiPermissions.ReadUsage, null));
+        var principals = Enumerable.Range(0, 12).Select(_ => Guid.CreateVersion7()).ToList();
+        var groups = principals.SelectMany(principal => AiActions.Names.Select(action => (Principal: principal, Action: action))).ToList();
+        groups.Count.ShouldBeGreaterThan(AiUsageService.MaxGroups);
+        await using (var scope = _ai.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<AiAssistPlugin>>();
+            database.AddRange(groups.Select((group, index) => new AiUsage
+            {
+                Id = Guid.CreateVersion7(),
+                SiteId = site,
+                PrincipalKind = "apiKey",
+                PrincipalId = group.Principal,
+                PrincipalName = "Key",
+                Action = group.Action,
+                Provider = ScriptedFactory.Provider,
+                Model = "test-model",
+                PromptTokens = index + 1,
+                CompletionTokens = 1,
+                Succeeded = true,
+                CreatedAt = _ai.Host.Time.GetUtcNow(),
+            }));
+            await database.SaveChangesAsync(Token);
+        }
+
+        var all = await UsageAsync(auditor, "?pageSize=1");
+        var one = await UsageAsync(auditor, $"?principalId={principals[0]}");
+
+        var expected = groups.Select((group, index) => ("apiKey", group.Principal, group.Action, 1L, index + 1L, 1L)).Skip(groups.Count - AiUsageService.MaxGroups).ToList();
+        Groups(all).ShouldBe(InOrder(expected));
+        all["totals"]!["groupsTruncated"]!.GetValue<bool>().ShouldBeTrue();
+        Totals(all).ShouldBe((groups.Count, groups.Count * (groups.Count + 1) / 2, groups.Count));
+        all["total"]!.GetValue<long>().ShouldBe(groups.Count);
+        Groups(one).Count.ShouldBe(AiActions.Names.Count);
+        one["totals"]!["groupsTruncated"]!.GetValue<bool>().ShouldBeFalse();
     }
 
     private static HttpClient InSite(HttpClient client, Guid site)

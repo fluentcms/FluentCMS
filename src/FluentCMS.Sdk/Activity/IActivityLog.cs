@@ -23,4 +23,13 @@ public interface IActivityLog
     /// <returns>A task that completes when the row is stored.</returns>
     /// <exception cref="ArgumentException">The action is empty or longer than 64 characters.</exception>
     ValueTask WriteAsync(ActivityEntry entry, EventSource source, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Gives the name of an actor as an activity row and the author of a version store it, for a feature that keeps the
+    /// name of a principal in a row of its own: a value shaped like a secret is masked, as in the text of an error, and the
+    /// name is cut to 128 characters, never between the two halves of a surrogate pair. It writes nothing.
+    /// </summary>
+    /// <param name="name">The name, such as <see cref="FluentCMS.Content.Principal.Name"/>. <see langword="null"/> is the empty name.</param>
+    /// <returns>The name as the CMS stores it.</returns>
+    string ActorName(string? name);
 }

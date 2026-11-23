@@ -242,7 +242,7 @@ public sealed class AiActionTests : IClassFixture<AiHost>
     [Fact]
     public async Task AltTextForAnAssetAloneNamesNoFieldAndWritesNothingToTheAsset()
     {
-        var site = await _ai.SiteAsync(null, "fr");
+        var site = await _ai.SiteAsync(settings => settings.AssetAltText = true, "fr");
         using var admin = await _ai.AdminAsync(site);
         var image = await UploadAsync(admin, "harbour.png", Picture(40, 20));
         var before = await AssetVersionAsync(admin, image);
@@ -279,7 +279,7 @@ public sealed class AiActionTests : IClassFixture<AiHost>
     [Fact]
     public async Task AltTextForAnAssetAloneNeedsTheRightToUpdateTheAssetAndDoesNotTellWhetherItExists()
     {
-        var site = await _ai.SiteAsync();
+        var site = await _ai.SiteAsync(settings => settings.AssetAltText = true);
         using var admin = await _ai.AdminAsync(site);
         var harbour = await FolderAsync(admin, $"harbour-{Guid.NewGuid():N}");
         var fields = await FolderAsync(admin, $"fields-{Guid.NewGuid():N}");
@@ -311,7 +311,7 @@ public sealed class AiActionTests : IClassFixture<AiHost>
     [Fact]
     public async Task AltTextForAnAssetAloneIsCheckedBeforeTheCallLimit()
     {
-        var site = await _ai.SiteAsync(settings => settings.CallsPerMinute = 1);
+        var site = await _ai.SiteAsync(settings => (settings.CallsPerMinute, settings.AssetAltText) = (1, true));
         using var admin = await _ai.AdminAsync(site);
         var harbour = await FolderAsync(admin, $"harbour-{Guid.NewGuid():N}");
         var fields = await FolderAsync(admin, $"fields-{Guid.NewGuid():N}");
@@ -337,7 +337,7 @@ public sealed class AiActionTests : IClassFixture<AiHost>
     [Fact]
     public async Task AltTextForAnAssetAloneNeedsTheMediaLibraryAndAnImage()
     {
-        var site = await _ai.SiteAsync();
+        var site = await _ai.SiteAsync(settings => settings.AssetAltText = true);
         using var admin = await _ai.AdminAsync(site);
         var image = await UploadAsync(admin, "harbour.png", Picture(40, 20));
         var document = await UploadAsync(admin, "notes.pdf", "%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n"u8.ToArray());
@@ -349,6 +349,50 @@ public sealed class AiActionTests : IClassFixture<AiHost>
         (await RefusedAsync(notAnImage, HttpStatusCode.UnprocessableEntity)).ShouldBe("FCMS1691");
         (await RefusedAsync(noLibrary, HttpStatusCode.UnprocessableEntity)).ShouldBe("FCMS1691");
         _ai.Chat.Calls.ShouldBeEmpty();
+    }
+
+    // #3449: an asset alone sends an image that no field opted in, so the site turns it on with assetAltText, which is off by
+    // default. Off, the call is refused as a field that is not opted in, before the asset is looked at, so the answer is the
+    // same for an asset that does not exist, and it takes nothing from the call limit. The alt text of a field still runs.
+    [Fact]
+    public async Task AltTextForAnAssetAloneIsRefusedUntilTheSiteTurnsItOn()
+    {
+        var site = await _ai.SiteAsync(settings => settings.CallsPerMinute = 1);
+        using var admin = await _ai.AdminAsync(site);
+        var image = await UploadAsync(admin, "harbour.png", Picture(40, 20));
+
+        using var existing = await ActAsync(admin, "altText", new { options = new { mediaId = image } });
+        using var absent = await ActAsync(admin, "altText", new { options = new { mediaId = Guid.CreateVersion7() } });
+        var (one, other) = (await JsonAsync(existing, HttpStatusCode.Forbidden), await JsonAsync(absent, HttpStatusCode.Forbidden));
+
+        new AiSettings().AssetAltText.ShouldBeFalse();
+        (one["code"]!.GetValue<string>(), other["code"]!.GetValue<string>()).ShouldBe(("FCMS1683", "FCMS1683"));
+        one["detail"]!.GetValue<string>().ShouldBe(other["detail"]!.GetValue<string>());
+        _ai.Chat.Calls.ShouldBeEmpty();
+        (await _ai.UsageAsync(site)).ShouldBeEmpty();
+        await SuggestAsync(admin, "altText", new { type = "article", field = "summary", options = new { mediaId = image } });
+        _ai.Chat.Calls.ShouldHaveSingleItem();
+    }
+
+    // The switch is a setting as any other: a site that follows the instance defaults has theirs, and one that saved settings
+    // of its own has what it saved.
+    [Fact]
+    public async Task AltTextForAnAssetAloneFollowsTheInstanceDefaultsUntilASiteSavesItsOwn()
+    {
+        await using var ai = new AiHost();
+        await ai.SetDefaultsAsync(new AiSettings { Provider = AiProvider.OpenAi, Model = "test-model", AssetAltText = true });
+        var following = await ai.BareSiteAsync();
+        var saved = await ai.SiteAsync();
+        using var admin = await ai.AdminAsync(following);
+        using var other = await ai.AdminAsync(saved);
+        var image = await UploadAsync(admin, "harbour.png", Picture(40, 20));
+        var elsewhere = await UploadAsync(other, "harbour.png", Picture(40, 20));
+
+        await SuggestAsync(admin, "altText", new { options = new { mediaId = image } });
+        using var refused = await ActAsync(other, "altText", new { options = new { mediaId = elsewhere } });
+
+        (await RefusedAsync(refused, HttpStatusCode.Forbidden)).ShouldBe("FCMS1683");
+        ai.Chat.Calls.ShouldHaveSingleItem();
     }
 
     [Fact]

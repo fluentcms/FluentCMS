@@ -161,19 +161,22 @@ public sealed class AiFieldsTests : IClassFixture<AiHost>
         answer["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/AiFields");
         document["components"]!["schemas"]!["AiFields"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["enabled", "locale", "fields", "assets"]);
         document["components"]!["schemas"]!["AiUsageRow"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["id", "principalKind", "principalId", "principalName", "action", "type", "field", "provider", "model", "promptTokens", "completionTokens", "durationMs", "succeeded", "createdAt"]);
-        document["components"]!["schemas"]!["AiUsageTotals"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["calls", "promptTokens", "completionTokens", "groups"]);
+        document["components"]!["schemas"]!["AiUsageTotals"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["calls", "promptTokens", "completionTokens", "groups", "groupsTruncated"]);
         document["components"]!["schemas"]!["AiUsageGroup"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["principalKind", "principalId", "action", "calls", "promptTokens", "completionTokens"]);
     }
 
-    // altText for an asset alone needs the media library and media.read and media.update in some folder.
+    // altText for an asset alone needs the site's assetAltText, the media library and media.read and media.update in some
+    // folder.
     [Fact]
     public async Task AssetsSaysWhetherTheCallerMayAskForTheAltTextOfAnAssetAlone()
     {
-        var site = await _ai.SiteAsync();
-        var noMedia = await _ai.SiteAsync();
-        var off = await _ai.SiteAsync(settings => settings.Provider = AiProvider.None);
+        var site = await _ai.SiteAsync(settings => settings.AssetAltText = true);
+        var noMedia = await _ai.SiteAsync(settings => settings.AssetAltText = true);
+        var off = await _ai.SiteAsync(settings => (settings.Provider, settings.AssetAltText) = (AiProvider.None, true));
+        var notTurnedOn = await _ai.SiteAsync();
         await _ai.SetEnabledAsync("media", noMedia, false);
         using var admin = await _ai.AdminAsync(site);
+        using var notAsked = await _ai.AdminAsync(notTurnedOn);
         using var limited = await _ai.CallerAsync(site, (AiPermissions.Use, null), ("media.read", null), ("media.update", new PermissionConstraints { Resources = [Guid.CreateVersion7().ToString("D")] }));
         using var readers = await _ai.CallerAsync(site, (AiPermissions.Use, null), ("media.read", null));
         using var writers = await _ai.CallerAsync(site, (AiPermissions.Use, null), ("media.update", null));
@@ -186,6 +189,9 @@ public sealed class AiFieldsTests : IClassFixture<AiHost>
         (await FieldsAsync(writers))["assets"]!.GetValue<bool>().ShouldBeFalse();
         (await FieldsAsync(withoutMedia))["assets"]!.GetValue<bool>().ShouldBeFalse();
         (await FieldsAsync(withoutProvider))["assets"]!.GetValue<bool>().ShouldBeFalse();
+        var answer = await FieldsAsync(notAsked);
+        answer["assets"]!.GetValue<bool>().ShouldBeFalse();
+        (answer["enabled"]!.GetValue<bool>(), answer["fields"]!.ToJsonString()).ShouldBe((true, """{"article":["title","summary","body"]}"""));
     }
 
     private static async Task<JsonNode> FieldsAsync(HttpClient client, string? locale = null)
