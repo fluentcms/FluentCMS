@@ -76,17 +76,19 @@ internal static class MemberProviderRegistration
                     authentication.AddScheme(scheme, built => built.HandlerType = HandlerOf(provider.Kind));
                 }
             })
-            .PostConfigure<MemberOptions, IOptionsMonitor<OpenIdConnectOptions>>((_, options, handlers) =>
-            {
-                // As for the providers of cms.Sso (#3531): events replaced after FluentCMS set them would drop its checks.
-                foreach (var (name, provider) in options.Providers)
-                {
-                    MemberProvider.Require(
-                        provider.Kind != MemberProviderKind.Oidc || ChainedOpenIdConnectEvents.Kept<MemberOidcEvents>(handlers.Get(MemberProvider.SchemeOf(name))),
-                        $"{FluentCmsOptions.Section}:{MemberOptions.Section}:{nameof(MemberOptions.Providers)}:{name}: the Events or EventsType of the provider's OpenIdConnectOptions were replaced after FluentCMS set them, which would drop its checks; set them in services.Configure<OpenIdConnectOptions>(\"{MemberProvider.SchemeOf(name)}\", ...), or set a delegate of options.Events.");
-                }
-            })
             .ValidateOnStart();
+
+        // As for the providers of cms.Sso, and apart from the authentication options for the same reason (#3531): events
+        // replaced after FluentCMS set them would drop its checks.
+        services.AddOptions<KeptEvents>().Configure<MemberOptions, IOptionsMonitor<OpenIdConnectOptions>>((_, options, handlers) =>
+        {
+            foreach (var (name, provider) in options.Providers)
+            {
+                MemberProvider.Require(
+                    provider.Kind != MemberProviderKind.Oidc || ChainedOpenIdConnectEvents.Kept<MemberOidcEvents>(handlers.Get(MemberProvider.SchemeOf(name))),
+                    $"{FluentCmsOptions.Section}:{MemberOptions.Section}:{nameof(MemberOptions.Providers)}:{name}: the Events or EventsType of the provider's OpenIdConnectOptions were replaced after FluentCMS set them, which would drop its checks; set them in services.Configure<OpenIdConnectOptions>(\"{MemberProvider.SchemeOf(name)}\", ...), or set a delegate of options.Events.");
+            }
+        }).ValidateOnStart();
 
         Configure<GoogleOptions>(services, MemberProviderKind.Google, Google);
         Configure<MicrosoftAccountOptions>(services, MemberProviderKind.Microsoft, (options, _, provider) => OAuth(options, provider));
@@ -104,7 +106,6 @@ internal static class MemberProviderRegistration
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<AppleAuthenticationOptions>, OAuthPostConfigureOptions<AppleAuthenticationOptions, AppleAuthenticationHandler>>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());
         services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, ChainedEvents>();
-        services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, PublicOriginCallback>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<LoggerFilterOptions>, AppleLogLevel>());
 
         services.AddScoped<MemberExternalSignIn>();
@@ -261,9 +262,8 @@ internal static class MemberProviderRegistration
     }
 
     // The events of an OpenID Connect provider run FluentCMS's own first and then those the host set, as for a provider of
-    // cms.Sso, so that a host's events drop none of them (#3526). It runs after every Configure, and before
-    // PublicOriginCallback, which wraps the delegate it leaves.
-    private sealed class ChainedEvents(MemberOptions members) : IPostConfigureOptions<OpenIdConnectOptions>
+    // cms.Sso, so that a host's events drop none of them (#3526). It runs after every Configure.
+    private sealed class ChainedEvents(MemberOptions members, PublicOrigin origin) : IPostConfigureOptions<OpenIdConnectOptions>
     {
         public void PostConfigure(string? name, OpenIdConnectOptions options)
         {
@@ -272,13 +272,23 @@ internal static class MemberProviderRegistration
                 return;
             }
 
-            options.Events = new MemberOidcEvents(options);
+            options.Events = new MemberOidcEvents(options, origin);
             options.EventsType = null;
         }
     }
 
-    private sealed class MemberOidcEvents(OpenIdConnectOptions options) : ChainedOpenIdConnectEvents(options)
+    private sealed class KeptEvents;
+
+    private sealed class MemberOidcEvents(OpenIdConnectOptions options, PublicOrigin origin) : ChainedOpenIdConnectEvents(options)
     {
+        // The OpenID Connect handler keeps the redirect_uri it sends for the code's redemption, so both use the public
+        // origin.
+        public override Task RedirectToIdentityProvider(RedirectContext context)
+        {
+            context.ProtocolMessage.RedirectUri = MemberProviders.Callback(origin, context.Options.CallbackPath, context.ProtocolMessage.RedirectUri);
+            return base.RedirectToIdentityProvider(context);
+        }
+
         // The login's key is read from the name identifier, which the token calls sub.
         public override Task TokenValidated(TokenValidatedContext context)
         {
@@ -321,25 +331,4 @@ internal static class MemberProviderRegistration
     private static bool IsOidc(MemberOptions members, string? name) =>
         name is not null && name.StartsWith(MemberProvider.SchemePrefix, StringComparison.Ordinal)
         && members.Providers.TryGetValue(name[MemberProvider.SchemePrefix.Length..], out var provider) && provider.Kind == MemberProviderKind.Oidc;
-
-    // The OpenID Connect handler keeps the redirect_uri it sends for the code's redemption, so both use the public
-    // origin. It runs after every Configure, and before the event a host set, so a host's own event keeps it.
-    private sealed class PublicOriginCallback(MemberOptions members, PublicOrigin origin) : IPostConfigureOptions<OpenIdConnectOptions>
-    {
-        public void PostConfigure(string? name, OpenIdConnectOptions options)
-        {
-            if (name is null || !name.StartsWith(MemberProvider.SchemePrefix, StringComparison.Ordinal)
-                || !members.Providers.TryGetValue(name[MemberProvider.SchemePrefix.Length..], out var provider) || provider.Kind != MemberProviderKind.Oidc)
-            {
-                return;
-            }
-
-            var next = options.Events.OnRedirectToIdentityProvider;
-            options.Events.OnRedirectToIdentityProvider = context =>
-            {
-                context.ProtocolMessage.RedirectUri = MemberProviders.Callback(origin, context.Options.CallbackPath, context.ProtocolMessage.RedirectUri);
-                return next(context);
-            };
-        }
-    }
 }

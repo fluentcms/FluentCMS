@@ -17,6 +17,6 @@ internal static partial class AccountLog
 
     public const int SessionEndNotRecordedId = 9012;
 
-    [LoggerMessage(EventId = SessionEndNotRecordedId, EventName = "SessionEndNotRecorded", Level = LogLevel.Error, Message = "The activity row of the end of a sign-in of {Pool} {Id} ({Reason}) could not be written; the sign-in ended without it.")]
-    public static partial void SessionEndNotRecorded(ILogger logger, Exception exception, string pool, Guid id, string reason);
+    [LoggerMessage(EventId = SessionEndNotRecordedId, EventName = "SessionEndNotRecorded", Level = LogLevel.Error, Message = "The activity row of the end of a sign-in of {Pool} {Id} ({Reason}) could not be written ({ExceptionType}); the sign-in ended without it, and this line is its only trace.")]
+    public static partial void SessionEndNotRecorded(ILogger logger, string pool, Guid id, string reason, string? exceptionType);
 }

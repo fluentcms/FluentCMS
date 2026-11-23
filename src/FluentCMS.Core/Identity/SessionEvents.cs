@@ -1,7 +1,10 @@
+using System.Data.Common;
 using System.Security.Claims;
 using FluentCMS.Content;
 using FluentCMS.Events;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Identity;
@@ -42,9 +45,16 @@ internal sealed class SessionEvents(IdentityChanges changes, TimeProvider time, 
         {
             await changes.RecordAsync(ended with { Source = source }, CancellationToken.None);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (IsFailedWrite(exception))
         {
-            AccountLog.SessionEndNotRecorded(logger, exception, members ? "member" : "user", id, reason);
+            // The type only: with EF's sensitive data logging, the message can carry the row, a name or an address.
+            AccountLog.SessionEndNotRecorded(logger, members ? "member" : "user", id, reason, (exception.InnerException ?? exception).GetType().FullName);
         }
     }
+
+    // What the database's write can raise; anything else, as a write inside another transaction, is a fault of the code
+    // and fails the request as before.
+    private static bool IsFailedWrite(Exception exception) => exception
+        is DbException or DbUpdateException or RetryLimitExceededException or TimeoutException
+        or InvalidOperationException { InnerException: DbException };
 }

@@ -54,8 +54,10 @@ internal static class SsoRegistration
         });
 
         // A host that replaces a provider's events after FluentCMS set them, in a PostConfigure registered after
-        // AddFluentCms, would drop the check of the remote sign-out, so the host does not start (#3531).
-        services.AddOptions<AuthenticationOptions>().PostConfigure<SsoOptions, IOptionsMonitor<OpenIdConnectOptions>>((_, options, handlers) =>
+        // AddFluentCms, would drop the check of the remote sign-out, so the host does not start (#3531). The options of
+        // a scheme are read apart from the authentication options, which AddOpenIdConnect's own post-configure reads
+        // while it builds them: read inside those, they would wait on themselves.
+        services.AddOptions<KeptEvents>().Configure<SsoOptions, IOptionsMonitor<OpenIdConnectOptions>>((_, options, handlers) =>
         {
             foreach (var name in options.Providers.Keys)
             {
@@ -67,7 +69,6 @@ internal static class SsoRegistration
 
         services.AddSingleton<IConfigureOptions<OpenIdConnectOptions>, HandlerOptions>();
         services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, ChainedEvents>();
-        services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, PublicOriginCallback>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());
         services.AddScoped<SsoSignIn>();
     }
@@ -114,9 +115,8 @@ internal static class SsoRegistration
     }
 
     // The events of a provider run FluentCMS's own first and then those the host set, so that a host's events drop neither
-    // the check of the remote sign-out nor the token's subject and session (#3225). It runs after every Configure, and
-    // before PublicOriginCallback, which wraps the delegate it leaves.
-    private sealed class ChainedEvents(SsoOptions sso) : IPostConfigureOptions<OpenIdConnectOptions>
+    // the check of the remote sign-out nor the token's subject and session (#3225). It runs after every Configure.
+    private sealed class ChainedEvents(SsoOptions sso, PublicOrigin origin) : IPostConfigureOptions<OpenIdConnectOptions>
     {
         public void PostConfigure(string? name, OpenIdConnectOptions options)
         {
@@ -125,13 +125,27 @@ internal static class SsoRegistration
                 return;
             }
 
-            options.Events = new SsoEvents(options);
+            options.Events = new SsoEvents(options, origin);
             options.EventsType = null;
         }
     }
 
-    private sealed class SsoEvents(OpenIdConnectOptions options) : ChainedOpenIdConnectEvents(options)
+    private sealed class KeptEvents;
+
+    private sealed class SsoEvents(OpenIdConnectOptions options, PublicOrigin origin) : ChainedOpenIdConnectEvents(options)
     {
+        // The callback a provider is given is on the public origin when one is set, as links in emails are; the handler
+        // keeps the redirect_uri it sends for the code's redemption, so both use it.
+        public override Task RedirectToIdentityProvider(RedirectContext context)
+        {
+            if (origin.Base is { } publicBase)
+            {
+                context.ProtocolMessage.RedirectUri = publicBase + context.Options.CallbackPath;
+            }
+
+            return base.RedirectToIdentityProvider(context);
+        }
+
         public override async Task TokenValidated(TokenValidatedContext context)
         {
             await KeepSubjectAndSession(context);
@@ -240,31 +254,6 @@ internal static class SsoRegistration
 
             context.Response.Redirect(context.Request.PathBase + HostedPagePaths.Login + query);
             context.HandleResponse();
-        }
-    }
-
-    // The callback a provider is given is on the public origin when one is set, as links in emails are; the handler keeps
-    // the redirect_uri it sends for the code's redemption, so both use it. It runs after every Configure, and before the
-    // event a host set, so a host's own OnRedirectToIdentityProvider keeps it.
-    private sealed class PublicOriginCallback(SsoOptions sso, PublicOrigin origin) : IPostConfigureOptions<OpenIdConnectOptions>
-    {
-        public void PostConfigure(string? name, OpenIdConnectOptions options)
-        {
-            if (name is null || !sso.Providers.ContainsKey(name))
-            {
-                return;
-            }
-
-            var next = options.Events.OnRedirectToIdentityProvider;
-            options.Events.OnRedirectToIdentityProvider = context =>
-            {
-                if (origin.Base is { } publicBase)
-                {
-                    context.ProtocolMessage.RedirectUri = publicBase + context.Options.CallbackPath;
-                }
-
-                return next(context);
-            };
         }
     }
 }

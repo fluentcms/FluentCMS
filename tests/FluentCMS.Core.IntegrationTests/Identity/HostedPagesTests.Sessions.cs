@@ -228,6 +228,21 @@ public sealed partial class HostedPagesTests
         missing.Select(entry => (entry.Level, entry.State["Pool"] as string, entry.State["Id"] as Guid?, entry.State["Reason"] as string)).ShouldBe(
             [(LogLevel.Error, "user", editor.Id, SessionEndReasons.SignedOut), (LogLevel.Error, "user", user.Id, SessionEndReasons.RemoteSignOut)]);
         missing.ShouldAllBe(entry => !entry.Message.Contains(Text(tokens, "refresh_token")) && !entry.Message.Contains(ann.Sid!));
+        missing.ShouldAllBe(entry => entry.Exception == null && (string?)entry.State["ExceptionType"] == typeof(DbUpdateException).FullName);
+    }
+
+    // Only a write of the row that the database failed is let off: a fault of the code on that path, as the row written
+    // inside another transaction, fails the request as before (#3531).
+    [Fact]
+    public async Task AFaultOfTheCodeThatWritesTheRowOfASignInThatEndedIsNotSwallowed()
+    {
+        await using var scope = _host.Services.CreateAsyncScope();
+        await using var transaction = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.BeginTransactionAsync(Token);
+
+        var refused = await Should.ThrowAsync<InvalidOperationException>(() => scope.ServiceProvider.GetRequiredService<SessionEvents>()
+            .SignInEndedAsync(new Microsoft.AspNetCore.Http.DefaultHttpContext(), members: false, Guid.NewGuid(), "nobody", SessionEndReasons.SignedOut));
+
+        refused.Message.ShouldStartWith(IdentityErrorCodes.WriteInTransaction);
     }
 
     private sealed class HostEvents : OpenIdConnectEvents

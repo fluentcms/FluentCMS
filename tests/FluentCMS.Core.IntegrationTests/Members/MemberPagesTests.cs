@@ -308,6 +308,9 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
         ((Guid?)missing.State["Id"]).ShouldBe(member.Id);
         ((string?)missing.State["Reason"]).ShouldBe(SessionEndReasons.SignedOut);
         missing.Message.ShouldNotContain(refreshToken);
+        missing.Message.ShouldNotContain(member.Email);
+        missing.Exception.ShouldBeNull();
+        ((string?)missing.State["ExceptionType"]).ShouldBe(typeof(DbUpdateException).FullName);
     }
 
     [Fact]
