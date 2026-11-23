@@ -225,6 +225,47 @@ public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixtu
         static List<Guid> Ids(ApiResponse response) => [.. response.Json["items"]!.AsArray().Select(site => Guid.Parse(site!["id"]!.GetValue<string>()))];
     }
 
+    // #3595: a site is listed only through a grant that gives its holder a permission there. Each role is the site's and is
+    // stored as it is, since roles now refuse a row rule beside a permission outside content and an empty resource list.
+    [Fact]
+    public async Task MySitesCountsOnlyAGrantThatGivesAPermissionInTheSite()
+    {
+        var token = TestContext.Current.CancellationToken;
+        Site site;
+        await using (var scope = fixture.Host.Services.CreateAsyncScope())
+        {
+            site = await scope.ServiceProvider.GetRequiredService<SiteManager>().CreateAsync("Given", $"g-{Guid.NewGuid():N}", "en", token);
+        }
+
+        foreach (var (permission, constraints, listed) in ((string, PermissionConstraints?, bool)[])[
+            ("content.page.read", null, true),
+            (CorePermissions.UsersManage, null, true),
+            ("content.page.read", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }, true),
+            ("*", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }, true),
+            ("media.read", new PermissionConstraints { Resources = ["folder"] }, true),
+            (CorePermissions.UsersManage, new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }, false),
+            ("content.*.read", new PermissionConstraints { Resources = ["folder"] }, false),
+            ("media.read", new PermissionConstraints { Resources = ["folder"], RowRule = BuiltInRoles.OwnEntriesRule }, false),
+            ("media.read", new PermissionConstraints { Resources = [] }, false)])
+        {
+            var id = Guid.CreateVersion7();
+            await using (var scope = fixture.Host.Services.CreateAsyncScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+                context.Add(new Role { Id = id, Name = $"stored-{Guid.NewGuid():N}", SiteId = site.Id });
+                context.Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = id, Permission = permission, Constraints = constraints?.ToJson() });
+                await context.SaveChangesAsync(token);
+            }
+
+            var user = await fixture.Host.CreateUserAsync(await fixture.RoleWithAsync(), cancellationToken: token);
+            (await fixture.PutAsync($"users/{user.Id}/roles/{id}")).Status.ShouldBe(HttpStatusCode.OK);
+            using var holder = await fixture.Host.AsUserAsync(user);
+            var mine = await fixture.GetAsync("me/sites", holder);
+            mine.Status.ShouldBe(HttpStatusCode.OK, mine.Body?.ToJsonString());
+            mine.Json["items"]!.AsArray().Select(item => Guid.Parse(item!["id"]!.GetValue<string>())).ShouldBe(listed ? [site.Id] : [], $"{permission} {constraints?.ToJson()}");
+        }
+    }
+
     [Theory]
     [InlineData("users")]
     [InlineData("invitations")]
