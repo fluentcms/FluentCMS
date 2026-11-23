@@ -90,6 +90,16 @@ public sealed class PackageSurfaceTests : IAsyncDisposable
         exception.Message.ShouldStartWith(message);
     }
 
+    [Theory]
+    [InlineData("FluentCms")]
+    [InlineData("fluentcms:Things")]
+    public void ASectionThatNamesTheRootAgainIsRefused(string section)
+    {
+        var services = new ServiceCollection();
+
+        Should.Throw<ArgumentException>(() => services.AddFluentCmsOptions(section, new ThingOptions())).ParamName.ShouldBe("section");
+    }
+
     [Fact]
     public async Task MappingBeforeUseFluentCmsStopsTheHost()
     {
@@ -123,7 +133,12 @@ public sealed class PackageSurfaceTests : IAsyncDisposable
         _app = _host.Build(
             Environments.Development,
             settings,
-            configure: builder => builder.Services.AddFluentCmsOptions("Things", new ThingOptions { Name = "set in code" }, options => options.Validate()),
+            configure: builder =>
+            {
+                // A bucket the test empties never refills between its requests, however slow the machine.
+                builder.Services.AddSingleton<TimeProvider>(new FrozenTime());
+                builder.Services.AddFluentCmsOptions("Things", new ThingOptions { Name = "set in code" }, options => options.Validate());
+            },
             pipeline: app =>
             {
                 app.UseFluentCms();

@@ -82,13 +82,19 @@ public static class FluentCmsSurfaceExtensions
     // Binds FluentCms:{section} onto instance, which may hold what the host set in code, as core binds its own options: a key
     // the configuration sets wins, and the options are checked when the host starts, by their data annotations and by
     // validate, which throws FluentCmsConfigurationException.InvalidOption with a message that starts with the property. A
-    // failure stops the host with FCMS1101 and the key. The options resolve as IOptions<T> and as T.
+    // failure stops the host with FCMS1101 and the key. The options resolve as IOptions<T> and as T. The section is under
+    // FluentCms, so a section that names FluentCms again is refused.
     public static IServiceCollection AddFluentCmsOptions<T>(this IServiceCollection services, string section, T instance, Action<T>? validate = null)
         where T : class
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrWhiteSpace(section);
         ArgumentNullException.ThrowIfNull(instance);
+        if (section.Equals(FluentCmsOptions.Section, StringComparison.OrdinalIgnoreCase) || section.StartsWith(FluentCmsOptions.Section + ":", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException($"'{section}' names the root section {FluentCmsOptions.Section}, which the section is under already; pass 'Reports' for {FluentCmsOptions.Section}:Reports.", nameof(section));
+        }
+
         FluentCmsOptions.AddFluentCmsOptions(services, section, HostErrorCodes.InvalidOption, instance, validate);
         return services;
     }

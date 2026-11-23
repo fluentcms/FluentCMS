@@ -161,7 +161,9 @@ public sealed class AdminHostingTests : IAsyncDisposable
         settings["FluentCms:RateLimits:PreAuth:PermitLimit"] = "20";
         settings["FluentCms:RateLimits:Delivery:PermitLimit"] = "20";
         settings["FluentCms:RateLimits:Delivery:MaxKeyLimit"] = "20";
-        await _host.StartAsync(settings);
+
+        // The buckets never refill between the test's requests, however slow the machine.
+        await _host.StartAsync(settings, services => services.AddSingleton<TimeProvider>(new FrozenTime()));
         using var client = _host.Client();
 
         var files = FingerprintedRoutes(10);
@@ -566,5 +568,13 @@ public sealed class AdminHostingTests : IAsyncDisposable
             .Select(file => file.Route)
             .Distinct()
             .Take(count)];
+    }
+
+    // A clock whose time of day stands still; timers and elapsed time stay real.
+    private sealed class FrozenTime : TimeProvider
+    {
+        private readonly DateTimeOffset _now = TimeProvider.System.GetUtcNow();
+
+        public override DateTimeOffset GetUtcNow() => _now;
     }
 }
