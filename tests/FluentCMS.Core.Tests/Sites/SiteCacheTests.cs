@@ -39,10 +39,13 @@ public sealed class SiteCacheTests
             return Site;
         }
 
-        var requests = Enumerable.Range(0, 20)
-            .Select(_ => Task.Run(() => _cache.GetOrLoadAsync(SiteCache.DefaultKey, Load, found => found is not null, TestContext.Current.CancellationToken)))
-            .ToList();
-        await Task.Delay(200, TestContext.Current.CancellationToken);
+        // A call returns once it has joined the read under way or begun its own, so all twenty have missed the key before
+        // the read is let go.
+        var requests = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => Task.Factory.StartNew(
+            () => _cache.GetOrLoadAsync(SiteCache.DefaultKey, Load, found => found is not null, TestContext.Current.CancellationToken),
+            TestContext.Current.CancellationToken,
+            TaskCreationOptions.None,
+            TaskScheduler.Default))).WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         release.SetResult();
 
         (await Task.WhenAll(requests)).ShouldAllBe(found => found == Site);

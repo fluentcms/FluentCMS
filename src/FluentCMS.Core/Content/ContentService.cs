@@ -597,33 +597,48 @@ internal sealed partial class ContentService(
         var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         _ownsTransaction = true;
         events.Open();
-        await using (transaction)
+        try
         {
-            try
+            result = await work();
+            await StageAsync([.. _pending], cancellationToken);
+            hooks.ThrowIfLeftRunning();
+            await transaction.CommitAsync(CancellationToken.None);
+            committed = true;
+            _commits++;
+            _committed = result as Document;
+        }
+        finally
+        {
+            _ownsTransaction = false;
+            _moved.Clear();
+            events.Close();
+            if (!committed)
             {
-                result = await work();
-                await StageAsync([.. _pending], cancellationToken);
-                hooks.ThrowIfLeftRunning();
-                await transaction.CommitAsync(CancellationToken.None);
-                committed = true;
-                _commits++;
-                _committed = result as Document;
+                _pending.Clear();
+                events.Clear();
             }
-            finally
-            {
-                _ownsTransaction = false;
-                _moved.Clear();
-                events.Close();
-                if (!committed)
-                {
-                    _pending.Clear();
-                    events.Clear();
-                }
-            }
+
+            await EndAsync(transaction);
         }
 
         await PublishCommittedAsync();
         return result;
+    }
+
+    // A hook that was left may hold the connection in a command, its reader open. SqlClient without MARS then refuses the
+    // rollback and throws it out of the disposal (Npgsql swallows a failed rollback itself). The caller gets what the write
+    // failed with rather than that refusal, but the transaction and its locks stay until the scope disposes the context,
+    // whose closed connection rolls them back; the scope's guard keeps it from committing meanwhile.
+    private async Task EndAsync(IDbContextTransaction transaction)
+    {
+        try
+        {
+            await transaction.DisposeAsync();
+        }
+        catch (Exception exception) when (hooks.LeftRunning)
+        {
+            ContentLog.RollbackLeftToScope(logger, exception);
+        }
     }
 
     private async Task<T> InSavepointAsync<T>(IDbContextTransaction outer, Func<Task<T>> work, CancellationToken cancellationToken)

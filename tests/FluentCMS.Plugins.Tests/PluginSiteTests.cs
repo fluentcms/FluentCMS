@@ -449,9 +449,14 @@ public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<P
 
         host.Time.Advance(PluginState.CacheDuration);
         reads.Hold();
-        var readers = Enumerable.Range(0, 20).Select(_ => Task.Run(async () => await state.IsEnabledAsync("sample", site, Token))).ToList();
-        await reads.Entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
-        await Task.Delay(200, Token);
+
+        // A call returns once it has joined the read under way or begun its own, so all twenty have found the state expired
+        // before the read is let go.
+        var readers = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => Task.Factory.StartNew(
+            () => state.IsEnabledAsync("sample", site, Token).AsTask(),
+            Token,
+            TaskCreationOptions.None,
+            TaskScheduler.Default))).WaitAsync(TimeSpan.FromSeconds(30), Token);
         reads.Release();
 
         (await Task.WhenAll(readers)).ShouldAllBe(enabled => enabled);
@@ -644,32 +649,28 @@ public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<P
 
     private static StringContent Json(string json) => new(json, Encoding.UTF8, "application/json");
 
-    // Counts the reads of one table once held, and keeps each waiting until released, so that whatever reads it while one
-    // read is under way is seen.
+    // Counts the reads of one table once held, also those that come after the release, and keeps each waiting until
+    // released, so that whatever reads it while one read is under way is seen.
     private sealed class HeldReads(string table) : DbCommandInterceptor
     {
         private TaskCompletionSource? _release;
         private int _count;
-
-        public TaskCompletionSource Entered { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public int Count => Volatile.Read(ref _count);
 
         public void Hold()
         {
             _count = 0;
-            Entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             _release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         }
 
-        public void Release() => Interlocked.Exchange(ref _release, null)?.TrySetResult();
+        public void Release() => Volatile.Read(ref _release)?.TrySetResult();
 
         public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
         {
             if (Volatile.Read(ref _release) is { } release && command.CommandText.Contains(table, StringComparison.Ordinal))
             {
                 Interlocked.Increment(ref _count);
-                Entered.TrySetResult();
                 await release.Task;
             }
 

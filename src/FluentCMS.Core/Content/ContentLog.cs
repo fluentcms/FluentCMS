@@ -27,4 +27,10 @@ internal static partial class ContentLog
 
     [LoggerMessage(EventId = 9407, Level = LogLevel.Warning, Message = "The {Kind} hook {Hook} of {Type} took {Elapsed}, inside the transaction of the write.")]
     public static partial void SlowHook(ILogger logger, HookKind kind, string hook, string type, TimeSpan elapsed);
+
+    [LoggerMessage(EventId = 9408, Level = LogLevel.Warning, Message = "The {Kind} hook {Hook} of {Type} had not ended when its caller was cancelled and is left running; the write rolls back, and its scope writes and commits nothing more.")]
+    public static partial void HookLeftByCaller(ILogger logger, HookKind kind, string hook, string type);
+
+    [LoggerMessage(EventId = 9409, Level = LogLevel.Warning, Message = "The rollback of a write that left a hook running failed, as when that hook holds the connection in a command; the transaction commits nothing and ends when the scope closes its connection.")]
+    public static partial void RollbackLeftToScope(ILogger logger, Exception exception);
 }

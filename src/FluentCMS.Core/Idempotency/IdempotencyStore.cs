@@ -10,7 +10,17 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Idempotency;
 
-internal sealed record IdempotencyClaim(Guid Id, Guid Owner);
+// The row a request claimed, with the key and the request it claimed it for, so that it can put the row back once it is gone.
+internal sealed record IdempotencyClaim(Guid Id, Guid Owner, Guid SiteId, PrincipalKind Kind, Guid PrincipalId, string KeyHash, string RequestHash);
+
+// What a renewal did: moved the lease on; found the key held or answered by another request; or found the row removed, past
+// its window once its lease ran out, and put it back, so that the request holds the key again.
+internal enum IdempotencyRenewal
+{
+    Renewed,
+    Lost,
+    Restored,
+}
 
 internal sealed record StoredResponse(int Status, IReadOnlyDictionary<string, string> Headers, string Body);
 
@@ -88,7 +98,7 @@ internal sealed class IdempotencyStore(IServiceScopeFactory scopes, IDataProvide
                 try
                 {
                     await context.SaveChangesAsync(cancellationToken);
-                    return new IdempotencyStart(new IdempotencyClaim(row.Id, row.Owner), null);
+                    return new IdempotencyStart(new IdempotencyClaim(row.Id, row.Owner, siteId, kind, principalId, keyHash, requestHash), null);
                 }
                 catch (DbUpdateException exception) when (provider.IsUniqueViolation(exception))
                 {
@@ -104,7 +114,14 @@ internal sealed class IdempotencyStore(IServiceScopeFactory scopes, IDataProvide
 
             if (existing.ExpiresAt <= now)
             {
-                await rows.Where(found => found.Id == existing.Id && found.ExpiresAt <= now).ExecuteDeleteAsync(cancellationToken);
+                // A key past its window is claimed afresh, but not while its request still holds the lease, so that a repeat
+                // never runs beside it; once that request answers or stops, the key goes.
+                if (existing.ResponseStatus is null && existing.LeaseUntil > now)
+                {
+                    throw Refused(IdempotencyErrorCodes.InProgress, $"A request with this {Header} is still running, past the window of the key; once it has answered, the key is no longer kept, and the same key runs as a new request.");
+                }
+
+                await rows.Where(found => found.Id == existing.Id && found.ExpiresAt <= now && (found.ResponseStatus != null || found.LeaseUntil <= now)).ExecuteDeleteAsync(cancellationToken);
                 continue;
             }
 
@@ -123,40 +140,72 @@ internal sealed class IdempotencyStore(IServiceScopeFactory scopes, IDataProvide
                 throw InProgress();
             }
 
-            // The holder stopped before it answered, so this request runs in its place.
+            // The holder stopped before it answered, so this request runs in its place, unless the holder renewed the lease
+            // since it was read: the lease read is in the match, so that a renewal in between makes the takeover lose.
             var owner = Guid.NewGuid();
             var lease = now + options.InProgressTimeout;
+            var read = existing.LeaseUntil;
             var taken = await rows
-                .Where(found => found.Id == existing.Id && found.Owner == existing.Owner && found.ResponseStatus == null)
+                .Where(found => found.Id == existing.Id && found.Owner == existing.Owner && found.ResponseStatus == null && found.LeaseUntil == read)
                 .ExecuteUpdateAsync(set => set.SetProperty(found => found.Owner, owner).SetProperty(found => found.LeaseUntil, lease), cancellationToken);
             if (taken == 1)
             {
                 IdempotencyLog.TakenOver(logger, existing.Id);
-                return new IdempotencyStart(new IdempotencyClaim(existing.Id, owner), null);
+                return new IdempotencyStart(new IdempotencyClaim(existing.Id, owner, siteId, kind, principalId, keyHash, requestHash), null);
             }
         }
 
         throw InProgress();
     }
 
-    // Moves the lease of a claim on while its request runs. False when the claim is no longer this request's: it answered,
-    // was released, or was taken over after a renewal failed for longer than the lease.
-    public async Task<bool> RenewAsync(IdempotencyClaim claim, CancellationToken cancellationToken)
+    // Moves the lease of a claim on while its request runs. When its row no longer matches, the request puts the row back,
+    // as it claimed it: the unique index refuses that while another request has the key, taken over after the renewals
+    // failed for longer than the lease or claimed afresh, or once the request answered, so the claim is lost; it lets it
+    // when the row was removed, past its window once its lease ran out, and the request then holds the key again. Of the
+    // request and a repeat that removed the row, only one gets the key back.
+    public async Task<IdempotencyRenewal> RenewAsync(IdempotencyClaim claim, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(claim);
 
         await using var scope = scopes.CreateAsyncScope();
-        var lease = time.GetUtcNow() + options.InProgressTimeout;
-        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<IdempotencyRow>()
-            .Where(row => row.Id == claim.Id && row.Owner == claim.Owner && row.ResponseStatus == null)
-            .ExecuteUpdateAsync(set => set.SetProperty(row => row.LeaseUntil, lease), cancellationToken) == 1;
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var now = time.GetUtcNow();
+        var lease = now + options.InProgressTimeout;
+        if (await context.Set<IdempotencyRow>().Where(row => row.Id == claim.Id && row.Owner == claim.Owner && row.ResponseStatus == null)
+            .ExecuteUpdateAsync(set => set.SetProperty(row => row.LeaseUntil, lease), cancellationToken) == 1)
+        {
+            return IdempotencyRenewal.Renewed;
+        }
+
+        context.Add(new IdempotencyRow
+        {
+            Id = claim.Id,
+            SiteId = claim.SiteId,
+            PrincipalKind = claim.Kind,
+            PrincipalId = claim.PrincipalId,
+            KeyHash = claim.KeyHash,
+            RequestHash = claim.RequestHash,
+            Owner = claim.Owner,
+            CreatedAt = now,
+            LeaseUntil = lease,
+            ExpiresAt = now + options.Window,
+        });
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+            return IdempotencyRenewal.Restored;
+        }
+        catch (DbUpdateException exception) when (provider.IsUniqueViolation(exception))
+        {
+            return IdempotencyRenewal.Lost;
+        }
     }
 
     // Renews the lease of the claim every third of InProgressTimeout until it is disposed, so that a request that runs
     // longer than the lease is not taken over and run a second time while it works. A renewal that fails is tried again;
-    // when one finds the claim gone, taken over after renewals failed for a whole lease, Lost is cancelled, so that the
-    // request stops rather than run beside the one that took the key. The lease of a request that stopped runs out
-    // InProgressTimeout after its last renewal.
+    // when one finds the key in another request's hands, after renewals failed for a whole lease, Lost is cancelled, so
+    // that the request stops rather than run beside the one that took the key. One that finds the row removed puts it back
+    // and goes on holding the key. The lease of a request that stopped runs out InProgressTimeout after its last renewal.
     public IdempotencyLease Hold(IdempotencyClaim claim)
     {
         ArgumentNullException.ThrowIfNull(claim);
@@ -217,9 +266,10 @@ internal sealed class IdempotencyStore(IServiceScopeFactory scopes, IDataProvide
     private static ValidationException InProgress() =>
         Refused(IdempotencyErrorCodes.InProgress, $"A request with this {Header} is still running; repeat it once that one has answered.");
 
-    // The answer of a request that was stopped because a repeat took its key over.
+    // The answer of a request whose work was stopped, before it answered, because a repeat took its key over. Work that
+    // answered first, its write committed, is answered as it is.
     public static ValidationException TakenOver() =>
-        Refused(IdempotencyErrorCodes.InProgress, $"A repeat took this {Header} over after its lease ran out, so this request was stopped; what it had not committed was rolled back.");
+        Refused(IdempotencyErrorCodes.InProgress, $"A repeat took this {Header} over after its lease ran out, so this request was stopped before it answered, and its write was rolled back.");
 
     private static ValidationException Refused(string code, string message) => new([new ValidationError(Header, code, message)]);
 }
@@ -233,7 +283,7 @@ internal sealed class IdempotencyLease : IAsyncDisposable
     public IdempotencyLease(IdempotencyStore store, IdempotencyClaim claim, TimeSpan every, TimeProvider time, ILogger logger) =>
         _renewing = RenewAsync(store, claim, every, time, logger);
 
-    // Cancelled when the claim was found taken over.
+    // Cancelled when the key was found in another request's hands.
     public CancellationToken Lost => _lost.Token;
 
     public async ValueTask DisposeAsync()
@@ -254,11 +304,15 @@ internal sealed class IdempotencyLease : IAsyncDisposable
                 await Task.Delay(every, time, stop);
                 try
                 {
-                    if (!await store.RenewAsync(claim, stop))
+                    switch (await store.RenewAsync(claim, stop))
                     {
-                        IdempotencyLog.ClaimLost(logger, claim.Id);
-                        await _lost.CancelAsync();
-                        return;
+                        case IdempotencyRenewal.Lost:
+                            IdempotencyLog.ClaimLost(logger, claim.Id);
+                            await _lost.CancelAsync();
+                            return;
+                        case IdempotencyRenewal.Restored:
+                            IdempotencyLog.ClaimRestored(logger, claim.Id);
+                            break;
                     }
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException)
@@ -292,4 +346,7 @@ internal static partial class IdempotencyLog
 
     [LoggerMessage(EventId = 9145, Level = LogLevel.Error, Message = "The Idempotency-Key {Id} was taken over by a repeat after its lease ran out while its request still ran; the request is cancelled, and what it had not committed rolls back.")]
     public static partial void ClaimLost(ILogger logger, Guid id);
+
+    [LoggerMessage(EventId = 9146, Level = LogLevel.Warning, Message = "The Idempotency-Key {Id} passed its window and was removed while its request still ran, after its lease ran out; no other request had claimed it, so the request put its claim back and holds the key again.")]
+    public static partial void ClaimRestored(ILogger logger, Guid id);
 }

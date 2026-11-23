@@ -12,7 +12,8 @@ namespace FluentCMS.Core.Api.Common;
 // with its method, path, query, locale, content type, body and principal, the key is claimed, and the response is kept
 // for a repeat. Only a response below 500 is kept; a refused request, which throws, and a failure release the key, so
 // that a repeat runs again. The lease of the key is renewed while the request runs, however long it takes, and a request
-// whose key a repeat took over all the same, after renewals failed for a whole lease, is cancelled.
+// whose key a repeat took over all the same, after renewals failed for a whole lease, is cancelled; one whose work answered
+// first answers what its work answered and keeps nothing. A key removed under its request, past its window, is put back.
 internal static class IdempotentRequests
 {
     public const string ReplayedHeader = "Idempotent-Replayed";
@@ -44,16 +45,29 @@ internal static class IdempotentRequests
         StoredResponse response;
         try
         {
-            // The work stops when the client goes away, and when a repeat took the key over, so that it never runs beside it.
-            using var stop = CancellationTokenSource.CreateLinkedTokenSource(aborted, lost);
-            httpContext.RequestAborted = stop.Token;
             try
             {
-                response = await CaptureAsync(httpContext, await handler());
+                IResult result;
+
+                // The work stops when the client goes away, and when a repeat took the key over, so that it never runs beside it.
+                using (var stop = CancellationTokenSource.CreateLinkedTokenSource(aborted, lost))
+                {
+                    httpContext.RequestAborted = stop.Token;
+                    try
+                    {
+                        result = await handler();
+                    }
+                    finally
+                    {
+                        httpContext.RequestAborted = aborted;
+                    }
+                }
+
+                // The work has answered, so what it committed stands: a key lost from here on no longer stops the answer.
+                response = await CaptureAsync(httpContext, result);
             }
             finally
             {
-                httpContext.RequestAborted = aborted;
                 await lease.DisposeAsync();
             }
         }
@@ -75,13 +89,17 @@ internal static class IdempotentRequests
             throw;
         }
 
-        if (response.Status < StatusCodes.Status500InternalServerError)
+        // The client gets what its work answered either way, but a key a repeat took is neither kept nor freed by it.
+        if (!lost.IsCancellationRequested)
         {
-            await store.CompleteAsync(claim, response);
-        }
-        else
-        {
-            await store.ReleaseAsync(claim);
+            if (response.Status < StatusCodes.Status500InternalServerError)
+            {
+                await store.CompleteAsync(claim, response);
+            }
+            else
+            {
+                await store.ReleaseAsync(claim);
+            }
         }
 
         return new Written(response.Body);

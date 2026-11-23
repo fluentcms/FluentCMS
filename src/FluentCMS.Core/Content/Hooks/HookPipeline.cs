@@ -139,6 +139,7 @@ public sealed class HookPipeline(IServiceProvider services)
 
         // The token is also the work item's: a hook whose caller left before the pool got to it does not start.
         var running = Task.Run(() => hook.InvokeAsync(session, mutable, token).AsTask(), token);
+        var timedOut = false;
         try
         {
             await running.WaitAsync(token);
@@ -148,6 +149,7 @@ public sealed class HookPipeline(IServiceProvider services)
         }
         catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
+            timedOut = true;
             _guard.MarkLeftRunning(name);
             ContentLog.HookTimedOut(_logger, kind, name, type.Name, _options.HookTimeout);
             throw new HookRejectedException(ContentErrorCodes.HookTimedOut, $"The {kind} hook {name} did not end within {_options.HookTimeout}; the write was refused and nothing of it was saved.");
@@ -158,6 +160,10 @@ public sealed class HookPipeline(IServiceProvider services)
             if (!running.IsCompleted)
             {
                 _guard.MarkLeftRunning(name);
+                if (!timedOut)
+                {
+                    ContentLog.HookLeftByCaller(_logger, kind, name, type.Name);
+                }
             }
 
             // What the hook does from here on is not waited for, and a failure of it is not left unobserved.
