@@ -243,14 +243,6 @@ internal static class MemberProviderRegistration
             options.SignInScheme = MemberProviders.ExternalScheme;
             options.CallbackPath = MemberProviders.CallbackPrefix + providerName;
             options.SaveTokens = false;
-
-            // An OpenID Connect provider has these from MemberOidcEvents, after every Configure (#3526).
-            if (options is not OpenIdConnectOptions)
-            {
-                options.Events.OnRemoteFailure = BackToLoginAsync;
-                options.Events.OnTicketReceived = NameProvider;
-            }
-
             configure(options, providerName, provider);
         }
     }
@@ -259,6 +251,28 @@ internal static class MemberProviderRegistration
     {
         context.Properties!.Items[MemberProviders.ProviderItem] = context.Scheme.Name[MemberProvider.SchemePrefix.Length..];
         return Task.CompletedTask;
+    }
+
+    // The events an OAuth handler raises for a request: FluentCMS's RemoteFailure and TicketReceived first, then the
+    // events the handler found, the host's as Events, as EventsType or with a delegate set at any time, or its defaults
+    // (#3564). Each handler chains them once it has resolved its events, so no options the host sets can drop them.
+    public static TEvents Chain<TEvents>(TEvents host, TEvents chained)
+        where TEvents : OAuthEvents
+    {
+        chained.OnAccessDenied = host.AccessDenied;
+        chained.OnCreatingTicket = host.CreatingTicket;
+        chained.OnRedirectToAuthorizationEndpoint = host.RedirectToAuthorizationEndpoint;
+        chained.OnRemoteFailure = async context =>
+        {
+            await BackToLoginAsync(context);
+            await host.RemoteFailure(context);
+        };
+        chained.OnTicketReceived = async context =>
+        {
+            await NameProvider(context);
+            await host.TicketReceived(context);
+        };
+        return chained;
     }
 
     // The events of an OpenID Connect provider run FluentCMS's own first and then those the host set, as for a provider of
