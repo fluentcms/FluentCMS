@@ -152,6 +152,45 @@ public sealed class AdminHostingTests : IAsyncDisposable
         }
     }
 
+    // Forty cold loads of the app's files from one address stay under the static files limit and leave the coarse limit to the
+    // page, config.json, the client routes and the APIs, which count under it as before (#3577).
+    [Fact]
+    public async Task TheAppsFilesCountUnderTheStaticFilesLimitAndThePagesAndTheApisUnderTheCoarseOne()
+    {
+        var settings = AdminSettings();
+        settings["FluentCms:RateLimits:PreAuth:PermitLimit"] = "20";
+        settings["FluentCms:RateLimits:Delivery:PermitLimit"] = "20";
+        settings["FluentCms:RateLimits:Delivery:MaxKeyLimit"] = "20";
+        await _host.StartAsync(settings);
+        using var client = _host.Client();
+
+        var files = FingerprintedRoutes(10);
+        for (var load = 0; load < 40; load++)
+        {
+            foreach (var file in files)
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, "/admin/" + file);
+                request.Headers.AcceptEncoding.ParseAdd("gzip, br");
+                using var response = await client.SendAsync(request, Token);
+                response.StatusCode.ShouldBe(HttpStatusCode.OK, file);
+            }
+        }
+
+        string[] pages = ["/admin/", "/admin/index.html", "/admin/config.json", "/admin/system/components"];
+        for (var request = 0; request < 20; request++)
+        {
+            var path = pages[request % pages.Length];
+            using var response = await client.GetAsync(new Uri(path, UriKind.Relative), Token);
+            response.StatusCode.ShouldBe(HttpStatusCode.OK, path);
+        }
+
+        foreach (var path in pages.Append("/api/management/v1/me"))
+        {
+            using var refused = await client.GetAsync(new Uri(path, UriKind.Relative), Token);
+            refused.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests, path);
+        }
+    }
+
     [Fact]
     public async Task ConfigJsonCarriesTheHostsValuesAndNeverItsSampleOrARequestsHost()
     {
@@ -508,5 +547,24 @@ public sealed class AdminHostingTests : IAsyncDisposable
                 .Any(header => header.GetProperty("Name").GetString() == "Cache-Control" && header.GetProperty("Value").GetString()!.Contains("immutable", StringComparison.Ordinal)) == immutable)
             .Select(endpoint => endpoint.GetProperty("Route").GetString()!)
             .First();
+    }
+
+    // The smallest fingerprinted files of the app from the host's manifest, by their routes without a compressed suffix, and
+    // none of the documents the admin answers itself.
+    private static List<string> FingerprintedRoutes(int count)
+    {
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "FluentCMS.Host.staticwebassets.endpoints.json")));
+        return [.. manifest.RootElement.GetProperty("Endpoints").EnumerateArray()
+            .Where(endpoint => endpoint.GetProperty("Selectors").GetArrayLength() == 0
+                && endpoint.GetProperty("AssetFile").GetString() is not ("index.html" or "config.json")
+                && endpoint.GetProperty("EndpointProperties").EnumerateArray().Any(property => property.GetProperty("Name").GetString() == "fingerprint"))
+            .Select(endpoint => (
+                Route: endpoint.GetProperty("Route").GetString()!,
+                Length: long.Parse(endpoint.GetProperty("ResponseHeaders").EnumerateArray().First(header => header.GetProperty("Name").GetString() == "Content-Length").GetProperty("Value").GetString()!, System.Globalization.CultureInfo.InvariantCulture)))
+            .Where(file => !file.Route.EndsWith(".gz", StringComparison.Ordinal) && !file.Route.EndsWith(".br", StringComparison.Ordinal))
+            .OrderBy(file => file.Length)
+            .Select(file => file.Route)
+            .Distinct()
+            .Take(count)];
     }
 }

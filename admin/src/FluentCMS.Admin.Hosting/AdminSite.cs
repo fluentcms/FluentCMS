@@ -155,8 +155,7 @@ internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origi
         var file = environment.WebRootFileProvider.GetFileInfo(IndexFile);
         return file.Exists
             ? file
-            : throw new FluentCmsConfigurationException(
-                HostErrorCodes.NotRegistered,
+            : throw FluentCmsConfigurationException.NotRegistered(
                 $"MapFluentCmsAdmin found no {IndexFile} among the host's static web assets. The host references the admin app's project, such as FluentCMS.Admin.App.");
     }
 
@@ -165,8 +164,7 @@ internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origi
         var bases = BaseElement().Matches(html);
         if (bases.Count != 1)
         {
-            throw new FluentCmsConfigurationException(
-                HostErrorCodes.NotRegistered,
+            throw FluentCmsConfigurationException.NotRegistered(
                 $"The admin's {IndexFile} has {bases.Count} <base href> elements; MapFluentCmsAdmin needs exactly one, whose href it sets to {BaseHref}.");
         }
 
@@ -178,7 +176,7 @@ internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origi
         origin.Base
         ?? (environment.IsDevelopment()
             ? $"{request.Scheme}://{request.Host.ToUriComponent()}{request.PathBase.ToUriComponent()}"
-            : throw new InvalidOperationException($"{FluentCmsOptions.Section}:{PublicOrigin.Key} is not set, and outside Development the admin is not built from a request's host."));
+            : throw new InvalidOperationException($"{AdminOptions.Root}:{PublicOrigin.Key} is not set, and outside Development the admin is not built from a request's host."));
 
     private string ApiBaseUrl(HttpRequest request) =>
         string.IsNullOrEmpty(options.ApiBaseUrl) ? HostBase(request) : options.ApiBaseUrl;

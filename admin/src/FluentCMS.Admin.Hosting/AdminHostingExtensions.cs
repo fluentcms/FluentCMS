@@ -1,5 +1,4 @@
 using System.Text;
-using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity;
 using Microsoft.AspNetCore.Builder;
@@ -16,7 +15,7 @@ public static class AdminHostingExtensions
 {
     private const int BeforeStaticAssets = -1_000;
 
-    private static readonly FluentCmsSurfaceMetadata Surface = new("admin");
+    private const string Surface = "admin";
 
     // The admin of admin spec 6.1, with FluentCms:Admin from configuration winning over what configure sets. While
     // FluentCms:Admin:Enabled is true it registers the admin's client under cms.Clients.AdminClientId, unless the host or
@@ -33,7 +32,7 @@ public static class AdminHostingExtensions
 
         var options = new AdminOptions();
         configure?.Invoke(options);
-        cms.Services.AddFluentCmsOptions(AdminOptions.Section, HostErrorCodes.InvalidOption, options, admin => admin.Validate());
+        cms.Services.AddFluentCmsOptions(AdminOptions.Section, options, admin => admin.Validate());
         cms.Services.AddSingleton<IPostConfigureOptions<ClientOptions>, AdminClientRegistration>();
         cms.Services.AddHostedService<AdminClientRemoval>();
         cms.Services.AddSingleton<AdminSite>();
@@ -52,17 +51,11 @@ public static class AdminHostingExtensions
         var services = endpoints.ServiceProvider;
         if (services.GetService<AdminSite>() is not { } site)
         {
-            throw new FluentCmsConfigurationException(
-                HostErrorCodes.NotRegistered,
+            throw FluentCmsConfigurationException.NotRegistered(
                 "MapFluentCmsAdmin found no admin services. Call cms.AddAdmin() inside AddFluentCms(...).");
         }
 
-        if (services.GetService<ApiPipelineState>()?.Configured != true)
-        {
-            throw new FluentCmsConfigurationException(
-                HostErrorCodes.PipelineMissing,
-                "MapFluentCmsAdmin found no FluentCMS pipeline. Call app.UseFluentCms() before app.MapFluentCmsAdmin().");
-        }
+        endpoints.EnsureFluentCmsPipeline(nameof(MapFluentCmsAdmin));
 
         if (!services.GetRequiredService<AdminOptions>().Enabled)
         {
@@ -73,25 +66,26 @@ public static class AdminHostingExtensions
         var manifest = Path.Combine(AppContext.BaseDirectory, staticAssetsManifestPath ?? $"{services.GetRequiredService<IWebHostEnvironment>().ApplicationName}.staticwebassets.endpoints.json");
         if (!File.Exists(manifest))
         {
-            throw new FluentCmsConfigurationException(
-                HostErrorCodes.NotRegistered,
+            throw FluentCmsConfigurationException.NotRegistered(
                 $"MapFluentCmsAdmin found no manifest of static web assets at {manifest}. The host references the admin app's project, such as FluentCMS.Admin.App, whose files become its static web assets.");
         }
 
         site.LoadIndex();
 
-        var admin = endpoints.MapGroup(AdminSite.Path);
-        admin.WithMetadata(FluentCmsEndpointMetadata.Instance, Surface);
+        var admin = endpoints.MapGroup(AdminSite.Path).WithFluentCmsSurface(Surface);
 
         // The app's index.html and its sample config.json are answered as the endpoints below answer them, also where the
         // content negotiation of MapStaticAssets picks a compressed copy; their fingerprinted and compressed paths are not.
-        var policy = new ContentSecurityPolicyMetadata(site.ContentSecurityPolicy);
+        // The app's other files read nothing of the instance, so they count under the static files limit, and the documents,
+        // the endpoints below and the fallback under the coarse one.
+        Func<HttpContext, string> policy = site.ContentSecurityPolicy;
         string[] methods = [HttpMethods.Get, HttpMethods.Head];
         var assets = admin.MapStaticAssets(manifest);
         assets.Add(endpoint =>
         {
             if (!endpoint.Metadata.OfType<StaticAssetDescriptor>().Any(asset => IsDocument(asset.AssetPath)))
             {
+                endpoint.WithFluentCmsStaticFiles();
                 return;
             }
 
@@ -103,7 +97,7 @@ public static class AdminHostingExtensions
             else if (route.EndsWith("/" + AdminSite.IndexFile, StringComparison.Ordinal) || route == AdminSite.IndexFile)
             {
                 endpoint.RequestDelegate = context => PageAsync(context, site);
-                endpoint.Metadata.Add(policy);
+                endpoint.WithContentSecurityPolicy(policy);
             }
             else
             {
@@ -128,7 +122,7 @@ public static class AdminHostingExtensions
 
         foreach (var builder in new[] { root, index, routes })
         {
-            builder.WithMetadata(policy);
+            builder.WithContentSecurityPolicy(policy);
         }
 
         return new Conventions(assets, root, index, configuration, routes);

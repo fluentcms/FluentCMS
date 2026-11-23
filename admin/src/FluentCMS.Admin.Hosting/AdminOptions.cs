@@ -10,6 +10,10 @@ public sealed partial class AdminOptions
 {
     public const string Section = "Admin";
 
+    // The root of FluentCMS's configuration and the section of cms.Clients, which the admin's refusals name.
+    internal const string Root = "FluentCms";
+    internal const string ClientsSection = "Clients";
+
     // Off until the admin is released (A-47): off, nothing is served under /admin, no client is registered, and the one
     // registered while it was on is deleted at start.
     public bool Enabled { get; set; }
@@ -65,7 +69,7 @@ public sealed partial class AdminOptions
     {
         if (!condition)
         {
-            throw new FluentCmsConfigurationException(HostErrorCodes.InvalidOption, message);
+            throw FluentCmsConfigurationException.InvalidOption(message);
         }
     }
 

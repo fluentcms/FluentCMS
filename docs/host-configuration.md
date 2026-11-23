@@ -118,7 +118,7 @@ A caller that has been quiet may send the whole limit at once, and then one requ
 
 The key and the principal are those of the `FluentCms` authentication scheme when the host has one (the API key registration adds it, as a policy scheme that forwards to the key scheme when a key is presented and otherwise to the default scheme), so a cookie or token default scheme does not hide a key. Without it they are those of the default scheme.
 
-The files a surface serves as they are, such as the fingerprinted files of the admin, count under `StaticFiles:PermitLimit` instead of the coarse limit once the surface marks their endpoints, so that an office behind one address can load the admin many times a minute: a cold load is some 230 files, and the default holds forty loads a minute with room to spare. Only an endpoint the surface marks counts there, never a path or an extension the caller sends, so a page such as the admin's `index.html`, its `config.json`, the page its client routes fall back to, a fallback that answers a path matching no file and every API and sign-in request still count under the coarse limit. A key sent with such a file is never looked up, as on `/health`, so the limit lets through no key lookup that the coarse limit would have held back. The admin does not mark its files yet, so until it does they count under the coarse limit. Raise the limit only when more people than that load a surface behind one address.
+The files a surface serves as they are, such as the fingerprinted files of the admin, count under `StaticFiles:PermitLimit` instead of the coarse limit once the surface marks their endpoints, so that an office behind one address can load the admin many times a minute: a cold load is some 230 files, and the default holds forty loads a minute with room to spare. Only an endpoint the surface marks counts there, never a path or an extension the caller sends, so a page such as the admin's `index.html`, its `config.json`, the page its client routes fall back to, a fallback that answers a path matching no file and every API and sign-in request still count under the coarse limit. A key sent with such a file is never looked up, as on `/health`, so the limit lets through no key lookup that the coarse limit would have held back. The admin marks the files of its app, their compressed copies and fingerprinted paths included, and not `index.html`, `config.json`, `/admin/` or the page of its client routes. Raise the limit only when more people than that load a surface behind one address.
 
 The client address is the connection's remote address, an IPv4-mapped address counted as its IPv4 address and an IPv6 address by its /64. Behind a proxy, turn on `FluentCms:ReverseProxy:ForwardedHeaders` with the proxies you trust, which `UseFluentCms()` applies before the limiters, or every caller shares the proxy's address.
 
@@ -357,6 +357,30 @@ Two loops run the admin locally, both against the reference host in Development,
 
 - `dotnet watch --project src/FluentCMS.Host` serves the referenced app at `https://localhost:5001/admin/`, rebuilding the host and the app as their files change.
 - `dotnet watch --project admin/src/FluentCMS.Admin.App` serves the app alone at `https://localhost:5201/`, with hot reload, and its sample `wwwroot/config.json` points at `https://localhost:5001`, where `dotnet run --project src/FluentCMS.Host` runs the host.
+
+## A surface of a package
+
+A package that serves endpoints of its own from a FluentCMS host, outside the groups that `MapFluentCms()` maps, as `FluentCMS.Admin.Hosting` serves `/admin`, does it with public members of `FluentCMS.Core` (`FluentCmsSurfaceExtensions`, in `FluentCMS.Core.DependencyInjection`):
+
+```csharp
+public static IEndpointConventionBuilder MapReports(this IEndpointRouteBuilder endpoints)
+{
+    endpoints.EnsureFluentCmsPipeline(nameof(MapReports));
+    var reports = endpoints.MapGroup("/reports").WithFluentCmsSurface("reports");
+    reports.MapGet("/", ReportsPage).WithContentSecurityPolicy(context => "default-src 'self'; frame-ancestors 'none'");
+    reports.MapGet("/reports.js", ReportsScript).WithFluentCmsStaticFiles();
+    return reports;
+}
+```
+
+- `WithFluentCmsSurface(name)` makes the endpoints FluentCMS endpoints of the surface `name`: they get the [security headers](#security-headers-and-request-limits), `Cache-Control: no-store` unless a response sets its own, the hold to the path base, the coarse rate limit before authentication, the request limits and the FluentCMS authentication, and `fluentcms.requests` counts them under that surface. The names of core's surfaces (`delivery`, `management`, `members`, `connect`, `account`, `health`, `docs`) are refused.
+- `WithContentSecurityPolicy(policy)` sets the `Content-Security-Policy` of their responses, made per request; a response that sets one keeps it. It and `WithFluentCmsStaticFiles()` also take one `EndpointBuilder`, for a convention that tells the endpoints of a mapping apart, as the admin's does for those of `MapStaticAssets()`.
+- `WithFluentCmsStaticFiles()` marks endpoints that serve files as they are, which count under `StaticFiles:PermitLimit` (see [rate limits](#rate-limits)). Leave it off a page, a configuration and a fallback.
+- `EnsureFluentCmsPipeline(method)` stops the host with `FCMS1104` (`{method} found no FluentCMS pipeline. Call app.UseFluentCms() before app.{method}().`) when `UseFluentCms()` has not run.
+- `services.AddFluentCmsOptions(section, instance, validate)` binds `FluentCms:{section}` onto `instance` as core binds its own [options](#options), and checks them at start; `validate` throws `FluentCmsConfigurationException.InvalidOption(message)`, with a message that starts with the property, and the host stops with `FCMS1101` and the key. `FluentCmsConfigurationException.NotRegistered(message)` is the `FCMS1103` refusal of something missing, such as a file the package serves.
+- The `PublicOrigin` service gives the [public origin](#public-origin) as `Base` and the issuer as `Issuer`, and `ClientOptions.FromOptionsProperty` names the property of a client that `cms.Clients` registered.
+
+A script that such a page runs on the admin's origin can read what the admin keeps in `sessionStorage` (see [Admin](#admin)).
 
 ## Single sign-on
 

@@ -1,5 +1,4 @@
 using FluentCMS.Core.Identity;
-using FluentCMS.Core.Identity.Oidc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -32,7 +31,7 @@ internal sealed partial class AdminClientRemoval(
         var applications = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
         if (await applications.FindByClientIdAsync(clients.AdminClientId, cancellationToken) is not { } application
             || await applications.GetDisplayNameAsync(application, cancellationToken) != AdminClientRegistration.DisplayName
-            || !(await applications.GetPropertiesAsync(application, cancellationToken)).ContainsKey(AuthorizationServer.FromOptionsProperty))
+            || !(await applications.GetPropertiesAsync(application, cancellationToken)).ContainsKey(ClientOptions.FromOptionsProperty))
         {
             return;
         }
@@ -57,10 +56,14 @@ internal sealed partial class AdminClientRemoval(
             return;
         }
 
-        OidcLog.ClientDeleted(logger, clients.AdminClientId);
+        ClientDeleted(logger, clients.AdminClientId);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    // The event of the host's own deletion of a client the options no longer list, so that an operator finds both alike.
+    [LoggerMessage(EventId = 9002, EventName = "OidcClientDeleted", Level = LogLevel.Warning, Message = "Deleted the OAuth client {ClientId}, with its sessions and tokens, because cms.Clients no longer lists it.")]
+    private static partial void ClientDeleted(ILogger logger, string clientId);
 
     [LoggerMessage(EventId = 40, EventName = "AdminClientDeleteRefused", Level = LogLevel.Warning, Message = "Could not delete the OAuth client {ClientId} of the admin, which is off: the database refused the delete, as it does when a consent or a token arrives while the client is deleted. The client is left for the next start.")]
     private static partial void DeleteRefused(ILogger logger, Exception exception, string clientId);
