@@ -414,8 +414,9 @@ public sealed class PublishGuardTests
     }
 
     // #3546: in a transaction the publish did not begin, it cannot roll that back to read what is stored, so the 412 reads as
-    // that transaction sees it, and the transaction stays the caller's to go on with. On SQLite the caller holds the one write
-    // lock, so it lets it go for the other request and takes it again, with the publish's savepoint.
+    // that transaction sees it, and the transaction stays the caller's to go on with. SQLite has one writer, which the caller's
+    // transaction holds from its BEGIN, so no other request can commit in it: there the change is made in that transaction by
+    // SQL of its own, which the publish cannot tell from another's commit either, and rolls back with the publish's savepoint.
     [Fact]
     public async Task APublishRefusedForAnotherRequestsChangeInACallersTransactionLeavesItOpen()
     {
@@ -427,7 +428,7 @@ public sealed class PublishGuardTests
         {
             var context = services.GetRequiredService<CmsDbContext>();
             await using var transaction = await context.Database.BeginTransactionAsync(Token);
-            between.Run = publish => RowLocks.CommittedMeanwhileAsync(context, () => database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 2), "cms_content_1");
+            between.Run = publish => TestProvider.IsSqlite ? SharedChangeBySqlAsync(context, id) : database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 2);
 
             var conflict = await Should.ThrowAsync<VersionConflictException>(() => Content(services).PublishAsync("article", id, new LocaleWriteOptions { Locale = "fr" }, Token));
 
@@ -442,6 +443,35 @@ public sealed class PublishGuardTests
 
         between.Run.ShouldBeNull();
         database.Read(context => context.Documents.Count(document => document.DocumentId == author)).ShouldBe(1);
+        database.Row("cms_article", id)["views"].ShouldBe(TestProvider.IsSqlite ? 1L : 2L);
+        database.Document(id, "fr").PublishedVersion.ShouldBeNull();
+        database.PublishedRow("cms_article", id).ShouldBeNull();
+    }
+
+    // What the shared change in English leaves, views 2 and every locale's version moved, written in the transaction given.
+    private static async Task SharedChangeBySqlAsync(CmsDbContext context, Guid id)
+    {
+        await context.Rows("cms_article")
+            .Where(row => EF.Property<Guid>(row, StorageNames.DocumentId) == id && EF.Property<short>(row, StorageNames.State) == ContentState.Draft)
+            .ExecuteUpdateAsync(set => set.SetProperty(row => EF.Property<long?>(row, "views"), 2L), Token);
+        await context.Documents
+            .Where(document => document.DocumentId == id)
+            .ExecuteUpdateAsync(set => set.SetProperty(document => document.DraftVersion, document => document.DraftVersion + 1), Token);
+    }
+
+    // A trash that commits while a publish runs leaves no version moved and no row to hold: the entry is not found, as a
+    // publish of an entry in the trash answers, where it was taken for a hook's write (#3524).
+    [Fact]
+    public async Task APublishThatATrashOvertookFindsNoEntry()
+    {
+        var between = new Between();
+        using var database = WithoutHooks(between);
+        var id = await EnglishAndFrenchAsync(database);
+        between.Run = services => CommittedByAnotherRequestAsync(services, () => database.DeleteAsync(Editor, id));
+
+        await Should.ThrowAsync<EntryNotFoundException>(() => database.PublishAsync(Editor, id, "fr"));
+
+        between.Run.ShouldBeNull();
         database.Document(id, "fr").PublishedVersion.ShouldBeNull();
         database.PublishedRow("cms_article", id).ShouldBeNull();
     }

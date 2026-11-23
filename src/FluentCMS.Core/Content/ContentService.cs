@@ -246,7 +246,7 @@ internal sealed partial class ContentService(
                 await hooks.RunAsync(HookKind.BeforeDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
 
                 // One statement marks every row, in whatever order the database takes them, so each is held first in the lock order.
-                await HoldInOrderAsync(id, locales, cancellationToken);
+                await HoldEveryRowAsync(id, documents, () => TrashConflictAsync(write, id, row), cancellationToken);
                 await store.SetTrashedAsync(id, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken);
                 await hooks.RunAsync(HookKind.AfterDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
 
@@ -271,7 +271,7 @@ internal sealed partial class ContentService(
                 var working = ContentCopy.Of(stored);
                 var locales = LocalesOf(documents);
                 await hooks.RunAsync(HookKind.BeforeRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
-                await HoldInOrderAsync(id, locales, cancellationToken);
+                await HoldEveryRowAsync(id, documents, () => TrashConflictAsync(write, id, row), cancellationToken);
                 await store.SetTrashedAsync(id, null, null, cancellationToken);
                 await hooks.RunAsync(HookKind.AfterRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
 
@@ -535,9 +535,14 @@ internal sealed partial class ContentService(
                 tracked.Restore();
                 throw;
             }
+            catch (EntryRowsAddedException added) when (!_ownsTransaction && added.Conflict is { } conflict)
+            {
+                throw conflict;
+            }
         }
 
         var keyRerun = false;
+        var rowsRerun = false;
         for (var deadlocks = 0; ; )
         {
             try
@@ -550,6 +555,17 @@ internal sealed partial class ContentService(
                 // the context, and so may a caller that goes on after the failure.
                 tracked.Restore();
                 throw;
+            }
+            catch (EntryRowsAddedException added) when (rowsRerun && added.Conflict is { } conflict)
+            {
+                throw conflict;
+            }
+            catch (EntryRowsAddedException) when (!rowsRerun)
+            {
+                // A locale was added to the entry between the read of its rows and their holds. Run once more, on the context
+                // as it was: the rows are then read with it, and its checks, hooks and events run as for the others (#3524).
+                rowsRerun = true;
+                tracked.Restore();
             }
             catch (Exception exception) when (!keyRerun && provider.IsUniqueViolation(exception))
             {
@@ -795,21 +811,21 @@ internal sealed partial class ContentService(
 
                 var sharedChanged = SharedChanged(type, fields, stored);
                 var next = expectedVersion + 1;
-                var (published, read) = (document.PublishedVersion, document.Status);
+                var read = document.Status;
 
                 // A Published entry's draft is what is published. A Modified one is decided once its swap holds the row.
-                var status = published is null ? read : read == EntryStatus.Published && SameFields(type, fields, stored) ? EntryStatus.Published : EntryStatus.Modified;
+                var status = document.PublishedVersion is null ? read : read == EntryStatus.Published && SameFields(type, fields, stored) ? EntryStatus.Published : EntryStatus.Modified;
 
                 // Adding a locale writes the shared row as this write read it, so it moves the other locales as a change would.
                 var movesShared = sharedChanged || addsLocale;
-                var advanced = await AdvanceVersionsAsync(write, id, addsLocale ? null : document, expectedVersion, status, movesShared ? documents : [], cancellationToken, comparesPublished: true);
+                var advanced = await AdvanceVersionsAsync(write, id, addsLocale ? null : document, expectedVersion, status, movesShared ? documents : [], cancellationToken, decide: addsLocale ? null : StatusOf(write, fields, cancellationToken));
                 if (addsLocale)
                 {
                     document.DraftVersion = next;
                 }
                 else
                 {
-                    await SettleOwnStatusAsync(write, document, published, read, fields, cancellationToken);
+                    await SettleOwnStatusAsync(write, document, read, fields, cancellationToken);
                 }
 
                 // The write changes a row of its own type, which a row rule on a relation to that type may read.
@@ -1244,6 +1260,16 @@ internal sealed partial class ContentService(
     private static List<string> LocalesOf(List<Document> documents) => [.. documents.Select(document => document.Locale).Order(StringComparer.Ordinal)];
 
     private static string AddedMessage(Document document) => string.Create(CultureInfo.InvariantCulture, $"Added the locale {document.Locale}.");
+
+    private async Task<Exception> TrashConflictAsync(WriteScope write, Guid id, Document row) =>
+        await ConflictAsync(write, id, row.DraftVersion, row.DraftVersion, CancellationToken.None);
+
+    // A row of the entry that appeared between the read of its rows and their holds (HoldEveryRowAsync). Conflict is what a
+    // client is answered where the write cannot run again, none for a job or an import, whose runner tries again.
+    private sealed class EntryRowsAddedException(Exception? conflict) : Exception("A locale was added to the entry while it was written; run it again.")
+    {
+        public Exception? Conflict { get; } = conflict;
+    }
 
     private async Task<VersionConflictException> ConflictAsync(WriteScope write, Guid id, int expected, int current, CancellationToken cancellationToken) =>
         new(expected, current, await ReadDraftOrNullAsync(write, id, write.Locale, LocaleFallback.None, cancellationToken));

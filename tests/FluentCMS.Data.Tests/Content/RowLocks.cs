@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
+using Shouldly;
 
 namespace FluentCMS.Data.Tests.Content;
 
@@ -18,6 +20,10 @@ internal static class RowLocks
     public static readonly TimeSpan Limit = TimeSpan.FromSeconds(60);
 
     private static readonly TimeSpan Poll = TimeSpan.FromMilliseconds(50);
+
+    // Whether a command has a parameter of that id, which SQLite sends as text.
+    public static bool Names(DbCommand command, Guid id) =>
+        command.Parameters.Cast<DbParameter>().Any(parameter => parameter.Value is Guid value ? value == id : parameter.Value is string text && Guid.TryParse(text, out var parsed) && parsed == id);
 
     public static bool Names(DbCommand command, string value) =>
         command.Parameters.Cast<DbParameter>().Any(parameter => parameter.Value is string text && text == value);
@@ -60,8 +66,8 @@ internal static class RowLocks
 
     // Another request that commits while held is in its transaction, as a database that does not serialise writers lets it
     // while held has written nothing. SQLite has one writer, which held took at its BEGIN, so there held lets it go, having
-    // written nothing, and takes it again, with the savepoint it was in.
-    public static async Task CommittedMeanwhileAsync(DbContext held, Func<Task> request, string? savepoint = null)
+    // written nothing, and takes it again.
+    public static async Task CommittedMeanwhileAsync(DbContext held, Func<Task> request)
     {
         if (!TestProvider.IsSqlite)
         {
@@ -75,7 +81,7 @@ internal static class RowLocks
         command.CommandText = "COMMIT";
         await command.ExecuteNonQueryAsync(ServiceDatabase.Token);
         await request();
-        command.CommandText = savepoint is null ? "BEGIN IMMEDIATE" : $"BEGIN IMMEDIATE; SAVEPOINT {savepoint}";
+        command.CommandText = "BEGIN IMMEDIATE";
         await command.ExecuteNonQueryAsync(ServiceDatabase.Token);
     }
 
@@ -189,22 +195,69 @@ internal sealed class TransactionGate : DbTransactionInterceptor
     }
 }
 
-// Counts the commands that the database ended as a deadlock's victim, which the content service would run again.
+// Counts the commands that the database ended as a deadlock's victim, which the content service would run again, and says
+// what each was, so that a failure names its cycle: the statement the victim ran, the server's message and detail, and on
+// SQL Server the graphs of the last deadlocks it kept, which name both sessions' statements and the locks they waited for.
 internal sealed class Deadlocks : DbCommandInterceptor
 {
+    private const string Graphs = """
+        SELECT TOP (3) CAST(event.query('.') AS nvarchar(max))
+        FROM (
+            SELECT CAST(target.target_data AS xml) AS data
+            FROM sys.dm_xe_session_targets AS target
+            JOIN sys.dm_xe_sessions AS session ON session.address = target.event_session_address
+            WHERE session.name = 'system_health' AND target.target_name = 'ring_buffer') AS ring
+        CROSS APPLY ring.data.nodes('RingBufferTarget/event[@name="xml_deadlock_report"]') AS events(event)
+        ORDER BY event.value('(@timestamp)[1]', 'datetime2') DESC
+        """;
+
     private static readonly IDataProvider Provider = TestProvider.Offline();
 
-    private int _count;
+    private readonly ConcurrentQueue<string> _seen = new();
 
-    public int Count => Volatile.Read(ref _count);
+    public int Count => _seen.Count;
 
     public override Task CommandFailedAsync(DbCommand command, CommandErrorEventData eventData, CancellationToken cancellationToken = default)
     {
         if (Provider.IsDeadlock(eventData.Exception))
         {
-            Interlocked.Increment(ref _count);
+            var detail = eventData.Exception is PostgresException postgres ? $"{postgres.MessageText} {postgres.Detail}" : eventData.Exception.Message;
+            _seen.Enqueue($"{detail}{Environment.NewLine}{command.CommandText}");
         }
 
         return Task.CompletedTask;
+    }
+
+    public async Task ShouldBeNoneAsync(string connectionString)
+    {
+        if (_seen.IsEmpty)
+        {
+            return;
+        }
+
+        List<string> told = [$"{Count} deadlock(s):", .. _seen];
+        if (TestProvider.IsSqlServer)
+        {
+            try
+            {
+                await using var connection = new SqlConnection(new SqlConnectionStringBuilder(connectionString) { Pooling = false }.ToString());
+                await connection.OpenAsync(ServiceDatabase.Token);
+                await using var command = connection.CreateCommand();
+                command.CommandText = Graphs;
+                await using var reader = await command.ExecuteReaderAsync(ServiceDatabase.Token);
+                while (await reader.ReadAsync(ServiceDatabase.Token))
+                {
+                    told.Add(reader.GetString(0));
+                }
+            }
+#pragma warning disable CA1031 // The graphs only add to a failure that is reported anyway.
+            catch (Exception exception)
+#pragma warning restore CA1031
+            {
+                told.Add($"The deadlock graphs could not be read: {exception.Message}");
+            }
+        }
+
+        throw new ShouldAssertException(string.Join(Environment.NewLine + Environment.NewLine, told));
     }
 }

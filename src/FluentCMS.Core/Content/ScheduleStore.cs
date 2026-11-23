@@ -118,12 +118,23 @@ internal sealed class ScheduleStore(CmsDbContext context)
         return closed == 1;
     }
 
-    public Task SetMirrorAsync(Guid documentId, string locale, string action, DateTimeOffset? at, CancellationToken cancellationToken)
+    // The row is found first and written by its primary key, as every statement that locks one row of cms_document is
+    // (EntryStore, #3524), so one that waits for the row holds nothing of it.
+    public async Task SetMirrorAsync(Guid documentId, string locale, string action, DateTimeOffset? at, CancellationToken cancellationToken)
     {
-        var documents = context.Documents.IgnoreQueryFilters().Where(document => document.DocumentId == documentId && document.Locale == locale);
-        return action == ScheduleRow.Publish
+        var key = await context.Documents.IgnoreQueryFilters().AsNoTracking()
+            .Where(document => document.DocumentId == documentId && document.Locale == locale)
+            .Select(document => (Guid?)document.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (key is null)
+        {
+            return;
+        }
+
+        var documents = context.Documents.IgnoreQueryFilters().Where(document => document.Id == key);
+        await (action == ScheduleRow.Publish
             ? documents.ExecuteUpdateAsync(set => set.SetProperty(document => document.SchedulePublishAt, at), cancellationToken)
-            : documents.ExecuteUpdateAsync(set => set.SetProperty(document => document.ScheduleUnpublishAt, at), cancellationToken);
+            : documents.ExecuteUpdateAsync(set => set.SetProperty(document => document.ScheduleUnpublishAt, at), cancellationToken));
     }
 
     // Only a job that has not been claimed is removed. One that has will find its schedule closed and do nothing.

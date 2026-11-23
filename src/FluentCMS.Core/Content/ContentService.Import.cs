@@ -89,7 +89,7 @@ internal sealed partial class ContentService
     // reads of them stays until the commit.
     private async Task WriteImportedAsync(SchemaType type, TransferEntry entry, List<Document> before, bool authorsFromImporter, CancellationToken cancellationToken)
     {
-        await HoldInOrderAsync(entry.Id, (await store.AllRowsAsync(entry.Id, cancellationToken)).Select(row => row.Locale), cancellationToken);
+        await HoldEveryRowAsync(entry.Id, await store.AllRowsAsync(entry.Id, cancellationToken), null, cancellationToken);
 
         var named = entry.Locales.Select(locale => locale.Locale).ToHashSet(StringComparer.Ordinal);
         foreach (var locale in entry.Locales.Where(locale => locale.Published is not null))
@@ -125,8 +125,7 @@ internal sealed partial class ContentService
             // Never published or published no more: the package says which, since an unpublish leaves Unpublished either way.
             var status = row.PublishedVersion is null && locale.Status is EntryStatus.Draft or EntryStatus.Unpublished ? locale.Status : row.Status;
             await store.SettleImportedAsync(
-                entry.Id,
-                row.Locale,
+                row,
                 new ImportedState(
                     status,
                     draftVersion,

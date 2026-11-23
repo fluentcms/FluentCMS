@@ -74,7 +74,7 @@ internal sealed partial class ContentService
                 // Held before the copy, in the lock order (#3524): this row at the version read, and every other row of the
                 // entry, since the copy of the shared row decides the status of each locale published by then, one published
                 // while this publish runs too, and a write's own status is decided from that row once it holds its own.
-                var locks = new PublishLocks([.. documents.Where(other => other.Id != document.Id).Select(other => other.Locale)], LostAsync);
+                var locks = new HeldRows([.. documents.Where(other => other.Id != document.Id)], LostAsync);
                 List<Document> advanced = [];
                 if (!JsonNode.DeepEquals(original, settled))
                 {
@@ -123,7 +123,12 @@ internal sealed partial class ContentService
                 await context.Database.RollbackTransactionAsync(CancellationToken.None);
             }
 
-            var stored = await store.DraftVersionAsync(id, write.DocumentLocale, cancellationToken);
+            // A row in the trash, or gone, is no hook's doing: the entry is not found, as a publish of it would answer.
+            if (await store.LiveDraftVersionAsync(id, write.DocumentLocale, cancellationToken) is not { } stored)
+            {
+                return new EntryNotFoundException(write.Type.Name, id);
+            }
+
             if (stored > read || locale != write.DocumentLocale)
             {
                 return await ConflictAsync(write, id, read, stored, cancellationToken);
@@ -133,8 +138,8 @@ internal sealed partial class ContentService
         return new HookRejectedException(ContentErrorCodes.DraftMovedByHook, "A hook changed the draft being published.");
     }
 
-    // What a publish holds besides its own row, and what it answers when one of its swaps loses.
-    private sealed record PublishLocks(IReadOnlyCollection<string> Held, Func<string, Task<Exception>> Lost);
+    // What a publish or a discard holds besides its own row, and what it answers when one of its swaps loses.
+    private sealed record HeldRows(IReadOnlyCollection<Document> Held, Func<string, Task<Exception>> Lost);
 
     public Task<ContentDocument> UnpublishAsync(string type, Guid id, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
         UnpublishAsync(type, id, options?.Locale, cancellationToken);
@@ -158,7 +163,10 @@ internal sealed partial class ContentService
                 var working = ContentCopy.Of(published);
                 await hooks.RunAsync(HookKind.BeforeUnpublish, write.Type, write.Operation, working, ContentCopy.Of(published), cancellationToken);
 
-                var isLast = !documents.Any(other => other.Id != document.Id && other.PublishedVersion is not null);
+                // Whether this locale is the last published decides whether the shared published row goes, so it is read
+                // under the holds of every row of the entry, which a publish of another locale takes too (#3524).
+                await HoldInOrderAsync(documents, cancellationToken);
+                var isLast = !(await store.DocumentsAsync(write.Type, id, write.Site, trashed: false, cancellationToken)).Any(other => other.Id != document.Id && other.PublishedVersion is not null);
                 if (!await store.MarkUnpublishedAsync(document, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken))
                 {
                     throw await ConflictAsync(write, id, document.DraftVersion, await store.DraftVersionAsync(id, document.Locale, cancellationToken), cancellationToken);
@@ -192,6 +200,17 @@ internal sealed partial class ContentService
                 ThrowIfNotPublished(write, document);
                 await ThrowIfNotExpectedAsync(write, id, document, expectedVersion, cancellationToken);
 
+                // A discard writes what is published, so before it reads that it holds every row of the entry, its own at the
+                // version it read, as a publish does, and is a conflict when its row was published, unpublished or given another
+                // status since (#3524).
+                Task<Exception> LostAsync(string locale) => OwnRowLostAsync(write, id, document.DraftVersion, cancellationToken);
+                var read = new StoredState(document.PublishedVersion, document.Status);
+                await AdvanceVersionsAsync(write, id, document, document.DraftVersion, status: null, [], cancellationToken, new HeldRows([.. documents.Where(other => other.Id != document.Id)], LostAsync));
+                if (await store.StateAsync(document, cancellationToken) != read)
+                {
+                    throw await ConflictAsync(write, id, document.DraftVersion, document.DraftVersion, cancellationToken);
+                }
+
                 var writable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Update, id, target, cancellationToken);
                 ThrowIfWritesBlind(write, writable);
 
@@ -200,14 +219,9 @@ internal sealed partial class ContentService
                 var publishedFields = EntryJson.Fields(write.Type, published);
                 if (JsonNode.DeepEquals(EntryJson.Fields(write.Type, stored), publishedFields))
                 {
-                    // Decided from the row as read, so set only while the row, now held, is published at the version read (#3524).
                     if (document.Status != EntryStatus.Published)
                     {
-                        await HoldInOrderAsync(id, [document.Locale], cancellationToken);
-                        if (await store.PublishedVersionAsync(id, document.Locale, cancellationToken) == document.PublishedVersion)
-                        {
-                            await store.SetStatusAsync(id, document.Locale, EntryStatus.Published, cancellationToken);
-                        }
+                        await store.SetStatusAsync(document, EntryStatus.Published, cancellationToken);
                     }
 
                     return document;
@@ -221,7 +235,7 @@ internal sealed partial class ContentService
 
                 (working, var fields) = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, [], writable, document), cancellationToken);
 
-                var advanced = await WriteOverDraftAsync(write, id, documents, document, rows, stored, working, fields, JsonNode.DeepEquals(fields, publishedFields) ? EntryStatus.Published : EntryStatus.Modified, "Discarded the draft.", cancellationToken);
+                var advanced = await WriteOverDraftAsync(write, id, documents, document, rows, stored, working, fields, JsonNode.DeepEquals(fields, publishedFields) ? EntryStatus.Published : EntryStatus.Modified, "Discarded the draft.", cancellationToken, new HeldRows([], LostAsync));
                 await RecomputeOtherLocalesAsync(write, document, cancellationToken, advanced);
                 var skipped = await SkipStalePublishesAsync(write, documents, document, cancellationToken);
                 await ThrowIfOutOfReachAsync(write, ContentOperation.Update, id, cancellationToken);
@@ -354,7 +368,14 @@ internal sealed partial class ContentService
 
                 var message = string.Create(CultureInfo.InvariantCulture, $"Restored version {number}.");
                 var advanced = await WriteOverDraftAsync(write, id, documents, document, rows, stored, working, fields, status, message, cancellationToken);
-                await RecomputeOtherLocalesAsync(write, document, cancellationToken, advanced);
+
+                // Without a shared change neither the shared row nor another locale's draft moved, so no other status did, and
+                // the rows of the other locales, which it does not hold, are left alone.
+                if (advanced.Count > 0)
+                {
+                    await RecomputeOtherLocalesAsync(write, document, cancellationToken, advanced);
+                }
+
                 var skipped = await SkipStalePublishesAsync(write, documents, document, cancellationToken);
                 await ThrowIfOutOfReachAsync(write, ContentOperation.Update, id, cancellationToken);
 
@@ -704,44 +725,47 @@ internal sealed partial class ContentService
             .Select(group => (group.Target!, group.Ids));
 
     // rows are the draft rows this transaction read, stored the draft they hold, and fields EntryJson.Fields of working.
-    // Answers the other locales whose versions moved with the shared fields. A publish sets its own status after.
-    private async Task<List<Document>> WriteOverDraftAsync(WriteScope write, Guid id, List<Document> documents, Document document, StoredRows rows, ContentDocument stored, ContentDocument working, JsonObject fields, EntryStatus status, string? message, CancellationToken cancellationToken, PublishLocks? publish = null)
+    // Answers the other locales whose versions moved with the shared fields. A publish sets its own status after it, and a
+    // discard, which held its row before it read what decides its status, has it from that read.
+    private async Task<List<Document>> WriteOverDraftAsync(WriteScope write, Guid id, List<Document> documents, Document document, StoredRows rows, ContentDocument stored, ContentDocument working, JsonObject fields, EntryStatus status, string? message, CancellationToken cancellationToken, HeldRows? held = null)
     {
         var moved = SharedChanged(write.Type, fields, stored) ? documents : [];
-        var (published, read) = (document.PublishedVersion, document.Status);
-        var advanced = await AdvanceVersionsAsync(write, id, document, document.DraftVersion, status, moved, cancellationToken, publish, comparesPublished: publish is null);
-        if (publish is null)
+        var read = document.Status;
+        var advanced = await AdvanceVersionsAsync(write, id, document, document.DraftVersion, status, moved, cancellationToken, held, held is null ? StatusOf(write, fields, cancellationToken) : null);
+        if (held is null)
         {
-            await SettleOwnStatusAsync(write, document, published, read, fields, cancellationToken);
+            await SettleOwnStatusAsync(write, document, read, fields, cancellationToken);
         }
 
         await store.WriteDraftAsync(write.Type, document, isNewDocument: false, rows, working, fields, write.Operation, cancellationToken, message);
         return advanced;
     }
 
+    // The status of a write's own locale, from its row as stored and, when published, its published rows read now.
+    // fields is EntryJson.Fields of what the write stores.
+    private Func<Document, Task<EntryStatus>> StatusOf(WriteScope write, JsonObject fields, CancellationToken cancellationToken) =>
+        async row => row.PublishedVersion is null
+            ? row.Status
+            : SameFields(write.Type, fields, await store.ReadAsync(write.Type, row, ContentState.Published, cancellationToken)) ? EntryStatus.Published : EntryStatus.Modified;
+
     // A write decides its status from the row it read, and what decides it can move before the swap that holds the row: a
-    // publish or an unpublish of this locale, which the swap compares by the published version (comparesPublished), or
+    // publish or an unpublish of this locale, which the swap finds by comparing the published version and the status, or
     // another locale's publish, which copies the shared row and holds this row while it does. So the status is decided
-    // again once the swap holds the row, from what is stored (#3524). A locale read Published at the published version it
-    // still has is as it was read: a shared row copied since is the one its draft holds, or the swap would have lost. A
-    // Modified one reads its published rows now, which the write would have read before its swap.
-    // fields is EntryJson.Fields of what the write stores; published and read are the row's as the write read it.
-    private async Task SettleOwnStatusAsync(WriteScope write, Document document, int? published, EntryStatus read, JsonObject fields, CancellationToken cancellationToken)
+    // again once the swap holds the row, from what is stored (#3524). A locale read Published at the published version and
+    // status it still has is as it was read: a shared row copied since is the one its draft holds, or the swap would have
+    // lost. A Modified one reads its published rows now, which the write would have read before its swap.
+    // fields is EntryJson.Fields of what the write stores; read is the status the write read.
+    private async Task SettleOwnStatusAsync(WriteScope write, Document document, EntryStatus read, JsonObject fields, CancellationToken cancellationToken)
     {
-        var now = document.PublishedVersion;
-        var status = document.Status;
-        if (now is null)
+        if (document.PublishedVersion is null || read == EntryStatus.Published)
         {
-            status = published is null ? status : EntryStatus.Unpublished;
-        }
-        else if (now != published || read != EntryStatus.Published)
-        {
-            status = SameFields(write.Type, fields, await store.ReadAsync(write.Type, document, ContentState.Published, cancellationToken)) ? EntryStatus.Published : EntryStatus.Modified;
+            return;
         }
 
+        var status = await StatusOf(write, fields, cancellationToken)(document);
         if (status != document.Status)
         {
-            await store.SetStatusAsync(document.DocumentId, document.Locale, status, cancellationToken);
+            await store.SetStatusAsync(document, status, cancellationToken);
             document.Status = status;
         }
     }
@@ -758,6 +782,7 @@ internal sealed partial class ContentService
     // The shared row moved under the other locales, and each is Published only while its draft equals what is published.
     // The rows are read again here, after the swaps that lock the advanced ones, so a publish or an unpublish that committed
     // since this write read them decides with them (#3265). Each advanced locale gets a version of its draft as it now is.
+    // Every row it sets is held: a write that moved the shared row holds every other locale, and so does a publish.
     private async Task RecomputeOtherLocalesAsync(WriteScope write, Document document, CancellationToken cancellationToken, IReadOnlyCollection<Document>? advanced = null, string? message = null)
     {
         if (!write.Type.Localized)
@@ -779,7 +804,7 @@ internal sealed partial class ContentService
 
             if (status != other.Status)
             {
-                await store.SetStatusAsync(other.DocumentId, other.Locale, status, cancellationToken);
+                await store.SetStatusAsync(other, status, cancellationToken);
                 other.Status = status;
             }
 
@@ -798,78 +823,97 @@ internal sealed partial class ContentService
     private static string SharedMessage(Document document) => string.Create(CultureInfo.InvariantCulture, $"Shared fields changed in {document.Locale}.");
 
     // The one lock order of the writes of an entry (spec 4.5, "Lock order as built"; #3524). A path takes the entry's
-    // cms_document rows that it will write first, one statement each and ordinal by locale code, and only then its content
-    // rows of either state, its references and versions, and last its schedules and their jobs; a row of an earlier kind is
-    // written afterwards only once it is held, as a status or the mirror of a schedule is. So two writes, publishes or jobs of
-    // one entry that cross wait for each other instead of deadlocking. A path takes its rows here, or by the swaps of
-    // AdvanceVersionsAsync, which follow the same order.
-    private async Task HoldInOrderAsync(Guid id, IEnumerable<string> locales, CancellationToken cancellationToken)
+    // cms_document rows that it will write first, one statement each, by primary key and ordinal by locale code, and only
+    // then its content rows of either state, its references and versions, and last its schedules and their jobs; a row of
+    // an earlier kind is written afterwards only once it is held, as a status or the mirror of a schedule is. So two writes,
+    // publishes or jobs of one entry that cross wait for each other instead of deadlocking. A path takes its rows here, or
+    // by the swaps of AdvanceVersionsAsync, which follow the same order.
+    private async Task HoldInOrderAsync(IEnumerable<Document> rows, CancellationToken cancellationToken)
     {
-        foreach (var locale in locales.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal))
+        foreach (var row in rows.OrderBy(row => row.Locale, StringComparer.Ordinal))
         {
-            await store.HoldAsync(id, locale, cancellationToken);
+            await store.HoldAsync(row, cancellationToken);
+        }
+    }
+
+    // Holds rows read before the transaction held any, and reads the entry's rows again: one added between, which the holds
+    // do not cover, would be taken out of the lock order or written unchecked (#3524). The write then runs again in a
+    // transaction of its own, which reads it; elsewhere it answers conflict, which a client retries.
+    private async Task HoldEveryRowAsync(Guid id, IReadOnlyCollection<Document> rows, Func<Task<Exception>>? conflict, CancellationToken cancellationToken)
+    {
+        await HoldInOrderAsync(rows, cancellationToken);
+        if ((await store.AllRowsAsync(id, cancellationToken)).Any(row => !rows.Any(held => held.Id == row.Id)))
+        {
+            throw new EntryRowsAddedException(conflict is null ? null : await conflict());
         }
     }
 
     // Every compare and swap of one write, in the lock order, so that two writes that cross wait for each other rather than
     // deadlock (#3265): the write's own locale, unless it adds that locale, and each other locale whose draft moved with the
-    // shared fields, from the version this transaction read, and those a publish holds. The own row is locked in its place in
-    // that order but moved last, so that a conflict at any swap reads it as stored, never as this write would have left it,
-    // and only held where status is null. Another locale's swap moves its version, updatedAt and updatedBy alone: its status
-    // is the recompute's. Answers the other locales advanced.
-    private async Task<List<Document>> AdvanceVersionsAsync(WriteScope write, Guid id, Document? own, int expected, EntryStatus? status, IEnumerable<Document> moved, CancellationToken cancellationToken, PublishLocks? publish = null, bool comparesPublished = false)
+    // shared fields, from the version this transaction read, and those a publish or a discard holds. The own row is locked in
+    // its place in that order but moved last, so that a conflict at any swap reads it as stored, never as this write would
+    // have left it, and only held where status is null. Another locale's swap moves its version, updatedAt and updatedBy
+    // alone: its status is the recompute's. With decide, the own swap compares the published version and the status the
+    // write read too, and when only those moved the row is held as it is and the status decided again (#3524). Answers the
+    // other locales advanced.
+    private async Task<List<Document>> AdvanceVersionsAsync(WriteScope write, Guid id, Document? own, int expected, EntryStatus? status, IEnumerable<Document> moved, CancellationToken cancellationToken, HeldRows? holds = null, Func<Document, Task<EntryStatus>>? decide = null)
     {
-        async Task<Exception> LostAsync(string locale) => publish is null ? await SwapConflictAsync(write, id, expected, cancellationToken) : await publish.Lost(locale);
+        async Task<Exception> LostAsync(string locale) => holds is null ? await SwapConflictAsync(write, id, expected, cancellationToken) : await holds.Lost(locale);
 
         var at = write.Operation.Timestamp;
         var by = write.Operation.AuditPrincipal.Id;
         var others = moved.Where(other => own is null || other.Locale != own.Locale).OrderBy(other => other.Locale, StringComparer.Ordinal).ToList();
-        var locales = others.Select(other => other.Locale)
-            .Concat((publish?.Held ?? []).Where(locale => own is null || locale != own.Locale))
-            .Distinct(StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal);
+        var rows = others
+            .Concat((holds?.Held ?? []).Where(row => (own is null || row.Locale != own.Locale) && !others.Any(other => other.Locale == row.Locale)))
+            .OrderBy(row => row.Locale, StringComparer.Ordinal)
+            .ToList();
         var held = false;
-        foreach (var locale in locales)
+        foreach (var row in rows)
         {
-            if (!held && own is not null && string.CompareOrdinal(own.Locale, locale) < 0)
+            if (!held && own is not null && string.CompareOrdinal(own.Locale, row.Locale) < 0)
             {
-                held = await store.HoldVersionAsync(id, own.Locale, expected, cancellationToken);
+                held = await store.HoldVersionAsync(own, expected, cancellationToken);
                 if (!held)
                 {
                     throw await LostAsync(own.Locale);
                 }
             }
 
-            if (others.Find(item => item.Locale == locale) is not { } other)
+            if (!others.Contains(row))
             {
-                await store.HoldAsync(id, locale, cancellationToken);
+                await store.HoldAsync(row, cancellationToken);
                 continue;
             }
 
-            if (!await store.AdvanceDraftVersionAsync(id, other.Locale, other.DraftVersion, at, by, cancellationToken))
+            if (!await store.AdvanceDraftVersionAsync(row, row.DraftVersion, at, by, cancellationToken))
             {
-                throw await LostAsync(other.Locale);
+                throw await LostAsync(row.Locale);
             }
 
-            _moved.Add((id, other.Locale));
-            other.DraftVersion++;
-            other.UpdatedAt = at;
-            other.UpdatedBy = by;
+            _moved.Add((id, row.Locale));
+            row.DraftVersion++;
+            row.UpdatedAt = at;
+            row.UpdatedBy = by;
         }
 
         if (own is not null && status is { } moving)
         {
-            var published = comparesPublished ? new PublishedAs(own.PublishedVersion) : null;
-            if (!await store.AdvanceVersionAsync(id, own.Locale, expected, moving, at, by, cancellationToken, published))
+            var read = decide is null ? null : new StoredState(own.PublishedVersion, own.Status);
+            if (!await store.AdvanceVersionAsync(own, expected, moving, at, by, cancellationToken, read))
             {
-                // A publish or an unpublish of this locale since the read moved its published version alone (#3524). The row
-                // is taken as it is, and its published version read again under the swap, for the status to be decided from.
-                if (published is null || !await store.AdvanceVersionAsync(id, own.Locale, expected, moving, at, by, cancellationToken))
+                // A publish or an unpublish of this locale since the read moved its published version or status alone
+                // (#3524): the row is held as it is, and the status decided again from it.
+                if (read is null || !await store.HoldVersionAsync(own, expected, cancellationToken))
                 {
                     throw await LostAsync(own.Locale);
                 }
 
-                own.PublishedVersion = await store.PublishedVersionAsync(id, own.Locale, cancellationToken);
+                (own.PublishedVersion, own.Status) = await store.StateAsync(own, cancellationToken);
+                moving = await decide!(own);
+                if (!await store.AdvanceVersionAsync(own, expected, moving, at, by, cancellationToken))
+                {
+                    throw await LostAsync(own.Locale);
+                }
             }
 
             _moved.Add((id, own.Locale));
@@ -878,13 +922,19 @@ internal sealed partial class ContentService
             own.UpdatedAt = at;
             own.UpdatedBy = by;
         }
-        else if (own is not null && !held && !await store.HoldVersionAsync(id, own.Locale, expected, cancellationToken))
+        else if (own is not null && !held && !await store.HoldVersionAsync(own, expected, cancellationToken))
         {
             throw await LostAsync(own.Locale);
         }
 
         return others;
     }
+
+    // A write's own row lost its compare: 412 with the version stored, or not found for a row in the trash or gone.
+    private async Task<Exception> OwnRowLostAsync(WriteScope write, Guid id, int expected, CancellationToken cancellationToken) =>
+        await store.LiveDraftVersionAsync(id, write.DocumentLocale, cancellationToken) is { } stored
+            ? await ConflictAsync(write, id, expected, stored, cancellationToken)
+            : new EntryNotFoundException(write.Type.Name, id);
 
     // Whichever swap lost, the answer is of the locale written, read now that the winner has committed: the version the
     // winner gave it or added it at, or the client's own when only another locale moved.

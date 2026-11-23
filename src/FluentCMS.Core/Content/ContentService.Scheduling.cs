@@ -49,11 +49,13 @@ internal sealed partial class ContentService
         var document = await InTransactionAsync(
             async () =>
             {
-                // The row of the locale is held before the version and shared hash are read, in the lock order: a write that
-                // moves them, such as one that adds a locale, commits first and is read, or waits and then moves this
-                // schedule with the others (#3534).
-                await HoldInOrderAsync(id, [write.DocumentLocale], cancellationToken);
+                // The row of the locale is held, once the entry is reached, before the version and shared hash are read, in
+                // the lock order: a write that moves them, such as one that adds a locale, commits first and is read here, or
+                // waits and then moves this schedule with the others (#3534).
                 var (documents, document, target) = await ReachLocaleAsync(write, kind, id, cancellationToken);
+                await HoldInOrderAsync([document], cancellationToken);
+                documents = await store.DocumentsAsync(write.Type, id, write.Site, trashed: false, cancellationToken);
+                document = documents.Find(item => item.Id == document.Id) ?? throw new EntryNotFoundException(write.Type.Name, id);
                 string? shared = null;
                 if (kind == ContentOperation.Publish)
                 {
@@ -120,8 +122,8 @@ internal sealed partial class ContentService
             async () =>
             {
                 // The schedule is ended before its mirror on the row is cleared, so the row is held first, in the lock order.
-                await HoldInOrderAsync(id, [write.DocumentLocale], cancellationToken);
                 var (documents, document, target) = await ReachLocaleAsync(write, kind, id, cancellationToken);
+                await HoldInOrderAsync([document], cancellationToken);
                 if (kind == ContentOperation.Publish)
                 {
                     var draft = await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken);
@@ -182,7 +184,7 @@ internal sealed partial class ContentService
     private async Task<ScheduleOutcome> RunClaimedAsync(OperationContext operation, ScheduleRow found, ScheduleAction action, Guid jobId, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
-        await HoldInOrderAsync(found.DocumentId, (await store.AllRowsAsync(found.DocumentId, cancellationToken)).Select(document => document.Locale), cancellationToken);
+        await HoldEveryRowAsync(found.DocumentId, await store.AllRowsAsync(found.DocumentId, cancellationToken), null, cancellationToken);
         if (await schedules.FindAsync(found.Id, cancellationToken) is not { Status: ScheduleRow.Pending } row || row.JobId != jobId)
         {
             return ScheduleOutcome.Superseded;
