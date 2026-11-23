@@ -4,9 +4,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Core.Settings;
 
-// A stored document left as it is, by its area and scope; Keys names the secret keys the key ring cannot unprotect, and is
-// empty for an area that no class of the host registers, whose secret keys are not known.
-internal sealed record SecretSettingsLeft(string Area, Guid? Site, IReadOnlyList<string> Keys);
+// A stored document that still needs an older key of the ring, by its area and scope. Unreadable names the secret keys the
+// key ring cannot unprotect, which leave the whole row as it is; Unreached names the keys that hold a protected value
+// the class does not read as a secret, such as a key it no longer has, which the pass does not protect again. A row of
+// an area that no class of the host registers is left as it is, and its keys are not known.
+internal sealed record SecretSettingsLeft(string Area, Guid? Site, bool Registered, IReadOnlyList<string> Unreadable, IReadOnlyList<string> Unreached);
 
 internal sealed record SecretSettingsReprotected(int Documents, IReadOnlyList<SecretSettingsLeft> Left);
 
@@ -33,20 +35,50 @@ internal sealed class SecretSettingsReprotection(SystemDbContext context, Settin
             {
                 if (row.Json.Contains(SettingsProtection.Prefix, StringComparison.Ordinal))
                 {
-                    left.Add(new SecretSettingsLeft(row.Key, row.SiteId, []));
+                    left.Add(new SecretSettingsLeft(row.Key, row.SiteId, Registered: false, [], []));
                 }
+
+                continue;
             }
-            else if (await ReprotectAsync(descriptor, row, cancellationToken) is not { } unreadable)
+
+            var unreadable = await ReprotectAsync(descriptor, row, cancellationToken);
+            if (unreadable is null)
             {
                 documents++;
             }
-            else if (unreadable.Count > 0)
+
+            var unreached = protection.Unreached(descriptor, row.Json, row.SiteId);
+            if (unreadable is { Count: > 0 } || unreached.Count > 0)
             {
-                left.Add(new SecretSettingsLeft(row.Key, row.SiteId, unreadable));
+                left.Add(new SecretSettingsLeft(row.Key, row.SiteId, Registered: true, unreadable ?? [], unreached));
             }
         }
 
         return new SecretSettingsReprotected(documents, left);
+    }
+
+    // Removes every stored document of an area that no class of the host registers, such as that of a plugin the host no
+    // longer runs, which neither the API nor a reset reaches. Returns the scopes removed; a registered area is refused.
+    public async Task<IReadOnlyList<Guid?>> RemoveUnregisteredAsync(string area, CancellationToken cancellationToken)
+    {
+        if (registry.Find(area) is not null)
+        {
+            throw new InvalidOperationException($"The settings area '{area}' is registered.");
+        }
+
+        var rows = await context.Set<SettingRow>().AsNoTracking()
+            .Where(row => row.Key == area)
+            .OrderBy(row => row.SiteId)
+            .Select(row => new { row.Id, row.SiteId })
+            .ToListAsync(cancellationToken);
+        if (rows.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = rows.Select(row => row.Id).ToList();
+        await context.Set<SettingRow>().Where(row => ids.Contains(row.Id)).ExecuteDeleteAsync(cancellationToken);
+        return [.. rows.Select(row => row.SiteId)];
     }
 
     // Null when the row was written again; otherwise the keys the key ring cannot unprotect, none when there was nothing to do.

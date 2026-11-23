@@ -104,6 +104,7 @@ public sealed class SettingsProtectionTests
         found.Id.ShouldBe(SecretSettingsReport.Unprotected);
         found.Message.ShouldContain("1 stored settings documents");
         found.Message.ShouldContain("areas media.");
+        found.Message.ShouldContain("Run 'fluentcms settings reprotect' to protect them all in one pass");
         found.Message.ShouldNotContain(Secret);
 
         // The form of the admin sends the document back without its secrets, which keep what is stored.

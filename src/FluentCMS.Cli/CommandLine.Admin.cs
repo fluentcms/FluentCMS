@@ -212,9 +212,10 @@ internal sealed partial class CommandLine
 
     private Command SettingsReprotect()
     {
-        var command = new Command("reprotect", "Protects every stored secret setting again under the current key of the Data Protection key ring; run it before retiring a ring key or certificate. In the host project only.");
+        var area = Text("--remove-area", "First removes every stored document of this area, which no settings class of the host may have, such as that of a plugin the host no longer runs.", "area");
+        var command = new Command("reprotect", "Protects every stored secret setting again under the current default key of the Data Protection key ring and names that key; run it before retiring a ring key or certificate. In the host project only.") { area };
         var project = ProjectOptions.AddTo(command);
-        command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["settings", "reprotect"], cancellationToken));
+        command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["settings", "reprotect", .. Value(result, area)], cancellationToken));
         return command;
     }
 

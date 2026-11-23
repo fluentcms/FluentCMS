@@ -154,6 +154,29 @@ internal sealed class SettingsProtection(IDataProtectionProvider provider, ILogg
         return changed ? document.ToJsonString() : null;
     }
 
+    // The keys of a stored document that the class does not read as secrets, such as one it no longer has or no longer marks
+    // a secret, and that hold a protected value which is not under the current default key of the ring, because the ring
+    // cannot unprotect it or it is under an older key. A pass leaves them as they are: their value is not the class's to
+    // protect. Nothing is logged.
+    public IReadOnlyList<string> Unreached(SettingsDescriptor descriptor, string json, Guid? site)
+    {
+        if (Parse(json) is not JsonObject document)
+        {
+            return [];
+        }
+
+        List<string> found = [];
+        foreach (var (key, value) in document)
+        {
+            if (!descriptor.SecretKeys.Contains(key) && IsProtected(value, out var stored) && TryUnprotectForMigration(descriptor, key, site, stored) is not ({ }, false))
+            {
+                found.Add(key);
+            }
+        }
+
+        return [.. found.Order(StringComparer.Ordinal)];
+    }
+
     // What a stored document holds under its secret keys, worst first: a value the key ring cannot unprotect, then one written
     // before secrets were protected. Nothing is logged.
     public StoredSecrets Inspect(SettingsDescriptor descriptor, string json, Guid? site)

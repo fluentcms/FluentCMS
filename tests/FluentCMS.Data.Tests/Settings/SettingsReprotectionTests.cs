@@ -3,6 +3,7 @@ using FluentCMS.Core.Commands;
 using FluentCMS.Core.Settings;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Settings;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.DataProtection.KeyManagement.Internal;
@@ -95,12 +96,12 @@ public sealed class SettingsReprotectionTests
         var (exitCode, output, error) = await CommandAsync(database, "settings", "reprotect");
 
         exitCode.ShouldBe(CommandExitCodes.Failure);
-        output.ShouldContain("Protected the secrets of 1 stored settings documents again under the current key.");
+        output.ShouldContain("Protected the secrets of 1 stored settings documents again under the default key ");
         error.ShouldContain($"The settings area 'media' for site {SiteA.Value:D} is left as it is: the key ring cannot unprotect apiKey, passphrase.");
         error.ShouldContain("The settings area 'gone' for the instance is left as it is: no settings class of this host has that area");
-        error.ShouldContain($"{CommandErrorCodes.SecretsNotReprotected}: 2 stored settings documents were left as they are");
+        error.ShouldContain($"{CommandErrorCodes.SecretsNotReprotected}: 2 stored settings documents still need the key that protected them");
         error.ShouldContain("1 hold secrets the key ring cannot unprotect: restore the key or certificate that protected them, or set those secrets again");
-        error.ShouldContain("1 are of areas no settings class of this host has: run the command in a host that registers them");
+        error.ShouldContain("1 are of areas no settings class of this host has: run the command in a host that registers them, such as with the plugin that owns the area, or remove them with --remove-area <area>");
         foreach (var text in new[] { output, error, database.Logs.All })
         {
             text.ShouldNotContain(Secret);
@@ -126,7 +127,7 @@ public sealed class SettingsReprotectionTests
         var (exitCode, output, error) = await CommandAsync(database, "settings", "reprotect");
 
         exitCode.ShouldBe(CommandExitCodes.Failure);
-        output.ShouldContain("Protected the secrets of 0 stored settings documents again under the current key.");
+        output.ShouldContain("Protected the secrets of 0 stored settings documents again under the default key ");
         error.ShouldContain($"The settings area 'media' for site {SiteA.Value:D} is left as it is: the key ring cannot unprotect passphrase.");
         error.ShouldNotContain("apiKey");
         error.ShouldNotContain(Secret);
@@ -187,11 +188,111 @@ public sealed class SettingsReprotectionTests
         var (exitCode, output, error) = await CommandAsync(database, "settings", "reprotect");
 
         (exitCode, error).ShouldBe((CommandExitCodes.Success, ""));
-        output.ShouldContain("Protected the secrets of 1 stored settings documents again under the current key.");
+        output.ShouldContain("Protected the secrets of 1 stored settings documents again under the default key ");
         Snapshot(database).Single(row => row.SiteId == SiteA.Value).ShouldBe(current);
         (await database.GetAsync(SiteA)).ApiKey.ShouldBe(Secret);
         (await database.GetAsync(SiteB)).ApiKey.ShouldBe(Secret + "-plaintext");
         database.Rows().ShouldAllBe(row => !row.Json.Contains(Secret));
+    }
+
+    // The operator checks the id against the key that is to be kept before retiring any other.
+    [Fact]
+    public async Task TheCommandNamesTheDefaultKeyItProtectedUnder()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(SiteA.Value, "media", $$"""{"apiKey":"{{Secret}}-plaintext"}""");
+
+        var (exitCode, output, _) = await CommandAsync(database, "settings", "reprotect");
+
+        exitCode.ShouldBe(CommandExitCodes.Success);
+        var key = database.Inner.Database.Services.GetRequiredService<IKeyRingProvider>().GetCurrentKeyRing().DefaultKeyId;
+        KeyIdOf(Stored(database, SiteA.Value, "apiKey")).ShouldBe(key);
+        output.ShouldContain($"Protected the secrets of 1 stored settings documents again under the default key {key:D} of the key ring.");
+        output.ShouldContain("Retire an older key only once this is the key you keep");
+    }
+
+    // A key the class no longer has, and one it no longer marks a secret, as after a release of a plugin changed its class.
+    // Under the current key such a value needs no older key, so only the one the ring cannot unprotect is named.
+    [Fact]
+    public async Task AProtectedValueUnderAKeyTheClassDoesNotReadAsASecretIsLeftAsItIsAndReportedByAreaAndScope()
+    {
+        using var database = new SettingsDatabase();
+        var own = database.Inner.Database.Services.GetRequiredService<SettingsProtection>();
+        var gone = JsonNode.Parse(Foreign.Protect(new SettingsDescriptor("media", typeof(FormerMedia)), $$"""{"oldToken":"{{Secret}}-gone"}""", SiteA.Value))!.AsObject();
+        var current = JsonNode.Parse(own.Protect(new SettingsDescriptor("media", typeof(FormerMedia)), $$"""{"oldToken":"{{Secret}}-current"}""", SiteB.Value))!.AsObject();
+        gone["apiKey"] = Secret;
+        database.AddRow(SiteA.Value, "media", gone.ToJsonString());
+        database.AddRow(SiteB.Value, "media", current.ToJsonString());
+        database.AddRow(null, "media", Foreign.Protect(new SettingsDescriptor("media", typeof(FormerMedia)), $$"""{"oldToken":"{{Secret}}-default"}""", null));
+        var payload = gone["oldToken"]!.GetValue<string>();
+        var untouched = Snapshot(database).Where(row => row.SiteId != SiteA.Value).ToList();
+
+        var (exitCode, output, error) = await CommandAsync(database, "settings", "reprotect");
+
+        exitCode.ShouldBe(CommandExitCodes.Failure);
+        output.ShouldContain("Protected the secrets of 1 stored settings documents again under the default key ");
+        error.ShouldContain($"The settings area 'media' for site {SiteA.Value:D} holds a protected value under oldToken, which its settings class does not read as a secret");
+        error.ShouldContain("The settings area 'media' for the instance holds a protected value under oldToken");
+        error.ShouldNotContain($"site {SiteB.Value:D}");
+        error.ShouldContain($"{CommandErrorCodes.SecretsNotReprotected}: 2 stored settings documents still need the key that protected them");
+        error.ShouldContain("2 hold protected values under keys their settings class does not read as secrets: write those areas again without those keys");
+        foreach (var text in new[] { output, error, database.Logs.All })
+        {
+            text.ShouldNotContain(Secret);
+            text.ShouldNotContain(SettingsProtection.Prefix);
+            text.ShouldNotContain(payload);
+        }
+
+        Snapshot(database).Where(row => row.SiteId != SiteA.Value).ToList().ShouldBe(untouched);
+        var written = JsonNode.Parse(database.Rows().Single(row => row.SiteId == SiteA.Value).Json)!;
+        written["oldToken"]!.GetValue<string>().ShouldBe(payload);
+        written["apiKey"]!.GetValue<string>().ShouldStartWith(SettingsProtection.Prefix);
+
+        var again = await CommandAsync(database, "settings", "reprotect");
+        (again.ExitCode, again.Error).ShouldBe((exitCode, error));
+        again.Output.ShouldContain("Protected the secrets of 0 stored settings documents");
+    }
+
+    [Fact]
+    public async Task RemoveAreaRemovesTheRowsOfAnUnregisteredAreaAndASecondRunChangesNothing()
+    {
+        using var database = new SettingsDatabase();
+        var gone = new SettingsDescriptor("gone", typeof(MediaSettings));
+        database.AddRow(null, "gone", Foreign.Protect(gone, $$"""{"apiKey":"{{Secret}}-gone"}""", null));
+        database.AddRow(SiteA.Value, "gone", """{"provider":"s3"}""");
+        database.AddRow(SiteA.Value, "media", $$"""{"apiKey":"{{Secret}}-plaintext"}""");
+
+        var (exitCode, output, error) = await CommandAsync(database, "settings", "reprotect", "--remove-area", "gone");
+
+        (exitCode, error).ShouldBe((CommandExitCodes.Success, ""));
+        output.ShouldContain("Removed the settings area 'gone' for the instance.");
+        output.ShouldContain($"Removed the settings area 'gone' for site {SiteA.Value:D}.");
+        output.ShouldContain("Protected the secrets of 1 stored settings documents again under the default key ");
+        output.ShouldNotContain(Secret);
+        database.Rows().Select(row => row.Key).ShouldBe(["media"]);
+        var after = Snapshot(database);
+
+        var second = await CommandAsync(database, "settings", "reprotect", "--remove-area", "gone");
+
+        (second.ExitCode, second.Error).ShouldBe((CommandExitCodes.Success, ""));
+        second.Output.ShouldContain("No stored settings document has the area 'gone'.");
+        Snapshot(database).ShouldBe(after);
+    }
+
+    [Fact]
+    public async Task RemoveAreaRefusesARegisteredAreaAndChangesNothing()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(SiteA.Value, "media", $$"""{"apiKey":"{{Secret}}-plaintext"}""");
+        database.AddRow(null, "gone", Foreign.Protect(new SettingsDescriptor("gone", typeof(MediaSettings)), $$"""{"apiKey":"{{Secret}}-gone"}""", null));
+        var before = Snapshot(database);
+
+        var (exitCode, output, error) = await CommandAsync(database, "settings", "reprotect", "--remove-area", "media");
+
+        exitCode.ShouldBe(CommandExitCodes.BadUsage);
+        output.ShouldBeEmpty();
+        error.ShouldContain($"{CommandErrorCodes.InvalidValue}: --remove-area names 'media', which a settings class of this host has");
+        Snapshot(database).ShouldBe(before);
     }
 
     private static Task<SecretSettingsReprotected> RunAsync(SettingsDatabase database, SettingsProtection protection) =>
@@ -222,6 +323,13 @@ public sealed class SettingsReprotectionTests
         var services = new ServiceCollection().AddDataProtection().PersistKeysToFileSystem(directory).Services;
         services.AddSingleton<IDefaultKeyResolver, NewestKeyResolver>();
         return services.BuildServiceProvider();
+    }
+
+    // An earlier shape of MediaSettings, whose secret oldToken the current class no longer has.
+    private sealed class FormerMedia
+    {
+        [SettingsSecret]
+        public string? OldToken { get; set; }
     }
 
     // Runs the action once, the first time it protects a value, between the pass's read of a row and its write.
