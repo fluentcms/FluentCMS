@@ -11,6 +11,10 @@ public sealed class ClientOptions
 
     internal const string Section = "Clients";
 
+    // The property of a stored client that these options registered, which the host deletes once they no longer list it. A
+    // package that registers a client of its own through them, as the admin's does, knows that client by it.
+    public const string FromOptionsProperty = "fcms_from_options";
+
     // OpenIddict's column for a client id is this long.
     private const int ClientIdLength = 100;
 

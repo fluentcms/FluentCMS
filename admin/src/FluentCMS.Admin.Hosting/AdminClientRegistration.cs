@@ -39,17 +39,15 @@ internal sealed partial class AdminClientRegistration(
         {
             if (AdminOptions.Origin(admin.PreviewOrigins[index]) is { } preview && own.Contains(preview))
             {
-                throw new FluentCmsConfigurationException(
-                    HostErrorCodes.InvalidOption,
-                    $"{FluentCmsOptions.Section}:{AdminOptions.Section}:{nameof(AdminOptions.PreviewOrigins)}:{index} is '{admin.PreviewOrigins[index]}', the admin's own origin; serve the preview pages from another origin.");
+                throw FluentCmsConfigurationException.InvalidOption(
+                    $"{AdminOptions.Root}:{AdminOptions.Section}:{nameof(AdminOptions.PreviewOrigins)}:{index} is '{admin.PreviewOrigins[index]}', the admin's own origin; serve the preview pages from another origin.");
             }
         }
 
         if (!AdminOptions.ClientIdPattern().IsMatch(options.AdminClientId))
         {
-            throw new FluentCmsConfigurationException(
-                HostErrorCodes.InvalidOption,
-                $"{FluentCmsOptions.Section}:{ClientOptions.Section}:{nameof(ClientOptions.AdminClientId)} is '{options.AdminClientId}'; the admin's config.json takes a client id of visible ASCII characters without spaces.");
+            throw FluentCmsConfigurationException.InvalidOption(
+                $"{AdminOptions.Root}:{AdminOptions.ClientsSection}:{nameof(ClientOptions.AdminClientId)} is '{options.AdminClientId}'; the admin's config.json takes a client id of visible ASCII characters without spaces.");
         }
 
         if (options.Applications.ContainsKey(options.AdminClientId))
@@ -80,26 +78,23 @@ internal sealed partial class AdminClientRegistration(
         var pathBase = proxy.PathBase ?? "";
         if (pathBase.Length > 0 && !PathBasePattern().IsMatch(pathBase))
         {
-            throw new FluentCmsConfigurationException(
-                HostErrorCodes.InvalidOption,
-                $"{FluentCmsOptions.Section}:{ReverseProxyOptions.Section}:{nameof(ReverseProxyOptions.PathBase)} is '{pathBase}', which the admin cannot take in its addresses; use letters, digits and - . _ ~ / only, or turn the admin off.");
+            throw FluentCmsConfigurationException.InvalidOption(
+                $"{AdminOptions.Root}:{ReverseProxyOptions.Section}:{nameof(ReverseProxyOptions.PathBase)} is '{pathBase}', which the admin cannot take in its addresses; use letters, digits and - . _ ~ / only, or turn the admin off.");
         }
 
         // A browser resolves /. and /.. in the page's <base href> and the admin's addresses, which would leave the path base.
         if (pathBase.Split('/').Any(segment => segment.Length > 0 && segment.All(character => character == '.')))
         {
-            throw new FluentCmsConfigurationException(
-                HostErrorCodes.InvalidOption,
-                $"{FluentCmsOptions.Section}:{ReverseProxyOptions.Section}:{nameof(ReverseProxyOptions.PathBase)} is '{pathBase}', which has a segment of dots only; a browser reads . and .. in the admin's addresses as steps, so give each segment a character other than a dot, or turn the admin off.");
+            throw FluentCmsConfigurationException.InvalidOption(
+                $"{AdminOptions.Root}:{ReverseProxyOptions.Section}:{nameof(ReverseProxyOptions.PathBase)} is '{pathBase}', which has a segment of dots only; a browser reads . and .. in the admin's addresses as steps, so give each segment a character other than a dot, or turn the admin off.");
         }
 
         if (origin.Base is { } publicBase)
         {
             if (AdminOptions.HttpUrl(publicBase) is null)
             {
-                throw new FluentCmsConfigurationException(
-                    HostErrorCodes.InvalidOption,
-                    $"{FluentCmsOptions.Section}:{PublicOrigin.Key} is '{publicBase}', which the admin cannot take in its addresses; write an internationalized host name in its xn-- form, such as https://xn--mnchen-3ya.example, or turn the admin off.");
+                throw FluentCmsConfigurationException.InvalidOption(
+                    $"{AdminOptions.Root}:{PublicOrigin.Key} is '{publicBase}', which the admin cannot take in its addresses; write an internationalized host name in its xn-- form, such as https://xn--mnchen-3ya.example, or turn the admin off.");
             }
 
             return [publicBase];
@@ -107,9 +102,8 @@ internal sealed partial class AdminClientRegistration(
 
         if (!environment.IsDevelopment())
         {
-            throw new FluentCmsConfigurationException(
-                HostErrorCodes.InvalidOption,
-                $"{FluentCmsOptions.Section}:{AdminOptions.Section}:{nameof(AdminOptions.Enabled)} is true and {FluentCmsOptions.Section}:{PublicOrigin.Key} is not set. Outside Development the admin's sign-in addresses and its config.json are built from the public origin, never from a request's host; set it, or turn the admin off.");
+            throw FluentCmsConfigurationException.InvalidOption(
+                $"{AdminOptions.Root}:{AdminOptions.Section}:{nameof(AdminOptions.Enabled)} is true and {AdminOptions.Root}:{PublicOrigin.Key} is not set. Outside Development the admin's sign-in addresses and its config.json are built from the public origin, never from a request's host; set it, or turn the admin off.");
         }
 
         return [.. ListeningAddresses().Select(address => address + pathBase).Distinct(StringComparer.OrdinalIgnoreCase)];

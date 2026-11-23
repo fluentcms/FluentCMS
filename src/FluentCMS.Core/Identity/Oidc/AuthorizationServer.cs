@@ -21,7 +21,7 @@ internal static class AuthorizationServer
     public const string RolesProperty = "fcms_roles";
 
     // Marks a client cms.Clients registered, which is deleted once the options no longer list it.
-    public const string FromOptionsProperty = "fcms_from_options";
+    public const string FromOptionsProperty = ClientOptions.FromOptionsProperty;
 
     // Marks an MCP client that registered itself, and holds its state: status, role, who approved it and when (McpClientState).
     public const string McpClientProperty = "fcms_mcp";
