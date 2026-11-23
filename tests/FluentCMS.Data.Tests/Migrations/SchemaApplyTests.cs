@@ -198,12 +198,12 @@ public sealed partial class SchemaApplyTests : IDisposable
         var (exitCode, output, error) = await RunAsync(ArticleSchemas.Titled, "schema", "apply");
 
         exitCode.ShouldBe(0, error);
-        output.ShouldStartWith($"Left alone:{Environment.NewLine}  {leftAlone}{Environment.NewLine}Nothing to apply;");
+        output.ShouldStartWith($"Left alone:{Environment.NewLine}  {leftAlone}{Environment.NewLine}Nothing to apply; what is listed above was left alone, and the schema history records schema ");
         Collation().ShouldBe(TestProvider.IsPostgreSql ? null : other);
         (await RunAsync(ArticleSchemas.Titled, "schema", "apply", "--script")).Output.ShouldContain($"-- Left alone: {leftAlone}{Environment.NewLine}");
 
         CollateTitle(model);
-        (await RunAsync(ArticleSchemas.Titled, "schema", "apply")).Output.ShouldStartWith("Nothing to apply;");
+        (await RunAsync(ArticleSchemas.Titled, "schema", "apply")).Output.ShouldStartWith("Nothing to apply; the content tables match schema ");
     }
 
     // The column is renamed and then altered. SQLite's text has no length, so there only its nullability changes.
@@ -289,14 +289,14 @@ public sealed partial class SchemaApplyTests : IDisposable
         (exitCode, output, error) = await RunAsync(ArticleSchemas.Titled, "schema", "apply");
 
         exitCode.ShouldBe(0, error);
-        output.ShouldStartWith($"{leftAlone}Nothing to apply;");
+        output.ShouldStartWith($"{leftAlone}Nothing to apply; what is listed above was left alone, and the schema history records schema ");
 
         // A host that registers the plugin again leaves its tables to the plugin's stream and lists nothing.
         using var registered = PluginHost(ArticleSchemas.Titled);
         (exitCode, output, error) = await RunAsync(registered, "schema", "apply");
 
         exitCode.ShouldBe(0, error);
-        output.ShouldStartWith("Nothing to apply;");
+        output.ShouldStartWith("Nothing to apply; the content tables match schema ");
     }
 
     [Fact]
