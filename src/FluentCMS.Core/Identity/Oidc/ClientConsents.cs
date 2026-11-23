@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using FluentCMS.Agents;
 using FluentCMS.Core.Storage;
+using FluentCMS.Providers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
@@ -20,6 +21,17 @@ internal sealed record ConsentRequest(string ClientId, string ClientName, IReadO
     public bool McpClient { get; init; }
 }
 
+internal enum ConsentGrant
+{
+    Granted,
+    Refused,
+    LimitReached,
+}
+
+// A client the user has a place for (ClientConsents.PlacesAsync): its id in the store, when the user's newest consent to it
+// was given, null once only the client's state names the user, and whether a consent of the user to it is valid.
+internal sealed record ConsentPlace(string ApplicationId, DateTimeOffset? ConsentedAt, bool Valid);
+
 // A user's consent to a third-party client (ClientRegistration.RequireConsent) is a permanent OpenIddict authorization of
 // the user for the client and the scopes allowed, which the authorize endpoint then issues the client's codes under. Revoking
 // it as a session (UserSessions) takes the consent with it.
@@ -27,6 +39,7 @@ internal sealed class ClientConsents(
     IOpenIddictApplicationManager applications,
     IOpenIddictAuthorizationManager authorizations,
     SystemDbContext context,
+    IDistributedLock locks,
     TimeProvider time,
     ILogger<ClientConsents> logger,
     IMcpClientRegistrationPolicy? policy = null)
@@ -34,6 +47,14 @@ internal sealed class ClientConsents(
     // The parameter the consent page adds to the authorize request when the user refuses.
     public const string DecisionParameter = "fcms_consent";
     public const string Denied = "denied";
+
+    // The error the consent page ends on, on the hosted error page, when the consent would keep one client too many.
+    public const string LimitReachedError = "consent_limit_reached";
+
+    public const string LockName = "fluentcms:mcp-consents";
+
+    // Long enough for a holder that stopped without releasing the lock to lose its lease, as for SuperAdminGuard.
+    private static readonly TimeSpan LockWait = TimeSpan.FromSeconds(45);
 
     // Null for a client that does not ask for consent, or does not exist, or registered itself and is not approved, so
     // that no consent is recorded for a client before an administrator has let it in.
@@ -80,13 +101,14 @@ internal sealed class ClientConsents(
     }
 
     // The ASCII form of the host, so that a letter of another script that looks like a Latin one shows as punycode. A
-    // redirect URI of a scheme an application registered for itself, such as com.example.app:/cb, has no host, and its
-    // scheme is what says where the code goes.
+    // redirect URI of a scheme an application registered for itself goes to that application whatever follows the scheme,
+    // so it is named by its scheme: com.example.app:/cb, which has no host, and myapp://callback/x, whose authority is no
+    // web host, alike (#3442).
     internal static string HostOf(Uri uri)
     {
         ArgumentNullException.ThrowIfNull(uri);
 
-        if (uri.IdnHost.Length == 0)
+        if (uri.Scheme is not ("https" or "http") || uri.IdnHost.Length == 0)
         {
             return uri.Scheme + ":";
         }
@@ -106,24 +128,46 @@ internal sealed class ClientConsents(
         return null;
     }
 
-    // Records that the user allows the client the scopes it may ask for among these; false for a client that asks no
+    // Records that the user allows the client the scopes it may ask for among these. Refused for a client that asks no
     // consent, and for a consent that would keep one client more than a user may keep.
-    public async Task<bool> GrantAsync(Guid userId, string clientId, IEnumerable<string> scopes, CancellationToken cancellationToken = default)
+    public async Task<ConsentGrant> GrantAsync(Guid userId, string clientId, IEnumerable<string> scopes, CancellationToken cancellationToken = default)
     {
         var request = await DescribeAsync(clientId, scopes, cancellationToken: cancellationToken);
         if (request is null || await applications.FindByClientIdAsync(clientId, cancellationToken) is not { } application)
         {
-            return false;
+            return ConsentGrant.Refused;
         }
 
-        var subject = userId.ToString("D");
         var applicationId = await applications.GetIdAsync(application, cancellationToken) ?? "";
-        if (await CapReachedAsync(userId, application, applicationId, cancellationToken) is { } max)
+        if (!await IsOpenApprovedAsync(application, cancellationToken))
+        {
+            await CreateAsync(userId, applicationId, application, request, cancellationToken);
+            return ConsentGrant.Granted;
+        }
+
+        // The count and the insert run under the lock, as every other consent that takes a place and every end of one
+        // (McpClients.EndConsentAsync) do, so two consents at once cannot each find the other's place free (#3441).
+        await using var held = await LockAsync(cancellationToken);
+        if (await CapReachedAsync(userId, applicationId, cancellationToken) is { } max)
         {
             OidcLog.ConsentLimitReached(logger, userId, clientId, max);
-            return false;
+            return ConsentGrant.LimitReached;
         }
 
+        await CreateAsync(userId, applicationId, application, request, cancellationToken);
+        return ConsentGrant.Granted;
+    }
+
+    // The lock of the consents that take a place: one for the instance, since they are few, bounded by the auth rate limit,
+    // and a lock per user would leave a row of cms_lock for each. It is taken before any transaction opens, as the other
+    // locks of identity are, since on SQLite a transaction holds the one writer.
+    internal async Task<IDistributedLockHandle> LockAsync(CancellationToken cancellationToken) =>
+        await locks.TryAcquireAsync(LockName, LockWait, cancellationToken)
+        ?? throw new TimeoutException($"The lock {LockName} was not free within {LockWait.TotalSeconds:0} seconds, so the consent was not changed; try again.");
+
+    private async Task CreateAsync(Guid userId, string applicationId, object application, ConsentRequest request, CancellationToken cancellationToken)
+    {
+        var subject = userId.ToString("D");
         var identity = TokenClaims.Identity().SetClaim(Claims.Subject, subject);
         await authorizations.CreateAsync(
             identity,
@@ -133,33 +177,49 @@ internal sealed class ClientConsents(
             [.. request.Scopes],
             cancellationToken);
         await MarkUsedAsync(application, userId, cancellationToken);
-        return true;
     }
 
     // A consent keeps a client the open policy approved from the cleanup, so a user who could consent to any number of
     // them could fill MaxClients for good with clients nobody uses (#3397). A user therefore takes a place for each such
-    // client they keep, MaxConsentsPerUser at most: the answer is that number when this consent would take one more, and
-    // null when it may be given. A place is taken by a permanent authorization of the user, whatever its status, and by
-    // being the user whose consent first used the client, for as long as the client is there. Ending a consent therefore
-    // frees no place: the client it kept stays for the cleanup's period, first with the revoked authorization and, once
-    // that is pruned, with its state alone. A consent to a client the user has a place for takes none, so a user who
+    // client they keep (PlacesAsync), MaxConsentsPerUser at most: the answer is that number when this consent would take
+    // one more, and null when it may be given. A consent to a client the user has a place for takes none, so a user who
     // changes the password allows the same clients again. A client an administrator approved, registered or gave a role
     // is neither counted nor held back, since the cleanup keeps it whoever consents.
-    private async Task<int?> CapReachedAsync(Guid userId, object application, string applicationId, CancellationToken cancellationToken)
+    private async Task<int?> CapReachedAsync(Guid userId, string applicationId, CancellationToken cancellationToken)
     {
-        if (!await IsOpenApprovedAsync(application, cancellationToken))
+        var places = await PlacesAsync(userId, cancellationToken);
+        if (places.Any(place => place.ApplicationId == applicationId))
         {
             return null;
         }
 
-        HashSet<string> places = new(StringComparer.Ordinal);
+        var max = (policy is null ? new McpClientRegistrationPolicy(McpClientRegistrationMode.Off) : await policy.GetAsync(cancellationToken)).MaxConsentsPerUser;
+        return places.Count >= max ? max : null;
+    }
+
+    // The clients the open policy approved that the user has a place for, which is what counts toward MaxConsentsPerUser.
+    // A place is taken by a permanent authorization of the user, whatever its status, and by being the user whose consent
+    // first used the client (usedBy), for as long as the client is there. Ending a consent by its session or by a change
+    // of password therefore frees no place: the client it kept stays for the cleanup's period, first with the revoked
+    // authorization and, for the user who first used it, once that is pruned, with its state alone; otherwise one user
+    // could consent to the next clients while the last ones wait for the cleanup. The user frees a place by ending it as
+    // such (McpClients.EndConsentAsync).
+    internal async Task<IReadOnlyList<ConsentPlace>> PlacesAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        Dictionary<string, (DateTimeOffset? ConsentedAt, bool Valid)> held = new(StringComparer.Ordinal);
         await foreach (var authorization in authorizations.FindBySubjectAsync(userId.ToString("D"), cancellationToken))
         {
-            if (await authorizations.HasTypeAsync(authorization, AuthorizationTypes.Permanent, cancellationToken)
-                && await authorizations.GetApplicationIdAsync(authorization, cancellationToken) is { } id)
+            if (!await authorizations.HasTypeAsync(authorization, AuthorizationTypes.Permanent, cancellationToken)
+                || await authorizations.GetApplicationIdAsync(authorization, cancellationToken) is not { } id)
             {
-                places.Add(id);
+                continue;
             }
+
+            var at = await authorizations.GetCreationDateAsync(authorization, cancellationToken);
+            var valid = await authorizations.HasStatusAsync(authorization, Statuses.Valid, cancellationToken);
+            held[id] = held.TryGetValue(id, out var seen)
+                ? (seen.ConsentedAt is { } before && (at is null || before > at) ? before : at, seen.Valid || valid)
+                : (at, valid);
         }
 
         var marker = McpClientState.UsedByMarker(userId);
@@ -167,24 +227,21 @@ internal sealed class ClientConsents(
             .Where(used => used.Properties != null && used.Properties.Contains(marker))
             .Select(used => used.Id)
             .ToListAsync(cancellationToken);
-        places.UnionWith(firstUsed.Select(id => id.ToString("D")));
-
-        if (places.Contains(applicationId))
+        foreach (var id in firstUsed.Select(id => id.ToString("D")))
         {
-            return null;
+            held.TryAdd(id, (null, false));
         }
 
-        var max = (policy is null ? new McpClientRegistrationPolicy(McpClientRegistrationMode.Off) : await policy.GetAsync(cancellationToken)).MaxConsentsPerUser;
-        var taken = 0;
-        foreach (var id in places)
+        List<ConsentPlace> places = [];
+        foreach (var (id, consent) in held)
         {
-            if (await applications.FindByIdAsync(id, cancellationToken) is { } other && await IsOpenApprovedAsync(other, cancellationToken))
+            if (await applications.FindByIdAsync(id, cancellationToken) is { } application && await IsOpenApprovedAsync(application, cancellationToken))
             {
-                taken++;
+                places.Add(new ConsentPlace(id, consent.ConsentedAt, consent.Valid));
             }
         }
 
-        return taken >= max ? max : null;
+        return places;
     }
 
     private async Task<bool> IsOpenApprovedAsync(object application, CancellationToken cancellationToken) =>

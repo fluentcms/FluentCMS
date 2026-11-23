@@ -38,8 +38,10 @@ public sealed record McpClientRegistrationPolicy(McpClientRegistrationMode Mode)
     /// <summary>
     /// How many clients that <see cref="McpClientRegistrationMode.Open"/> approved one user may keep by consenting. A
     /// consent keeps such a client from the cleanup, so a consent that would keep one more is refused. A client counts
-    /// for as long as it is there, also once the consent is ended; one an administrator approved, registered or gave a
-    /// role does not count.
+    /// while it is there and the user holds a consent to it, also one ended by a session or a password change until the
+    /// prune removes it, and for the user who first consented to it for as long as it is there, until that user ends the
+    /// consent with <see cref="IMcpClients.EndConsentAsync"/>. One an administrator approved, registered or gave a role
+    /// does not count.
     /// </summary>
     public int MaxConsentsPerUser { get; init; } = 20;
 }

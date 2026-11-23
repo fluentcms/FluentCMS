@@ -23,6 +23,7 @@ public sealed partial class ErrorModel : AccountPageModel
         Errors.AccessDenied => "You did not allow the application what it asked for.",
         ConnectEndpoints.ClientPendingApproval => "The application that sent you here registered itself and waits for an administrator to approve it. Try again once it is approved.",
         ConnectEndpoints.ClientRejected => "An administrator did not approve the application that sent you here.",
+        ClientConsents.LimitReachedError => "You already allow as many MCP clients that registered themselves as one account may keep, so this one was not allowed. End your consent to one you no longer use, or ask an administrator to remove one, and try again.",
         _ => "Something went wrong. Go back to the application and try again.",
     };
 

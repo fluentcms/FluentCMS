@@ -91,7 +91,39 @@ public interface IMcpClients
     /// <param name="cancellationToken">Cancels the work; the clients removed before it stay removed.</param>
     /// <returns>The number of clients removed.</returns>
     Task<int> RemoveOpenApprovedAsync(DateTimeOffset? registeredFrom, DateTimeOffset? registeredBefore, int limit, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists the clients the open policy approved that count toward a user's
+    /// <see cref="McpClientRegistrationPolicy.MaxConsentsPerUser"/>: each the user consented to while it is there, and the
+    /// consent ended by a session or a password change included.
+    /// </summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The clients, the newest consent first.</returns>
+    Task<IReadOnlyList<McpClientConsent>> ListConsentsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ends a user's consent to a client the open policy approved and frees its place among those
+    /// <see cref="ListConsentsAsync"/> lists: the user's authorizations of the client are deleted with every token issued
+    /// under them, so its access tokens stop at once, and the client no longer names the user as the one who first used it.
+    /// A client that then holds no grant of anyone is taken for one never used, which the cleanup removes. Nothing of
+    /// another user changes. Raises <see cref="Events.UserSessionsEndedEvent"/> for each consent that was valid.
+    /// </summary>
+    /// <param name="userId">The user whose consent ends.</param>
+    /// <param name="id">The id of the client.</param>
+    /// <param name="cancellationToken">Cancels the change.</param>
+    /// <returns>
+    /// The outcome, with the client as it is now; <see cref="McpClientChangeOutcome.NotFound"/> when the client does not
+    /// count for the user.
+    /// </returns>
+    Task<McpClientChange> EndConsentAsync(Guid userId, Guid id, CancellationToken cancellationToken = default);
 }
+
+/// <summary>A client that counts toward a user's <see cref="McpClientRegistrationPolicy.MaxConsentsPerUser"/>.</summary>
+/// <param name="Client">The client.</param>
+/// <param name="ConsentedAt">When the user's newest consent to it was given; <see langword="null"/> once only the client's state names the user.</param>
+/// <param name="Active">Whether a consent of the user to it is valid, so that it can sign the user in without asking.</param>
+public sealed record McpClientConsent(McpClient Client, DateTimeOffset? ConsentedAt, bool Active);
 
 /// <summary>A client an administrator registers.</summary>
 /// <param name="Name">The name the consent page shows; <c>MCP client</c> when it is <see langword="null"/>.</param>
@@ -125,6 +157,12 @@ public sealed record McpClient(Guid Id, string ClientId, string Name, McpClientS
 
     /// <summary>When the newest token was issued to it; <see langword="null"/> when it holds none.</summary>
     public DateTimeOffset? LastActivityAt { get; init; }
+
+    /// <summary>When a user first consented to it; <see langword="null"/> while no use is recorded.</summary>
+    public DateTimeOffset? UsedAt { get; init; }
+
+    /// <summary>The user whose consent that was, for whom a client the open policy approved counts while it is there.</summary>
+    public Guid? UsedBy { get; init; }
 }
 
 /// <summary>Where an MCP client stands.</summary>

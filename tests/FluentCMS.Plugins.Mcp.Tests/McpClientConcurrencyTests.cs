@@ -1,7 +1,12 @@
 using System.Net;
 using FluentCMS.Agents;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Plugins.Sample;
+using FluentCMS.Testing;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using Shouldly;
@@ -123,7 +128,7 @@ public sealed class McpClientConcurrencyTests(McpClientHookFixture fixture) : IC
         string[] fillers = [await agent.RegisteredAsync(), await agent.RegisteredAsync()];
         host.Time.Advance(TimeSpan.FromHours(new McpSettings().NeverUsedClientHours) + TimeSpan.FromMinutes(1));
 
-        fixture.Hooks.FailNextDelete();
+        fixture.Hooks.FailNextDelete(of: await IdOfAsync(admin, fillers[0]));
         await RunCleanupAsync(host);
         var afterTheRefusal = (await ListAsync(admin)).Select(item => item!["clientId"]!.GetValue<string>()).Where(fillers.Contains).ToList();
         var skipped = await IdOfAsync(admin, afterTheRefusal[0]);
@@ -152,7 +157,7 @@ public sealed class McpClientConcurrencyTests(McpClientHookFixture fixture) : IC
         var ids = new[] { await IdOfAsync(admin, fillers[0]), await IdOfAsync(admin, fillers[1]) };
         var logged = fixture.Logs.Lines.Count(line => line.Id == 9009);
 
-        fixture.Hooks.FailNextDelete(changedMeanwhile);
+        fixture.Hooks.FailNextDelete(changedMeanwhile ? DeleteFailure.ChangedMeanwhile : DeleteFailure.ForeignKey);
         using var crossed = await RemoveAsync(admin, new { registeredFrom = from });
         var left = (await ListAsync(admin)).Where(item => fillers.Contains(item!["clientId"]!.GetValue<string>())).Select(item => item!["id"]!.GetValue<Guid>()).ToList();
         using var again = await RemoveAsync(admin, new { registeredFrom = from });
@@ -164,6 +169,111 @@ public sealed class McpClientConcurrencyTests(McpClientHookFixture fixture) : IC
         (await JsonAsync(again))["removed"]!.GetValue<int>().ShouldBe(1);
         fixture.Logs.Lines.Count(line => line.Id == 9009).ShouldBe(changedMeanwhile ? logged : logged + 1);
         fixture.Logs.Lines.Any(line => line.Id == 9009 && line.Message.Contains(skipped.ToString("D"), StringComparison.Ordinal)).ShouldBe(!changedMeanwhile);
+    }
+
+    // Two consents of one user at once, each of which would take the last place. They are let go only once the first holds
+    // its insert and the second has either read the cap too, which lets both through, or waits for the lock of the first,
+    // so the one moment the cap could be passed is the one the test makes. One of them takes the place, and the other is
+    // refused.
+    [Fact]
+    public async Task TwoConsentsAtOnceTakeNoMoreThanTheLastPlace()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName, maxConsents: 1);
+        using var agent = new McpAgent(host, "10.5.0.7");
+        using var admin = await KeyAsync(host);
+        var user = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        string[] clients = [await agent.RegisteredAsync("First"), await agent.RegisteredAsync("Second")];
+
+        fixture.Consents.Arm();
+        Task<ConsentGrant> first;
+        Task<ConsentGrant> second;
+        try
+        {
+            first = Task.Run(() => GiveConsentAsync(host, user.Id, clients[0]), Token);
+            await fixture.Consents.FirstInsert.WaitAsync(Patience, Token);
+            second = Task.Run(() => GiveConsentAsync(host, user.Id, clients[1]), Token);
+            await Task.WhenAny(fixture.Consents.SecondInsert, fixture.Consents.SecondLock).WaitAsync(Patience, Token);
+        }
+        finally
+        {
+            fixture.Consents.Release();
+        }
+
+        var granted = await Task.WhenAll(first, second).WaitAsync(Patience, Token);
+
+        granted.Order().ShouldBe([ConsentGrant.Granted, ConsentGrant.LimitReached]);
+        var places = 0;
+        foreach (var clientId in clients)
+        {
+            places += (await StateAsync(host, await IdOfAsync(admin, clientId))).UsedBy == user.Id ? 1 : 0;
+        }
+
+        places.ShouldBe(1);
+        fixture.Logs.Lines.ShouldContain(line => line.Id == 9008 && line.Message.Contains(user.Id.ToString("D"), StringComparison.Ordinal));
+    }
+
+    // A call reads again, each in a transaction of its own, only the clients it would remove: those the open policy
+    // approved in its span, and no client outside it, no pending one, and none an administrator acted on.
+    [Fact]
+    public async Task TheBulkRemovalReadsAgainOnlyTheClientsOfItsSpan()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, "10.5.0.8");
+        using var admin = await KeyAsync(host);
+        host.Time.Advance(TimeSpan.FromMinutes(1));
+        await agent.RegisteredAsync("Before the span");
+        await agent.RegisteredAsync("Before the span too");
+        host.Time.Advance(TimeSpan.FromMinutes(1));
+        var from = host.Time.GetUtcNow();
+        string[] inTheSpan = [await agent.RegisteredAsync("In the span"), await agent.RegisteredAsync("In the span too")];
+        var (adopted, _) = await RegisteredByAdminAsync(admin, BuiltInRoles.EditorName);
+        await SetPolicyAsync(host, McpClientRegistrationMode.Approval);
+        var pending = await agent.RegisteredAsync("Pending");
+
+        fixture.Hooks.CountFinds();
+        using var removed = await RemoveAsync(admin, new { registeredFrom = from });
+        var reads = fixture.Hooks.StopCounting();
+
+        removed.StatusCode.ShouldBe(HttpStatusCode.OK, await removed.Content.ReadAsStringAsync(Token));
+        (await JsonAsync(removed))["removed"]!.GetValue<int>().ShouldBe(2);
+        reads.ShouldBe(inTheSpan.Length);
+        var left = (await ListAsync(admin)).Select(item => item!["clientId"]!.GetValue<string>()).ToList();
+        left.ShouldContain(adopted);
+        left.ShouldContain(pending);
+    }
+
+    // Only the refusal of a foreign key is taken for a consent that arrived during the delete. Any other failure of the
+    // save ends the bulk removal and the cleanup, rather than answering as if the client were left for the next call.
+    [Fact]
+    public async Task AFailureOfADeleteOtherThanAForeignKeyEndsTheBulkRemovalAndTheCleanup()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, "10.5.0.9");
+        using var admin = await KeyAsync(host);
+        host.Time.Advance(TimeSpan.FromMinutes(1));
+        var from = host.Time.GetUtcNow();
+        var filler = await agent.RegisteredAsync();
+        var id = await IdOfAsync(admin, filler);
+        var logged = fixture.Logs.Lines.Count(line => line.Id == 9009);
+
+        fixture.Hooks.FailNextDelete(DeleteFailure.OtherConstraint, id);
+        using var failed = await RemoveAsync(admin, new { registeredFrom = from });
+        var afterTheCall = await FindAsync(admin, filler);
+
+        host.Time.Advance(TimeSpan.FromHours(new McpSettings().NeverUsedClientHours) + TimeSpan.FromMinutes(1));
+        fixture.Hooks.FailNextDelete(DeleteFailure.OtherConstraint, id);
+        var cleanup = await Should.ThrowAsync<DbUpdateException>(() => RunCleanupAsync(host));
+        var afterTheRun = await FindAsync(admin, filler);
+
+        failed.StatusCode.ShouldBe(HttpStatusCode.InternalServerError, await failed.Content.ReadAsStringAsync(Token));
+        afterTheCall.ShouldNotBeNull();
+        cleanup.InnerException.ShouldBeOfType<SqliteException>().SqliteExtendedErrorCode.ShouldBe(275);
+        afterTheRun.ShouldNotBeNull();
+        fixture.Logs.Lines.Count(line => line.Id == 9009).ShouldBe(logged);
+        (await StateAsync(host, id)).Status.ShouldBe(McpClientStatus.Approved);
     }
 
     // The consents go before the client is written, so a start that fails on the write leaves the old redirect URIs with
@@ -185,5 +295,14 @@ public sealed class McpClientConcurrencyTests(McpClientHookFixture fixture) : IC
         consent.ShouldBeNull();
         failed.ShouldBe(["https://app.example/cb"]);
         (await ConfiguredRedirectUrisAsync(host)).ShouldBe(["https://other.example/cb"]);
+    }
+
+    // Bounds every wait of the races, so that one that hangs fails its test.
+    private static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
+
+    private static async Task<ConsentGrant> GiveConsentAsync(FluentCmsTestHost host, Guid user, string clientId)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<ClientConsents>().GrantAsync(user, clientId, ["openid", "mcp"], Token);
     }
 }

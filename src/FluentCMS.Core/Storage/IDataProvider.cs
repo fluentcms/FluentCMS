@@ -28,6 +28,11 @@ public interface IDataProvider
     // what a writer gets that lost a race to the row its checks found free (spec 4.4).
     bool IsUniqueViolation(Exception exception);
 
+    // Whether the exception, or the database error that a DbUpdateException wraps, is a write that a foreign key refused:
+    // what a delete gets when a row that refers to its row arrived after its checks. Another constraint is not one. False by
+    // default, so that a provider that does not tell them apart has every failure of such a delete thrown.
+    bool IsForeignKeyViolation(Exception exception) => false;
+
     // Whether the database ended the transaction as the victim of a deadlock, which it asks to be run again.
     bool IsDeadlock(Exception exception);
 

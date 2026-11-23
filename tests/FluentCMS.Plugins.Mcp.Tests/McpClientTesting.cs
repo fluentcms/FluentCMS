@@ -11,11 +11,13 @@ using FluentCMS.Activity;
 using FluentCMS.Agents;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Caching;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Jobs;
+using FluentCMS.Providers;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using FluentCMS.Testing;
@@ -23,6 +25,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -57,7 +60,10 @@ public sealed class McpClientHookFixture : IAsyncDisposable
             services.PostConfigure<RateLimitOptions>(limits => limits.Auth.PermitLimit = 10_000);
             // The manager of the interface is resolved by its closed type, which comes before OpenIddict's open registration.
             services.AddSingleton(Hooks);
+            services.AddSingleton(Consents);
             services.AddScoped<OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>, HookedApplicationManager>();
+            services.AddScoped<OpenIddictAuthorizationManager<OpenIddictEntityFrameworkCoreAuthorization<Guid>>, HookedAuthorizationManager>();
+            services.AddSingleton<IDistributedLock>(provider => new ArrivalsLock(ActivatorUtilities.CreateInstance<DatabaseDistributedLock>(provider), Consents));
             services.AddSingleton<ILoggerProvider>(Logs);
         });
     }
@@ -65,6 +71,8 @@ public sealed class McpClientHookFixture : IAsyncDisposable
     public FluentCmsTestHost Host { get; }
 
     public ApplicationManagerHooks Hooks { get; } = new();
+
+    public ConsentGate Consents { get; } = new();
 
     internal LogCapture Logs { get; } = new();
 
@@ -81,18 +89,151 @@ public sealed class ApplicationManagerHooks
     private Func<Task>? _beforeRead;
     private int _failUpdate;
     private int _failDelete;
+    private int _counting;
+    private int _finds;
 
     public void BeforeNextPropertiesRead(Func<Task> work) => _beforeRead = work;
 
     public void FailNextUpdate() => _failUpdate = 1;
 
-    public void FailNextDelete(bool changedMeanwhile = false) => _failDelete = changedMeanwhile ? 2 : 1;
+    private Guid? _failDeleteOf;
+
+    // The next delete, or the next delete of that application only, so that clients other tests of the host left behind
+    // do not take the failure.
+    public void FailNextDelete(DeleteFailure failure = DeleteFailure.ForeignKey, Guid? of = null)
+    {
+        _failDeleteOf = of;
+        _failDelete = (int)failure;
+    }
+
+    // Counts the reads of an application by its id from now on, as each client a bulk removal reads again.
+    public void CountFinds()
+    {
+        Interlocked.Exchange(ref _finds, 0);
+        Interlocked.Exchange(ref _counting, 1);
+    }
+
+    public int StopCounting()
+    {
+        Interlocked.Exchange(ref _counting, 0);
+        return Volatile.Read(ref _finds);
+    }
 
     internal Func<Task>? TakeBeforeRead() => Interlocked.Exchange(ref _beforeRead, null);
 
     internal bool TakeFailUpdate() => Interlocked.Exchange(ref _failUpdate, 0) == 1;
 
-    internal int TakeFailDelete() => Interlocked.Exchange(ref _failDelete, 0);
+    internal DeleteFailure TakeFailDelete(Guid application) =>
+        _failDeleteOf is { } of && of != application ? DeleteFailure.None : (DeleteFailure)Interlocked.Exchange(ref _failDelete, 0);
+
+    internal void Found()
+    {
+        if (Volatile.Read(ref _counting) == 1)
+        {
+            Interlocked.Increment(ref _finds);
+        }
+    }
+}
+
+public enum DeleteFailure
+{
+    None = 0,
+
+    // The foreign key of a consent or a token that arrived during the delete refuses it, as SQLite says so.
+    ForeignKey = 1,
+
+    // The application changed since it was read.
+    ChangedMeanwhile = 2,
+
+    // Another constraint refuses the save, as a CHECK refuses a damaged write of the outbox.
+    OtherConstraint = 3,
+}
+
+// Holds every consent that takes a place at its insert until the test lets them go, and says when a consent reaches the
+// insert or the lock of the consents, so that a test makes two consents race at the one moment the cap is read.
+public sealed class ConsentGate
+{
+    private TaskCompletionSource _released = Done();
+    private TaskCompletionSource _secondInsert = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private TaskCompletionSource _firstInsert = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private TaskCompletionSource _secondLock = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private int _inserts;
+    private int _locks;
+    private int _armed;
+
+    public Task FirstInsert => _firstInsert.Task;
+
+    // The second consent reached the insert: it read the cap while the first had not written.
+    public Task SecondInsert => _secondInsert.Task;
+
+    // The second consent waits for the lock while the first holds it.
+    public Task SecondLock => _secondLock.Task;
+
+    public void Arm()
+    {
+        _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _firstInsert = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _secondInsert = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _secondLock = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Interlocked.Exchange(ref _inserts, 0);
+        Interlocked.Exchange(ref _locks, 0);
+        Interlocked.Exchange(ref _armed, 1);
+    }
+
+    public void Release()
+    {
+        Interlocked.Exchange(ref _armed, 0);
+        _released.TrySetResult();
+    }
+
+    internal Task AtInsertAsync()
+    {
+        if (Volatile.Read(ref _armed) == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        (Interlocked.Increment(ref _inserts) == 1 ? _firstInsert : _secondInsert).TrySetResult();
+        return _released.Task;
+    }
+
+    internal void AtLock(string name)
+    {
+        if (Volatile.Read(ref _armed) == 1 && name == ClientConsents.LockName && Interlocked.Increment(ref _locks) == 2)
+        {
+            _secondLock.TrySetResult();
+        }
+    }
+
+    private static TaskCompletionSource Done()
+    {
+        var done = new TaskCompletionSource();
+        done.SetResult();
+        return done;
+    }
+}
+
+internal sealed class ArrivalsLock(IDistributedLock inner, ConsentGate gate) : IDistributedLock
+{
+    public Task<IDistributedLockHandle?> TryAcquireAsync(string name, TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        gate.AtLock(name);
+        return inner.TryAcquireAsync(name, timeout, cancellationToken);
+    }
+}
+
+internal sealed class HookedAuthorizationManager(
+    IOpenIddictAuthorizationCache<OpenIddictEntityFrameworkCoreAuthorization<Guid>> cache,
+    ILogger<OpenIddictAuthorizationManager<OpenIddictEntityFrameworkCoreAuthorization<Guid>>> logger,
+    IOptionsMonitor<OpenIddictCoreOptions> options,
+    IOpenIddictAuthorizationStore<OpenIddictEntityFrameworkCoreAuthorization<Guid>> store,
+    ConsentGate gate) : OpenIddictAuthorizationManager<OpenIddictEntityFrameworkCoreAuthorization<Guid>>(cache, logger, options, store)
+{
+    public override async ValueTask CreateAsync(OpenIddictEntityFrameworkCoreAuthorization<Guid> authorization, CancellationToken cancellationToken = default)
+    {
+        await gate.AtInsertAsync();
+        await base.CreateAsync(authorization, cancellationToken);
+    }
 }
 
 internal sealed class HookedApplicationManager(
@@ -103,19 +244,29 @@ internal sealed class HookedApplicationManager(
     ApplicationManagerHooks hooks,
     SystemDbContext context) : OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>(cache, logger, options, store)
 {
-    // The store marks the application deleted before it saves, and a save the database refuses leaves it so.
+    // The store marks the application deleted before it saves, and a save the database refuses leaves it so. The
+    // refusals carry the errors SQLite gives, with their extended codes.
     public override ValueTask DeleteAsync(OpenIddictEntityFrameworkCoreApplication<Guid> application, CancellationToken cancellationToken = default)
     {
-        switch (hooks.TakeFailDelete())
+        switch (hooks.TakeFailDelete(application.Id))
         {
-            case 0:
+            case DeleteFailure.None:
                 return base.DeleteAsync(application, cancellationToken);
-            case 2:
+            case DeleteFailure.ChangedMeanwhile:
                 return ValueTask.FromException(new OpenIddictExceptions.ConcurrencyException("The application was changed by another request."));
+            case DeleteFailure.OtherConstraint:
+                context.Remove(application);
+                return ValueTask.FromException(new DbUpdateException("The save was refused.", new SqliteException("SQLite Error 19: 'CHECK constraint failed'.", 19, 275)));
             default:
                 context.Remove(application);
-                return ValueTask.FromException(new DbUpdateException("The delete crossed an insert that refers to the application."));
+                return ValueTask.FromException(new DbUpdateException("The delete crossed an insert that refers to the application.", new SqliteException("SQLite Error 19: 'FOREIGN KEY constraint failed'.", 19, 787)));
         }
+    }
+
+    public override ValueTask<OpenIddictEntityFrameworkCoreApplication<Guid>?> FindByIdAsync(string identifier, CancellationToken cancellationToken = default)
+    {
+        hooks.Found();
+        return base.FindByIdAsync(identifier, cancellationToken);
     }
 
     public override async ValueTask<ImmutableDictionary<string, JsonElement>> GetPropertiesAsync(OpenIddictEntityFrameworkCoreApplication<Guid> application, CancellationToken cancellationToken = default)
@@ -503,7 +654,7 @@ internal static class McpClientTesting
     public static async Task GrantAsync(FluentCmsTestHost host, Guid user)
     {
         await using var scope = host.Services.CreateAsyncScope();
-        (await scope.ServiceProvider.GetRequiredService<ClientConsents>().GrantAsync(user, ConfiguredClient, ["openid"], Token)).ShouldBeTrue();
+        (await scope.ServiceProvider.GetRequiredService<ClientConsents>().GrantAsync(user, ConfiguredClient, ["openid"], Token)).ShouldBe(ConsentGrant.Granted);
     }
 
     // The user's consent to the configured client, or null.
