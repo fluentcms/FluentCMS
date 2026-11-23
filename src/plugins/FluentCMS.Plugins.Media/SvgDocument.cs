@@ -28,9 +28,12 @@ internal static partial class SvgDocument
     // drawing needs as many, and the passes over the tree, Save's included, recurse as deep as it nests.
     public const int MaxDepth = 128;
 
-    // The most elements and CDATA sections a file holds, which bounds what the passes over the tree cost whatever else the
-    // file holds; a drawing has far fewer. A file with more is no SVG the plugin takes.
+    // The most nodes a file holds, elements, text, CDATA sections, comments and processing instructions, and the most
+    // attributes an element has, namespace declarations included. With the depth, they bound the size of the tree that is
+    // built and of each list a pass sets again; a drawing has far fewer. A file past either is no SVG the plugin takes.
     public const int MaxNodes = 100_000;
+
+    public const int MaxAttributes = 1_000;
 
     public static readonly XNamespace SvgNamespace = "http://www.w3.org/2000/svg";
 
@@ -127,23 +130,26 @@ internal static partial class SvgDocument
             CloseInput = false,
         };
 
-        // The depth and the count are read first, without building the tree, so that a file past a limit costs one pass of the
-        // reader.
+        // The depth and the counts are read first, without building the tree, so that a file past a limit costs one pass of the
+        // reader; that pass sees the comments and processing instructions the tree leaves out, which still cost its building.
         var seekable = stream.CanSeek ? stream : Buffered(stream);
         var start = seekable.Position;
+        var counting = settings.Clone();
+        counting.IgnoreComments = false;
+        counting.IgnoreProcessingInstructions = false;
         try
         {
-            using (var scan = XmlReader.Create(seekable, settings))
+            using (var scan = XmlReader.Create(seekable, counting))
             {
                 var nodes = 0;
                 while (scan.Read())
                 {
-                    if ((scan.NodeType is XmlNodeType.Element or XmlNodeType.CDATA) && ++nodes > MaxNodes)
+                    if (scan.NodeType is not (XmlNodeType.EndElement or XmlNodeType.XmlDeclaration) && ++nodes > MaxNodes)
                     {
                         return null;
                     }
 
-                    if (scan.NodeType == XmlNodeType.Element && scan.Depth >= MaxDepth)
+                    if (scan.NodeType == XmlNodeType.Element && (scan.Depth >= MaxDepth || scan.AttributeCount > MaxAttributes))
                     {
                         return null;
                     }
@@ -208,10 +214,14 @@ internal static partial class SvgDocument
                             child.Name = child.Name.Namespace + "g";
                         }
 
-                        if (IsKept(child) && !(Animations.Contains(child.Name.LocalName) && Targets(child, root, rootId) && MovesTheBox(child)))
+                        // Its attributes first, so that a link that goes leaves an animation of its parent, as a later pass reads it.
+                        if (IsKept(child))
                         {
                             KeepAttributes(child, isRoot: false);
-                            kept.Add(child);
+                            if (!(Animations.Contains(child.Name.LocalName) && Targets(child, root, rootId) && MovesTheBox(child)))
+                            {
+                                kept.Add(child);
+                            }
                         }
 
                         break;
@@ -437,7 +447,6 @@ internal static partial class SvgDocument
 
     private static bool IsSvg(XName name) => name.Namespace == SvgNamespace || name.Namespace == XNamespace.None;
 
-    // An animation without a link animates its parent; one with a link, the element of that id.
     // An animation without a link animates its parent; one with a link, the element of that id. With both links, either
     // naming the root counts, since browsers differ on which one wins.
     private static bool Targets(XElement animation, XElement root, string? rootId)

@@ -396,6 +396,49 @@ public sealed class MediaFileTests
         text.ShouldContain("""<g><set attributeName="width" to="3" /></g>""");
     }
 
+    // A link that the allow-list removes leaves an animation of its parent, so an animation of the root's box whose link goes
+    // goes too, and a second pass changes nothing.
+    [Theory]
+    [InlineData("href=\"http://x/\"", "overflow")]
+    [InlineData("href=\"javascript:1\"", "overflow")]
+    [InlineData("xlink:href=\"x.svg#r\"", "overflow")]
+    [InlineData("href=\"\"", "overflow")]
+    [InlineData("href=\"#\"", "overflow")]
+    [InlineData("href=\"http://x/\"", "width")]
+    [InlineData("href=\"javascript:1\"", "width")]
+    [InlineData("xlink:href=\"x.svg#r\"", "width")]
+    [InlineData("href=\"\"", "width")]
+    [InlineData("href=\"#\"", "width")]
+    public void AnAnimationWhoseLinkGoesIsReadAsOneOfItsParent(string link, string attribute)
+    {
+        var once = Sanitized(Encoding.UTF8.GetBytes($"""<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="r" width="1" height="1"><set {link} attributeName="{attribute}" to="5000"/></svg>"""));
+
+        Encoding.UTF8.GetString(once).ShouldNotContain("<set");
+        Sanitized(once).ShouldBe(once);
+    }
+
+    // A file past the node limit, counting text, comments and processing instructions, or with an element past the
+    // attribute limit, namespace declarations included, is refused by the pass of the reader, before the tree is built;
+    // an element at the attribute limit and a drawing of a few hundred texts are taken.
+    [Fact]
+    public void AFileOfTooManyAttributesOrNodesOfAnyKindIsRefusedBeforeItsTreeIsBuilt()
+    {
+        static byte[] Declaring(int attributes) => Encoding.UTF8.GetBytes(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\"" + string.Concat(Enumerable.Range(1, attributes - 1).Select(index => $" xmlns:p{index}=\"u\"")) + "><rect width=\"1\" height=\"1\"/></svg>");
+
+        SvgDocument.Parse(new MemoryStream(Declaring(SvgDocument.MaxAttributes))).ShouldNotBeNull();
+        SvgDocument.Parse(new MemoryStream(Declaring(SvgDocument.MaxAttributes + 1))).ShouldBeNull();
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        SvgDocument.Parse(new MemoryStream(Declaring(100_000))).ShouldBeNull();
+        SvgDocument.Parse(new MemoryStream(Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"><text>" + string.Concat(Enumerable.Repeat("x<!--c-->", 400_000)) + "</text></svg>"))).ShouldBeNull();
+        SvgDocument.Parse(new MemoryStream(Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\">" + string.Concat(Enumerable.Repeat("<?p?>", SvgDocument.MaxNodes)) + "</svg>"))).ShouldBeNull();
+        watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
+
+        var drawing = Encoding.UTF8.GetString(Sanitized(Files.Svg(string.Concat(Enumerable.Range(0, 300).Select(index => $"\n  <text x=\"{index}\">label {index}</text>")))));
+        Regex.Count(drawing, "<text ").ShouldBe(300);
+    }
+
     // A CDATA section that is empty goes, so that the element is written alike on every pass and the prefix does not move.
     [Fact]
     public void AnEmptyCdataSectionGivesTheSameBytesOnEveryPass()
