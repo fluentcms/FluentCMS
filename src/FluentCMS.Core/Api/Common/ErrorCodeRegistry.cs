@@ -162,6 +162,7 @@ public static class ErrorCodeRegistry
         Invalid(ContentErrorCodes.NonexistentLocalTime, "Local time does not exist"),
         new(ContentErrorCodes.ScheduledDraftChanged, StatusCodes.Status409Conflict, "Draft changed since it was scheduled"),
         new(ContentErrorCodes.HookTimedOut, StatusCodes.Status503ServiceUnavailable, "Hook timed out"),
+        new(ContentErrorCodes.EntryBusy, StatusCodes.Status503ServiceUnavailable, "Entry busy"),
 
         // 25xx jobs
         Startup(JobErrorCodes.UnknownJobType, "Unknown job type"),

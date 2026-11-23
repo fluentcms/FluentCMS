@@ -1,4 +1,5 @@
 using System.Data;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 using FluentCMS.Core.Plugins;
@@ -55,6 +56,38 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
     public bool IsBusy(Exception exception) => false;
 
     public bool HasOneWriter => false;
+
+    // SET LOCAL ends with the transaction, committed or rolled back, so a pooled session keeps nothing of it.
+    public async Task<IDbContextTransaction> BeginWriteAsync(DbContext context, TimeSpan lockTimeout, CancellationToken cancellationToken)
+    {
+        var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(string.Create(CultureInfo.InvariantCulture, $"SET LOCAL lock_timeout = {Milliseconds(lockTimeout)}"), cancellationToken);
+            return transaction;
+        }
+        catch
+        {
+            await transaction.DisposeAsync();
+            throw;
+        }
+    }
+
+    // 55P03 lock_not_available, which lock_timeout raises, read in the whole chain as a deadlock is.
+    public bool IsLockTimeout(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException { SqlState: PostgresErrorCodes.LockNotAvailable })
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static long Milliseconds(TimeSpan timeout) => Math.Max(1, (long)Math.Ceiling(timeout.TotalMilliseconds));
 
     // Npgsql's migrations lock is a lock of the history table, which ends with the transaction that took it.
     public Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<string?>(null);

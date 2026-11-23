@@ -1,6 +1,7 @@
 using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.ProseMirror;
@@ -19,7 +20,8 @@ internal sealed record ApiProblem(
     string Title,
     string Detail,
     IReadOnlyList<ProblemError>? Errors = null,
-    ContentDocument? Current = null);
+    ContentDocument? Current = null,
+    int? RetryAfter = null);
 
 // The one place that decides what a client sees for an exception of the engine.
 internal static class ProblemMapper
@@ -43,6 +45,7 @@ internal static class ProblemMapper
         EntryNotFoundException notFound => Known(ApiErrorCodes.NotFound, notFound.Message),
         PluginDisabledException disabled => Known(PluginErrorCodes.PluginDisabled, disabled.Message),
         VersionConflictException conflict => Known(ApiErrorCodes.VersionConflict, conflict.Message) with { Current = conflict.Current },
+        EntryBusyException busy => Known(ContentErrorCodes.EntryBusy, busy.Message) with { RetryAfter = EntryBusyException.RetryAfterSeconds },
         ValidationException validation => FromValidation(validation, codes ?? ErrorCodeCatalogue.Core),
         HookRejectedException rejected => Refused(rejected.Code, rejected.Message, "Rejected by a hook", codes ?? ErrorCodeCatalogue.Core),
         PluginException refused => Refused(refused.Code, refused.Message, "Refused by a plugin", codes ?? ErrorCodeCatalogue.Core),
