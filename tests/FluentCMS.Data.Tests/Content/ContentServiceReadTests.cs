@@ -6,6 +6,7 @@ using FluentCMS.Core.Localization;
 using FluentCMS.Core.Storage;
 using FluentCMS.Data.Tests.Authorization;
 using FluentCMS.Data.Tests.Providers;
+using FluentCMS.Data.Tests.Query;
 using FluentCMS.Providers;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
@@ -249,12 +250,14 @@ public sealed class ContentServiceReadTests : IDisposable
 
         public string? Locale { get; set; }
 
+        public bool MatchesByField { get; init; } = true;
+
         public List<SearchRequest> Requests { get; } = [];
     }
 
     private sealed class FakeSearch(Hits hits) : ISearchIndex
     {
-        public bool MatchesByField => true;
+        public bool MatchesByField => hits.MatchesByField;
 
         public Task<IReadOnlyList<Guid>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default)
         {
@@ -263,12 +266,14 @@ public sealed class ContentServiceReadTests : IDisposable
         }
     }
 
-    private static ServiceDatabase Searching(Hits hits, Action<FluentCmsBuilder>? configure = null) => new(cms =>
-    {
-        cms.Services.AddSingleton(hits);
-        cms.Providers.Use<ISearchIndex, FakeSearch>();
-        configure?.Invoke(cms);
-    });
+    private static ServiceDatabase Searching(Hits hits, Action<FluentCmsBuilder>? configure = null, SchemaModel? schema = null) => new(
+        cms =>
+        {
+            cms.Services.AddSingleton(hits);
+            cms.Providers.Use<ISearchIndex, FakeSearch>();
+            configure?.Invoke(cms);
+        },
+        schema);
 
     // #3469: the search chose the entries in French; what English fills in for them does not have to match.
     [Fact]
@@ -307,12 +312,15 @@ public sealed class ContentServiceReadTests : IDisposable
     }
 
     // The reads of the other locales name the ids, one at a time under this cap, and ask the index nothing: the order, the
-    // total, the cursor and searchTruncated are those of the one search, as they are without a fallback.
-    [Fact]
-    public async Task ASearchedListAsksTheIndexOnceWhateverLocalesAndBatchesItReads()
+    // total, the cursor and searchTruncated are those of the one search, as they are without a fallback. Three hits under a
+    // limit of three are cut.
+    [Theory]
+    [InlineData(3, true)]
+    [InlineData(1000, false)]
+    public async Task ASearchedListAsksTheIndexOnceWhateverLocalesAndBatchesItReads(int maxSearchResults, bool truncated)
     {
         var hits = new Hits();
-        using var database = Searching(hits, cms => cms.Services.AddSingleton(new ContentQueryOptions { MaxFilterNodes = 2 }));
+        using var database = Searching(hits, cms => cms.Services.AddSingleton(new ContentQueryOptions { MaxFilterNodes = 2, MaxSearchResults = maxSearchResults }));
         foreach (var title in new[] { "C", "A", "B" })
         {
             var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = $"{title} english", ["subtitle"] = $"Sub {title}" }));
@@ -333,7 +341,8 @@ public sealed class ContentServiceReadTests : IDisposable
             page.Total.ShouldBe(3);
             page.NextCursor.ShouldNotBeNull();
             page.NextCursor.ShouldBe(alone.NextCursor);
-            page.SearchTruncated.ShouldBeFalse();
+            page.SearchTruncated.ShouldBe(truncated);
+            alone.SearchTruncated.ShouldBe(truncated);
         }
 
         var french = (await database.QueryAsync(Editor, searched with { Locale = "fr-CA" })).Items;
@@ -343,7 +352,8 @@ public sealed class ContentServiceReadTests : IDisposable
     }
 
     // The index finds every entry in every locale here, so what the other locales hold is what the caller may read there:
-    // the row rule of French, the state read and the site, with what is in the trash left out.
+    // the row rule of French and the state read. The first read leaves out the entries of another site and in the trash;
+    // a locale's row has the site of its entry and goes to the trash with it, so no other-locale read meets one.
     [Fact]
     public async Task TheOtherLocalesOfASearchedListShowWhatTheCallerMayReadThereAlone()
     {
@@ -385,6 +395,30 @@ public sealed class ContentServiceReadTests : IDisposable
 
         (await database.QueryAsync(regional, published with { Locale = "fr-CA", Fallback = LocaleFallback.Chain })).Items.ShouldHaveSingleItem()["subtitle"].ShouldBe("Sub eu");
         ((ContentDocument)(await database.QueryAsync(regional, published with { Locale = "all" })).Items.ShouldHaveSingleItem()["locales"]!).Keys.ShouldBe(["en", "fr-CA"]);
+    }
+
+    // An index that cannot match by field refuses a caller limited in the searchable fields of the locale searched; a
+    // limit in another locale of a list of every locale does not, since the read of that locale searches nothing.
+    [Fact]
+    public async Task AFieldLimitInAnotherLocaleOfASearchedListOfEveryLocaleDoesNotRefuseItsSearch()
+    {
+        var hits = new Hits { MatchesByField = false };
+        using var database = Searching(hits, schema: QueryDatabase.Schema);
+        var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Hello", ["subtitle"] = "Sub en" }));
+        await database.UpdateAsync(Editor, id, new() { ["title"] = "Fusion", ["subtitle"] = "Sous-titre" }, 0, locale: "fr");
+        hits.Ids.Add(id);
+        var role = database.Database.AddRoleForTest(
+            "Translator",
+            ("content.article.read", new PermissionConstraints { Locales = ["en"] }),
+            ("content.article.read", new PermissionConstraints { Locales = ["fr"], Fields = ["title"] }));
+        var searched = new ContentQuery { Status = QueryStatus.Draft, Search = "word" };
+
+        var map = (ContentDocument)(await database.QueryAsync(WithRole(role), searched with { Locale = "all" })).Items.ShouldHaveSingleItem()["locales"]!;
+        map.Keys.ShouldBe(["en", "fr"]);
+        ((ContentDocument)map["fr"]!).ContainsKey("subtitle").ShouldBeFalse();
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => database.QueryAsync(WithRole(role), searched with { Locale = "fr" }));
+        (refused.Errors.ShouldHaveSingleItem().Path, refused.Errors.Single().Code).ShouldBe(("q", QueryErrorCodes.NoSearchIndex));
     }
 
     // The index knows no row rule. A hit on an English row the rule hides finds nothing, though the entry's French row could
