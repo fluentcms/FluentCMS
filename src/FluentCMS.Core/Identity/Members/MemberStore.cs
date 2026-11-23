@@ -129,6 +129,20 @@ internal sealed class MemberStore(SystemDbContext context, IdentityChanges chang
             .Where(member => member.Id == memberId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(member => member.LastLoginAt, time.GetUtcNow()), cancellationToken);
 
+    // A failed save of IdentityChanges clears the context, which leaves the caller's member detached. It is tracked again
+    // with what is stored, and the answer is whether it was, as CmsUserStore does for a user (#3597).
+    public async Task<bool> ReattachAsync(CmsMember user, CancellationToken cancellationToken)
+    {
+        if (Context.Entry(user).State != EntityState.Detached || Context.ChangeTracker.Entries<CmsMember>().Any(entry => entry.Entity.Id == user.Id))
+        {
+            return false;
+        }
+
+        Context.Attach(user);
+        await Context.Entry(user).ReloadAsync(cancellationToken);
+        return true;
+    }
+
     private static NotSupportedException NoClaims() => new("A member has no claims of its own; its groups are rows of cms_member_group_member.");
 
     // The member as it is stored. A tracked member keeps what was read; one the caller built is read again.
