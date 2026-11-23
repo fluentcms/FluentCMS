@@ -274,12 +274,23 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
 
         var schemas = Document["components"]!["schemas"]!;
         schemas["preview-token-request"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["minutes", "locale"]);
-        schemas["preview-token"]!["required"]!.ToJsonString().ShouldBe("""["token","scheme","expiresAt","type","id","site"]""");
+        schemas["preview-token"]!["required"]!.ToJsonString().ShouldBe("""["token","scheme","expiresAt","expiresIn","type","id","site"]""");
+        var lifetime = schemas["preview-token"]!["properties"]!["expiresIn"]!;
+        (lifetime["type"]!.GetValue<string>(), lifetime["format"]!.GetValue<string>()).ShouldBe(("integer", "int32"));
         foreach (var url in new[] { "url", "publishedUrl" })
         {
             var property = schemas["preview-token"]!["properties"]![url]!;
             (property["type"]!.ToJsonString(), property["format"]!.GetValue<string>()).ShouldBe(("""["null","string"]""", "uri"));
         }
+    }
+
+    [Fact]
+    public void ATypeOfTheSchemaSaysWhetherItIsPreviewable()
+    {
+        var types = Resolve(Response(Paths[$"{Management}/schema"]!["get"]!, "200"))["properties"]!["types"]!["items"]!;
+
+        Resolve(types)["properties"]!["previewable"]!["type"]!.GetValue<string>().ShouldBe("boolean");
+        Resolve(Response(Paths[$"{Management}/schema/types/{{type}}"]!["get"]!, "200"))["properties"]!["previewable"].ShouldNotBeNull();
     }
 
     [Fact]

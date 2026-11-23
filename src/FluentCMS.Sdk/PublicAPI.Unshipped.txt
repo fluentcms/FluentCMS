@@ -2602,6 +2602,8 @@ FluentCMS.Schema.SchemaTypeDescription.MaxVersions.get -> int?
 FluentCMS.Schema.SchemaTypeDescription.MaxVersions.init -> void
 FluentCMS.Schema.SchemaTypeDescription.Name.get -> string!
 FluentCMS.Schema.SchemaTypeDescription.Name.init -> void
+FluentCMS.Schema.SchemaTypeDescription.Previewable.get -> bool
+FluentCMS.Schema.SchemaTypeDescription.Previewable.init -> void
 FluentCMS.Schema.SchemaTypeDescription.ReverseRelations.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.ReverseRelationDescription!>!
 FluentCMS.Schema.SchemaTypeDescription.ReverseRelations.init -> void
 FluentCMS.Schema.SchemaTypeDescription.SchemaTypeDescription() -> void
