@@ -57,8 +57,14 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
                 break;
             }
 
-            var wanted = pending.Values.SelectMany(item => item.Fields).Distinct().ToList();
-            var read = await ReadAsync(typeName, query, locale, [.. pending.Keys], wanted, budget, cancellationToken);
+            // A field the principal may not read in this locale is not asked of it, and falls back further or stays empty.
+            var wanted = await engine.SelectableAsync(typeName, query with { Locale = locale }, pending.Values.SelectMany(item => item.Fields).Distinct(), cancellationToken);
+            if (wanted.Count == 0)
+            {
+                continue;
+            }
+
+            var read = await ReadAsync(typeName, query, locale, [.. pending.Keys], [.. wanted], budget, cancellationToken);
             foreach (var other in read)
             {
                 var id = (Guid)other["id"]!;

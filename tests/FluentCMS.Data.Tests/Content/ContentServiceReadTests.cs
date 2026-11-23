@@ -155,6 +155,59 @@ public sealed class ContentServiceReadTests : IDisposable
         ((ContentDocument)read[LocaleFallbackReader.FallbacksKey]!).Keys.ShouldBe(["title"]);
     }
 
+    // #3566: English lets the caller read the title and the body alone, so the subtitle the French row lacks is not asked of
+    // it and stays empty, and the body still falls back, in a list with and without a search and in a read by id.
+    [Fact]
+    public async Task AFallbackLocaleWithAFieldLimitFillsOnlyTheFieldsTheCallerMayReadThere()
+    {
+        var hits = new Hits { Locale = "fr" };
+        using var database = Searching(hits);
+        var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Hello", ["subtitle"] = "Sub en", ["body"] = Body }));
+        await database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
+        hits.Ids.Add(id);
+        var role = database.Database.AddRoleForTest(
+            "Translator",
+            ("content.article.read", new PermissionConstraints { Locales = ["fr"] }),
+            ("content.article.read", new PermissionConstraints { Locales = ["en"], Fields = ["title", "body"] }));
+        var list = new ContentQuery { Status = QueryStatus.Draft, Locale = "fr", Fallback = LocaleFallback.Chain };
+
+        var listed = (await database.QueryAsync(WithRole(role), list)).Items.ShouldHaveSingleItem();
+        var searched = (await database.QueryAsync(WithRole(role), list with { Search = "bonjour" })).Items.ShouldHaveSingleItem();
+        var read = (await database.GetAsync(WithRole(role), id, Draft("fr")))!;
+
+        foreach (var entry in new[] { listed, searched, read })
+        {
+            entry["title"].ShouldBe("Bonjour");
+            entry["subtitle"].ShouldBeNull();
+            ((RichText)entry["body"]!).Json.ShouldBe(Body);
+            ((ContentDocument)entry[LocaleFallbackReader.FallbacksKey]!).Keys.ShouldBe(["body"]);
+        }
+    }
+
+    // #3566: French hides the subtitle from the caller, so the subtitle the Canadian row lacks falls back past it to English.
+    [Fact]
+    public async Task AFieldTheCallerMayNotReadInAFallbackLocaleFallsBackFurther()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "Hello", ["subtitle"] = "Sub en" }));
+        await _database.UpdateAsync(Editor, id, new() { ["title"] = "Bonjour", ["subtitle"] = "Sous-titre" }, 0, locale: "fr");
+        await _database.UpdateAsync(Editor, id, Titled("Salut"), 0, locale: "fr-CA");
+        var role = _database.Database.AddRoleForTest(
+            "Translator",
+            ("content.article.read", new PermissionConstraints { Locales = ["en", "fr-CA"] }),
+            ("content.article.read", new PermissionConstraints { Locales = ["fr"], Fields = ["title"] }));
+
+        var listed = (await _database.QueryAsync(WithRole(role), new ContentQuery { Status = QueryStatus.Draft, Locale = "fr-CA" })).Items.ShouldHaveSingleItem();
+        var read = (await _database.GetAsync(WithRole(role), id, Draft("fr-CA")))!;
+
+        foreach (var entry in new[] { listed, read })
+        {
+            entry["title"].ShouldBe("Salut");
+            entry["subtitle"].ShouldBe("Sub en");
+            ((ContentDocument)entry[LocaleFallbackReader.FallbacksKey]!).Keys.ShouldBe(["subtitle"]);
+            ((ContentDocument)entry[LocaleFallbackReader.FallbacksKey]!)["subtitle"].ShouldBe("en");
+        }
+    }
+
     [Fact]
     public async Task EveryLocaleComesBackAsAMap()
     {
