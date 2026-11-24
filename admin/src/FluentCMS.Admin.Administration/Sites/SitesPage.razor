@@ -1,0 +1,535 @@
+@* The site the shell shows and its locales (spec 4.16), for a caller who holds sites.manage in the site, which the shell's
+   gate asks for before the page shows: the site's name and default locale, and its locales with their position, enabled
+   flag and fallbacks, which are added, changed, moved and removed. The default locale is neither disabled nor removed, and
+   the default is chosen among the enabled locales; what the server refuses is named by its code. After each change the
+   shell reads the user's sites again, so that the site switcher and the locale switcher of the content views follow. *@
+@page "/sites"
+@implements IDisposable
+@inject IManagementApi Api
+@inject AdminContext Context
+@inject IStringLocalizer<SitesResources> L
+
+<h1 tabindex="-1">@L["Sites.Page.Heading"]</h1>
+
+@if (site is not { } shown)
+{
+    @if (state == State.Failed)
+    {
+        <p role="alert">@L["Sites.Page.Failed"] <CmsButton OnClick="ReadAsync">@L["Sites.Page.TryAgain"]</CmsButton></p>
+    }
+    else
+    {
+        <p role="status">@L["Sites.Page.Loading"]</p>
+    }
+}
+else
+{
+    <CmsCard Title="@L["Sites.Site.Heading"]">
+        <form @onsubmit="SaveSiteAsync">
+            <CmsStack>
+                <CmsTextInput Label="@L["Sites.Site.Name"]"
+                              Required="true"
+                              MaxLength="128"
+                              Value="@name"
+                              ValueChanged="@(value => name = value)"
+                              Error="@nameError" />
+                <p>@L["Sites.Site.Slug", shown.Slug]</p>
+                <CmsSelect Label="@L["Sites.Site.DefaultLocale"]"
+                           Options="@([.. Enabled.Select(code => new CmsOption(code, code))])"
+                           Value="@defaultLocale"
+                           ValueChanged="@(value => defaultLocale = value)"
+                           Error="@defaultError" />
+                <div>
+                    <CmsButton Submit="true" Appearance="CmsButtonAppearance.Primary" Disabled="@busy">@L["Sites.Site.Save"]</CmsButton>
+                </div>
+            </CmsStack>
+        </form>
+        <p class="sites-message" tabindex="-1" @ref="siteElement">@siteMessage</p>
+    </CmsCard>
+
+    <CmsCard Title="@L["Sites.Locales.Heading"]">
+        <table class="sites-locales">
+            <caption class="cms-visually-hidden">@L["Sites.Locales.Heading"]</caption>
+            <thead>
+                <tr>
+                    <th scope="col">@L["Sites.Locales.Code"]</th>
+                    <th scope="col">@L["Sites.Locales.Position"]</th>
+                    <th scope="col">@L["Sites.Locales.State"]</th>
+                    <th scope="col">@L["Sites.Locales.Fallbacks"]</th>
+                    <th scope="col"><span class="cms-visually-hidden">@L["Sites.Locales.Actions"]</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var index = 0; index < locales.Count; index++)
+                {
+                    var at = index;
+                    var locale = locales[at];
+                    var isDefault = IsDefault(locale.Code);
+                    <tr @key="locale.Code">
+                        <th scope="row">@locale.Code</th>
+                        <td>@locale.Position</td>
+                        <td>@StateOf(locale, isDefault)</td>
+                        <td>@Fallbacks(locale.Fallbacks)</td>
+                        <td>
+                            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                                @if (at > 0)
+                                {
+                                    <CmsButton Disabled="@busy" OnClick="@(() => MoveAsync(at, -1))">
+                                        @L["Sites.Locales.MoveUp"]<span class="cms-visually-hidden">@L["Sites.Locales.Which", locale.Code]</span>
+                                    </CmsButton>
+                                }
+                                @if (at < locales.Count - 1)
+                                {
+                                    <CmsButton Disabled="@busy" OnClick="@(() => MoveAsync(at, 1))">
+                                        @L["Sites.Locales.MoveDown"]<span class="cms-visually-hidden">@L["Sites.Locales.Which", locale.Code]</span>
+                                    </CmsButton>
+                                }
+                                @if (!isDefault)
+                                {
+                                    <CmsButton Disabled="@busy" OnClick="@(() => EnableAsync(locale, !locale.Enabled))">
+                                        @(locale.Enabled ? L["Sites.Locales.Disable"] : L["Sites.Locales.Enable"])<span class="cms-visually-hidden">@L["Sites.Locales.Which", locale.Code]</span>
+                                    </CmsButton>
+                                }
+                                <CmsButton Disabled="@busy" OnClick="@(() => EditFallbacks(locale))">
+                                    @L["Sites.Locales.EditFallbacks"]<span class="cms-visually-hidden">@L["Sites.Locales.OfWhich", locale.Code]</span>
+                                </CmsButton>
+                                @if (!isDefault)
+                                {
+                                    <CmsButton Disabled="@busy" OnClick="@(() => RemoveAsync(locale))">
+                                        @L["Sites.Locales.Remove"]<span class="cms-visually-hidden">@L["Sites.Locales.Which", locale.Code]</span>
+                                    </CmsButton>
+                                }
+                            </CmsStack>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (editing is { } code)
+        {
+            <form @onsubmit="SaveFallbacksAsync">
+                <CmsStack>
+                    <CmsTextInput @ref="fallbacksInput"
+                                  Label="@L["Sites.Fallbacks.Label", code]"
+                                  Help="@L["Sites.Fallbacks.Help"]"
+                                  Autocomplete="off"
+                                  Value="@fallbacksText"
+                                  ValueChanged="@(value => fallbacksText = value)"
+                                  Error="@fallbacksError" />
+                    <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                        <CmsButton Submit="true" Appearance="CmsButtonAppearance.Primary" Disabled="@busy">@L["Sites.Fallbacks.Save"]</CmsButton>
+                        <CmsButton Disabled="@busy" OnClick="CancelFallbacks">@L["Sites.Fallbacks.Cancel"]</CmsButton>
+                    </CmsStack>
+                </CmsStack>
+            </form>
+        }
+        <p class="sites-message" tabindex="-1" @ref="localesElement">@localesMessage</p>
+    </CmsCard>
+
+    <CmsCard Title="@L["Sites.Add.Heading"]">
+        <form @onsubmit="AddAsync">
+            <CmsStack>
+                <CmsTextInput Label="@L["Sites.Add.Code"]"
+                              Help="@L["Sites.Add.CodeHelp"]"
+                              Required="true"
+                              Autocomplete="off"
+                              Value="@newCode"
+                              ValueChanged="@(value => newCode = value)"
+                              Error="@codeError" />
+                <CmsTextInput Label="@L["Sites.Add.Fallbacks"]"
+                              Help="@L["Sites.Fallbacks.Help"]"
+                              Autocomplete="off"
+                              Value="@newFallbacks"
+                              ValueChanged="@(value => newFallbacks = value)"
+                              Error="@newFallbacksError" />
+                <CmsCheckbox Label="@L["Sites.Add.Enabled"]" Value="@newEnabled" ValueChanged="@(value => newEnabled = value)" />
+                <div>
+                    <CmsButton Submit="true" Appearance="CmsButtonAppearance.Primary" Disabled="@busy">@L["Sites.Add.Add"]</CmsButton>
+                </div>
+            </CmsStack>
+        </form>
+        <p class="sites-message" tabindex="-1" @ref="addElement">@addMessage</p>
+    </CmsCard>
+}
+
+@code {
+    private Guid? siteId;
+    private SiteRecord? site;
+    private IReadOnlyList<SiteLocaleRecord> locales = [];
+    private State state = State.Loading;
+    private bool busy;
+    private string? name;
+    private string? nameError;
+    private string? defaultLocale;
+    private string? defaultError;
+    private string? siteMessage;
+    private string? editing;
+    private string? fallbacksText;
+    private string? fallbacksError;
+    private string? localesMessage;
+    private string? newCode;
+    private string? newFallbacks;
+    private bool newEnabled = true;
+    private string? codeError;
+    private string? newFallbacksError;
+    private string? addMessage;
+    private CmsTextInput? fallbacksInput;
+    private ElementReference siteElement;
+    private ElementReference localesElement;
+    private ElementReference addElement;
+    private Func<ValueTask>? focusAfterRender;
+    private CancellationTokenSource? reading;
+    private readonly CancellationTokenSource closing = new();
+
+    private enum State
+    {
+        Loading,
+        Ready,
+        Failed,
+    }
+
+    // A call made once the page is gone, as the read after a change, is cancelled before it starts.
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    // The locales the default may be: those the site has enabled.
+    private IEnumerable<string> Enabled => locales.Where(locale => locale.Enabled).Select(locale => locale.Code);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Context.Changed += OnContextChanged;
+        await ReadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender is { } focus)
+        {
+            focusAfterRender = null;
+            await focus();
+        }
+    }
+
+    public void Dispose()
+    {
+        Context.Changed -= OnContextChanged;
+        reading?.Cancel();
+        reading?.Dispose();
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    // The site of the shell, read afresh when the shell shows another, as after a switch that kept the route.
+    private void OnContextChanged()
+    {
+        if (Context.Status == ShellStatus.Ready && Context.Site is { } shown && shown.Id != siteId)
+        {
+            _ = InvokeAsync(async () =>
+            {
+                await ReadAsync();
+                StateHasChanged();
+            });
+        }
+    }
+
+    private async Task ReadAsync()
+    {
+        if (Context.Site is not { } shown)
+        {
+            return;
+        }
+
+        reading?.Cancel();
+        reading?.Dispose();
+        var current = reading = CancellationTokenSource.CreateLinkedTokenSource(Closing);
+        (siteId, site, state, editing) = (shown.Id, null, State.Loading, null);
+        (siteMessage, localesMessage, addMessage, nameError, defaultError, codeError, newFallbacksError) = (null, null, null, null, null, null, null);
+        try
+        {
+            var read = Api.GetSiteAsync(shown.Id, current.Token);
+            var readLocales = Api.GetLocalesAsync(shown.Id, current.Token);
+            await Task.WhenAll(read, readLocales);
+            Show(await read);
+            locales = await readLocales;
+            state = State.Ready;
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (SiteProblems.IsFailure(exception))
+        {
+            (site, state) = (null, State.Failed);
+        }
+    }
+
+    private void Show(SiteRecord read) => (site, name, defaultLocale) = (read, read.Name, read.DefaultLocale);
+
+    private async Task<bool> ReadLocalesAsync()
+    {
+        try
+        {
+            locales = await Api.GetLocalesAsync(site!.Id, Closing);
+            return true;
+        }
+        catch (Exception exception) when (SiteProblems.IsFailure(exception))
+        {
+            return false;
+        }
+    }
+
+    // A name and a default locale left as they were are not sent.
+    private async Task SaveSiteAsync()
+    {
+        if (busy || site is not { } current)
+        {
+            return;
+        }
+
+        var changedName = name?.Trim() is { } typed && typed != current.Name ? typed : null;
+        var changedDefault = defaultLocale is { } chosen && chosen != current.DefaultLocale ? chosen : null;
+        (nameError, defaultError) = (null, null);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            nameError = L["Sites.Site.NameRequired"];
+            return;
+        }
+
+        if (changedName is null && changedDefault is null)
+        {
+            siteMessage = L["Sites.Site.NothingChanged"];
+            focusAfterRender = () => siteElement.FocusAsync();
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            Show(await Api.ChangeSiteAsync(current.Id, changedName, changedDefault, Closing));
+            siteMessage = L["Sites.Site.Saved"];
+            await Context.ReadSitesAsync();
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.InvalidSite, "name") || SiteProblems.Has(exception, SiteProblems.InvalidLocale, "defaultLocale")
+            || SiteProblems.Has(exception, SiteProblems.LocaleNotAllowed, "defaultLocale"))
+        {
+            nameError = SiteProblems.Has(exception, SiteProblems.InvalidSite, "name") ? L["Sites.Site.NameInvalid"].Value : null;
+            defaultError = SiteProblems.Has(exception, SiteProblems.LocaleNotAllowed, "defaultLocale") ? L["Sites.Site.DefaultNotEnabled"].Value
+                : SiteProblems.Has(exception, SiteProblems.InvalidLocale, "defaultLocale") ? L["Sites.Site.DefaultInvalid"].Value : null;
+            siteMessage = L["Sites.Site.Refused"];
+            await ReadLocalesAsync();
+        }
+        catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.SiteNotFound))
+        {
+            siteMessage = L["Sites.Page.Gone"];
+            await Context.ReadSitesAsync(siteId);
+        }
+        catch (Exception exception) when (SiteProblems.IsFailure(exception))
+        {
+            siteMessage = L["Sites.Site.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        focusAfterRender = () => siteElement.FocusAsync();
+    }
+
+    // The order of the locales is their positions: the moved locale and the one it passes, and any that share a position or
+    // leave a gap, are given their place in the list.
+    private Task MoveAsync(int index, int by)
+    {
+        var order = locales.ToList();
+        (order[index], order[index + by]) = (order[index + by], order[index]);
+        var moved = order[index + by].Code;
+        return LocaleChangeAsync(async token =>
+        {
+            for (var position = 0; position < order.Count; position++)
+            {
+                if (order[position].Position != position)
+                {
+                    await Api.MoveLocaleAsync(site!.Id, order[position].Code, position, token);
+                }
+            }
+        }, by < 0 ? L["Sites.Locales.MovedUp", moved] : L["Sites.Locales.MovedDown", moved], moved);
+    }
+
+    private Task EnableAsync(SiteLocaleRecord locale, bool enabled) =>
+        LocaleChangeAsync(
+            token => Api.EnableLocaleAsync(site!.Id, locale.Code, enabled, token),
+            enabled ? L["Sites.Locales.Enabled", locale.Code] : L["Sites.Locales.Disabled", locale.Code],
+            locale.Code);
+
+    private Task RemoveAsync(SiteLocaleRecord locale) =>
+        LocaleChangeAsync(token => Api.RemoveLocaleAsync(site!.Id, locale.Code, token), L["Sites.Locales.Removed", locale.Code], locale.Code);
+
+    private void EditFallbacks(SiteLocaleRecord locale)
+    {
+        (editing, fallbacksText, fallbacksError, localesMessage) = (locale.Code, string.Join(", ", locale.Fallbacks ?? []), null, null);
+        focusAfterRender = () => fallbacksInput?.FocusAsync() ?? ValueTask.CompletedTask;
+    }
+
+    private void CancelFallbacks()
+    {
+        (editing, fallbacksError, localesMessage) = (null, null, L["Sites.Fallbacks.NothingChanged"]);
+        focusAfterRender = () => localesElement.FocusAsync();
+    }
+
+    // An empty text goes back to the implicit chain.
+    private Task SaveFallbacksAsync()
+    {
+        if (editing is not { } code)
+        {
+            return Task.CompletedTask;
+        }
+
+        var chain = Codes(fallbacksText);
+        return LocaleChangeAsync(token => Api.SetFallbacksAsync(site!.Id, code, chain, token), L["Sites.Fallbacks.Saved", code], code, fallbacks: true);
+    }
+
+    // A change of a locale, after which the locales are read again, and the sites, which the switchers show. A refusal is
+    // named; a locale that is gone is read away.
+    private async Task LocaleChangeAsync(Func<CancellationToken, Task> change, string done, string code, bool fallbacks = false)
+    {
+        if (busy || site is null)
+        {
+            return;
+        }
+
+        (busy, fallbacksError) = (true, null);
+        var changed = false;
+        try
+        {
+            await change(Closing);
+            (localesMessage, changed) = (done, true);
+            if (fallbacks)
+            {
+                editing = null;
+            }
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (fallbacks && (SiteProblems.Has(exception, SiteProblems.LocaleNotAllowed, "fallbacks") || SiteProblems.Has(exception, SiteProblems.InvalidLocale, "fallbacks")))
+        {
+            fallbacksError = L["Sites.Fallbacks.NotAllowed"];
+            localesMessage = L["Sites.Locales.Refused"];
+        }
+        catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.LocaleInUse))
+        {
+            localesMessage = IsDefault(code) ? L["Sites.Locales.DefaultInUse", code] : L["Sites.Locales.HasEntries", code];
+        }
+        catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.LocaleNotFound))
+        {
+            (localesMessage, editing, changed) = (L["Sites.Locales.Gone", code], null, true);
+        }
+        catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.SiteNotFound))
+        {
+            localesMessage = L["Sites.Page.Gone"];
+            await Context.ReadSitesAsync(siteId);
+        }
+        catch (Exception exception) when (SiteProblems.IsFailure(exception))
+        {
+            localesMessage = L["Sites.Locales.Failed"];
+
+            // A move may have changed some positions before it failed.
+            changed = true;
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (changed)
+        {
+            await AfterChangeAsync();
+        }
+
+        // A locale moved, disabled or removed may take its button with it, so focus goes to the result.
+        focusAfterRender = () => localesElement.FocusAsync();
+    }
+
+    private async Task AfterChangeAsync()
+    {
+        if (await ReadLocalesAsync())
+        {
+            await Context.ReadSitesAsync();
+        }
+    }
+
+    private async Task AddAsync()
+    {
+        if (busy || site is null)
+        {
+            return;
+        }
+
+        (codeError, newFallbacksError) = (null, null);
+        if (string.IsNullOrWhiteSpace(newCode))
+        {
+            codeError = L["Sites.Add.CodeRequired"];
+            return;
+        }
+
+        var code = newCode.Trim();
+        var added = false;
+        busy = true;
+        try
+        {
+            var locale = await Api.AddLocaleAsync(site.Id, code, newEnabled, Codes(newFallbacks), Closing);
+            (addMessage, newCode, newFallbacks, newEnabled, added) = (L["Sites.Add.Added", locale.Code], null, null, true, true);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.InvalidLocale, "code"))
+        {
+            (codeError, addMessage) = (L["Sites.Add.CodeInvalid"], L["Sites.Add.Refused"]);
+        }
+        catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.LocaleExists))
+        {
+            (codeError, addMessage) = (L["Sites.Add.CodeTaken", code], L["Sites.Add.Refused"]);
+        }
+        catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.LocaleNotAllowed, "fallbacks") || SiteProblems.Has(exception, SiteProblems.InvalidLocale, "fallbacks"))
+        {
+            (newFallbacksError, addMessage) = (L["Sites.Fallbacks.NotAllowed"], L["Sites.Add.Refused"]);
+        }
+        catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.SiteNotFound))
+        {
+            addMessage = L["Sites.Page.Gone"];
+            await Context.ReadSitesAsync(siteId);
+        }
+        catch (Exception exception) when (SiteProblems.IsFailure(exception))
+        {
+            addMessage = L["Sites.Add.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (added)
+        {
+            await AfterChangeAsync();
+        }
+
+        focusAfterRender = () => addElement.FocusAsync();
+    }
+
+    private bool IsDefault(string code) => string.Equals(code, site?.DefaultLocale, StringComparison.OrdinalIgnoreCase);
+
+    private string StateOf(SiteLocaleRecord locale, bool isDefault) =>
+        isDefault ? L["Sites.Locales.Default"] : locale.Enabled ? L["Sites.Locales.On"] : L["Sites.Locales.Off"];
+
+    private string Fallbacks(IReadOnlyList<string>? chain) =>
+        chain is null ? L["Sites.Locales.Implicit"] : chain.Count == 0 ? L["Sites.Locales.NoFallback"] : string.Join(", ", chain);
+
+    // The codes of a text such as "fr, en", in its order; null for none, which is the implicit chain.
+    private static IReadOnlyList<string>? Codes(string? text) =>
+        text?.Split([',', ' ', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) is { Length: > 0 } codes ? codes : null;
+}

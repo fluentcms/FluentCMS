@@ -13,7 +13,7 @@ public sealed class CarelessRoute;
 public sealed class CarelessPlugin;
 
 [AdminPage("/system/careless")]
-[AdminPage("/system/careless/other")]
+[AdminPage("/system/careless/other", InstanceOnly = true)]
 [AdminMenuItem("Careless.Pages")]
 [SettingsPage("careless")]
 [DashboardWidget("Careless.Widget")]
@@ -26,11 +26,22 @@ public sealed class CarelessMenuItem;
 
 [EntryAction("careless")]
 [BulkAction("careless")]
-[FieldAction("careless")]
+[FieldAction("careless", FieldsFrom = "../ai/fields#fields")]
 [AdminService(typeof(IDisposable))]
 public sealed class CarelessAction;
 
+// Two routes the router gives the same parameters, under two permissions, and a third of other parameters.
+[Microsoft.AspNetCore.Components.Route("/system/notes/{Id:guid}")]
+[Microsoft.AspNetCore.Components.Route("/system/notes/{Id:guid}/edit")]
+[Microsoft.AspNetCore.Components.Route("/system/notes/new")]
+[AdminPage("/system/notes/{Id:guid}", Permission = "notes.read")]
+[AdminPage("/system/notes/{Id:guid}/edit", Permission = "notes.update")]
+[AdminPage("/system/notes/new", Permission = "notes.create")]
+public sealed class CarelessNote;
+
+// Its FieldsFrom passes ApiRequest, but the client cannot resolve file:x under the Management API.
 [AdminPage("/careless/item")]
 [AdminMenuItem("Careless.Item", Route = "/careless/items")]
+[FieldAction("twin", FieldsFrom = "file:x#fields")]
 [AdminService(typeof(IDisposable))]
 public sealed class CarelessTwin;

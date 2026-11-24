@@ -1,0 +1,43 @@
+{
+  "manifestVersion": 1,
+  "name": "mcp",
+  "version": "1.0.0",
+  "adminRange": "[1.0.0,2.0.0)",
+  "assembly": "FluentCMS.Plugins.Mcp.Admin",
+  "pages": [
+    { "type": "FluentCMS.Plugins.Mcp.Admin.McpClientsPage", "route": "/mcp/clients", "permission": "mcp.manage", "instanceOnly": true },
+    { "type": "FluentCMS.Plugins.Mcp.Admin.McpInstructionsPage", "route": "/mcp/instructions", "permission": "mcp.manage" },
+    { "type": "FluentCMS.Plugins.Mcp.Admin.McpPromptsPage", "route": "/mcp/prompts", "permission": "mcp.manage" },
+    { "type": "FluentCMS.Plugins.Mcp.Admin.McpActivityPage", "route": "/mcp/activity", "permission": "activity.read" }
+  ],
+  "menuItems": [
+    {
+      "type": "FluentCMS.Plugins.Mcp.Admin.McpClientsPage",
+      "label": "Mcp.Clients.Menu",
+      "labels": { "en": "MCP clients" },
+      "route": "/mcp/clients",
+      "section": "administration",
+      "order": 80,
+      "permission": "mcp.manage",
+      "instanceOnly": true
+    },
+    {
+      "type": "FluentCMS.Plugins.Mcp.Admin.McpInstructionsPage",
+      "label": "Mcp.Instructions.Menu",
+      "labels": { "en": "MCP instructions" },
+      "route": "/mcp/instructions",
+      "section": "administration",
+      "order": 81,
+      "permission": "mcp.manage"
+    },
+    {
+      "type": "FluentCMS.Plugins.Mcp.Admin.McpPromptsPage",
+      "label": "Mcp.Prompts.Menu",
+      "labels": { "en": "MCP prompts" },
+      "route": "/mcp/prompts",
+      "section": "administration",
+      "order": 82,
+      "permission": "mcp.manage"
+    }
+  ]
+}

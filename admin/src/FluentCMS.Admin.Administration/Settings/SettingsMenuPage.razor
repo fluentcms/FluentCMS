@@ -1,0 +1,128 @@
+@* The settings areas the caller may manage in the site and for the instance, from GET /settings, each under core or the
+   plugin that registers it (spec 4.16). An area links to the site's values when the caller may manage them, else to the
+   defaults; an area read from the defaults only offers them alone, and is left out for a caller who may not manage them.
+   The list is read again in the site the user switches to. *@
+@page "/settings"
+@implements IDisposable
+@inject IManagementApi Api
+@inject AdminContext Context
+@inject IStringLocalizer<SettingsResources> L
+
+<h1 tabindex="-1">@L["Settings.Page.Heading"]</h1>
+
+@if (groups is null && failure is null)
+{
+    <p role="status">@L["Settings.Menu.Loading"]</p>
+}
+else if (failure is not null)
+{
+    <div class="settings-problem" role="alert">
+        <p>@(failure is { Status: 403 } ? L["Settings.Menu.Forbidden"] : failure is { Code.Length: > 0, Title: { Length: > 0 } title } ? title : L["Settings.Menu.Failed"])</p>
+        @if (failure is not { Status: 403 })
+        {
+            <CmsButton OnClick="ReadAsync">@L["Settings.Menu.TryAgain"]</CmsButton>
+        }
+    </div>
+}
+else if (groups!.Count == 0)
+{
+    <p>@L["Settings.Menu.None"]</p>
+}
+else
+{
+    foreach (var group in groups)
+    {
+        var headingId = $"settings-group-{group.Plugin ?? ""}";
+        <section @key="group.Plugin" class="settings-group" aria-labelledby="@headingId">
+            <h2 id="@headingId">@(group.Plugin is { } plugin ? L["Settings.Menu.Plugin", plugin] : L["Settings.Menu.Core"])</h2>
+            <ul class="settings-areas">
+                @foreach (var (area, address) in group.Areas)
+                {
+                    <li @key="area.Area">
+                        <a href="@address">@SettingsLabels.Area(area.Area, L)</a>
+                        <span class="settings-area-scope">@ScopeText(area)</span>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+}
+
+@code {
+    private readonly CancellationTokenSource cancellation = new();
+
+    private IReadOnlyList<Group>? groups;
+    private ApiProblem? failure;
+
+    // The site the list was read in.
+    private Guid? site;
+
+    // Core's areas first, then each plugin's by its name; the areas of a group by their label.
+    private sealed record Group(string? Plugin, IReadOnlyList<(SettingsAreaInfo Area, string Address)> Areas);
+
+    protected override void OnInitialized() => Context.Changed += OnContextChanged;
+
+    protected override Task OnInitializedAsync() => ReadAsync();
+
+    public void Dispose()
+    {
+        Context.Changed -= OnContextChanged;
+        cancellation.Cancel();
+        cancellation.Dispose();
+    }
+
+    private void OnContextChanged() => _ = InvokeAsync(async () =>
+    {
+        if (Context.Status == ShellStatus.Ready && Context.Site?.Id != site)
+        {
+            await ReadAsync();
+            StateHasChanged();
+        }
+    });
+
+    private async Task ReadAsync()
+    {
+        var reading = site = Context.Site?.Id;
+        (groups, failure) = (null, null);
+        IReadOnlyList<Group>? found = null;
+        ApiProblem? problem = null;
+        try
+        {
+            var areas = await Api.GetSettingsAreasAsync(cancellation.Token);
+            found =
+            [
+                .. areas.Select(area => (Area: area, Address: SettingsCalls.AddressOf(area)))
+                    .Where(item => item.Address is not null)
+                    .GroupBy(item => item.Area.Plugin)
+                    .OrderBy(group => group.Key is not null).ThenBy(group => group.Key, StringComparer.Ordinal)
+                    .Select(group => new Group(group.Key, [.. group.Select(item => (item.Area, item.Address!)).OrderBy(item => SettingsLabels.Area(item.Area.Area, L), StringComparer.CurrentCulture)])),
+            ];
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (ApiProblemException exception)
+        {
+            problem = exception.Problem;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            problem = new ApiProblem();
+        }
+
+        if (reading == site)
+        {
+            (groups, failure) = (found, problem);
+        }
+    }
+
+    private string ScopeText(SettingsAreaInfo area) =>
+        SettingsCalls.IsDefaultsOnly(area.Area) ? L["Settings.Menu.DefaultsOnly"]
+            : (area.Site, area.Defaults) switch
+            {
+                (true, true) => L["Settings.Menu.SiteAndDefaults"],
+                (true, false) => L["Settings.Menu.SiteOnly"],
+                _ => L["Settings.Menu.DefaultsOnlyGranted"],
+            };
+}

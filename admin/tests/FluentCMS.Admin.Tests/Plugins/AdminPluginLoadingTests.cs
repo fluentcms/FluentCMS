@@ -284,7 +284,6 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
     {
         loader.Gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var app = Load(enabled: true);
-        var configured = ReviewsAdminPlugin.Configured;
 
         // On the renderer's dispatcher, as a component asks, so that no wait of the test holds their continuations.
         Task<IMediaPicker?> picker = null!;
@@ -301,7 +300,50 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         (await editor).ShouldNotBeNull();
         app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"));
         loader.Loads.ShouldBe(1);
-        (ReviewsAdminPlugin.Configured - configured).ShouldBe(1);
+        ReviewsAdminPlugin.ConfiguredFor(Services.GetRequiredService<ListFilterRegistry>()).ShouldBe(1);
+    }
+
+    // Every order of three first uses, a service, a field editor and the router's navigation to the half's page, with the
+    // held load ending after the first, the second or the third.
+    public static TheoryData<string> Orders()
+    {
+        string[][] uses = [["service", "editor", "page"], ["service", "page", "editor"], ["editor", "service", "page"], ["editor", "page", "service"], ["page", "service", "editor"], ["page", "editor", "service"]];
+        return [.. uses.SelectMany(order => Enumerable.Range(1, 3).Select(end => string.Join(',', order[..end].Append("end").Concat(order[end..]))))];
+    }
+
+    [Theory]
+    [MemberData(nameof(Orders))]
+    public async Task FirstUsesInAnyOrderAroundTheEndOfTheLoadLoadTheHalfAndRunConfigureOnce(string order)
+    {
+        loader.Gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var app = Load(enabled: true);
+        Task<IMediaPicker?> picker = null!;
+        List<Task> started = [];
+
+        foreach (var step in order.Split(','))
+        {
+            if (step == "end")
+            {
+                loader.Gate.SetResult();
+                await Task.WhenAll(started);
+                Plugins.IsLoaded(Sample).ShouldBeTrue();
+                continue;
+            }
+
+            // Each on the renderer's dispatcher, as a component or the router asks.
+            await app.InvokeAsync(() => started.Add(step switch
+            {
+                "service" => picker = Services.GetRequiredService<IAdminPluginServices>().FindAsync<IMediaPicker>(Token).AsTask(),
+                "editor" => Services.GetRequiredService<FieldEditorRegistry>().FindAsync("rating", Token).AsTask(),
+                _ => Plugins.NavigateAsync("reviews", Token),
+            }));
+            loader.Loads.ShouldBe(1);
+        }
+
+        await Task.WhenAll(started);
+        (await picker).ShouldBeOfType<SampleMediaPicker>();
+        loader.Loads.ShouldBe(1);
+        ReviewsAdminPlugin.ConfiguredFor(Services.GetRequiredService<ListFilterRegistry>()).ShouldBe(1);
     }
 
     [Fact]
@@ -317,7 +359,7 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         await Should.ThrowAsync<InvalidOperationException>(services.FindAsync<IMediaPicker>(Token).AsTask());
         loader.Loads.ShouldBe(1);
 
-        Navigation.NavigateTo("system/components");
+        Navigation.NavigateTo("system/plugins");
 
         (await services.FindAsync<IMediaPicker>(Token)).ShouldBeOfType<SampleMediaPicker>();
         loader.Loads.ShouldBe(2);

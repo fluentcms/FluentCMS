@@ -1,0 +1,50 @@
+@* A moment of a key's expiry, as a date and a time in the user's time zone (spec 4.17); without a date there is none, and
+   a date without a time is its start. *@
+@inject FormatService Formats
+@inject IStringLocalizer<ApiKeysResources> L
+
+<fieldset class="api-key-expiry" aria-describedby="@zoneId">
+    <legend>@Legend</legend>
+    <CmsDatePicker Label="@L["ApiKeys.Expiry.Date"]"
+                   Culture="@Formats.Culture"
+                   Help="@Help"
+                   Error="@Error"
+                   Value="@day"
+                   ValueChanged="@(value => ChangeAsync(value, time))" />
+    <CmsTimePicker Label="@L["ApiKeys.Expiry.Time"]"
+                   Culture="@Formats.Culture"
+                   Value="@time"
+                   ValueChanged="@(value => ChangeAsync(day, value))" />
+    <p id="@zoneId" class="api-key-note">@L["ApiKeys.Expiry.Zone", Formats.ZoneId]</p>
+</fieldset>
+
+@code {
+    private readonly string zoneId = "api-key-zone-" + Guid.NewGuid().ToString("N");
+    private DateOnly? day;
+    private TimeOnly? time;
+
+    [Parameter, EditorRequired]
+    public string Legend { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Help { get; set; }
+
+    [Parameter]
+    public string? Error { get; set; }
+
+    [Parameter]
+    public EventCallback<DateTimeOffset?> ValueChanged { get; set; }
+
+    // A time that the zone skips, as in a change to summer time, takes the offset the zone has before it.
+    private Task ChangeAsync(DateOnly? newDay, TimeOnly? newTime)
+    {
+        (day, time) = (newDay, newTime);
+        if (day is not { } chosen)
+        {
+            return ValueChanged.InvokeAsync(null);
+        }
+
+        var local = chosen.ToDateTime(time ?? TimeOnly.MinValue, DateTimeKind.Unspecified);
+        return ValueChanged.InvokeAsync(new DateTimeOffset(local, Formats.TimeZone.GetUtcOffset(local)));
+    }
+}

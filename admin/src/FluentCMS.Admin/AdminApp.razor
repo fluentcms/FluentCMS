@@ -27,7 +27,9 @@
         <CmsThemeRoot Mode="@Theme.Mode">
             <SignInGate>
                 @* A page of an admin half loads the half's assembly first, which the router then searches too (spec 2.6). The page
-                   before stays while it loads: a Navigating content would draw the layout again. *@
+                   before stays while it loads, under the layout's loading state: a Navigating content would draw the layout
+                   again. Before the router's first page, the layout is drawn on its own. *@
+                <ShellBeforeFirstPage />
                 <Router AppAssembly="typeof(AdminApp).Assembly" AdditionalAssemblies="Plugins.Assemblies" OnNavigateAsync="@navigate" NotFoundPage="typeof(NotFoundPage)">
                     <Found Context="routeData">
                         <PluginRouteView RouteData="routeData" />
@@ -62,7 +64,6 @@ else
     // checks that every routable page of the assembly is listed.
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HomePage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotFoundPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComponentGalleryPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AccountPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LoginCallbackPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ContentListPage))]

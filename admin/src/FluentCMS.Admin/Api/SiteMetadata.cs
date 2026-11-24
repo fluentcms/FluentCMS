@@ -42,6 +42,34 @@ internal sealed class SiteMetadata(ManagementClient client, ICurrentSite current
         return read.WaitAsync(cancellationToken);
     }
 
+    // A read in the site's default locale names no locale, so a new default locale of the site needs the schema read anew.
+    public void ForgetSchema()
+    {
+        lock (_gate)
+        {
+            _schema = null;
+        }
+    }
+
+    // After a plugin was enabled or disabled in the site, which changes what the next read answers.
+    public void ForgetPlugins()
+    {
+        lock (_gate)
+        {
+            _plugins = null;
+        }
+    }
+
+    // A read the shell gave up on, so that the next caller sends a new one.
+    public void ForgetPending()
+    {
+        lock (_gate)
+        {
+            _schema = _schema is { IsCompleted: false } ? null : _schema;
+            _plugins = _plugins is { IsCompleted: false } ? null : _plugins;
+        }
+    }
+
     private string? SwitchTo(string? site)
     {
         if (!string.Equals(site, _site, StringComparison.Ordinal))

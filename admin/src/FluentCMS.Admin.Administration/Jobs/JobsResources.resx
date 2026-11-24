@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Jobs.Page.Heading" xml:space="preserve">
+    <value>Jobs</value>
+  </data>
+  <data name="Jobs.Filters.Label" xml:space="preserve">
+    <value>Filters</value>
+  </data>
+  <data name="Jobs.Filters.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Jobs.Filters.AnyStatus" xml:space="preserve">
+    <value>Any status</value>
+  </data>
+  <data name="Jobs.Filters.Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Jobs.Filters.Queue" xml:space="preserve">
+    <value>Queue</value>
+  </data>
+  <data name="Jobs.Filters.Apply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="Jobs.Status.pending" xml:space="preserve">
+    <value>Pending</value>
+  </data>
+  <data name="Jobs.Status.running" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="Jobs.Status.succeeded" xml:space="preserve">
+    <value>Succeeded</value>
+  </data>
+  <data name="Jobs.Status.dead_lettered" xml:space="preserve">
+    <value>Dead-lettered</value>
+  </data>
+  <data name="Jobs.Outcome.None" xml:space="preserve">
+    <value>Under way</value>
+  </data>
+  <data name="Jobs.Outcome.succeeded" xml:space="preserve">
+    <value>Succeeded</value>
+  </data>
+  <data name="Jobs.Outcome.failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Jobs.Outcome.lease_expired" xml:space="preserve">
+    <value>Its worker stopped</value>
+  </data>
+  <data name="Jobs.Outcome.released" xml:space="preserve">
+    <value>Handed back</value>
+  </data>
+  <data name="Jobs.List.Empty" xml:space="preserve">
+    <value>There are no jobs.</value>
+  </data>
+  <data name="Jobs.List.Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Jobs.List.Queue" xml:space="preserve">
+    <value>Queue</value>
+  </data>
+  <data name="Jobs.List.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Jobs.List.Attempts" xml:space="preserve">
+    <value>Attempts</value>
+  </data>
+  <data name="Jobs.List.Created" xml:space="preserve">
+    <value>Created</value>
+  </data>
+  <data name="Jobs.List.RunAt" xml:space="preserve">
+    <value>Runs at</value>
+  </data>
+  <data name="Jobs.Job.Heading" xml:space="preserve">
+    <value>Job</value>
+  </data>
+  <data name="Jobs.Job.Loading" xml:space="preserve">
+    <value>Loading the job…</value>
+  </data>
+  <data name="Jobs.Job.NotFound" xml:space="preserve">
+    <value>There is no such job. Jobs are removed 30 days after they end.</value>
+  </data>
+  <data name="Jobs.Job.Failed" xml:space="preserve">
+    <value>The job could not be read.</value>
+  </data>
+  <data name="Jobs.Job.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Jobs.Job.Site" xml:space="preserve">
+    <value>Site</value>
+  </data>
+  <data name="Jobs.Job.Instance" xml:space="preserve">
+    <value>The instance</value>
+  </data>
+  <data name="Jobs.Job.AttemptsOf" xml:space="preserve">
+    <value>{0} of {1}</value>
+  </data>
+  <data name="Jobs.Job.Priority" xml:space="preserve">
+    <value>Priority</value>
+  </data>
+  <data name="Jobs.Job.Origin" xml:space="preserve">
+    <value>Started from</value>
+  </data>
+  <data name="Jobs.Job.Completed" xml:space="preserve">
+    <value>Ended</value>
+  </data>
+  <data name="Jobs.Job.NotCompleted" xml:space="preserve">
+    <value>Not yet</value>
+  </data>
+  <data name="Jobs.Job.Following" xml:space="preserve">
+    <value>The status is read again every five seconds while it may change.</value>
+  </data>
+  <data name="Jobs.Job.StatusChanged" xml:space="preserve">
+    <value>The job is now {0}.</value>
+  </data>
+  <data name="Jobs.Job.Cancel" xml:space="preserve">
+    <value>Cancel the job</value>
+  </data>
+  <data name="Jobs.Job.Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Jobs.Job.Cancelled" xml:space="preserve">
+    <value>Cancelled: the job is among the dead letters, where it can be retried.</value>
+  </data>
+  <data name="Jobs.Job.Retried" xml:space="preserve">
+    <value>Retried: the job is pending again, with as many attempts again as a new job gets.</value>
+  </data>
+  <data name="Jobs.Job.NotCancellable" xml:space="preserve">
+    <value>Not cancelled: only a pending job is cancelled, and this one has started meanwhile. It is shown as it is now.</value>
+  </data>
+  <data name="Jobs.Job.NotDead" xml:space="preserve">
+    <value>Not retried: the job is no longer dead-lettered. It is shown as it is now.</value>
+  </data>
+  <data name="Jobs.Job.Gone" xml:space="preserve">
+    <value>The job no longer exists: jobs are removed 30 days after they end.</value>
+  </data>
+  <data name="Jobs.Job.ChangeFailed" xml:space="preserve">
+    <value>The server did not answer. Try again.</value>
+  </data>
+  <data name="Jobs.Job.History" xml:space="preserve">
+    <value>Attempts</value>
+  </data>
+  <data name="Jobs.Job.NoAttempts" xml:space="preserve">
+    <value>No attempt has started yet.</value>
+  </data>
+  <data name="Jobs.Job.Attempt" xml:space="preserve">
+    <value>Attempt</value>
+  </data>
+  <data name="Jobs.Job.Started" xml:space="preserve">
+    <value>Started</value>
+  </data>
+  <data name="Jobs.Job.Finished" xml:space="preserve">
+    <value>Finished</value>
+  </data>
+  <data name="Jobs.Job.Outcome" xml:space="preserve">
+    <value>Outcome</value>
+  </data>
+  <data name="Jobs.Job.Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Jobs.Job.TimedOut" xml:space="preserve">
+    <value>It ran past its timeout and was abandoned (FCMS2508): {0}</value>
+  </data>
+  <data name="Jobs.Job.BackToList" xml:space="preserve">
+    <value>Back to the jobs</value>
+  </data>
+  <data name="Jobs.DeadJobs.Heading" xml:space="preserve">
+    <value>Dead-lettered jobs</value>
+  </data>
+  <data name="Jobs.DeadJobs.Intro" xml:space="preserve">
+    <value>Jobs that used all their attempts, and jobs that were cancelled, the last first. A retry runs one again, with as many attempts again as a new job gets.</value>
+  </data>
+  <data name="Jobs.DeadJobs.Loading" xml:space="preserve">
+    <value>Loading the dead-lettered jobs…</value>
+  </data>
+  <data name="Jobs.DeadJobs.Failed" xml:space="preserve">
+    <value>The dead-lettered jobs could not be read.</value>
+  </data>
+  <data name="Jobs.DeadJobs.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Jobs.DeadJobs.None" xml:space="preserve">
+    <value>No job is dead-lettered.</value>
+  </data>
+  <data name="Jobs.DeadJobs.When" xml:space="preserve">
+    <value>Dead-lettered</value>
+  </data>
+  <data name="Jobs.DeadJobs.LastError" xml:space="preserve">
+    <value>Last error</value>
+  </data>
+  <data name="Jobs.DeadJobs.Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Jobs.DeadJobs.Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Jobs.DeadJobs.Which" xml:space="preserve">
+    <value> {0}, {1}</value>
+  </data>
+  <data name="Jobs.DeadJobs.More" xml:space="preserve">
+    <value>More</value>
+  </data>
+  <data name="Jobs.DeadJobs.MoreFailed" xml:space="preserve">
+    <value>More could not be read. Try again.</value>
+  </data>
+  <data name="Jobs.DeadJobs.Retried" xml:space="preserve">
+    <value>Retried {0}: the job is pending again.</value>
+  </data>
+  <data name="Jobs.DeadJobs.Gone" xml:space="preserve">
+    <value>{0} no longer exists: jobs are removed 30 days after they end.</value>
+  </data>
+  <data name="Jobs.DeadJobs.NotDead" xml:space="preserve">
+    <value>{0} is no longer dead-lettered: it was retried meanwhile.</value>
+  </data>
+  <data name="Jobs.DeadJobs.RetryFailed" xml:space="preserve">
+    <value>{0} was not retried: the server did not answer. Try again.</value>
+  </data>
+  <data name="Jobs.Events.Heading" xml:space="preserve">
+    <value>Failed event deliveries</value>
+  </data>
+  <data name="Jobs.Events.Intro" xml:space="preserve">
+    <value>Events that a handler could not take within its attempts, the last first. A retry delivers one again with all its attempts; a remove gives it up. To give up every failed delivery of a handler, such as one of a plugin that was removed, purge the handler.</value>
+  </data>
+  <data name="Jobs.Events.Loading" xml:space="preserve">
+    <value>Loading the failed deliveries…</value>
+  </data>
+  <data name="Jobs.Events.Failed" xml:space="preserve">
+    <value>The failed deliveries could not be read.</value>
+  </data>
+  <data name="Jobs.Events.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Jobs.Events.None" xml:space="preserve">
+    <value>No event delivery has failed.</value>
+  </data>
+  <data name="Jobs.Events.Event" xml:space="preserve">
+    <value>Event</value>
+  </data>
+  <data name="Jobs.Events.Handler" xml:space="preserve">
+    <value>Handler</value>
+  </data>
+  <data name="Jobs.Events.Occurred" xml:space="preserve">
+    <value>Occurred</value>
+  </data>
+  <data name="Jobs.Events.Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Jobs.Events.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Jobs.Events.Which" xml:space="preserve">
+    <value> {0} to {1}, {2}</value>
+  </data>
+  <data name="Jobs.Events.More" xml:space="preserve">
+    <value>More</value>
+  </data>
+  <data name="Jobs.Events.MoreFailed" xml:space="preserve">
+    <value>More could not be read. Try again.</value>
+  </data>
+  <data name="Jobs.Events.PurgeHandler" xml:space="preserve">
+    <value>Handler to purge</value>
+  </data>
+  <data name="Jobs.Events.PurgeHelp" xml:space="preserve">
+    <value>The handlers of the deliveries shown. A purge removes every failed delivery of the handler, those not shown too.</value>
+  </data>
+  <data name="Jobs.Events.ChooseHandler" xml:space="preserve">
+    <value>Choose a handler</value>
+  </data>
+  <data name="Jobs.Events.Purge" xml:space="preserve">
+    <value>Purge</value>
+  </data>
+  <data name="Jobs.Events.Retried" xml:space="preserve">
+    <value>{0} is delivered to {1} again.</value>
+  </data>
+  <data name="Jobs.Events.Removed" xml:space="preserve">
+    <value>The failed delivery of {0} to {1} is removed.</value>
+  </data>
+  <data name="Jobs.Events.PurgedOne" xml:space="preserve">
+    <value>1 failed delivery to {0} is removed.</value>
+  </data>
+  <data name="Jobs.Events.Purged" xml:space="preserve">
+    <value>{0} failed deliveries to {1} are removed.</value>
+  </data>
+  <data name="Jobs.Events.Gone" xml:space="preserve">
+    <value>The failed delivery of {0} to {1} no longer exists: failed deliveries are removed 30 days after they occur.</value>
+  </data>
+  <data name="Jobs.Events.NotFailed" xml:space="preserve">
+    <value>The delivery of {0} to {1} is no longer failed: it was retried meanwhile.</value>
+  </data>
+  <data name="Jobs.Events.ChangeFailed" xml:space="preserve">
+    <value>The server did not answer. Try again.</value>
+  </data>
+  <data name="Jobs.Confirm.RetryTitle" xml:space="preserve">
+    <value>Retry the delivery?</value>
+  </data>
+  <data name="Jobs.Confirm.RetryText" xml:space="preserve">
+    <value>{0} is delivered to {1} again, with all its attempts.</value>
+  </data>
+  <data name="Jobs.Confirm.Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Jobs.Confirm.RemoveTitle" xml:space="preserve">
+    <value>Remove the delivery?</value>
+  </data>
+  <data name="Jobs.Confirm.RemoveText" xml:space="preserve">
+    <value>The failed delivery of {0} to {1} is removed, and never delivered.</value>
+  </data>
+  <data name="Jobs.Confirm.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Jobs.Confirm.PurgeTitle" xml:space="preserve">
+    <value>Purge the handler?</value>
+  </data>
+  <data name="Jobs.Confirm.PurgeText" xml:space="preserve">
+    <value>Every failed delivery to {0} is removed, also those not shown here, and none of them is delivered.</value>
+  </data>
+  <data name="Jobs.Confirm.Purge" xml:space="preserve">
+    <value>Purge</value>
+  </data>
+  <data name="Jobs.Confirm.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Jobs.Confirm.CancelTitle" xml:space="preserve">
+    <value>Cancel the job?</value>
+  </data>
+  <data name="Jobs.Confirm.CancelText" xml:space="preserve">
+    <value>{0} does not run, and goes among the dead letters, where it can be retried.</value>
+  </data>
+  <data name="Jobs.Confirm.CancelJob" xml:space="preserve">
+    <value>Cancel the job</value>
+  </data>
+  <data name="Jobs.Confirm.Keep" xml:space="preserve">
+    <value>Keep it</value>
+  </data>
+</root>

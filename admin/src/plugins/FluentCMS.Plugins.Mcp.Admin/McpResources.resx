@@ -1,0 +1,555 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Mcp.Clients.Menu" xml:space="preserve">
+    <value>MCP clients</value>
+  </data>
+  <data name="Mcp.Instructions.Menu" xml:space="preserve">
+    <value>MCP instructions</value>
+  </data>
+  <data name="Mcp.Prompts.Menu" xml:space="preserve">
+    <value>MCP prompts</value>
+  </data>
+  <data name="Mcp.Activity.Link" xml:space="preserve">
+    <value>Agent writes</value>
+  </data>
+  <data name="Mcp.Links.Label" xml:space="preserve">
+    <value>MCP pages</value>
+  </data>
+  <data name="Mcp.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Mcp.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Mcp.Clients.Page.Heading" xml:space="preserve">
+    <value>MCP clients</value>
+  </data>
+  <data name="Mcp.Clients.Intro" xml:space="preserve">
+    <value>The clients that agents connect to the Management API through. A call through a client is allowed what both the user's roles and the client's role allow.</value>
+  </data>
+  <data name="Mcp.Clients.ServiceAccounts" xml:space="preserve">
+    <value>Service accounts come from configuration, so they are neither listed nor changed here. An agent can also reach MCP with a management key.</value>
+  </data>
+  <data name="Mcp.Clients.ManagementKeys" xml:space="preserve">
+    <value>API keys</value>
+  </data>
+  <data name="Mcp.Clients.Settings" xml:space="preserve">
+    <value>Registration policy and limits</value>
+  </data>
+  <data name="Mcp.Clients.Loading" xml:space="preserve">
+    <value>Loading the clients…</value>
+  </data>
+  <data name="Mcp.Clients.Failed" xml:space="preserve">
+    <value>The clients could not be read.</value>
+  </data>
+  <data name="Mcp.Clients.None" xml:space="preserve">
+    <value>No MCP client has registered yet.</value>
+  </data>
+  <data name="Mcp.Clients.Name" xml:space="preserve">
+    <value>Client</value>
+  </data>
+  <data name="Mcp.Clients.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Mcp.Clients.Role" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="Mcp.Clients.Registered" xml:space="preserve">
+    <value>Registered</value>
+  </data>
+  <data name="Mcp.Clients.LastActivity" xml:space="preserve">
+    <value>Last activity</value>
+  </data>
+  <data name="Mcp.Clients.Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Mcp.Clients.Never" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="Mcp.Clients.NoRole" xml:space="preserve">
+    <value>No role</value>
+  </data>
+  <data name="Mcp.Clients.RoleGone" xml:space="preserve">
+    <value>Its role was deleted, so it reaches nothing</value>
+  </data>
+  <data name="Mcp.Clients.Status.pending" xml:space="preserve">
+    <value>Waits for approval</value>
+  </data>
+  <data name="Mcp.Clients.Status.approved" xml:space="preserve">
+    <value>Approved</value>
+  </data>
+  <data name="Mcp.Clients.Status.rejected" xml:space="preserve">
+    <value>Rejected</value>
+  </data>
+  <data name="Mcp.Clients.Which" xml:space="preserve">
+    <value> the client {0}</value>
+  </data>
+  <data name="Mcp.Clients.OfWhich" xml:space="preserve">
+    <value> of the client {0}</value>
+  </data>
+  <data name="Mcp.Clients.Approve" xml:space="preserve">
+    <value>Approve</value>
+  </data>
+  <data name="Mcp.Clients.Reject" xml:space="preserve">
+    <value>Reject</value>
+  </data>
+  <data name="Mcp.Clients.ChangeRole" xml:space="preserve">
+    <value>Change the role</value>
+  </data>
+  <data name="Mcp.Clients.Revoke" xml:space="preserve">
+    <value>Revoke</value>
+  </data>
+  <data name="Mcp.Clients.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Mcp.Clients.Kept" xml:space="preserve">
+    <value>Nothing was changed.</value>
+  </data>
+  <data name="Mcp.Clients.Approved" xml:space="preserve">
+    <value>The client {0} is approved with the role {1}.</value>
+  </data>
+  <data name="Mcp.Clients.RoleChanged" xml:space="preserve">
+    <value>The client {0} now has the role {1}. Its users sign in through it again.</value>
+  </data>
+  <data name="Mcp.Clients.Done.Reject" xml:space="preserve">
+    <value>The client {0} is rejected.</value>
+  </data>
+  <data name="Mcp.Clients.Done.Revoke" xml:space="preserve">
+    <value>The client {0} is revoked.</value>
+  </data>
+  <data name="Mcp.Clients.Done.Remove" xml:space="preserve">
+    <value>The client {0} is removed.</value>
+  </data>
+  <data name="Mcp.Clients.Gone" xml:space="preserve">
+    <value>The client {0} no longer exists: the server removes a client that nobody approved within 7 days, or one the open policy approved that nobody uses. The list is read again.</value>
+  </data>
+  <data name="Mcp.Clients.Changed" xml:space="preserve">
+    <value>The client {0} was changed meanwhile, so nothing was done. The list is read again.</value>
+  </data>
+  <data name="Mcp.Clients.ActionFailed" xml:space="preserve">
+    <value>The client was not changed. Try again.</value>
+  </data>
+  <data name="Mcp.Roles.Loading" xml:space="preserve">
+    <value>Loading the roles…</value>
+  </data>
+  <data name="Mcp.Roles.Failed" xml:space="preserve">
+    <value>The roles could not be read, so no client can be given a role here.</value>
+  </data>
+  <data name="Mcp.Roles.Help" xml:space="preserve">
+    <value>A role of every site. It only narrows what the client's users may do with their own roles.</value>
+  </data>
+  <data name="Mcp.Roles.Choose" xml:space="preserve">
+    <value>Choose a role</value>
+  </data>
+  <data name="Mcp.Roles.Required" xml:space="preserve">
+    <value>Choose a role.</value>
+  </data>
+  <data name="Mcp.Roles.Unknown" xml:space="preserve">
+    <value>This role no longer exists. Choose another.</value>
+  </data>
+  <data name="Mcp.Role.ApproveTitle" xml:space="preserve">
+    <value>Approve the client</value>
+  </data>
+  <data name="Mcp.Role.ApproveText" xml:space="preserve">
+    <value>Approve the client {0} with a role. Its users are then asked for their consent when they sign in through it.</value>
+  </data>
+  <data name="Mcp.Role.ChangeTitle" xml:space="preserve">
+    <value>Change the role of the client</value>
+  </data>
+  <data name="Mcp.Role.ChangeText" xml:space="preserve">
+    <value>Give the client {0} another role. This ends every token of the client and every user's consent to it, so its users sign in through it again.</value>
+  </data>
+  <data name="Mcp.Role.Role" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="Mcp.Role.Approve" xml:space="preserve">
+    <value>Approve</value>
+  </data>
+  <data name="Mcp.Role.Change" xml:space="preserve">
+    <value>Change the role</value>
+  </data>
+  <data name="Mcp.Confirm.Reject.Title" xml:space="preserve">
+    <value>Reject the client</value>
+  </data>
+  <data name="Mcp.Confirm.Reject.Text" xml:space="preserve">
+    <value>Reject the client {0}? It is refused for good, and the server removes it later.</value>
+  </data>
+  <data name="Mcp.Confirm.Reject.Confirm" xml:space="preserve">
+    <value>Reject</value>
+  </data>
+  <data name="Mcp.Confirm.Revoke.Title" xml:space="preserve">
+    <value>Revoke the client</value>
+  </data>
+  <data name="Mcp.Confirm.Revoke.Text" xml:space="preserve">
+    <value>Revoke the client {0}? It is removed with its sessions and tokens, and its access tokens are refused from the next request on.</value>
+  </data>
+  <data name="Mcp.Confirm.Revoke.Confirm" xml:space="preserve">
+    <value>Revoke</value>
+  </data>
+  <data name="Mcp.Confirm.Remove.Title" xml:space="preserve">
+    <value>Remove the client</value>
+  </data>
+  <data name="Mcp.Confirm.Remove.Text" xml:space="preserve">
+    <value>Remove the client {0}?</value>
+  </data>
+  <data name="Mcp.Confirm.Remove.Confirm" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Mcp.Register.Heading" xml:space="preserve">
+    <value>Register a client</value>
+  </data>
+  <data name="Mcp.Register.Intro" xml:space="preserve">
+    <value>For an agent that does not register itself. The client is approved at once with its role, whatever the registration policy says.</value>
+  </data>
+  <data name="Mcp.Register.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Mcp.Register.NameHelp" xml:space="preserve">
+    <value>Shown on the consent page and in the list. Left empty, it is MCP client.</value>
+  </data>
+  <data name="Mcp.Register.RedirectUris" xml:space="preserve">
+    <value>Redirect URIs</value>
+  </data>
+  <data name="Mcp.Register.RedirectUrisHelp" xml:space="preserve">
+    <value>One a line, up to 10: https, or http on localhost, 127.0.0.1 or [::1].</value>
+  </data>
+  <data name="Mcp.Register.RedirectUrisRequired" xml:space="preserve">
+    <value>Enter at least one redirect URI.</value>
+  </data>
+  <data name="Mcp.Register.Invalid" xml:space="preserve">
+    <value>The server refused the name or a redirect URI. A redirect URI is https, or http on localhost, 127.0.0.1 or [::1], with no wildcard, fragment or user information.</value>
+  </data>
+  <data name="Mcp.Register.Role" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="Mcp.Register.Register" xml:space="preserve">
+    <value>Register the client</value>
+  </data>
+  <data name="Mcp.Register.Registered" xml:space="preserve">
+    <value>The client {0} is registered and approved.</value>
+  </data>
+  <data name="Mcp.Register.Refused" xml:space="preserve">
+    <value>The client was not registered.</value>
+  </data>
+  <data name="Mcp.Register.Failed" xml:space="preserve">
+    <value>The client was not registered. Try again.</value>
+  </data>
+  <data name="Mcp.Registered.Title" xml:space="preserve">
+    <value>Copy the client id</value>
+  </data>
+  <data name="Mcp.Registered.Label" xml:space="preserve">
+    <value>Client id</value>
+  </data>
+  <data name="Mcp.Registered.Text" xml:space="preserve">
+    <value>Set the agent up with this client id and one of the redirect URIs. The client is public and has no secret: it signs in with the code flow and PKCE.</value>
+  </data>
+  <data name="Mcp.Instructions.Page.Heading" xml:space="preserve">
+    <value>MCP instructions</value>
+  </data>
+  <data name="Mcp.Instructions.Intro" xml:space="preserve">
+    <value>What agents are told in this site. The guidelines go into the handshake of every connection, and the instructions of a content type into the descriptions of its tools. Agents read them as data and never run them.</value>
+  </data>
+  <data name="Mcp.Instructions.Loading" xml:space="preserve">
+    <value>Loading the instructions…</value>
+  </data>
+  <data name="Mcp.Instructions.Failed" xml:space="preserve">
+    <value>The instructions could not be read.</value>
+  </data>
+  <data name="Mcp.Instructions.Guidelines.Heading" xml:space="preserve">
+    <value>Guidelines of the site</value>
+  </data>
+  <data name="Mcp.Instructions.Guidelines" xml:space="preserve">
+    <value>Guidelines</value>
+  </data>
+  <data name="Mcp.Instructions.Types.Heading" xml:space="preserve">
+    <value>Instructions per content type</value>
+  </data>
+  <data name="Mcp.Instructions.Types.None" xml:space="preserve">
+    <value>No content type has instructions yet.</value>
+  </data>
+  <data name="Mcp.Instructions.Orphaned" xml:space="preserve">
+    <value>This type is no longer in the schema, so no agent is served these instructions. Remove them.</value>
+  </data>
+  <data name="Mcp.Instructions.Add.Heading" xml:space="preserve">
+    <value>Write instructions for a content type</value>
+  </data>
+  <data name="Mcp.Instructions.Add.Type" xml:space="preserve">
+    <value>Content type</value>
+  </data>
+  <data name="Mcp.Instructions.Add.Choose" xml:space="preserve">
+    <value>Choose a content type</value>
+  </data>
+  <data name="Mcp.Instructions.Add.EveryType" xml:space="preserve">
+    <value>Every content type has instructions.</value>
+  </data>
+  <data name="Mcp.Instructions.TypesLoading" xml:space="preserve">
+    <value>Loading the content types…</value>
+  </data>
+  <data name="Mcp.Instructions.TypesFailed" xml:space="preserve">
+    <value>The content types could not be read.</value>
+  </data>
+  <data name="Mcp.Instructions.TextHelp" xml:space="preserve">
+    <value>Up to 4,000 characters, with line breaks and tabs.</value>
+  </data>
+  <data name="Mcp.Instructions.TextRequired" xml:space="preserve">
+    <value>Enter a text, or remove the instructions to have none.</value>
+  </data>
+  <data name="Mcp.Instructions.Invalid" xml:space="preserve">
+    <value>A text is up to 4,000 characters, with no control character other than a line break or a tab.</value>
+  </data>
+  <data name="Mcp.Instructions.TypeGone" xml:space="preserve">
+    <value>This content type is no longer in the schema.</value>
+  </data>
+  <data name="Mcp.Instructions.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Mcp.Instructions.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Mcp.Instructions.OfGuidelines" xml:space="preserve">
+    <value> the guidelines</value>
+  </data>
+  <data name="Mcp.Instructions.OfType" xml:space="preserve">
+    <value> the instructions of {0}</value>
+  </data>
+  <data name="Mcp.Instructions.Saved" xml:space="preserve">
+    <value>Saved.</value>
+  </data>
+  <data name="Mcp.Instructions.SaveFailed" xml:space="preserve">
+    <value>Nothing was saved. Try again.</value>
+  </data>
+  <data name="Mcp.Instructions.RemoveFailed" xml:space="preserve">
+    <value>Nothing was removed. Try again.</value>
+  </data>
+  <data name="Mcp.Instructions.RemoveTitle" xml:space="preserve">
+    <value>Remove the instructions</value>
+  </data>
+  <data name="Mcp.Instructions.RemoveGuidelinesText" xml:space="preserve">
+    <value>Remove the guidelines of the site? Agents are no longer told them.</value>
+  </data>
+  <data name="Mcp.Instructions.RemoveTypeText" xml:space="preserve">
+    <value>Remove the instructions of {0}? Agents are no longer told them.</value>
+  </data>
+  <data name="Mcp.Instructions.RemoveConfirm" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Mcp.Instructions.GuidelinesRemoved" xml:space="preserve">
+    <value>The guidelines of the site are removed.</value>
+  </data>
+  <data name="Mcp.Instructions.TypeRemoved" xml:space="preserve">
+    <value>The instructions of {0} are removed.</value>
+  </data>
+  <data name="Mcp.Prompts.Page.Heading" xml:space="preserve">
+    <value>MCP prompts</value>
+  </data>
+  <data name="Mcp.Prompts.Intro" xml:space="preserve">
+    <value>The prompts this site offers agents. A prompt is a template whose arguments the agent's user fills in.</value>
+  </data>
+  <data name="Mcp.Prompts.Loading" xml:space="preserve">
+    <value>Loading the prompts…</value>
+  </data>
+  <data name="Mcp.Prompts.Failed" xml:space="preserve">
+    <value>The prompts could not be read.</value>
+  </data>
+  <data name="Mcp.Prompts.None" xml:space="preserve">
+    <value>The site has no stored prompt yet.</value>
+  </data>
+  <data name="Mcp.Prompts.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Mcp.Prompts.Title" xml:space="preserve">
+    <value>Title</value>
+  </data>
+  <data name="Mcp.Prompts.Arguments" xml:space="preserve">
+    <value>Arguments</value>
+  </data>
+  <data name="Mcp.Prompts.Updated" xml:space="preserve">
+    <value>Changed</value>
+  </data>
+  <data name="Mcp.Prompts.Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Mcp.Prompts.Which" xml:space="preserve">
+    <value> the prompt {0}</value>
+  </data>
+  <data name="Mcp.Prompts.Edit" xml:space="preserve">
+    <value>Change</value>
+  </data>
+  <data name="Mcp.Prompts.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Mcp.Prompts.Kept" xml:space="preserve">
+    <value>Nothing was deleted.</value>
+  </data>
+  <data name="Mcp.Prompts.Deleted" xml:space="preserve">
+    <value>The prompt {0} is deleted.</value>
+  </data>
+  <data name="Mcp.Prompts.Gone" xml:space="preserve">
+    <value>The prompt {0} no longer exists. The list is read again.</value>
+  </data>
+  <data name="Mcp.Prompts.DeleteTitle" xml:space="preserve">
+    <value>Delete the prompt</value>
+  </data>
+  <data name="Mcp.Prompts.DeleteText" xml:space="preserve">
+    <value>Delete the prompt {0}? Agents are no longer offered it.</value>
+  </data>
+  <data name="Mcp.Prompts.DeleteConfirm" xml:space="preserve">
+    <value>Delete the prompt</value>
+  </data>
+  <data name="Mcp.Prompts.DeleteFailed" xml:space="preserve">
+    <value>The prompt was not deleted. Try again.</value>
+  </data>
+  <data name="Mcp.Prompt.NewHeading" xml:space="preserve">
+    <value>New prompt</value>
+  </data>
+  <data name="Mcp.Prompt.EditHeading" xml:space="preserve">
+    <value>Change the prompt {0}</value>
+  </data>
+  <data name="Mcp.Prompt.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Mcp.Prompt.NameHelp" xml:space="preserve">
+    <value>1 to 64 lower case letters, digits, underscores, hyphens and dots, starting with a letter or a digit.</value>
+  </data>
+  <data name="Mcp.Prompt.NameRequired" xml:space="preserve">
+    <value>Enter a name.</value>
+  </data>
+  <data name="Mcp.Prompt.NameInvalid" xml:space="preserve">
+    <value>A name is 1 to 64 lower case letters, digits, underscores, hyphens and dots, starting with a letter or a digit.</value>
+  </data>
+  <data name="Mcp.Prompt.NameTaken" xml:space="preserve">
+    <value>Another prompt of the site has this name.</value>
+  </data>
+  <data name="Mcp.Prompt.NameReserved" xml:space="preserve">
+    <value>A plugin offers a prompt of this name, so a stored prompt cannot take it.</value>
+  </data>
+  <data name="Mcp.Prompt.Title" xml:space="preserve">
+    <value>Title</value>
+  </data>
+  <data name="Mcp.Prompt.Description" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="Mcp.Prompt.LineInvalid" xml:space="preserve">
+    <value>The text is too long, or has more than one line.</value>
+  </data>
+  <data name="Mcp.Prompt.Arguments" xml:space="preserve">
+    <value>Arguments</value>
+  </data>
+  <data name="Mcp.Prompt.ArgumentName" xml:space="preserve">
+    <value>Name of argument {0}</value>
+  </data>
+  <data name="Mcp.Prompt.ArgumentNameHelp" xml:space="preserve">
+    <value>1 to 64 letters, digits and underscores, starting with a letter or an underscore.</value>
+  </data>
+  <data name="Mcp.Prompt.ArgumentNameInvalid" xml:space="preserve">
+    <value>An argument has a name of 1 to 64 letters, digits and underscores, starting with a letter or an underscore, which no other argument has.</value>
+  </data>
+  <data name="Mcp.Prompt.ArgumentDescription" xml:space="preserve">
+    <value>Description of argument {0}</value>
+  </data>
+  <data name="Mcp.Prompt.ArgumentRequired" xml:space="preserve">
+    <value>Argument {0} is required</value>
+  </data>
+  <data name="Mcp.Prompt.RemoveArgument" xml:space="preserve">
+    <value>Remove argument {0}</value>
+  </data>
+  <data name="Mcp.Prompt.AddArgument" xml:space="preserve">
+    <value>Add an argument</value>
+  </data>
+  <data name="Mcp.Prompt.Template" xml:space="preserve">
+    <value>Template</value>
+  </data>
+  <data name="Mcp.Prompt.TemplateHelp" xml:space="preserve">
+    <value>Up to 16,000 characters. Write an argument as {{name}}.</value>
+  </data>
+  <data name="Mcp.Prompt.TemplateRequired" xml:space="preserve">
+    <value>Enter a template.</value>
+  </data>
+  <data name="Mcp.Prompt.TemplateInvalid" xml:space="preserve">
+    <value>The template has a control character other than a line break or a tab, or {{ where no argument follows.</value>
+  </data>
+  <data name="Mcp.Prompt.UndeclaredArgument" xml:space="preserve">
+    <value>The template names an argument that the prompt does not declare.</value>
+  </data>
+  <data name="Mcp.Prompt.TooMany" xml:space="preserve">
+    <value>The site has as many stored prompts as it may, or the prompt has too many arguments.</value>
+  </data>
+  <data name="Mcp.Prompt.Create" xml:space="preserve">
+    <value>Create the prompt</value>
+  </data>
+  <data name="Mcp.Prompt.Save" xml:space="preserve">
+    <value>Save the prompt</value>
+  </data>
+  <data name="Mcp.Prompt.Discard" xml:space="preserve">
+    <value>Discard the changes</value>
+  </data>
+  <data name="Mcp.Prompt.Created" xml:space="preserve">
+    <value>The prompt {0} is created.</value>
+  </data>
+  <data name="Mcp.Prompt.Saved" xml:space="preserve">
+    <value>The prompt {0} is saved.</value>
+  </data>
+  <data name="Mcp.Prompt.Refused" xml:space="preserve">
+    <value>The prompt was not saved.</value>
+  </data>
+  <data name="Mcp.Prompt.Failed" xml:space="preserve">
+    <value>The prompt was not saved. Try again.</value>
+  </data>
+  <data name="Mcp.Activity.Page.Heading" xml:space="preserve">
+    <value>Agent writes</value>
+  </data>
+  <data name="Mcp.Activity.Intro" xml:space="preserve">
+    <value>What agents did in this site through MCP, newest first.</value>
+  </data>
+  <data name="Mcp.Activity.Loading" xml:space="preserve">
+    <value>Loading the agent writes…</value>
+  </data>
+  <data name="Mcp.Activity.Failed" xml:space="preserve">
+    <value>The agent writes could not be read.</value>
+  </data>
+  <data name="Mcp.Activity.None" xml:space="preserve">
+    <value>No agent has written anything in this site.</value>
+  </data>
+  <data name="Mcp.Activity.Time" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="Mcp.Activity.Actor" xml:space="preserve">
+    <value>Who</value>
+  </data>
+  <data name="Mcp.Activity.Client" xml:space="preserve">
+    <value>Client</value>
+  </data>
+  <data name="Mcp.Activity.Action" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="Mcp.Activity.Target" xml:space="preserve">
+    <value>What</value>
+  </data>
+  <data name="Mcp.Activity.Locale" xml:space="preserve">
+    <value>Locale</value>
+  </data>
+  <data name="Mcp.Activity.Pages" xml:space="preserve">
+    <value>Pages of the agent writes</value>
+  </data>
+  <data name="Mcp.Activity.Previous" xml:space="preserve">
+    <value>Previous page</value>
+  </data>
+  <data name="Mcp.Activity.Next" xml:space="preserve">
+    <value>Next page</value>
+  </data>
+  <data name="Mcp.Activity.Page" xml:space="preserve">
+    <value>Page {0} of {1}</value>
+  </data>
+</root>

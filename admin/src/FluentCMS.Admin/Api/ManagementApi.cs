@@ -1,16 +1,21 @@
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
 namespace FluentCMS.Admin.Api;
 
-internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposable
+internal sealed class ManagementApi(HttpClient http) : IManagementApi, IManagementEvents, IDisposable
 {
+    public const string EventStream = "text/event-stream";
+
     public async Task<ApiResponse<T>> SendAsync<T>(ApiRequest request, JsonTypeInfo<T> answer, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(answer);
-        using var response = await SendCoreAsync(request, cancellationToken);
+        using var response = await SendCoreAsync(request, events: false, cancellationToken);
         var value = await response.Content.ReadFromJsonAsync(answer, cancellationToken)
             ?? throw new JsonException($"{request.Method} {request.Path} answered {(int)response.StatusCode} with no body.");
         return new ApiResponse<T>(response.StatusCode, EntityTag(response), value) { Location = response.Headers.Location, Date = response.Headers.Date };
@@ -18,13 +23,60 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
 
     public async Task<ApiResponse> SendAsync(ApiRequest request, CancellationToken cancellationToken)
     {
-        using var response = await SendCoreAsync(request, cancellationToken);
+        using var response = await SendCoreAsync(request, events: false, cancellationToken);
         return new ApiResponse(response.StatusCode, EntityTag(response)) { Location = response.Headers.Location, Date = response.Headers.Date };
+    }
+
+    // The lines of each event up to the blank line that ends it; a comment line is skipped, and an event the answer cut off
+    // before its blank line is dropped, as a browser's EventSource does.
+    public async IAsyncEnumerable<ApiEvent> ReadAsync(ApiRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        using var response = await SendCoreAsync(request, events: true, cancellationToken);
+        if (!string.Equals(response.Content.Headers.ContentType?.MediaType, EventStream, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new JsonException($"{request.Method} {request.Path} answered {(int)response.StatusCode} with {response.Content.Headers.ContentType?.MediaType ?? "no body"} and not {EventStream}.");
+        }
+
+        using var reader = new StreamReader(await response.Content.ReadAsStreamAsync(cancellationToken), Encoding.UTF8);
+        string? name = null;
+        StringBuilder? data = null;
+        while (await reader.ReadLineAsync(cancellationToken) is { } line)
+        {
+            if (line.Length == 0)
+            {
+                if (data is not null)
+                {
+                    yield return new ApiEvent(string.IsNullOrEmpty(name) ? "message" : name, data.ToString());
+                }
+
+                (name, data) = (null, null);
+                continue;
+            }
+
+            var colon = line.IndexOf(':', StringComparison.Ordinal);
+            var field = colon < 0 ? line : line[..colon];
+            var value = colon < 0 ? "" : line[(colon + 1)..];
+            if (value.StartsWith(' '))
+            {
+                value = value[1..];
+            }
+
+            if (field == "event")
+            {
+                name = value;
+            }
+            else if (field == "data")
+            {
+                data = data is null ? new StringBuilder(value) : data.Append('\n').Append(value);
+            }
+        }
     }
 
     public void Dispose() => http.Dispose();
 
-    private async Task<HttpResponseMessage> SendCoreAsync(ApiRequest request, CancellationToken cancellationToken)
+    // Events are read as they arrive, so their answer is not buffered, and are not sent again on a 429: what the answer refuses
+    // is the caller's to show, such as a daily budget, which waiting does not lift.
+    private async Task<HttpResponseMessage> SendCoreAsync(ApiRequest request, bool events, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         if ((request.NoSite && request.Site is not null) || (request.NoLocale && request.Locale is not null))
@@ -65,8 +117,14 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
         var namesItsSite = request.NoSite || request.Site is not null;
         message.Options.Set(ManagementHeaders.AddSessionSite, !namesItsSite);
         message.Options.Set(ManagementHeaders.AddSessionLocale, !namesItsSite && !request.NoLocale && request.Locale is null);
+        if (events)
+        {
+            message.Headers.Accept.ParseAdd(EventStream);
+            message.Options.Set(ManagementHeaders.Once, true);
+            message.SetBrowserResponseStreamingEnabled(true);
+        }
 
-        var response = await http.SendAsync(message, cancellationToken);
+        var response = await http.SendAsync(message, events ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead, cancellationToken);
         if (response.IsSuccessStatusCode)
         {
             return response;

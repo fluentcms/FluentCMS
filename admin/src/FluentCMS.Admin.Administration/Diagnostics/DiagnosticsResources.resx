@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Diagnostics.Page.Heading" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+  <data name="Diagnostics.Page.Intro" xml:space="preserve">
+    <value>What the instance found when it started, and how its health checks answer now.</value>
+  </data>
+  <data name="Diagnostics.Page.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Diagnostics.Report.Heading" xml:space="preserve">
+    <value>Startup report</value>
+  </data>
+  <data name="Diagnostics.Report.Loading" xml:space="preserve">
+    <value>Loading the startup report…</value>
+  </data>
+  <data name="Diagnostics.Report.NotReady" xml:space="preserve">
+    <value>The startup report is made once the host has started. Try again in a moment.</value>
+  </data>
+  <data name="Diagnostics.Report.Failed" xml:space="preserve">
+    <value>The startup report could not be read.</value>
+  </data>
+  <data name="Diagnostics.Report.Incomplete" xml:space="preserve">
+    <value>The report is not complete: the host met {0} while it made it, and the log has the details. The sections it covers are empty.</value>
+  </data>
+  <data name="Diagnostics.Report.Version" xml:space="preserve">
+    <value>FluentCMS version</value>
+  </data>
+  <data name="Diagnostics.Report.Environment" xml:space="preserve">
+    <value>Environment</value>
+  </data>
+  <data name="Diagnostics.Report.Started" xml:space="preserve">
+    <value>Started</value>
+  </data>
+  <data name="Diagnostics.Report.Database" xml:space="preserve">
+    <value>Database</value>
+  </data>
+  <data name="Diagnostics.Report.ProviderVersion" xml:space="preserve">
+    <value>{0} {1}</value>
+  </data>
+  <data name="Diagnostics.Report.MigrateOnStartup" xml:space="preserve">
+    <value>Migrates at start</value>
+  </data>
+  <data name="Diagnostics.Report.SchemaSync" xml:space="preserve">
+    <value>Schema sync</value>
+  </data>
+  <data name="Diagnostics.Report.Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="Diagnostics.Report.No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Diagnostics.Report.NameVersion" xml:space="preserve">
+    <value>{0} {1}</value>
+  </data>
+  <data name="Diagnostics.Insecure.Heading" xml:space="preserve">
+    <value>Insecure defaults</value>
+  </data>
+  <data name="Diagnostics.Insecure.None" xml:space="preserve">
+    <value>None: no setting is one that only suits a developer machine.</value>
+  </data>
+  <data name="Diagnostics.Migrations.Heading" xml:space="preserve">
+    <value>Pending migrations</value>
+  </data>
+  <data name="Diagnostics.Migrations.None" xml:space="preserve">
+    <value>None: the database is up to date.</value>
+  </data>
+  <data name="Diagnostics.Migrations.Stream" xml:space="preserve">
+    <value>Stream</value>
+  </data>
+  <data name="Diagnostics.Migrations.Id" xml:space="preserve">
+    <value>Migration</value>
+  </data>
+  <data name="Diagnostics.Schema.Heading" xml:space="preserve">
+    <value>Schema</value>
+  </data>
+  <data name="Diagnostics.Schema.Drifted" xml:space="preserve">
+    <value>The schema in code differs from the one last applied to the database.</value>
+  </data>
+  <data name="Diagnostics.Schema.NotDrifted" xml:space="preserve">
+    <value>The schema in code is the one last applied to the database.</value>
+  </data>
+  <data name="Diagnostics.Schema.Hash" xml:space="preserve">
+    <value>Hash in code</value>
+  </data>
+  <data name="Diagnostics.Schema.AppliedHash" xml:space="preserve">
+    <value>Hash applied</value>
+  </data>
+  <data name="Diagnostics.Schema.NeverApplied" xml:space="preserve">
+    <value>None applied yet</value>
+  </data>
+  <data name="Diagnostics.Schema.AppliedAt" xml:space="preserve">
+    <value>Applied</value>
+  </data>
+  <data name="Diagnostics.Schema.AppliedVersion" xml:space="preserve">
+    <value>Applied by version</value>
+  </data>
+  <data name="Diagnostics.Plugins.Heading" xml:space="preserve">
+    <value>Plugins</value>
+  </data>
+  <data name="Diagnostics.Plugins.None" xml:space="preserve">
+    <value>The host runs no plugin.</value>
+  </data>
+  <data name="Diagnostics.Providers.Heading" xml:space="preserve">
+    <value>Providers</value>
+  </data>
+  <data name="Diagnostics.Providers.Slot" xml:space="preserve">
+    <value>Slot</value>
+  </data>
+  <data name="Diagnostics.Providers.Implementation" xml:space="preserve">
+    <value>Implementation</value>
+  </data>
+  <data name="Diagnostics.Providers.Source" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="Diagnostics.Providers.Plugin" xml:space="preserve">
+    <value>Plugin</value>
+  </data>
+  <data name="Diagnostics.Providers.None" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Diagnostics.Assemblies.Heading" xml:space="preserve">
+    <value>Assemblies of FluentCMS ({0})</value>
+  </data>
+  <data name="Diagnostics.Health.Heading" xml:space="preserve">
+    <value>Health</value>
+  </data>
+  <data name="Diagnostics.Health.Loading" xml:space="preserve">
+    <value>Running the health checks…</value>
+  </data>
+  <data name="Diagnostics.Health.Failed" xml:space="preserve">
+    <value>The health checks could not be read.</value>
+  </data>
+  <data name="Diagnostics.Health.Overall" xml:space="preserve">
+    <value>{0}, in {1} for every check.</value>
+  </data>
+  <data name="Diagnostics.Health.Check" xml:space="preserve">
+    <value>Check</value>
+  </data>
+  <data name="Diagnostics.Health.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Diagnostics.Health.Duration" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="Diagnostics.Health.Tags" xml:space="preserve">
+    <value>Tags</value>
+  </data>
+  <data name="Diagnostics.Health.Description" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="Diagnostics.Health.Error" xml:space="preserve">
+    <value>Error: {0}</value>
+  </data>
+  <data name="Diagnostics.Health.Healthy" xml:space="preserve">
+    <value>Healthy</value>
+  </data>
+  <data name="Diagnostics.Health.Degraded" xml:space="preserve">
+    <value>Degraded</value>
+  </data>
+  <data name="Diagnostics.Health.Unhealthy" xml:space="preserve">
+    <value>Unhealthy</value>
+  </data>
+  <data name="Diagnostics.Health.Milliseconds" xml:space="preserve">
+    <value>{0} ms</value>
+  </data>
+  <data name="Diagnostics.Health.Again" xml:space="preserve">
+    <value>Check again</value>
+  </data>
+  <data name="Diagnostics.Health.Read" xml:space="preserve">
+    <value>The checks were run again.</value>
+  </data>
+  <data name="Diagnostics.Health.ReadFailed" xml:space="preserve">
+    <value>The checks could not be run again; those shown are from before.</value>
+  </data>
+</root>

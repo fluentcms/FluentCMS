@@ -214,6 +214,19 @@ public sealed class AdminPluginManifestTests
         ]);
     }
 
+    // The form reads FieldsFrom before the half loads, so the file must say what the attribute says.
+    [Fact]
+    public void ADifferentFieldsFromOfAFieldActionIsNamed()
+    {
+        var file = File with { FieldActions = [File.FieldActions[0] with { FieldsFrom = "reviews/fields#fields" }] };
+
+        AdminPluginManifestCheck.Compare(file, Declared).ShouldBe(
+        [
+            $"field action 'shout' of {Sample}ShoutAction: fieldsFrom is not set in the assembly and 'reviews/fields#fields' in the manifest",
+        ]);
+        AdminPluginManifestJson.Read(AdminPluginManifestJson.Write(file)).FieldActions[0].FieldsFrom.ShouldBe("reviews/fields#fields");
+    }
+
     [Fact]
     public void ADifferentMemberOfTheManifestOrOfAMenuItemOrAWidgetIsNamed()
     {
@@ -297,12 +310,16 @@ public sealed class AdminPluginManifestTests
             $"entry action 'careless' of {Types}CarelessAction: the class does not derive from EntryActionBase",
             $"bulk action 'careless' of {Types}CarelessAction: the class does not derive from BulkActionBase",
             $"field action 'careless' of {Types}CarelessAction: the class does not derive from FieldActionBase",
+            $"field action 'careless' of {Types}CarelessAction: FieldsFrom '../ai/fields#fields' is not a read of the Management API and a member of its answer, such as ai/fields#fields",
             $"service 'System.IDisposable' of {Types}CarelessAction: the class does not implement it",
             $"menu item 'Careless.Menu' of {Types}CarelessMenuItem: the component declares no [AdminPage] for it to link to",
             $"field editor 'careless' of {Types}CarelessMenuItem: the class does not derive from FieldEditorBase",
             $"list cell 'careless' of {Types}CarelessMenuItem: the class does not derive from ListCellBase",
+            $"pages '/system/notes/{{Id:guid}}' and '/system/notes/{{Id:guid}}/edit' of {Types}CarelessNote: the router gives both routes the same parameters, so the shell asks for what each needs on either, and a caller who may open only one opens neither; give them one permission, or put them in two classes",
             $"page '/system/careless' of {Types}CarelessPage: the component has no @page of that route, so the router cannot find it",
             $"page '/system/careless/other' of {Types}CarelessPage: the component has no @page of that route, so the router cannot find it",
+            $"page '/system/careless/other' of {Types}CarelessPage: InstanceOnly needs a Permission for the user to hold for the instance, and without one the shell shows the page to no one",
+            $"pages '/system/careless' and '/system/careless/other' of {Types}CarelessPage: the router gives both routes the same parameters, so the shell asks for what each needs on either, and a caller who may open only one opens neither; give them one permission, or put them in two classes",
             $"menu item 'Careless.Pages' of {Types}CarelessPage: the component has several pages, so the item must name its Route",
             $"settings page 'careless' of {Types}CarelessPage: the class does not derive from IComponent",
             $"widget 'Careless.Widget' of {Types}CarelessPage: the class does not derive from IComponent",
@@ -311,6 +328,8 @@ public sealed class AdminPluginManifestTests
             $"page '/careless/item' of {Types}CarelessTwin: the component has no @page of that route, so the router cannot find it",
             $"page '/careless/item' of {Types}CarelessTwin: the route is not /system or below it",
             $"menu item 'Careless.Item' of {Types}CarelessTwin: the component declares no [AdminPage] of its Route '/careless/items'",
+            $"field action 'twin' of {Types}CarelessTwin: the class does not derive from FieldActionBase",
+            $"field action 'twin' of {Types}CarelessTwin: FieldsFrom 'file:x#fields' is not a read of the Management API and a member of its answer, such as ai/fields#fields",
             $"service 'System.IDisposable' of {Types}CarelessTwin: the class does not implement it",
             $"service 'System.IDisposable' is declared more than once: by {Types}CarelessAction and {Types}CarelessTwin",
         ]);

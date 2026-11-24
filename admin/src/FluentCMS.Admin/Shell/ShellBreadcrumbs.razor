@@ -2,6 +2,7 @@
    page, has none. *@
 @implements IDisposable
 @inject AdminContext Context
+@inject PageCrumbs Crumbs
 @inject NavigationManager Navigation
 @inject IStringLocalizer<AdminResources> L
 
@@ -11,12 +12,14 @@
     protected override void OnInitialized()
     {
         Context.Changed += OnChanged;
+        Crumbs.Changed += OnChanged;
         Navigation.LocationChanged += OnLocationChanged;
     }
 
     public void Dispose()
     {
         Context.Changed -= OnChanged;
+        Crumbs.Changed -= OnChanged;
         Navigation.LocationChanged -= OnLocationChanged;
     }
 
@@ -44,8 +47,28 @@
             case ["system", "components"]:
                 return [new(L["Shell.Breadcrumbs.System"]), new(L["Shell.Breadcrumbs.Components"])];
             default:
-                return [];
+                return AdministrationAreas.OfRoute(string.Join('/', segments)) is { } area ? Items(area, segments) : [];
         }
+    }
+
+    // An area of administration under its section; the settings menu is named as its section is, so it is named once. A
+    // page below the area's own links to the area and is named as it names itself with PageCrumb, and until then by its
+    // segment, as an entry is by its id.
+    private List<CmsBreadcrumbItem> Items(AdministrationArea area, string[] segments)
+    {
+        var (section, label) = (L[$"Shell.Sidebar.{area.Section}"].Value, L[area.LabelKey].Value);
+        var depth = area.Route.Split('/').Length;
+        List<CmsBreadcrumbItem> items = section == label ? [] : [new(section)];
+        if (segments.Length > depth)
+        {
+            items.AddRange([new(label, area.Route), new(Crumbs.For(string.Join('/', segments)) ?? Uri.UnescapeDataString(segments[depth]))]);
+        }
+        else
+        {
+            items.Add(new(label));
+        }
+
+        return items;
     }
 
     private string[] Segments()

@@ -30,6 +30,39 @@ public sealed class CmsDataGridTests : ComponentTestContext
         FirstColumn(grid).ShouldBe(["Bravo", "Alpha", "Charlie"]);
     }
 
+    // A list read again answers new items with the values of the server; a row keyed by what names it keeps its element, and
+    // the focus on it, when its values changed.
+    [Fact]
+    public void ARowKeptByItsKeyKeepsItsElementWhenItsItemComesBackWithOtherValues()
+    {
+        var grid = Render<CmsDataGrid<Article>>(p => p
+            .Add(x => x.Label, "Articles")
+            .Add(x => x.Items, Articles)
+            .Add(x => x.RowKey, article => article.Title)
+            .Add(x => x.ChildContent, Columns(sortable: false)));
+        var before = RowReference(grid.Instance, 0);
+        before.ShouldNotBeNullOrEmpty();
+
+        grid.Render(p => p.Add(x => x.Items, [new Article("Bravo", 5), .. Articles.Skip(1)]));
+
+        RowReference(grid.Instance, 0).ShouldBe(before);
+        Row(grid, 0).TextContent.ShouldContain("5");
+
+        // The arrows still reach it.
+        Row(grid, 1).KeyDown(new KeyboardEventArgs { Key = "ArrowUp" });
+        ((ElementReference)JSInterop.Invocations.Last(call => call.Identifier == "Blazor._internal.domWrapper.focus").Arguments[0]!).Id.ShouldBe(before);
+    }
+
+    [Fact]
+    public void WithoutAKeyARowWhoseItemComesBackWithOtherValuesIsDrawnAnew()
+    {
+        var grid = RenderGrid(CmsSelectionMode.None);
+        var before = RowReference(grid.Instance, 0);
+
+        grid.Render(p => p.Add(x => x.Items, [new Article("Bravo", 5), .. Articles.Skip(1)]));
+
+        RowReference(grid.Instance, 0).ShouldNotBe(before);
+    }
     [Fact]
     public void SortingByAColumnSortsTheRowsAndAnnouncesIt()
     {
@@ -326,6 +359,15 @@ public sealed class CmsDataGridTests : ComponentTestContext
         grid.FindAll("th").Single(th => th.QuerySelector("button > span")?.TextContent == title || th.TextContent.Trim() == title);
 
     private static IElement Row(IRenderedComponent<CmsDataGrid<Article>> grid, int index) => grid.FindAll("tbody tr")[index];
+
+    // The id of the element a row is drawn in, which a row drawn anew changes.
+    internal static string RowReference<TItem>(CmsDataGrid<TItem> grid, int index)
+        where TItem : notnull
+    {
+        var rows = (System.Collections.IDictionary)typeof(CmsDataGrid<TItem>).GetField("_rows", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(grid)!;
+        var item = grid.Items[index];
+        return ((ElementReference)rows[grid.RowKey?.Invoke(item) ?? item]!).Id;
+    }
 
     private static IElement AllBox(IRenderedComponent<CmsDataGrid<Article>> grid) => grid.Find("thead button[role=checkbox]");
 

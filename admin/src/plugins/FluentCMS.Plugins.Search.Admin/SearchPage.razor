@@ -1,0 +1,139 @@
+@* The search index of the site (spec 5.7), for a caller who holds search.manage there: a rebuild of every type with a
+   searchable field, or of one, which the server answers with the job that does it. GET /jobs/{id} is for the instance only,
+   so a caller who holds jobs.manage for the instance gets a link to the job, and any other the notice that the rebuild
+   started. The contract has no contribution into a core page, so the rebuild is a page of the half, which the plugin's entry
+   on the plugins page links to. *@
+@page "/search"
+@attribute [AdminPage("/search", Permission = "search.manage")]
+@implements IDisposable
+@inject IManagementApi Api
+@inject IAdminSchema Schema
+@inject IAdminContext Admin
+@inject IStringLocalizer<SearchResources> L
+
+<h1 tabindex="-1">@L["Search.Page.Heading"]</h1>
+<p>@L["Search.Page.Intro"]</p>
+
+<CmsCard Title="@L["Search.Rebuild.Heading"]">
+    <form @onsubmit="RebuildAsync">
+        <CmsStack>
+            @if (types is null)
+            {
+                <p role="@(typesFailed ? "alert" : "status")">@L[typesFailed ? "Search.Rebuild.TypesFailed" : "Search.Rebuild.TypesLoading"]</p>
+            }
+            else
+            {
+                <CmsSelect Label="@L["Search.Rebuild.Type"]"
+                           Help="@L["Search.Rebuild.TypeHelp"]"
+                           Options="@types"
+                           Value="@type"
+                           ValueChanged="@(value => type = value)"
+                           Placeholder="@L["Search.Rebuild.EveryType"]" />
+            }
+            <div>
+                <CmsButton Submit="true" Appearance="CmsButtonAppearance.Primary" Disabled="@busy">@L["Search.Rebuild.Submit"]</CmsButton>
+            </div>
+        </CmsStack>
+    </form>
+    <p class="search-message" tabindex="-1" @ref="messageElement">@message</p>
+    @if (job is { } id)
+    {
+        <p><a href="@($"jobs/{id:D}")">@L["Search.Rebuild.FollowJob"]</a></p>
+    }
+</CmsCard>
+
+@code {
+    private IReadOnlyList<CmsOption>? types;
+    private bool typesFailed;
+    private string? type;
+    private bool busy;
+    private string? message;
+    private Guid? job;
+    private bool focusMessage;
+    private ElementReference messageElement;
+    private readonly CancellationTokenSource closing = new();
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    // Without the types, every type is still rebuilt.
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var schema = await Schema.GetSchemaAsync(Closing);
+            types = [.. schema.Types
+                .Where(item => item.Fields.Any(field => field.Searchable))
+                .Select(item => new CmsOption(item.Name, item.DisplayName ?? item.Name))];
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (SearchProblems.IsFailure(exception))
+        {
+            typesFailed = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusMessage)
+        {
+            focusMessage = false;
+            await messageElement.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task RebuildAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        var (chosen, named) = (type, Named(type));
+        (busy, job) = (true, null);
+        try
+        {
+            var started = await Api.RebuildAsync(chosen, Closing);
+            var followed = Admin.Access.AllowsForInstance("jobs.manage");
+            message = named is null
+                ? L[followed ? "Search.Rebuild.StartedEvery" : "Search.Rebuild.StartedEveryNoJobs"]
+                : L[followed ? "Search.Rebuild.Started" : "Search.Rebuild.StartedNoJobs", named];
+            job = followed ? started : null;
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (SearchProblems.IsForbidden(exception))
+        {
+            message = L["Search.Rebuild.Forbidden"];
+        }
+        catch (Exception exception) when (SearchProblems.Has(exception, SearchProblems.NotSearchable))
+        {
+            message = L["Search.Rebuild.NotSearchable", named ?? ""];
+        }
+        catch (Exception exception) when (SearchProblems.Has(exception, SearchProblems.InvalidRebuild))
+        {
+            message = L["Search.Rebuild.NotAType", named ?? ""];
+        }
+        catch (Exception exception) when (SearchProblems.IsFailure(exception))
+        {
+            message = L["Search.Rebuild.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        focusMessage = true;
+    }
+
+    private string? Named(string? name) => name is null ? null : types?.FirstOrDefault(option => option.Value == name)?.Text ?? name;
+}

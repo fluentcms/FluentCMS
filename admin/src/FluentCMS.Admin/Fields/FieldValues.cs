@@ -60,6 +60,29 @@ internal static class FieldValues
     public static bool IsUrl(string text) =>
         Uri.TryCreate(text, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" && uri.Host.Length > 0;
 
+    // Whether a value of a half's field action has the JSON shape of the field's type: a string for the text, date and select
+    // types, a number, a boolean, or an array of them for a field of several; null clears any field. The shape of another type,
+    // such as a relation, a nested field or a half's own, is left to the server's check on save.
+    public static bool Fits(SchemaFieldDescription field, JsonNode? value)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+        if (value is null)
+        {
+            return true;
+        }
+
+        Func<JsonNode, bool>? shape = field.Type switch
+        {
+            "text" or "longText" or "slug" or "email" or "url" or "date" or "dateTime" or "select" => item => Kind(item) == JsonValueKind.String,
+            "integer" or "decimal" => item => Kind(item) == JsonValueKind.Number,
+            "boolean" => item => Kind(item) is JsonValueKind.True or JsonValueKind.False,
+            _ => null,
+        };
+        return shape is null || (field.Multiple ? value is JsonArray items && items.All(item => item is not null && shape(item)) : shape(value));
+
+        static JsonValueKind Kind(JsonNode node) => node is JsonValue scalar ? scalar.GetValueKind() : JsonValueKind.Object;
+    }
+
     // An error of the editor and the errors of the last save, which may both stand.
     public static string? Errors(string? own, string? saved) =>
         own is null ? saved : saved is null ? own : own + " " + saved;

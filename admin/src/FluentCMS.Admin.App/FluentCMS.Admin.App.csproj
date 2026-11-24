@@ -18,8 +18,20 @@
 
   <ItemGroup>
     <ProjectReference Include="../FluentCMS.Admin/FluentCMS.Admin.csproj" />
+    <ProjectReference Include="../FluentCMS.Admin.Administration/FluentCMS.Admin.Administration.csproj" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Admin.Administration.wasm" />
     <ProjectReference Include="../plugins/FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj" />
     <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.Media.Admin.wasm" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.Webhooks.Admin/FluentCMS.Plugins.Webhooks.Admin.csproj" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.Webhooks.Admin.wasm" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.Mcp.Admin/FluentCMS.Plugins.Mcp.Admin.csproj" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.Mcp.Admin.wasm" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.AiAssist.Admin/FluentCMS.Plugins.AiAssist.Admin.csproj" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.AiAssist.Admin.wasm" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.MultiSite.Admin/FluentCMS.Plugins.MultiSite.Admin.csproj" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.MultiSite.Admin.wasm" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.Search.Admin/FluentCMS.Plugins.Search.Admin.csproj" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.Search.Admin.wasm" />
     <ProjectReference Include="../FluentCMS.Admin.RichText/FluentCMS.Admin.RichText.csproj" />
     <BlazorWebAssemblyLazyLoad Include="FluentCMS.Admin.RichText.wasm" />
   </ItemGroup>

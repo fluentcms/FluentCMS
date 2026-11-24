@@ -1,0 +1,30 @@
+.ai-usage-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cms-space-m);
+}
+
+.ai-usage-error {
+    color: var(--cms-color-error);
+}
+
+.ai-usage-table {
+    border-collapse: collapse;
+    margin-block-end: var(--cms-space-l);
+}
+
+.ai-usage-table caption {
+    text-align: start;
+    font-weight: 600;
+}
+
+.ai-usage-table :is(th, td) {
+    padding: var(--cms-space-xs) var(--cms-space-s);
+    text-align: start;
+}
+
+.ai-usage-pages {
+    display: flex;
+    align-items: center;
+    gap: var(--cms-space-m);
+}

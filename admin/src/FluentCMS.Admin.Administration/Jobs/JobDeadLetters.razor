@@ -1,0 +1,193 @@
+@* The dead-lettered jobs of the instance (spec 4.15), the last first: those that used all their attempts and those that were
+   cancelled. The list has no total, so it reads on with More while the last page read was full. A retry queues the job again
+   with as many attempts again as a new job gets, and takes its row out; so does an answer that the job is gone, as after the
+   30-day retention, or that it is no longer dead-lettered. A row taken out moves the server's later rows back, so the next
+   read starts at the page the first row not shown is on now; a list that its last row leaves while there may be more reads
+   on at once. *@
+@implements IDisposable
+@inject IManagementApi Api
+@inject FormatService Formats
+@inject IStringLocalizer<JobsResources> L
+
+<CmsCard Title="@L["Jobs.DeadJobs.Heading"]">
+    <p>@L["Jobs.DeadJobs.Intro"]</p>
+    @if (state == JobSectionState.Failed && jobs.Count == 0)
+    {
+        <p role="alert">@L["Jobs.DeadJobs.Failed"] <CmsButton OnClick="@(() => ReadAsync(1))">@L["Jobs.DeadJobs.TryAgain"]</CmsButton></p>
+    }
+    else if (state == JobSectionState.Loading && jobs.Count == 0)
+    {
+        <p role="status">@L["Jobs.DeadJobs.Loading"]</p>
+    }
+    else if (jobs.Count == 0)
+    {
+        <p>@L["Jobs.DeadJobs.None"]</p>
+    }
+    else
+    {
+        <table class="jobs-dead">
+            <thead>
+                <tr>
+                    <th scope="col">@L["Jobs.List.Type"]</th>
+                    <th scope="col">@L["Jobs.List.Queue"]</th>
+                    <th scope="col">@L["Jobs.List.Attempts"]</th>
+                    <th scope="col">@L["Jobs.DeadJobs.When"]</th>
+                    <th scope="col">@L["Jobs.DeadJobs.LastError"]</th>
+                    <th scope="col"><span class="cms-visually-hidden">@L["Jobs.DeadJobs.Actions"]</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var job in jobs)
+                {
+                    <tr @key="job.Id">
+                        <th scope="row"><a href="@JobsPage.JobRoute(job.Id)">@job.Type</a></th>
+                        <td>@job.Queue</td>
+                        <td>@Formats.Number(job.Attempts)</td>
+                        <td>@(job.DeadLetteredAt is { } at ? Formats.DateTime(at) : "")</td>
+                        <td class="jobs-error">@JobTexts.Error(job.LastError, L)</td>
+                        <td>
+                            <CmsButton Disabled="@busy" OnClick="@(() => RetryAsync(job))">
+                                @L["Jobs.DeadJobs.Retry"]<span class="cms-visually-hidden">@L["Jobs.DeadJobs.Which", job.Type, When(job)]</span>
+                            </CmsButton>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (state == JobSectionState.Failed)
+        {
+            <p role="alert">@L["Jobs.DeadJobs.MoreFailed"]</p>
+        }
+        @if (more)
+        {
+            <CmsButton Disabled="@(state == JobSectionState.Loading)" OnClick="MoreAsync">@L["Jobs.DeadJobs.More"]</CmsButton>
+        }
+    }
+    <p class="jobs-message" tabindex="-1" @ref="messageElement">@message</p>
+</CmsCard>
+
+@code {
+    private List<DeadJobRecord> jobs = [];
+    private JobSectionState state = JobSectionState.Loading;
+    private int read;
+    private bool more;
+    private int dropped;
+    private bool busy;
+    private string? message;
+    private bool focusMessage;
+    private ElementReference messageElement;
+    private readonly CancellationTokenSource closing = new();
+
+    // Raised after a retry, which puts the job back among the pending ones of the list.
+    [Parameter]
+    public EventCallback OnRetried { get; set; }
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    protected override Task OnInitializedAsync() => ReadAsync(1);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusMessage)
+        {
+            focusMessage = false;
+            await messageElement.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    // The first page replaces what is shown; a later one adds the rows not shown yet.
+    private async Task<bool> ReadAsync(int page)
+    {
+        state = JobSectionState.Loading;
+        try
+        {
+            var found = await Api.GetDeadJobsAsync(page, Closing);
+            jobs = page == 1 ? [.. found] : [.. jobs, .. found.Where(job => jobs.All(shown => shown.Id != job.Id))];
+            (read, more, dropped, state) = (page, found.Count == JobsApi.DeadLetterPageSize, 0, JobSectionState.Ready);
+            return true;
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (JobProblems.IsFailure(exception))
+        {
+            state = JobSectionState.Failed;
+        }
+
+        return false;
+    }
+
+    // The page after the last one read, from the page the first row not shown is on now, which reads again rows shown already.
+    private async Task MoreAsync()
+    {
+        var last = read + 1;
+        for (var page = JobTexts.NextPage(read, dropped, JobsApi.DeadLetterPageSize); page <= last; page++)
+        {
+            if (!await ReadAsync(page) || !more)
+            {
+                return;
+            }
+        }
+    }
+
+    private async Task RetryAsync(DeadJobRecord job)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        var retried = false;
+        try
+        {
+            await Api.RetryJobAsync(job.Id, Closing);
+            (message, retried) = (L["Jobs.DeadJobs.Retried", job.Type], true);
+            Drop(job);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (JobProblems.Has(exception, JobProblems.JobNotFound))
+        {
+            message = L["Jobs.DeadJobs.Gone", job.Type];
+            Drop(job);
+        }
+        catch (Exception exception) when (JobProblems.Has(exception, JobProblems.NotDeadLettered))
+        {
+            message = L["Jobs.DeadJobs.NotDead", job.Type];
+            Drop(job);
+        }
+        catch (Exception exception) when (JobProblems.IsFailure(exception))
+        {
+            message = L["Jobs.DeadJobs.RetryFailed", job.Type];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        focusMessage = true;
+        if (jobs.Count == 0 && more)
+        {
+            await MoreAsync();
+        }
+
+        if (retried)
+        {
+            await OnRetried.InvokeAsync();
+        }
+    }
+
+    private void Drop(DeadJobRecord job) => dropped += jobs.RemoveAll(shown => shown.Id == job.Id);
+
+    // Two dead letters of one type are told apart by their time.
+    private string When(DeadJobRecord job) => job.DeadLetteredAt is { } at ? Formats.DateTime(at) : job.Id.ToString("D");
+}

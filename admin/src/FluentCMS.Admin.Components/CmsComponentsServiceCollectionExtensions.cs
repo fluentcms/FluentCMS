@@ -17,6 +17,7 @@ public static class CmsComponentsServiceCollectionExtensions
 
         services.AddFluentUIComponents();
         services.AddScoped<ICmsToastService, CmsToastService>();
+        services.TryAddScoped<CmsClipboard>();
         services.TryAddSingleton<ICmsTextSource, CmsStrings>();
         // The library's texts, such as a row's selection state, then follow the culture and the ICmsTextSource of the host.
         services.Replace(ServiceDescriptor.Scoped<IFluentLocalizer, CmsLibraryTexts>());

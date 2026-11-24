@@ -99,7 +99,7 @@ public sealed partial class CmsThemeTests : ComponentTestContext
 
     [Theory]
     [InlineData("admin/src/FluentCMS.Admin.Components/wwwroot/cms.css")]
-    [InlineData("admin/src/FluentCMS.Admin/Pages/ComponentGalleryPage.razor.css")]
+    [InlineData("admin/src/FluentCMS.Admin.Administration/Gallery/ComponentGalleryPage.razor.css")]
     [InlineData("admin/src/FluentCMS.Admin/Shell/AdminLayout.razor.css")]
     [InlineData("admin/src/FluentCMS.Admin/Configuration/ConfigurationErrorPage.razor.css")]
     public void TheStylesheetsUseLogicalPropertiesOnly(string path)

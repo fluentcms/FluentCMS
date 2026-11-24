@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Text.Json;
 using System.Web;
 using Microsoft.Playwright;
 using Shouldly;
@@ -51,6 +53,43 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         tab.LoginPagesShown.ShouldBe(loginPages);
         tab.AuthorizeRequests.Count.ShouldBe(authorizations);
 
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    // A sign-in that returns straight onto a route of an area completes once. The router draws the callback page again at the
+    // route while it waits for the lazy administration assembly, and that page neither completes the sign-in a second time,
+    // which would warn of an unknown state, nor shows that the sign-in did not complete (#3504).
+    [Theory]
+    [InlineData("users", "Users")]
+    [InlineData("roles", "Roles")]
+    public async Task ASignInStraightOntoAnAreaRouteCompletesOnceAndNeverShowsAFailure(string route, string area)
+    {
+        var browser = await OpenBrowserAsync();
+        var tab = await browser.NewTabAsync();
+        var warnings = new ConcurrentQueue<string>();
+        tab.Page.Console += (_, message) =>
+        {
+            if (message.Type == "warning")
+            {
+                warnings.Enqueue(message.Text);
+            }
+        };
+
+        // Whether the failure ever shows, however briefly, in any document of the tab.
+        var failed = JsonSerializer.Serialize(Repository.AdminText("Authentication.Callback.FailedHeading"));
+        await tab.Page.AddInitScriptAsync(
+            $"window.__callbackFailed = false; new MutationObserver(() => {{ if (!window.__callbackFailed && document.body && document.body.textContent.includes({failed})) {{ window.__callbackFailed = true; }} }}).observe(document, {{ subtree: true, childList: true, characterData: true }});");
+        var address = new Uri(Host.Admin, route).AbsoluteUri;
+        await tab.Page.GotoAsync(address);
+        await browser.SignInOnTheHostedPageAsync(tab, await Host.CreateEditorAsync("Super Admin"));
+
+        // Two waits, each of which takes seconds in slow mode: the shell's start after the callback, then the assembly and the page.
+        await Expect(tab.Sidebar).ToBeVisibleAsync();
+        await Expect(tab.Page.Locator("main").GetByRole(AriaRole.Heading, new LocatorGetByRoleOptions { Name = Repository.AdministrationHeading(area), Exact = true })).ToBeVisibleAsync();
+        tab.Page.Url.ShouldBe(address);
+
+        (await tab.Page.EvaluateAsync<bool>("() => window.__callbackFailed")).ShouldBeFalse("the callback page showed that the sign-in did not complete");
+        warnings.ShouldBeEmpty();
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
@@ -108,7 +147,7 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         var gallery = new Uri(Host.Admin, "system/components").AbsoluteUri;
         await tab.Page.GotoAsync(gallery);
         await browser.SignInOnTheHostedPageAsync(tab, editor);
-        await Expect(tab.Heading("System.Components.Heading")).ToBeVisibleAsync();
+        await Expect(GalleryHeading(tab)).ToBeVisibleAsync();
 
         // The reload comes seconds after the sign-in, well within the admin's 60-second window for "ended right after sign-in".
         editor = await Host.ResetPasswordAsync(editor);
@@ -121,8 +160,12 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         await tab.Button("Authentication.Gate.TryAgain").ClickAsync();
 
         await browser.SignInOnTheHostedPageAsync(tab, editor);
-        await Expect(tab.Heading("System.Components.Heading")).ToBeVisibleAsync();
+        await Expect(GalleryHeading(tab)).ToBeVisibleAsync();
         tab.Page.Url.ShouldBe(gallery);
         browser.PolicyViolations.ShouldBeEmpty();
     }
+
+    // The gallery is a page of the administration assembly, with its texts in the folder Gallery there.
+    private static ILocator GalleryHeading(AdminTab tab) =>
+        tab.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = Repository.AdministrationText("Gallery", "System.Components.Heading"), Exact = true });
 }

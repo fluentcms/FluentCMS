@@ -1,0 +1,479 @@
+@* A role and its grants (spec 4.15): name, description, site, requireTwoFactor and the grants from the catalogue. A save
+   replaces every grant (PUT), so each grant goes back with its constraints as read. A role has no ETag: a save that met
+   another's change is refused with FCMS3045, and the page reads the role again and puts back on it what the user changed.
+   The page edits a role the caller manages only, as the list shows them; the server stays the authority, and its refusals
+   are shown on the role by their code. A site switch drops the page while the new site loads, since the layout shows no
+   page until the shell is ready, and builds it again then: the role is read in the new site, where what the caller manages
+   and holds differs, and what was not saved is gone. A change of the content locale keeps the page and changes the access,
+   so the marks only. *@
+@page "/roles/new"
+@page "/roles/{Id:guid}"
+@implements IDisposable
+@inject IManagementApi Api
+@inject AdminContext Context
+@inject NavigationManager Navigation
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<RolesResources> L
+
+@if (state != State.Ready || catalogue is null || draft is null || !Manageable)
+{
+    <h1 tabindex="-1">@StateHeading</h1>
+    @if (state == State.Loading)
+    {
+        <p role="status">@L["Roles.Editor.Loading"]</p>
+    }
+    else if (state == State.Failed)
+    {
+        <p role="alert">@L["Roles.Editor.Failed"] <CmsButton OnClick="ReadAsync">@L["Roles.Editor.TryAgain"]</CmsButton></p>
+    }
+    else
+    {
+        <p>@(state == State.NotFound ? L["Roles.Editor.NotFoundNote"] : L["Roles.Editor.NotManagedNote"])</p>
+        <p><a href="roles">@L["Roles.Editor.BackToList"]</a></p>
+    }
+}
+else
+{
+    <PageCrumb Text="@Heading" />
+    <h1 tabindex="-1">@Heading</h1>
+
+    @if (read is { } role && RoleScope.IsPublic(role.Id, role.SiteId, role.Name))
+    {
+        <p role="note"><strong>@(role.SiteId is null ? L["Roles.Editor.PublicEverySite"] : L["Roles.Editor.PublicNotice"])</strong></p>
+    }
+
+    <form @onsubmit="SaveAsync">
+        <CmsCard Title="@L["Roles.Editor.Details"]">
+            <CmsStack>
+                <CmsTextInput Label="@L["Roles.Editor.Name"]"
+                              Value="@draft.Name"
+                              ValueChanged="@(value => draft.Name = value ?? string.Empty)"
+                              Required="true"
+                              MaxLength="@NameLength"
+                              ReadOnly="@(read?.BuiltIn == true)"
+                              Disabled="@busy"
+                              Help="@(read?.BuiltIn == true ? L["Roles.Editor.BuiltInName"].Value : null)"
+                              Error="@nameError" />
+                <CmsTextArea Label="@L["Roles.Editor.Description"]"
+                             Value="@draft.Description"
+                             ValueChanged="@(value => draft.Description = value)"
+                             MaxLength="@DescriptionLength"
+                             ReadOnly="@Fixed"
+                             Disabled="@busy"
+                             Error="@descriptionError" />
+                @if (read is null && RoleScope.ForInstance(Context))
+                {
+                    <CmsSelect Label="@L["Roles.Editor.Site"]"
+                               Options="@SiteOptions"
+                               Value="@siteChoice"
+                               ValueChanged="@(value => siteChoice = value ?? EverySite)"
+                               Disabled="@busy"
+                               Help="@L["Roles.Editor.SiteHelp"]" />
+                }
+                else
+                {
+                    <dl>
+                        <dt>@L["Roles.Editor.Site"]</dt>
+                        <dd>@SiteName(RoleSite)</dd>
+                    </dl>
+                }
+                <CmsCheckbox Label="@L["Roles.Editor.RequireTwoFactor"]"
+                             Value="@draft.RequireTwoFactor"
+                             ValueChanged="@(value => draft.RequireTwoFactor = value)"
+                             Disabled="@busy" />
+                @if (Fixed)
+                {
+                    <p>@L["Roles.Editor.SuperAdminNote"]</p>
+                }
+            </CmsStack>
+        </CmsCard>
+
+        <RoleGrants Grants="@draft.Grants" Catalogue="@catalogue" RoleSite="@RoleSite" ReadOnly="@Fixed" Disabled="@busy" />
+
+        <div role="alert">
+            <p tabindex="-1" @ref="messageElement">@message</p>
+            @if (detail is { Length: > 0 })
+            {
+                <p>@detail</p>
+            }
+        </div>
+
+        @if (asking)
+        {
+            <div role="group" aria-labelledby="@QuestionId">
+                <p id="@QuestionId" tabindex="-1" @ref="questionElement">@L["Roles.Editor.DeleteQuestion", Heading]</p>
+                <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                    <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="DeleteAsync">@L["Roles.Editor.DeleteConfirm"]</CmsButton>
+                    <CmsButton Disabled="@busy" OnClick="Cancel">@L["Roles.Editor.Cancel"]</CmsButton>
+                </CmsStack>
+            </div>
+        }
+        else
+        {
+            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                <CmsButton Appearance="CmsButtonAppearance.Primary" Submit="true" Disabled="@busy">@(read is null ? L["Roles.Editor.Create"] : L["Roles.Editor.Save"])</CmsButton>
+                @if (read is { BuiltIn: false })
+                {
+                    <CmsButton Disabled="@busy" OnClick="Ask">@L["Roles.Editor.Delete"]</CmsButton>
+                }
+            </CmsStack>
+        }
+    </form>
+}
+
+@code {
+    private const int NameLength = 128;
+    private const int DescriptionLength = 512;
+    private const string EverySite = "every-site";
+    private const string QuestionId = "roles-editor-question";
+
+    private State state = State.Loading;
+    private GrantCatalogue? catalogue;
+    private RoleRecord? read;
+    private RoleDraft? draft;
+    private Guid? shownId;
+    private bool shown;
+    private string? siteChoice;
+    private string? nameError;
+    private string? descriptionError;
+    private string? message;
+    private string? detail;
+    private bool busy;
+    private bool asking;
+    private ElementReference messageElement;
+    private ElementReference questionElement;
+    private Func<ElementReference>? focusAfterRender;
+    private CancellationTokenSource? reading;
+
+    // The site and the access the page last read with.
+    private Guid? readInSite;
+    private MyAccessInfo? readWith;
+
+    // Null for a new role.
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private enum State
+    {
+        Loading,
+        Ready,
+        NotFound,
+        Failed,
+    }
+
+    private string Heading => read?.Name ?? L["Roles.Editor.NewHeading"];
+
+    private string StateHeading => state == State.NotFound ? L["Roles.Editor.NotFound"]
+        : state == State.Ready ? L["Roles.Editor.NotManaged"]
+        : Id is null ? L["Roles.Editor.NewHeading"] : L["Roles.Editor.Heading"];
+
+    // Super Admin holds every permission; of it, only requireTwoFactor can be changed (FCMS3043).
+    private bool Fixed => read?.Id == RoleScope.SuperAdmin;
+
+    // A role of another site, or of every site, which the caller reads and does not manage, is not edited here.
+    private bool Manageable => read is null || RoleScope.Manages(Context, read.SiteId);
+
+    // The site of the role, or for a new one the site chosen: the shell's for a caller who manages the roles of its site only.
+    private Guid? RoleSite => read is not null ? read.SiteId
+        : !RoleScope.ForInstance(Context) ? Context.Site?.Id
+        : Guid.TryParse(siteChoice, out var site) ? site : null;
+
+    private IReadOnlyList<CmsOption> SiteOptions =>
+        [new(EverySite, L["Roles.Editor.EverySite"]), .. Context.Sites.Select(site => new CmsOption(site.Id.ToString("D"), site.Name))];
+
+    protected override void OnInitialized()
+    {
+        (readInSite, readWith) = (Context.Site?.Id, Context.AccessInfo);
+        Context.Changed += OnContextChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // The page is one instance for every role and for a new one, so another address reads afresh.
+        if (!shown || shownId != Id)
+        {
+            (shown, shownId) = (true, Id);
+            await ReadAgainAsync();
+        }
+    }
+
+    // What the user typed is the role's in the site it was read in, so another site starts again from the role as it is.
+    private Task ReadAgainAsync()
+    {
+        (read, draft, nameError, descriptionError, message, detail, asking) = (null, null, null, null, null, null, false);
+        siteChoice = Context.Site?.Id.ToString("D") ?? EverySite;
+        return ReadAsync();
+    }
+
+    // Another access, as of another content locale, changes the marks only. A page that outlives a site switch, which the
+    // layout does not let happen, reads the role and the catalogue's plugins again as a new page would.
+    private void OnContextChanged()
+    {
+        if (Context.Status != ShellStatus.Ready || Context.AccessInfo is not { } access || ReferenceEquals(access, readWith))
+        {
+            return;
+        }
+
+        var siteChanged = Context.Site?.Id != readInSite;
+        (readInSite, readWith) = (Context.Site?.Id, access);
+        _ = InvokeAsync(async () =>
+        {
+            if (siteChanged)
+            {
+                catalogue = null;
+                await ReadAgainAsync();
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender?.Invoke() is { Id: not null } element)
+        {
+            focusAfterRender = null;
+            await element.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        Context.Changed -= OnContextChanged;
+        reading?.Cancel();
+        reading?.Dispose();
+    }
+
+    // A read that a later one overtook, or that ends after the page is gone, shows nothing, even when it was answered before
+    // it was cancelled; the catalogue it read goes with it.
+    private async Task ReadAsync()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+        var current = reading = new CancellationTokenSource();
+        state = State.Loading;
+        try
+        {
+            var role = Id is { } id ? Api.GetRoleAsync(id, current.Token) : null;
+            var rules = catalogue is null ? RowRulesAsync(current.Token) : null;
+            var permissions = catalogue is null ? await Api.GetPermissionsAsync(current.Token) : null;
+            var found = role is null ? null : await role;
+            var registered = rules is null ? null : await rules;
+            var named = catalogue?.Folders is null && found?.Grants.Any(grant => GrantCatalogue.NamesFolders(grant.Permission, grant.Constraints)) == true
+                ? await FoldersAsync(current.Token)
+                : null;
+            if (Overtaken(current))
+            {
+                return;
+            }
+
+            if (permissions is not null)
+            {
+                catalogue = new GrantCatalogue(permissions, Context) { RowRules = registered };
+            }
+
+            catalogue!.Folders ??= named;
+            read = found;
+            draft = read is null ? new RoleDraft() : RoleDraft.From(read);
+            state = State.Ready;
+        }
+        catch (Exception exception) when (Overtaken(current) && (exception is OperationCanceledException || RoleProblems.IsFailure(exception)))
+        {
+        }
+        catch (Exception exception) when (RoleProblems.Has(exception, RoleProblems.RoleNotFound))
+        {
+            state = State.NotFound;
+        }
+        catch (Exception exception) when (RoleProblems.IsFailure(exception))
+        {
+            state = State.Failed;
+        }
+    }
+
+    private bool Overtaken(CancellationTokenSource read) => read.IsCancellationRequested || read != reading;
+
+    // The rules a grant may name; null when they could not be read, and the editor then offers no rule but the one stored.
+    private async Task<IReadOnlyList<RowRuleRecord>?> RowRulesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await Api.GetRowRulesAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException && RoleProblems.IsFailure(exception))
+        {
+            return null;
+        }
+    }
+
+    // The names of the folders the caller reads in the shell's site; none when the media plugin does not answer, or the
+    // caller lacks media.read, and the resources then show as ids.
+    private async Task<IReadOnlyDictionary<string, string>> FoldersAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return (await Api.GetFoldersAsync(cancellationToken)).ToDictionary(folder => folder.Id.ToString("D"), folder => folder.Name, StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException && RoleProblems.IsFailure(exception))
+        {
+            return new Dictionary<string, string>();
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (busy || draft is null)
+        {
+            return;
+        }
+
+        (nameError, descriptionError, message, detail) = (null, null, null, null);
+        foreach (var grant in draft.Grants)
+        {
+            grant.Refusals = [];
+            grant.LimitsRefused = false;
+        }
+
+        if (string.IsNullOrWhiteSpace(draft.Name))
+        {
+            nameError = L["Roles.Editor.NameRequired"];
+            Say(L["Roles.Editor.NotSaved"]);
+            return;
+        }
+
+        busy = true;
+        List<GrantDraft> sent = [.. draft.Grants];
+        try
+        {
+            if (read is null)
+            {
+                var body = draft.ToJson();
+                body["siteId"] = RoleSite?.ToString("D");
+                var created = await Api.CreateRoleAsync(body, CancellationToken.None);
+                (read, draft, shownId) = (created, RoleDraft.From(created), created.Id);
+                Announcer.Announce(L["Roles.Editor.Created", created.Name]);
+                Navigation.NavigateTo($"roles/{created.Id:D}", replace: true);
+                return;
+            }
+
+            var saved = await Api.UpdateRoleAsync(read.Id, draft.ToJson(), CancellationToken.None);
+            (read, draft) = (saved, RoleDraft.From(saved));
+            Say(L["Roles.Editor.Saved"]);
+        }
+        catch (Exception exception) when (RoleProblems.Has(exception, RoleProblems.RoleChanged) && read is not null)
+        {
+            await RebaseAsync();
+        }
+        catch (Exception exception) when (RoleProblems.OnPath(exception, RoleProblems.InvalidRole, "name") || RoleProblems.OnPath(exception, RoleProblems.InvalidRole, "description")
+            || RoleProblems.RefusedGrants(exception).Count > 0)
+        {
+            nameError = RoleProblems.OnPath(exception, RoleProblems.InvalidRole, "name") ? L["Roles.Editor.NameRefused"].Value : null;
+            descriptionError = RoleProblems.OnPath(exception, RoleProblems.InvalidRole, "description") ? L["Roles.Editor.DescriptionRefused"].Value : null;
+
+            // Each refusal goes to the grant it names and, below it, to the constraint's field.
+            foreach (var refused in RoleProblems.RefusedGrants(exception).Where(refusal => refusal.Index < sent.Count).GroupBy(refusal => refusal.Index))
+            {
+                sent[refused.Key].Refusals = [.. refused.Select(refusal => refusal.Path)];
+                sent[refused.Key].LimitsRefused = refused.Any(refusal => refusal.Path == "constraints" || refusal.Path.StartsWith("constraints.", StringComparison.Ordinal));
+            }
+
+            Say(nameError is null && descriptionError is null ? L["Roles.Editor.GrantsRefused"] : L["Roles.Editor.NotSaved"]);
+        }
+        catch (Exception exception) when (Refused(exception) is { } refusal)
+        {
+            Say(refusal, exception);
+        }
+        catch (Exception exception) when (RoleProblems.IsFailure(exception))
+        {
+            Say(L["Roles.Editor.SaveFailed"]);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    // The role as it is now with what the user changed put back on it; the user saves again once it is checked.
+    private async Task RebaseAsync()
+    {
+        try
+        {
+            var current = await Api.GetRoleAsync(read!.Id, CancellationToken.None);
+            var (rebased, dropped) = RoleDraft.Rebase(read, draft!, current);
+            (draft, read) = (rebased, current);
+            Say(dropped.Count == 0 ? L["Roles.Editor.Changed"] : L["Roles.Editor.ChangedLimitsDropped", string.Join(", ", dropped)]);
+        }
+        catch (Exception exception) when (RoleProblems.Has(exception, RoleProblems.RoleNotFound))
+        {
+            Say(L["Roles.Editor.Gone"]);
+        }
+        catch (Exception exception) when (RoleProblems.IsFailure(exception))
+        {
+            Say(L["Roles.Editor.ChangedNotRead"]);
+        }
+    }
+
+    private void Ask()
+    {
+        (asking, message, detail) = (true, null, null);
+        focusAfterRender = () => questionElement;
+    }
+
+    private void Cancel()
+    {
+        asking = false;
+        Say(L["Roles.Editor.NothingDeleted"]);
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (busy || read is null)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            await Api.DeleteRoleAsync(read.Id, CancellationToken.None);
+            Announcer.Announce(L["Roles.Editor.Deleted", read.Name]);
+            Navigation.NavigateTo("roles");
+            return;
+        }
+        catch (Exception exception) when (RoleProblems.Has(exception, RoleProblems.RoleInUse))
+        {
+            Say(L["Roles.Editor.InUse"]);
+        }
+        catch (Exception exception) when (Refused(exception) is { } refusal)
+        {
+            Say(refusal, exception);
+        }
+        catch (Exception exception) when (RoleProblems.IsFailure(exception))
+        {
+            Say(L["Roles.Editor.DeleteFailed"]);
+        }
+        finally
+        {
+            (busy, asking) = (false, false);
+        }
+    }
+
+    // The refusals a save and a delete share, by their code.
+    private string? Refused(Exception exception) =>
+        RoleProblems.Has(exception, RoleProblems.RoleFixed) ? L["Roles.Editor.Fixed"].Value
+        : RoleProblems.Has(exception, RoleProblems.LastSuperAdmin) ? L["Roles.Editor.LastSuperAdmin"].Value
+        : RoleProblems.Has(exception, RoleProblems.RoleNotFound) ? L["Roles.Editor.Gone"].Value
+        : RoleProblems.IsAboveReach(exception) ? L["Roles.Editor.AboveReach", read?.Name ?? draft?.Name ?? string.Empty].Value
+        : null;
+
+    // The outcome, where the focus goes: with the server's detail of a refusal, which names what it refused.
+    private void Say(string text, Exception? refusal = null)
+    {
+        message = text;
+        detail = refusal is ApiProblemException { Problem.Detail: { Length: > 0 } said } ? said : null;
+        focusAfterRender = () => messageElement;
+    }
+
+    private string SiteName(Guid? site) => site is not { } id
+        ? L["Roles.Editor.EverySite"]
+        : Context.Sites.FirstOrDefault(item => item.Id == id)?.Name ?? id.ToString("D");
+}

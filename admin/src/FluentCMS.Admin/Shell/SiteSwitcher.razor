@@ -102,6 +102,11 @@
                 Navigation.NavigateTo(Navigation.Uri, replace: true);
             }
         }
+        else if (AdministrationAreas.OfRoute(route) is not null)
+        {
+            // The grants of the new site decide whether the area's page shows, which the router's navigation asks again.
+            Navigation.NavigateTo(Navigation.Uri, replace: true);
+        }
         else if (ContentRoute() is [var type, .. var rest])
         {
             var described = Context.Schema?.Types.FirstOrDefault(item => item.Name == type);

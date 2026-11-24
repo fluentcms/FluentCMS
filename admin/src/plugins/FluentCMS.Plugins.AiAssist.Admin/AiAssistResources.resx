@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Ai.Usage.Page.Heading" xml:space="preserve">
+    <value>AI usage</value>
+  </data>
+  <data name="Ai.Usage.Menu" xml:space="preserve">
+    <value>AI usage</value>
+  </data>
+  <data name="Ai.Action.rewrite" xml:space="preserve">
+    <value>Rewrite</value>
+  </data>
+  <data name="Ai.Action.shorten" xml:space="preserve">
+    <value>Shorten</value>
+  </data>
+  <data name="Ai.Action.expand" xml:space="preserve">
+    <value>Expand</value>
+  </data>
+  <data name="Ai.Action.fixGrammar" xml:space="preserve">
+    <value>Fix grammar</value>
+  </data>
+  <data name="Ai.Action.title" xml:space="preserve">
+    <value>Suggest a title</value>
+  </data>
+  <data name="Ai.Action.summary" xml:space="preserve">
+    <value>Summarize</value>
+  </data>
+  <data name="Ai.Action.seo" xml:space="preserve">
+    <value>Suggest SEO texts</value>
+  </data>
+  <data name="Ai.Action.translate" xml:space="preserve">
+    <value>Translate</value>
+  </data>
+  <data name="Ai.Action.altText" xml:space="preserve">
+    <value>Suggest alt text of an image</value>
+  </data>
+  <data name="Ai.Action.assetAltText" xml:space="preserve">
+    <value>Suggest the image's alt text</value>
+  </data>
+  <data name="Ai.Panel.ReadingImages" xml:space="preserve">
+    <value>Reading the images…</value>
+  </data>
+  <data name="Ai.Panel.NoImage" xml:space="preserve">
+    <value>No image of the entry can be read.</value>
+  </data>
+  <data name="Ai.Panel.Image" xml:space="preserve">
+    <value>Image</value>
+  </data>
+  <data name="Ai.Panel.MetaTitle" xml:space="preserve">
+    <value>Meta title</value>
+  </data>
+  <data name="Ai.Panel.MetaDescription" xml:space="preserve">
+    <value>Meta description</value>
+  </data>
+  <data name="Ai.Panel.Writing" xml:space="preserve">
+    <value>Writing the suggestion…</value>
+  </data>
+  <data name="Ai.Panel.Suggest" xml:space="preserve">
+    <value>Suggest</value>
+  </data>
+  <data name="Ai.Panel.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Ai.Panel.Stop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="Ai.Panel.Accept" xml:space="preserve">
+    <value>Accept</value>
+  </data>
+  <data name="Ai.Panel.UseMetaTitle" xml:space="preserve">
+    <value>Use the meta title</value>
+  </data>
+  <data name="Ai.Panel.UseMetaDescription" xml:space="preserve">
+    <value>Use the meta description</value>
+  </data>
+  <data name="Ai.Panel.Decline" xml:space="preserve">
+    <value>Decline</value>
+  </data>
+  <data name="Ai.Panel.Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Ai.Panel.Started" xml:space="preserve">
+    <value>Writing a suggestion.</value>
+  </data>
+  <data name="Ai.Panel.Ready" xml:space="preserve">
+    <value>The suggestion is ready. Accept it to put it into the field, or decline it.</value>
+  </data>
+  <data name="Ai.Panel.Failed" xml:space="preserve">
+    <value>The suggestion could not be made. The field is unchanged.</value>
+  </data>
+  <data name="Ai.Panel.AltSaved" xml:space="preserve">
+    <value>The alt text of {0} is saved.</value>
+  </data>
+  <data name="Ai.Panel.AltChanged" xml:space="preserve">
+    <value>The alt text of {0} was changed since it was read. Accept again to replace it.</value>
+  </data>
+  <data name="Ai.Panel.AltNow" xml:space="preserve">
+    <value>Its alt text is now: {0}</value>
+  </data>
+  <data name="Ai.Panel.NotSaved" xml:space="preserve">
+    <value>The alt text could not be saved.</value>
+  </data>
+  <data name="Ai.Usage.Principal" xml:space="preserve">
+    <value>Principal</value>
+  </data>
+  <data name="Ai.Usage.Everyone" xml:space="preserve">
+    <value>Every principal</value>
+  </data>
+  <data name="Ai.Usage.Action" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="Ai.Usage.EveryAction" xml:space="preserve">
+    <value>Every action</value>
+  </data>
+  <data name="Ai.Usage.From" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="Ai.Usage.To" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="Ai.Usage.DaysInUtc" xml:space="preserve">
+    <value>A day in UTC, as the daily budget counts it.</value>
+  </data>
+  <data name="Ai.Usage.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Ai.Usage.Loading" xml:space="preserve">
+    <value>Reading the usage…</value>
+  </data>
+  <data name="Ai.Usage.None" xml:space="preserve">
+    <value>No AI call matches.</value>
+  </data>
+  <data name="Ai.Usage.ReadFailed" xml:space="preserve">
+    <value>The usage could not be read.</value>
+  </data>
+  <data name="Ai.Usage.Totals" xml:space="preserve">
+    <value>{0} calls, {1} prompt tokens and {2} completion tokens.</value>
+  </data>
+  <data name="Ai.Usage.ByPrincipal" xml:space="preserve">
+    <value>By principal and action</value>
+  </data>
+  <data name="Ai.Usage.Calls" xml:space="preserve">
+    <value>Calls</value>
+  </data>
+  <data name="Ai.Usage.PromptTokens" xml:space="preserve">
+    <value>Prompt tokens</value>
+  </data>
+  <data name="Ai.Usage.CompletionTokens" xml:space="preserve">
+    <value>Completion tokens</value>
+  </data>
+  <data name="Ai.Usage.Time" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="Ai.Usage.At" xml:space="preserve">
+    <value>{0} UTC</value>
+  </data>
+  <data name="Ai.Usage.Field" xml:space="preserve">
+    <value>Field</value>
+  </data>
+  <data name="Ai.Usage.Asset" xml:space="preserve">
+    <value>An asset of the media library</value>
+  </data>
+  <data name="Ai.Usage.Model" xml:space="preserve">
+    <value>Model</value>
+  </data>
+  <data name="Ai.Usage.Duration" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="Ai.Usage.Milliseconds" xml:space="preserve">
+    <value>{0} ms</value>
+  </data>
+  <data name="Ai.Usage.Outcome" xml:space="preserve">
+    <value>Outcome</value>
+  </data>
+  <data name="Ai.Usage.Succeeded" xml:space="preserve">
+    <value>Succeeded</value>
+  </data>
+  <data name="Ai.Usage.Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Ai.Usage.Previous" xml:space="preserve">
+    <value>Previous page</value>
+  </data>
+  <data name="Ai.Usage.Next" xml:space="preserve">
+    <value>Next page</value>
+  </data>
+  <data name="Ai.Usage.Page" xml:space="preserve">
+    <value>Page {0} of {1}</value>
+  </data>
+  <data name="Ai.Usage.PrincipalOf" xml:space="preserve">
+    <value>{0} {1}</value>
+  </data>
+  <data name="Ai.Usage.Kind.adminUser" xml:space="preserve">
+    <value>User</value>
+  </data>
+  <data name="Ai.Usage.Kind.apiKey" xml:space="preserve">
+    <value>API key</value>
+  </data>
+  <data name="Ai.Usage.Kind.serviceAccount" xml:space="preserve">
+    <value>Service account</value>
+  </data>
+  <data name="Ai.Usage.Kind.member" xml:space="preserve">
+    <value>Member</value>
+  </data>
+</root>

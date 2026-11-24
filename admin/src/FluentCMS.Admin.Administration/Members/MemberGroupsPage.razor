@@ -1,0 +1,367 @@
+@* The member groups of the instance with their role (spec 4.15): one is made, changed (its name, description and role) and
+   deleted after a question that names it; its members are the members list filtered by it, where each member's page puts
+   it in a group or takes it out. Making, changing and deleting a group need every grant of its role, and changing its role
+   every grant of the new one too (FCMS3103), which the server decides; the page names the refusal. *@
+@page "/members/groups"
+@implements IDisposable
+@inject IManagementApi Api
+@inject AdminContext Context
+@inject IStringLocalizer<MembersResources> L
+@inject IStringLocalizer<CommonResources> Common
+
+<PageCrumb Text="@L["Members.GroupsPage.Heading"]" />
+<h1 tabindex="-1">@L["Members.GroupsPage.Heading"]</h1>
+
+<CmsCard Title="@L["Members.GroupList.Heading"]">
+    @if (state == MemberSectionState.Loading)
+    {
+        <p role="status">@L["Members.GroupList.Loading"]</p>
+    }
+    else if (state == MemberSectionState.Failed)
+    {
+        <p role="alert">@L["Members.GroupList.Failed"] <CmsButton OnClick="ReadAsync">@L["Members.GroupList.TryAgain"]</CmsButton></p>
+    }
+    else if (groups.Count == 0)
+    {
+        <p>@L["Members.GroupList.None"]</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var group in groups)
+            {
+                <li @key="group.Id">
+                    <strong>@group.Name</strong>
+                    <span>@L["Members.GroupList.Role", MemberTexts.Role(group, Common, Context)]</span>
+                    @if (!string.IsNullOrEmpty(group.Description))
+                    {
+                        <span>@group.Description</span>
+                    }
+                    <a href="@($"members?group={group.Id:D}")">
+                        @(group.Members == 1 ? L["Members.GroupList.MembersOne"] : L["Members.GroupList.Members", group.Members])<span class="cms-visually-hidden">@L["Members.GroupList.MembersOf", group.Name]</span>
+                    </a>
+                    @if (deleting?.Id == group.Id)
+                    {
+                        <div role="group" aria-labelledby="@QuestionId">
+                            <p id="@QuestionId" tabindex="-1" @ref="questionElement">@L["Members.GroupList.DeleteQuestion", group.Name]</p>
+                            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                                <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="@(() => DeleteAsync(group))">@L["Members.GroupList.DeleteConfirm"]</CmsButton>
+                                <CmsButton Disabled="@busy" OnClick="CancelDelete">@L["Members.GroupList.Cancel"]</CmsButton>
+                            </CmsStack>
+                        </div>
+                    }
+                    else
+                    {
+                        <CmsButton Disabled="@busy" OnClick="@(() => EditAsync(group))">
+                            @L["Members.GroupList.Change"]<span class="cms-visually-hidden">@L["Members.GroupList.Which", group.Name]</span>
+                        </CmsButton>
+                        <CmsButton Disabled="@busy" OnClick="@(() => AskDelete(group))">
+                            @L["Members.GroupList.Delete"]<span class="cms-visually-hidden">@L["Members.GroupList.Which", group.Name]</span>
+                        </CmsButton>
+                    }
+                </li>
+            }
+        </ul>
+    }
+    <p class="members-message" tabindex="-1" @ref="listElement">@listMessage</p>
+</CmsCard>
+
+<CmsCard Title="@(editing is { } changed ? L["Members.GroupForm.ChangeHeading", changed.Name] : L["Members.GroupForm.NewHeading"])">
+    <form @onsubmit="SaveAsync">
+        <CmsStack>
+            <CmsTextInput @ref="nameInput"
+                          Label="@L["Members.GroupForm.Name"]"
+                          Required="true"
+                          Autocomplete="off"
+                          Value="@name"
+                          ValueChanged="@(value => name = value)"
+                          Disabled="@busy"
+                          Help="@L["Members.GroupForm.NameHelp"]"
+                          Error="@nameError" />
+            <CmsTextInput Label="@L["Members.GroupForm.Description"]"
+                          Autocomplete="off"
+                          Value="@description"
+                          ValueChanged="@(value => description = value)"
+                          Disabled="@busy"
+                          Error="@descriptionError" />
+            <RoleSelect Label="@L["Members.GroupForm.Role"]"
+                        Value="@role"
+                        ValueChanged="@(id => role = id)"
+                        Required="true"
+                        Disabled="@busy"
+                        Help="@L["Members.GroupForm.RoleHelp"]"
+                        Error="@roleError" />
+            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                <CmsButton Submit="true" Appearance="CmsButtonAppearance.Primary" Disabled="@busy">
+                    @(editing is null ? L["Members.GroupForm.Create"] : L["Members.GroupForm.Save"])
+                </CmsButton>
+                @if (editing is not null)
+                {
+                    <CmsButton Disabled="@busy" OnClick="CancelEdit">@L["Members.GroupForm.Cancel"]</CmsButton>
+                }
+            </CmsStack>
+        </CmsStack>
+    </form>
+    <p class="members-message" tabindex="-1" @ref="formElement">@formMessage</p>
+</CmsCard>
+
+@code {
+    private const string QuestionId = "members-groups-question";
+
+    private IReadOnlyList<MemberGroupRecord> groups = [];
+    private MemberSectionState state = MemberSectionState.Loading;
+    private MemberGroupRecord? editing;
+    private MemberGroupRecord? deleting;
+    private string? name;
+    private string? description;
+    private Guid? role;
+    private string? nameError;
+    private string? descriptionError;
+    private string? roleError;
+    private string? formMessage;
+    private string? listMessage;
+    private bool busy;
+    private CmsTextInput? nameInput;
+    private ElementReference listElement;
+    private ElementReference formElement;
+    private ElementReference questionElement;
+    private Func<ValueTask>? focusAfterRender;
+    private readonly CancellationTokenSource closing = new();
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    protected override Task OnInitializedAsync() => ReadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender is { } focus)
+        {
+            focusAfterRender = null;
+            await focus();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        state = MemberSectionState.Loading;
+        try
+        {
+            groups = await Api.GetMemberGroupsAsync(Closing);
+            state = MemberSectionState.Ready;
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            state = MemberSectionState.Failed;
+        }
+    }
+
+    // The form takes the group as the server has it now, not as the list read it: a save replaces the group, description
+    // included, so a value another change made since the list was read would otherwise be written back. Focus goes to the
+    // form's first field.
+    private async Task EditAsync(MemberGroupRecord group)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        (busy, deleting, formMessage, listMessage) = (true, null, null, null);
+        ClearErrors();
+        try
+        {
+            var current = await Api.GetMemberGroupAsync(group.Id, Closing);
+            (editing, name, description, role) = (current, current.Name, current.Description, current.RoleId);
+            focusAfterRender = () => nameInput?.FocusAsync() ?? ValueTask.CompletedTask;
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.GroupNotFound))
+        {
+            listMessage = L["Members.GroupList.AlreadyDeleted", group.Name];
+            ResetIfEditing(group);
+            await ReadAsync();
+            focusAfterRender = () => listElement.FocusAsync();
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            listMessage = L["Members.GroupList.ReadFailed", group.Name];
+            focusAfterRender = () => listElement.FocusAsync();
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void CancelEdit()
+    {
+        Reset();
+        formMessage = L["Members.GroupForm.NothingChanged"];
+        focusAfterRender = () => formElement.FocusAsync();
+    }
+
+    private void Reset()
+    {
+        (editing, name, description, role) = (null, null, null, null);
+        ClearErrors();
+    }
+
+    // A group that is gone is no longer the form's to change.
+    private void ResetIfEditing(MemberGroupRecord group)
+    {
+        if (editing?.Id == group.Id)
+        {
+            Reset();
+        }
+    }
+
+    private void ClearErrors() => (nameError, descriptionError, roleError) = (null, null, null);
+
+    private async Task SaveAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        ClearErrors();
+        var named = name?.Trim() ?? "";
+        if (named.Length == 0)
+        {
+            nameError = L["Members.GroupForm.NameRequired"];
+        }
+
+        if (role is null)
+        {
+            roleError = L["Members.GroupForm.RoleRequired"];
+        }
+
+        if (nameError is not null || roleError is not null || role is not { } chosen)
+        {
+            formMessage = null;
+            return;
+        }
+
+        (busy, formMessage) = (true, null);
+        var text = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        var changed = editing;
+        try
+        {
+            var saved = changed is null
+                ? await Api.CreateMemberGroupAsync(named, text, chosen, Closing)
+                : await Api.UpdateMemberGroupAsync(changed.Id, named, text, chosen, Closing);
+            formMessage = changed is null ? L["Members.GroupForm.Created", saved.Name] : L["Members.GroupForm.Saved", saved.Name];
+            Reset();
+            await ReadAsync();
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.GroupNameTaken))
+        {
+            nameError = L["Members.GroupForm.NameTaken"];
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.InvalidGroup, "name"))
+        {
+            nameError = L["Members.GroupForm.NameInvalid"];
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.InvalidGroup, "description"))
+        {
+            descriptionError = L["Members.GroupForm.DescriptionInvalid"];
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.InvalidGroup, "roleId"))
+        {
+            (roleError, role) = (L["Members.GroupForm.RoleGone"], null);
+        }
+        catch (Exception exception) when (MemberProblems.IsAboveReach(exception))
+        {
+            formMessage = L["Members.GroupForm.AboveReach"];
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.GroupNotFound))
+        {
+            formMessage = L["Members.GroupForm.Gone", changed?.Name ?? ""];
+            Reset();
+            await ReadAsync();
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            formMessage = L["Members.GroupForm.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (formMessage is not null)
+        {
+            focusAfterRender = () => formElement.FocusAsync();
+        }
+    }
+
+    private void AskDelete(MemberGroupRecord group)
+    {
+        (deleting, listMessage) = (group, null);
+        focusAfterRender = () => questionElement.FocusAsync();
+    }
+
+    private void CancelDelete()
+    {
+        deleting = null;
+        listMessage = L["Members.GroupList.NothingChanged"];
+        focusAfterRender = () => listElement.FocusAsync();
+    }
+
+    private async Task DeleteAsync(MemberGroupRecord group)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        (busy, deleting) = (true, null);
+        try
+        {
+            await Api.DeleteMemberGroupAsync(group.Id, Closing);
+            listMessage = L["Members.GroupList.Deleted", group.Name];
+            ResetIfEditing(group);
+            await ReadAsync();
+        }
+        catch (Exception exception) when (MemberProblems.IsAboveReach(exception))
+        {
+            listMessage = L["Members.GroupList.AboveReach", group.Name];
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.GroupNotFound))
+        {
+            listMessage = L["Members.GroupList.AlreadyDeleted", group.Name];
+            ResetIfEditing(group);
+            await ReadAsync();
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            listMessage = L["Members.GroupList.DeleteFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        // The group deleted is gone, and its buttons with it, so focus goes to the result.
+        focusAfterRender = () => listElement.FocusAsync();
+    }
+}

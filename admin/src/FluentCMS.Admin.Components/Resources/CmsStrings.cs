@@ -29,6 +29,17 @@ internal sealed class CmsStrings : ICmsTextSource
     public const string InputWholeNumberInvalid = nameof(InputWholeNumberInvalid);
     public const string InputNumberNotNegative = nameof(InputNumberNotNegative);
     public const string SelectNone = nameof(SelectNone);
+    public const string SecretOnce = nameof(SecretOnce);
+    public const string SecretHidden = nameof(SecretHidden);
+    public const string SecretShow = nameof(SecretShow);
+    public const string SecretHide = nameof(SecretHide);
+    public const string SecretCopy = nameof(SecretCopy);
+    public const string SecretCopied = nameof(SecretCopied);
+    public const string SecretNotCopied = nameof(SecretNotCopied);
+    public const string SecretDone = nameof(SecretDone);
+    public const string SecretLeaveQuestion = nameof(SecretLeaveQuestion);
+    public const string SecretStay = nameof(SecretStay);
+    public const string SecretLeave = nameof(SecretLeave);
 
     private static readonly ResourceManager Manager = new("FluentCMS.Admin.Components.Resources.CmsStrings", typeof(CmsStrings).Assembly);
 

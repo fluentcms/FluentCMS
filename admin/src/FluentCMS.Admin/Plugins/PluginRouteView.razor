@@ -1,38 +1,124 @@
-@* The page the router found, or the not-found page in its place for a page of an admin half that the site or the user may
-   not see, by the half that owns the page's assembly: after a site switch, a half loaded in the site before still has its
-   routes, and the switch navigates to the route again. NotFoundPage tells a page the user lacks the permission of. A page the
-   renderer cannot create shows an error in the layout instead, as no error boundary catches that. *@
+@* The page the router found, or the not-found page in its place for a page of an admin half or of an area of administration
+   that the site or the user may not see. Both are drawn by one RouteView, so that a change of the gate replaces the page and
+   keeps the layout, with its header, its site switcher and the focus on the switcher; the sidebar, which the layout draws
+   only while the shell is ready, is drawn again after a site switch. The gate reads the route data the router hands this,
+   never the address: the router does not render only the page of the address once its OnNavigateAsync has ended. It
+   renders the page of the address before again whenever an ancestor renders, as SignInGate does on every change of the
+   address, and the page of the address when a navigation it cancelled ends, before the OnNavigateAsync of the address has
+   run. While the access the shell holds is not that of the content locale the address names, as after a change of the
+   locale or before the address's navigation has read it, what the gate decides is held: the page drawn before stays, or
+   the no-access state when there is none. While the shell is not ready, as during a site switch or after a failed read,
+   the layout shows no page, and the no-access state is recorded, so that no page the access allowed before comes back
+   when the layout shows its page again. After a site switch, a half loaded in the site before still has its routes, and
+   the switch navigates to the route again.
+   NotFoundPage tells a page the user lacks the permission of. A page the renderer cannot create shows an error in the
+   layout instead, as no error boundary catches that. *@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "NotFoundPage is kept by the DynamicDependency of AdminApp's constructor.")]
+@implements IDisposable
 @using System.Reflection
 @inject AdminPlugins Plugins
+@inject AdminContext Context
 @inject NavigationManager Navigation
 @inject IStringLocalizer<AdminResources> L
+@inject NavigationProgress Progress
 
-@if (Plugins.Gate(RouteData, Navigation.ToBaseRelativePath(Navigation.Uri)) is PluginPageGate.None or PluginPageGate.Allowed)
+@{
+    (drawn, shown, var held) = Next();
+    Progress.Hold(held);
+}
+@if (shown is PluginPageGate.None or PluginPageGate.Allowed && !Creatable(drawn))
 {
-    if (Creatable)
-    {
-        <RouteView RouteData="RouteData" DefaultLayout="typeof(AdminLayout)" />
-    }
-    else
-    {
-        @Failure
-    }
+    @Failure
 }
 else
 {
-    <RouteView RouteData="NotFound" DefaultLayout="typeof(AdminLayout)" />
+    @* The route data the page is drawn with: a part of the page tells by the routes of its page whether the address is
+       still the page's, or the next page's while the router waits for it (RecordList). *@
+    var routed = Page();
+    <CascadingValue TValue="RouteData" Value="@routed">
+        <RouteView RouteData="@routed" DefaultLayout="typeof(AdminLayout)" />
+    </CascadingValue>
 }
 
 @code {
-    private static readonly RouteData NotFound = new(typeof(NotFoundPage), new Dictionary<string, object?>());
+
+    // The page the last render drew and the gate's answer for it.
+    private RouteData? drawn;
+    private PluginPageGate shown;
 
     [Parameter, EditorRequired]
     public RouteData RouteData { get; set; } = null!;
 
+    // The router draws this on its first page, before which the app draws the layout on its own (#3446).
+    protected override void OnInitialized()
+    {
+        Context.Changed += OnContextChanged;
+        Progress.ShowPage();
+    }
+
+    public void Dispose()
+    {
+        Context.Changed -= OnContextChanged;
+        Progress.Hold(false);
+    }
+
+    // The page to draw, its gate's answer, and whether the gate holds it: the router's page, unless the gate reads an access
+    // that is not that of the content locale the address names, which it then holds: the page drawn before stays, or the
+    // no-access state when there is none, and the layout shows that the next page is on its way. While the shell is not
+    // ready, no gated page is allowed.
+    private (RouteData Page, PluginPageGate Gate, bool Held) Next()
+    {
+        var gate = Plugins.Gate(RouteData);
+        if (gate == PluginPageGate.None)
+        {
+            return (RouteData, gate, false);
+        }
+
+        if (Context.Status != ShellStatus.Ready)
+        {
+            return (RouteData, PluginPageGate.NoAccess, false);
+        }
+
+        if (Context.AccessFor(ContentRoutes.LocaleOf(new Uri(Navigation.Uri))))
+        {
+            return (RouteData, gate, false);
+        }
+
+        return drawn is { } before ? (before, shown, true) : (RouteData, PluginPageGate.NoAccess, true);
+    }
+
+    // What the user may do changes without a navigation too, as with a content locale whose access lacks the page, or once
+    // the access of a new locale or site is read: the page is drawn again when what it would draw changed, and the layout
+    // told when only the hold ended.
+    private void OnContextChanged() => _ = InvokeAsync(() =>
+    {
+        var (page, gate, held) = Next();
+        if (!ReferenceEquals(page, drawn) || gate != shown)
+        {
+            StateHasChanged();
+        }
+        else
+        {
+            Progress.Hold(held);
+        }
+    });
+
+    // The page the RouteView draws. The not-found page, the router's or the gate's, is one instance from one answer to the
+    // next, so it is handed what it tells, both parameters each time as a parameter left out keeps its value: the gate's
+    // answer from the route data, which a page drawn before again at a new address keeps, or else the address answered.
+    private RouteData Page()
+    {
+        bool? noAccess = shown is PluginPageGate.NoAccess or PluginPageGate.NotFound ? shown == PluginPageGate.NoAccess : null;
+        return noAccess is null && drawn!.PageType != typeof(NotFoundPage) ? drawn : new(typeof(NotFoundPage), new Dictionary<string, object?>
+        {
+            [nameof(NotFoundPage.Address)] = Navigation.ToBaseRelativePath(Navigation.Uri),
+            [nameof(NotFoundPage.NoAccess)] = noAccess,
+        });
+    }
+
     // The page and the layout it names, either of which may be a class of the half.
-    private bool Creatable => Plugins.ProblemOf(RouteData.PageType) is null
-        && (RouteData.PageType.GetCustomAttribute<LayoutAttribute>() is not { } layout || Plugins.ProblemOf(layout.LayoutType) is null);
+    private bool Creatable(RouteData page) => Plugins.ProblemOf(page.PageType) is null
+        && (page.PageType.GetCustomAttribute<LayoutAttribute>() is not { } layout || Plugins.ProblemOf(layout.LayoutType) is null);
 
     private RenderFragment Failure => Failed;
 

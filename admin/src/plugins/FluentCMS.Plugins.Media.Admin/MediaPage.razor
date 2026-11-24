@@ -2,8 +2,8 @@
    button, by dropping files on the page and by pasting; the folders created, renamed, moved and deleted; and the selected
    assets moved to another folder. Opening an asset shows its detail, MediaAssetPanel. Each action shows only for a
    caller who holds its media.* permission; the server checks every call. *@
-@page "/media"
-@attribute [AdminPage("/media", Permission = "media.read")]
+@attribute [Route(PageRoute)]
+@attribute [AdminPage(PageRoute, Permission = "media.read")]
 @attribute [AdminMenuItem("Media.Menu", Section = AdminSection.Media, Icon = "image")]
 @inject IManagementApi Api
 @inject IAdminContext Context
@@ -137,6 +137,12 @@
 
     protected override void OnParametersSet()
     {
+        // While the router waits for the next page, this page gets that address's query, which is not its state.
+        if (!AtOwnRoute())
+        {
+            return;
+        }
+
         var next = MediaBrowseState.Parse(FolderQuery, ViewQuery, SearchQuery, TypeQuery, TagQuery, PageQuery);
         if (next.Folder != state.Folder || next.Query != state.Query)
         {
@@ -144,6 +150,16 @@
         }
 
         state = next;
+    }
+
+    // The route of the page, which the check of the address shares.
+    public const string PageRoute = "/media";
+
+    private bool AtOwnRoute()
+    {
+        var route = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var end = route.IndexOfAny(['?', '#']);
+        return string.Equals(Uri.UnescapeDataString(end < 0 ? route : route[..end]).Trim('/'), PageRoute.Trim('/'), StringComparison.OrdinalIgnoreCase);
     }
 
     private void Go(MediaBrowseState next) => Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(next.ToAddress()));

@@ -1,0 +1,334 @@
+@* The sites of the instance (spec 5.6), for a caller who holds sites.manage for the instance: each with its slug, its default
+   locale and a link to its host names. A site is created with a name, a slug and a default locale, and deleted after a
+   question that names it; the server keeps the default site and a site with content. After a create or a delete the shell
+   reads the user's sites again, so that the site switcher follows, and a delete of the site the shell shows moves the shell
+   to the default site, which the question says beforehand. *@
+@page "/multi-site/sites"
+@attribute [AdminPage("/multi-site/sites", Permission = "sites.manage", InstanceOnly = true)]
+@attribute [AdminMenuItem("MultiSite.Sites.Menu", Section = AdminSection.Settings, Order = 21)]
+@implements IDisposable
+@inject IManagementApi Api
+@inject IAdminContext Admin
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<MultiSiteResources> L
+
+<h1 tabindex="-1">@L["MultiSite.Sites.Page.Heading"]</h1>
+
+@if (sites is null)
+{
+    @if (failed)
+    {
+        <p role="alert">@L["MultiSite.Sites.Failed"] <CmsButton OnClick="ReadAsync">@L["MultiSite.Sites.TryAgain"]</CmsButton></p>
+    }
+    else
+    {
+        <p role="status">@L["MultiSite.Sites.Loading"]</p>
+    }
+}
+else
+{
+    <table class="multi-site-table">
+        <caption class="cms-visually-hidden">@L["MultiSite.Sites.Page.Heading"]</caption>
+        <thead>
+            <tr>
+                <th scope="col">@L["MultiSite.Sites.Name"]</th>
+                <th scope="col">@L["MultiSite.Sites.Slug"]</th>
+                <th scope="col">@L["MultiSite.Sites.DefaultLocale"]</th>
+                <th scope="col"><span class="cms-visually-hidden">@L["MultiSite.Sites.Actions"]</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var site in sites)
+            {
+                <tr @key="site.Id">
+                    <th scope="row">
+                        @site.Name
+                        @if (site.IsDefault)
+                        {
+                            <span class="multi-site-mark">@L["MultiSite.Sites.Default"]</span>
+                        }
+                        @if (site.Id == Admin.Site?.Id)
+                        {
+                            <span class="multi-site-mark">@L["MultiSite.Sites.Current"]</span>
+                        }
+                    </th>
+                    <td>@site.Slug</td>
+                    <td>@site.DefaultLocale</td>
+                    <td>
+                        <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                            <a href="@HostsRoute(site)">@L["MultiSite.Sites.Hosts"]<span class="cms-visually-hidden">@L["MultiSite.Sites.OfWhich", site.Name]</span></a>
+                            @if (!site.IsDefault)
+                            {
+                                <CmsButton Disabled="@busy" OnClick="@(() => AskDelete(site))">
+                                    @L["MultiSite.Sites.Delete"]<span class="cms-visually-hidden">@L["MultiSite.Sites.Which", site.Name]</span>
+                                </CmsButton>
+                            }
+                        </CmsStack>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<p class="multi-site-message" tabindex="-1" @ref="listElement">@listMessage</p>
+
+<CmsCard Title="@L["MultiSite.Create.Heading"]">
+    <form @onsubmit="CreateAsync">
+        <CmsStack>
+            <CmsTextInput Label="@L["MultiSite.Create.Name"]"
+                          Required="true"
+                          MaxLength="128"
+                          Autocomplete="off"
+                          Value="@name"
+                          ValueChanged="@(value => name = value)"
+                          Error="@nameError" />
+            <CmsTextInput Label="@L["MultiSite.Create.Slug"]"
+                          Help="@L["MultiSite.Create.SlugHelp"]"
+                          Required="true"
+                          MaxLength="64"
+                          Autocomplete="off"
+                          Value="@slug"
+                          ValueChanged="@(value => slug = value)"
+                          Error="@slugError" />
+            <CmsTextInput Label="@L["MultiSite.Create.DefaultLocale"]"
+                          Help="@L["MultiSite.Create.DefaultLocaleHelp"]"
+                          Required="true"
+                          Autocomplete="off"
+                          Value="@defaultLocale"
+                          ValueChanged="@(value => defaultLocale = value)"
+                          Error="@localeError" />
+            <div>
+                <CmsButton Submit="true" Appearance="CmsButtonAppearance.Primary" Disabled="@busy">@L["MultiSite.Create.Create"]</CmsButton>
+            </div>
+        </CmsStack>
+    </form>
+    <p class="multi-site-message" tabindex="-1" @ref="createElement">@createMessage</p>
+</CmsCard>
+
+<CmsDialog Title="@L["MultiSite.Delete.Title"]" Open="@(deleting is not null)" OpenChanged="@(open => { if (!open) CancelDelete(); })">
+    <ChildContent>
+        @if (deleting is { } site)
+        {
+            <p>@L["MultiSite.Delete.Text", site.Name, site.Slug]</p>
+            @if (site.Id == Admin.Site?.Id)
+            {
+                <p>@L["MultiSite.Delete.Current"]</p>
+            }
+            @if (dialogError is { } error)
+            {
+                <p role="alert">@error</p>
+            }
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="DeleteAsync">@L["MultiSite.Delete.Confirm"]</CmsButton>
+        <CmsButton Disabled="@busy" OnClick="CancelDelete">@L["MultiSite.Delete.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    private IReadOnlyList<SiteSummary>? sites;
+    private bool failed;
+    private bool busy;
+    private string? listMessage;
+    private string? name;
+    private string? slug;
+    private string? defaultLocale;
+    private string? nameError;
+    private string? slugError;
+    private string? localeError;
+    private string? createMessage;
+    private SiteSummary? deleting;
+    private string? dialogError;
+    private ElementReference listElement;
+    private ElementReference createElement;
+    private ElementReference? focusAfterRender;
+    private readonly CancellationTokenSource closing = new();
+
+    // A call made once the page is gone, as the read after a delete that moved the shell, is cancelled before it starts.
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    protected override Task OnInitializedAsync() => ReadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender is { } element)
+        {
+            focusAfterRender = null;
+            await element.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private static string HostsRoute(SiteSummary site) => $"multi-site/sites/{site.Id:D}/hosts";
+
+    private async Task ReadAsync()
+    {
+        failed = false;
+        try
+        {
+            sites = await Api.GetSitesAsync(Closing);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (MultiSiteProblems.ShellSiteGone(exception))
+        {
+            (sites, failed) = (null, true);
+            await ShellSiteGoneAsync();
+        }
+        catch (Exception exception) when (MultiSiteProblems.IsFailure(exception))
+        {
+            (sites, failed) = (null, true);
+        }
+    }
+
+    // The server refused the site the shell shows (X-Cms-Site), as one deleted in another tab, which the shell then leaves.
+    private Task ShellSiteGoneAsync() => Admin.Site is { } shown ? Admin.ReadSitesAsync(shown.Id) : Task.CompletedTask;
+
+    private async Task CreateAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        (nameError, slugError, localeError) = (
+            string.IsNullOrWhiteSpace(name) ? L["MultiSite.Create.NameRequired"].Value : null,
+            string.IsNullOrWhiteSpace(slug) ? L["MultiSite.Create.SlugRequired"].Value : null,
+            string.IsNullOrWhiteSpace(defaultLocale) ? L["MultiSite.Create.DefaultLocaleRequired"].Value : null);
+        if (nameError is not null || slugError is not null || localeError is not null)
+        {
+            return;
+        }
+
+        var (created, shellGone) = (false, false);
+        busy = true;
+        try
+        {
+            var site = await Api.CreateSiteAsync(name!.Trim(), slug!.Trim(), defaultLocale!.Trim(), Closing);
+            (createMessage, name, slug, defaultLocale, created) = (L["MultiSite.Create.Created", site.Name], null, null, null, true);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.InvalidSite) || MultiSiteProblems.Has(exception, MultiSiteProblems.InvalidLocale))
+        {
+            nameError = MultiSiteProblems.Has(exception, MultiSiteProblems.InvalidSite, "name") ? L["MultiSite.Create.NameInvalid"].Value : null;
+            slugError = MultiSiteProblems.Has(exception, MultiSiteProblems.InvalidSite, "slug") ? L["MultiSite.Create.SlugInvalid"].Value : null;
+            localeError = MultiSiteProblems.Has(exception, MultiSiteProblems.InvalidLocale, "defaultLocale") ? L["MultiSite.Create.DefaultLocaleInvalid"].Value : null;
+            createMessage = L["MultiSite.Create.Refused"];
+        }
+        catch (Exception exception) when (MultiSiteProblems.ShellSiteGone(exception))
+        {
+            (createMessage, shellGone) = (L["MultiSite.ShellSiteGone"], true);
+        }
+        catch (Exception exception) when (MultiSiteProblems.IsFailure(exception))
+        {
+            createMessage = L["MultiSite.Create.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (created)
+        {
+            Announcer.Announce(createMessage!);
+            await ReadAsync();
+            await Admin.ReadSitesAsync();
+        }
+        else if (shellGone)
+        {
+            await ShellSiteGoneAsync();
+        }
+
+        focusAfterRender = createElement;
+    }
+
+    private void AskDelete(SiteSummary site) => (deleting, dialogError) = (site, null);
+
+    private void CancelDelete()
+    {
+        if (deleting is not null && !busy)
+        {
+            (deleting, dialogError, listMessage) = (null, null, L["MultiSite.Delete.Kept"]);
+            focusAfterRender = listElement;
+        }
+    }
+
+    // The shell reads its sites before the list is read again: when the site deleted is the one it shows, it moves to the
+    // default site, and this page, which the layout hides meanwhile, is drawn anew.
+    private async Task DeleteAsync()
+    {
+        if (busy || deleting is not { } site)
+        {
+            return;
+        }
+
+        var current = site.Id == Admin.Site?.Id;
+        var (deleted, shellGone) = (false, false);
+        (busy, dialogError) = (true, null);
+        try
+        {
+            await Api.DeleteSiteAsync(site.Id, Closing);
+            (deleting, listMessage, deleted) = (null, L["MultiSite.Delete.Deleted", site.Name], true);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.SiteHasContent))
+        {
+            dialogError = L["MultiSite.Delete.HasContent", site.Name];
+        }
+        catch (Exception exception) when (MultiSiteProblems.Has(exception, MultiSiteProblems.DefaultSiteProtected))
+        {
+            dialogError = L["MultiSite.Delete.DefaultSite", site.Name];
+        }
+        catch (Exception exception) when (MultiSiteProblems.TargetGone(exception))
+        {
+            (deleting, listMessage, deleted) = (null, L["MultiSite.Delete.Gone", site.Name], true);
+        }
+        catch (Exception exception) when (MultiSiteProblems.ShellSiteGone(exception))
+        {
+            (deleting, listMessage, shellGone) = (null, L["MultiSite.ShellSiteGone"], true);
+        }
+        catch (Exception exception) when (MultiSiteProblems.IsFailure(exception))
+        {
+            dialogError = L["MultiSite.Delete.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (shellGone)
+        {
+            Announcer.Announce(listMessage!);
+            await ShellSiteGoneAsync();
+            return;
+        }
+
+        if (!deleted)
+        {
+            return;
+        }
+
+        Announcer.Announce(listMessage!);
+        await Admin.ReadSitesAsync(site.Id);
+        if (current && Admin.Site is { } shown && shown.Id != site.Id)
+        {
+            Announcer.Announce(L["MultiSite.Delete.Moved", shown.Name]);
+        }
+
+        await ReadAsync();
+        focusAfterRender = listElement;
+    }
+}

@@ -1,0 +1,349 @@
+@* The panel of one suggestion (spec 5.5). Alt text asks for the image first when the entry has several. The suggestion streams in as the server sends it; the text is not a live region, and the start, the end
+   and a failure are announced once each, politely. Accept is offered only once the stream has ended with its suggestion: a
+   refusal, an error within the stream, a stop or a close leave the draft as it was. An alt text for the asset is saved on
+   the asset when it is accepted, over the version of the asset it last read: one changed since is read again and shown. *@
+@using System.Text
+@using System.Text.Json.Nodes
+@using FluentCMS.Plugins.AiAssist.Admin.Api
+@implements IDisposable
+@inject IManagementApi Api
+@inject IManagementEvents Events
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<AiAssistResources> L
+
+<CmsDialog Title="@Request.Label" Open="@open" OpenChanged="@(value => { if (!value) Close(null); })" OnClosed="Closed">
+    <ChildContent>
+        @if (step == Step.Choose)
+        {
+            @if (images is null)
+            {
+                <p role="status">@L["Ai.Panel.ReadingImages"]</p>
+            }
+            else if (images.Count == 0)
+            {
+                <p>@L["Ai.Panel.NoImage"]</p>
+            }
+            else
+            {
+                <CmsSelect Label="@L["Ai.Panel.Image"]" Options="@([.. images.Select(asset => new CmsOption(asset.Id.ToString("D"), asset.Name))])" Value="@image?.ToString("D")" ValueChanged="@(value => image = Guid.TryParse(value, out var chosen) ? chosen : null)" />
+            }
+        }
+        else
+        {
+            <div class="ai-suggestion" aria-busy="@(step == Step.Streaming ? "true" : "false")" lang="@Request.Locale" dir="auto">
+                @if (seo is { } meta)
+                {
+                    <dl>
+                        <dt>@L["Ai.Panel.MetaTitle"]</dt>
+                        <dd>@meta.Title</dd>
+                        <dt>@L["Ai.Panel.MetaDescription"]</dt>
+                        <dd>@meta.Description</dd>
+                    </dl>
+                }
+                else if (suggestion is not null || streamed.Length > 0)
+                {
+                    <p>@(suggestion ?? streamed.ToString())</p>
+                }
+            </div>
+            @if (step == Step.Streaming)
+            {
+                <p class="ai-panel-note">@L["Ai.Panel.Writing"]</p>
+            }
+        }
+        @if (problem is { } shown)
+        {
+            <div class="ai-panel-problem">
+                <p><strong>@shown.Title</strong></p>
+                @if (shown.Detail is { Length: > 0 } detail)
+                {
+                    <p>@detail</p>
+                }
+            </div>
+        }
+    </ChildContent>
+    <Actions>
+        @switch (step)
+        {
+            case Step.Choose:
+                <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(!Chosen)" OnClick="StartAsync">@L["Ai.Panel.Suggest"]</CmsButton>
+                <CmsButton OnClick="@(() => Close(null))">@L["Ai.Panel.Cancel"]</CmsButton>
+                break;
+            case Step.Streaming:
+                <CmsButton OnClick="@(() => Close(null))">@L["Ai.Panel.Stop"]</CmsButton>
+                break;
+            case Step.Done when seo is { } meta:
+                <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => AcceptAsync(meta.Title))">@L["Ai.Panel.UseMetaTitle"]</CmsButton>
+                <CmsButton OnClick="@(() => AcceptAsync(meta.Description))">@L["Ai.Panel.UseMetaDescription"]</CmsButton>
+                <CmsButton OnClick="@(() => Close(null))">@L["Ai.Panel.Decline"]</CmsButton>
+                break;
+            case Step.Done:
+                <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@saving" OnClick="@(() => AcceptAsync(suggestion!))">@L["Ai.Panel.Accept"]</CmsButton>
+                <CmsButton OnClick="@(() => Close(null))">@L["Ai.Panel.Decline"]</CmsButton>
+                break;
+            default:
+                <CmsButton OnClick="@(() => Close(null))">@L["Ai.Panel.Close"]</CmsButton>
+                break;
+        }
+    </Actions>
+</CmsDialog>
+
+@code {
+    private enum Step
+    {
+        Choose,
+        Streaming,
+        Done,
+        Failed,
+    }
+
+    private sealed record Shown(string Title, string? Detail);
+
+    private readonly CancellationTokenSource stopping = new();
+    private CancellationToken token;
+    private readonly StringBuilder streamed = new();
+    private Step step;
+    private IReadOnlyList<AiMediaAsset>? images;
+    private Guid? image;
+    private string? suggestion;
+    private (string Title, string Description)? seo;
+    private Shown? problem;
+    private bool saving;
+    private bool open = true;
+    private bool closed;
+    private string? answer;
+
+    [Parameter, EditorRequired]
+    public AiSuggestionRequest Request { get; set; } = null!;
+
+    // Raised once, with the accepted text or null.
+    [Parameter, EditorRequired]
+    public Action<string?> OnDone { get; set; } = null!;
+
+    private AiApi Ai => new(Api, Events);
+
+    private bool AsksForImage => Request.Action == AiActionNames.AltText;
+
+    private bool Chosen => image is not null;
+
+    public void Dispose()
+    {
+        open = false;
+        stopping.Cancel();
+        stopping.Dispose();
+    }
+
+    // Taken once, so that a call after the panel went reads a cancelled token and not a disposed source.
+    protected override async Task OnInitializedAsync()
+    {
+        token = stopping.Token;
+        if (AsksForImage)
+        {
+            step = Step.Choose;
+            images = await ImagesAsync();
+            if (images.Count != 1)
+            {
+                return;
+            }
+
+            image = images[0].Id;
+        }
+
+        await StartAsync();
+    }
+
+    // The images among the ids, read in the form's locale; one that cannot be read, or is not an image, is left out.
+    private async Task<IReadOnlyList<AiMediaAsset>> ImagesAsync()
+    {
+        List<AiMediaAsset> found = [];
+        foreach (var id in Request.Images.Distinct())
+        {
+            try
+            {
+                if (await Ai.AssetAsync(id, Request.Locale, token) is { IsImage: true } asset)
+                {
+                    found.Add(asset);
+                }
+            }
+            catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or System.Text.Json.JsonException || (failure is TaskCanceledException && !token.IsCancellationRequested))
+            {
+            }
+            catch (Exception failure) when (Stopped(failure))
+            {
+                break;
+            }
+        }
+
+        return found;
+    }
+
+    private async Task StartAsync()
+    {
+        (step, problem, suggestion, seo) = (Step.Streaming, null, null, null);
+        streamed.Clear();
+        Announcer.Announce(L["Ai.Panel.Started"]);
+        StateHasChanged();
+        try
+        {
+            var outcome = await Ai.RunAsync(Request.Action, Body(), delta =>
+            {
+                streamed.Append(delta);
+                _ = InvokeAsync(StateHasChanged);
+            }, token);
+            if (outcome.Problem is { } refused)
+            {
+                Fail(refused.Title, refused.Detail);
+            }
+            else if (Read(outcome.Suggestion))
+            {
+                step = Step.Done;
+                Announcer.Announce(L["Ai.Panel.Ready"]);
+            }
+            else
+            {
+                Fail(null, null);
+            }
+        }
+        catch (Exception failure) when (Stopped(failure))
+        {
+        }
+        catch (ApiProblemException refused)
+        {
+            Fail(refused.Problem.Title, refused.Problem.Detail);
+        }
+        catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            Fail(null, null);
+        }
+    }
+
+    private AiActionBody Body() => new()
+    {
+        Type = Request.ForAsset ? null : Request.Type,
+        Field = Request.ForAsset ? null : Request.Field,
+        Locale = Request.Locale,
+        Text = AsksForImage ? null : Request.Text,
+        Options = Request.Action switch
+        {
+            AiActionNames.AltText => new AiActionOptions { MediaId = image },
+            _ => null,
+        },
+    };
+
+    // The text, or for seo its meta title and description; nothing else is a suggestion.
+    private bool Read(JsonNode? answer)
+    {
+        if (answer is JsonValue value && value.TryGetValue<string>(out var text) && !string.IsNullOrWhiteSpace(text))
+        {
+            suggestion = text;
+            return true;
+        }
+
+        if (answer is JsonObject meta && meta["metaTitle"] is JsonValue title && title.TryGetValue<string>(out var metaTitle)
+            && meta["metaDescription"] is JsonValue description && description.TryGetValue<string>(out var metaDescription))
+        {
+            seo = (metaTitle, metaDescription);
+            return true;
+        }
+
+        return false;
+    }
+
+    // What was streamed before a failure is not a suggestion, so it is taken away with the step.
+    private void Fail(string? title, string? detail)
+    {
+        streamed.Clear();
+        step = Step.Failed;
+        problem = new Shown(title ?? L["Ai.Panel.Failed"], detail);
+        Announcer.Announce(problem.Title);
+    }
+
+    private async Task AcceptAsync(string text)
+    {
+        if (!Request.ForAsset)
+        {
+            Close(text);
+            return;
+        }
+
+        if (saving || images?.FirstOrDefault(asset => asset.Id == image) is not { } asset)
+        {
+            return;
+        }
+
+        (saving, problem) = (true, null);
+        try
+        {
+            await Ai.SetAltAsync(asset, text, token);
+            Announcer.Announce(L["Ai.Panel.AltSaved", asset.Name]);
+            Close(text);
+        }
+        catch (Exception failure) when (Stopped(failure))
+        {
+        }
+        catch (ApiProblemException refused) when (refused.Problem.Status == 412)
+        {
+            await ReadAgainAsync(asset);
+        }
+        catch (ApiProblemException refused)
+        {
+            problem = new Shown(refused.Problem.Title ?? L["Ai.Panel.NotSaved"], refused.Problem.Detail);
+        }
+        catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException)
+        {
+            problem = new Shown(L["Ai.Panel.NotSaved"], null);
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    // The asset changed since it was read: the next accept is over the version read now, in the locale of the first read,
+    // which shows its alt text.
+    private async Task ReadAgainAsync(AiMediaAsset stale)
+    {
+        Shown shown;
+        try
+        {
+            var current = await Ai.AssetAsync(stale.Id, Request.Locale, token);
+            images = [.. images!.Select(asset => asset.Id == current.Id ? current : asset)];
+            shown = new Shown(L["Ai.Panel.AltChanged", current.Name], string.IsNullOrWhiteSpace(current.Alt) ? null : L["Ai.Panel.AltNow", current.Alt].Value);
+        }
+        catch (Exception failure) when (Stopped(failure))
+        {
+            return;
+        }
+        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            shown = new Shown(L["Ai.Panel.NotSaved"], null);
+        }
+
+        problem = shown;
+        Announcer.Announce(shown.Title);
+    }
+
+    private bool Stopped(Exception failure) =>
+        token.IsCancellationRequested && failure is OperationCanceledException or ObjectDisposedException;
+
+    // A close stops a stream that runs, which the server then ends as cancelled. The answer goes once the dialog has closed
+    // and given focus back to the control that opened it.
+    private void Close(string? accepted)
+    {
+        if (!open)
+        {
+            return;
+        }
+
+        (answer, open) = (accepted, false);
+        stopping.Cancel();
+    }
+
+    private void Closed()
+    {
+        if (!closed)
+        {
+            closed = true;
+            OnDone(answer);
+        }
+    }
+}

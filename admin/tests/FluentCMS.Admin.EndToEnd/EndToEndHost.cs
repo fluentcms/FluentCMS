@@ -47,6 +47,8 @@ public sealed class EndToEndHost : IAsyncLifetime
     private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory(RootPrefix);
     private readonly Dictionary<string, string?> _environment = [];
     private readonly ConcurrentDictionary<Type, Lazy<Task<Editor>>> _classEditors = new();
+    private readonly SmtpSink _smtp = new();
+    private readonly AiProviderStub _ai = new();
     private ChildProcess? _host;
     private TestCertificates? _certificates;
     private IPlaywright? _playwright;
@@ -72,6 +74,9 @@ public sealed class EndToEndHost : IAsyncLifetime
     // A user of the instance-wide role Reader, which holds the Editor's grants without those of media, so that the media
     // plugin's contributions are hidden from it in a site where the plugin is enabled.
     public Editor Reader { get; private set; } = null!;
+
+    // The AI provider the sites of the run may name, which the host allows as an endpoint.
+    internal AiProviderStub Ai => _ai;
 
     // Why the browser tests are skipped: Chromium is not installed for this version of Playwright.
     public string? BrowserMissing { get; private set; }
@@ -122,6 +127,8 @@ public sealed class EndToEndHost : IAsyncLifetime
         {
             _playwright?.Dispose();
             _host?.Dispose();
+            _smtp.Dispose();
+            _ai.Dispose();
             _certificates?.Server.Dispose();
             TryDelete(_root);
         }
@@ -180,11 +187,13 @@ public sealed class EndToEndHost : IAsyncLifetime
     // A directory of a test's own, deleted with the host's.
     public DirectoryInfo NewDirectory() => _root.CreateSubdirectory(Guid.NewGuid().ToString("N"));
 
-    // An editor of its own for a test that changes its user, such as by ending its sessions, or a user of another role.
-    public async Task<Editor> CreateEditorAsync(string role = "Editor")
+    // An editor of its own for a test that changes its user, such as by ending its sessions, or a user of another role: an
+    // instance-wide one, or with the slug of a site, a role of that site.
+    public async Task<Editor> CreateEditorAsync(string role = "Editor", string? site = null)
     {
         var editor = NewEditor();
-        await CommandAsync(editor.Password, "user", "create", "--email", editor.Email, "--role", role, "--password-stdin");
+        string[] ofSite = site is null ? [] : ["--site", site];
+        await CommandAsync(editor.Password, ["user", "create", "--email", editor.Email, "--role", role, .. ofSite, "--password-stdin"]);
         return editor;
     }
 
@@ -271,12 +280,15 @@ public sealed class EndToEndHost : IAsyncLifetime
         await File.WriteAllTextAsync(mark, Repository.Configuration, Token);
     }
 
-    // The settings of a production deployment, as few as the image needs, with five that only a test host has: its address
+    // The settings of a production deployment, as few as the image needs, with six that only a test host has: its address
     // is a port of the loopback address; its certificates are the run's own; every browser of the tests calls from that one
     // address, one case after another for minutes, so the request limits per address and per user are raised to what such a
     // suite cannot reach (no case is about the limiter, whose tests are the host's own); and an access token lasts five
     // seconds, so that the admin refreshes it on demand, two and a half seconds after it was issued, at the next call of a
-    // test's action; and the preview origin of PreviewTests, which no server holds.
+    // test's action; the preview origin of PreviewTests, which no server holds; a mail server of the run's own (SmtpSink),
+    // which takes the invitations the users page sends and keeps none; an AI provider of the run's own (AiProviderStub),
+    // the one endpoint a site may name in its AI settings; and webhooks that may deliver to private networks, so that the
+    // receiver of WebhooksTests on the loopback address is reached.
     private void Configure()
     {
         var certificates = _certificates!;
@@ -306,6 +318,12 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["FluentCms__RateLimits__Delivery__MaxKeyLimit"] = TestLimit,
             ["FluentCms__RateLimits__PreAuth__PermitLimit"] = TestLimit,
             ["FluentCms__Clients__AccessTokenLifetime"] = AccessTokenLifetime,
+            ["FluentCms__Email__Smtp__Host"] = IPAddress.Loopback.ToString(),
+            ["FluentCms__Email__Smtp__Port"] = _smtp.Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["FluentCms__Email__Smtp__Security"] = "None",
+            ["FluentCms__Email__Smtp__From"] = "cms@example.com",
+            ["FluentCms__Ai__AllowedEndpoints__0"] = _ai.Endpoint,
+            ["FluentCms__Webhooks__AllowPrivateNetworks"] = "true",
             ["Kestrel__Endpoints__Https__Url"] = origin,
             ["Kestrel__Endpoints__Https__Certificate__Path"] = certificates.ServerPath,
             ["Kestrel__Endpoints__Https__Certificate__Password"] = certificates.Password,

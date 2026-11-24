@@ -1,0 +1,105 @@
+@* The agent writes of the site (spec 5.4): the activity log of the operations that came through MCP, GET /activity with
+   origin=mcp, newest first and 50 a page, for a caller who holds activity.read there. It has no menu item; the other pages
+   of the half link to it. *@
+@page "/mcp/activity"
+@attribute [AdminPage("/mcp/activity", Permission = "activity.read")]
+@using System.Globalization
+@inject IManagementApi Api
+@inject IStringLocalizer<McpResources> L
+
+<h1 tabindex="-1">@L["Mcp.Activity.Page.Heading"]</h1>
+<p>@L["Mcp.Activity.Intro"]</p>
+<McpLinks Current="mcp/activity" />
+
+@if (failed)
+{
+    <p role="alert">@L["Mcp.Activity.Failed"] <CmsButton OnClick="@(() => ReadAsync(number))">@L["Mcp.TryAgain"]</CmsButton></p>
+}
+else if (page is null)
+{
+    <p role="status">@L["Mcp.Activity.Loading"]</p>
+}
+else if (page.Total == 0)
+{
+    <p>@L["Mcp.Activity.None"]</p>
+}
+else
+{
+    <table class="mcp-table mcp-activity">
+        <caption class="cms-visually-hidden">@L["Mcp.Activity.Page.Heading"]</caption>
+        <thead>
+            <tr>
+                <th scope="col">@L["Mcp.Activity.Time"]</th>
+                <th scope="col">@L["Mcp.Activity.Actor"]</th>
+                <th scope="col">@L["Mcp.Activity.Client"]</th>
+                <th scope="col">@L["Mcp.Activity.Action"]</th>
+                <th scope="col">@L["Mcp.Activity.Target"]</th>
+                <th scope="col">@L["Mcp.Activity.Locale"]</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in page.Items)
+            {
+                <tr @key="row.Id">
+                    <th scope="row">@row.OccurredAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</th>
+                    <td>@row.ActorName</td>
+                    <td>@if (row.ClientId is { } client) {<code>@client</code>}</td>
+                    <td><code>@row.Action</code></td>
+                    <td>@Target(row)</td>
+                    <td>@row.Locale</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <nav class="mcp-pages" aria-label="@L["Mcp.Activity.Pages"]">
+        <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+            <CmsButton Disabled="@(busy || page.Page <= 1)" OnClick="@(() => ReadAsync(page.Page - 1))">@L["Mcp.Activity.Previous"]</CmsButton>
+            <span>@L["Mcp.Activity.Page", Number(page.Page), Number(Pages)]</span>
+            <CmsButton Disabled="@(busy || page.Page >= Pages)" OnClick="@(() => ReadAsync(page.Page + 1))">@L["Mcp.Activity.Next"]</CmsButton>
+        </CmsStack>
+    </nav>
+}
+
+@code {
+    private McpActivityAnswer? page;
+    private int number = 1;
+    private bool failed;
+    private bool busy;
+    private int reads;
+
+    private long Pages => page is null ? 1 : Math.Max(1, (page.Total + page.PageSize - 1) / page.PageSize);
+
+    protected override Task OnInitializedAsync() => ReadAsync(1);
+
+    // A read that a later one overtakes is dropped, so that the page shows the last page asked for.
+    private async Task ReadAsync(int asked)
+    {
+        var read = ++reads;
+        (number, failed, busy) = (asked, false, true);
+        try
+        {
+            var answer = await Api.GetAgentWritesAsync(asked, CancellationToken.None);
+            if (read == reads)
+            {
+                page = answer;
+            }
+        }
+        catch (Exception exception) when (read == reads && McpProblems.IsFailure(exception))
+        {
+            (page, failed) = (null, true);
+        }
+        finally
+        {
+            if (read == reads)
+            {
+                busy = false;
+            }
+        }
+    }
+
+    private static string Target(McpActivityRow row) =>
+        row.TargetLabel ?? (row.TargetType is null ? string.Empty : $"{row.TargetType} {row.TargetId}".Trim());
+
+    private static string Number(long value) => value.ToString("N0", CultureInfo.CurrentCulture);
+}

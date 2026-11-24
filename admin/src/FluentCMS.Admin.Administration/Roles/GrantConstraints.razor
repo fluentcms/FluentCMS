@@ -1,0 +1,265 @@
+@* What narrows one grant (spec 4.15, rows 4.4 to 4.7): sites, locales, fields, a row rule and the resources of a plugin. The
+   limits as they are, and below them their editor: the sites the caller manages for a role of every site, the locales of the
+   sites the role reaches, the fields GET /schema shows of the type a content grant names, and the rules of
+   GET /permissions/row-rules registered for that type or for every type. A value stored that is not offered is shown, marked
+   so, and can be taken off. A list left empty is left out of the request, as the server stores a limit that does not narrow;
+   an object left without a member is none. Only the member the user changes is written: the others, resources and members
+   this view does not name among them, go back as they were read. Resources are shown, a media folder by its name where the
+   caller reads it, and kept as they are. *@
+@using System.Globalization
+@using FluentCMS.Admin.Fields
+@inject AdminContext Context
+@inject IStringLocalizer<RolesResources> L
+
+@if (Value is { Count: > 0 } constraints)
+{
+    <p>@L["Roles.Constraints.Label"]</p>
+    <dl>
+        @if (Strings(constraints, Sites) is { } sites)
+        {
+            <dt>@L["Roles.Constraints.Sites"]</dt>
+            <dd>@string.Join(", ", sites.Select(SiteName))</dd>
+        }
+        @if (Strings(constraints, Locales) is { } locales)
+        {
+            <dt>@L["Roles.Constraints.Locales"]</dt>
+            <dd>@string.Join(", ", locales)</dd>
+        }
+        @if (Strings(constraints, Fields) is { } fields)
+        {
+            <dt>@L["Roles.Constraints.Fields"]</dt>
+            <dd>@string.Join(", ", fields)</dd>
+        }
+        @if (Rule(constraints) is { } ruleName)
+        {
+            <dt>@L["Roles.Constraints.RowRule"]</dt>
+            <dd>@ruleName</dd>
+        }
+        @if (Strings(constraints, Resources) is { } resources)
+        {
+            <dt>@L["Roles.Constraints.Resources"]</dt>
+            <dd>@string.Join(", ", resources.Select(ResourceName))</dd>
+        }
+    </dl>
+}
+
+@if (!ReadOnly)
+{
+    <details open="@Open">
+        <summary>@L["Roles.Constraints.Edit"]<span id="@($"{messageId}-grant")" class="cms-visually-hidden">@L["Roles.Constraints.EditWhich", Permission]</span></summary>
+        <p>@L["Roles.Constraints.Help"]</p>
+        @if (Refusals.Contains(Whole))
+        {
+            <p role="alert">@L["Roles.Constraints.Refused"]</p>
+        }
+        @if (SiteChoices is { Count: > 0 } siteChoices)
+        {
+            @Choices(Sites, L["Roles.Constraints.Sites"], null, siteChoices)
+        }
+        @if (LocaleChoices is { Count: > 0 } localeChoices)
+        {
+            @Choices(Locales, L["Roles.Constraints.Locales"], null, localeChoices)
+        }
+        @if (Type is not null || Strings(Value, Fields) is not null)
+        {
+            @Choices(Fields, L["Roles.Constraints.Fields"], L["Roles.Constraints.FieldsHelp"], FieldChoices)
+        }
+        @if (GrantCatalogue.IsContent(Permission) || Rule(Value) is not null)
+        {
+            <CmsSelect Label="@L["Roles.Constraints.RowRule"]"
+                       Options="@RuleChoices"
+                       Value="@Rule(Value)"
+                       ValueChanged="@(rule => SetAsync(RowRule, rule is null ? null : JsonValue.Create(rule)))"
+                       Placeholder="@L["Roles.Constraints.NoRule"]"
+                       Clearable="true"
+                       Disabled="@Disabled"
+                       DescribedBy="@($"{messageId}-grant")"
+                       Help="@(Catalogue.RowRules is null ? L["Roles.Constraints.RulesUnread"].Value : null)"
+                       Error="@(Refused(RowRule) ? L["Roles.Constraints.RuleRefused", Rule(Value) ?? string.Empty].Value : null)" />
+        }
+        @if (Strings(Value, Resources) is not null)
+        {
+            <p>@L["Roles.Constraints.ResourcesKept"]</p>
+        }
+    </details>
+}
+
+@code {
+    private const string Sites = "sites";
+    private const string Locales = "locales";
+    private const string Fields = "fields";
+    private const string RowRule = "rowRule";
+    private const string Resources = "resources";
+    private const string Whole = "constraints";
+
+    private readonly string messageId = ElementIds.Next("role-constraint");
+
+    // The grant's constraints as the server answered them, or null for none.
+    [Parameter]
+    public JsonObject? Value { get; set; }
+
+    // Raised with the grant's new constraints, null when none is left.
+    [Parameter]
+    public EventCallback<JsonObject?> ValueChanged { get; set; }
+
+    // The site of the role, null for a role of every site: a role of a site grants only in that site.
+    [Parameter]
+    public Guid? RoleSite { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    // Shown and not changed, while a save is in flight.
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    // The permission or pattern the grant names.
+    [Parameter, EditorRequired]
+    public string Permission { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public GrantCatalogue Catalogue { get; set; } = null!;
+
+    // The paths below the grant the server refused on the last save, such as constraints.locales.
+    [Parameter]
+    public IReadOnlyList<string> Refusals { get; set; } = [];
+
+    // Opens the editor, as after a refusal of a constraint, which the user may clear without it closing.
+    [Parameter]
+    public bool Open { get; set; }
+
+    private string? Type => GrantCatalogue.ContentTypeOf(Permission);
+
+    // A limit to sites narrows a role of every site only, to sites where the caller manages roles; a role of a site grants
+    // in its own site alone.
+    private IEnumerable<MySiteInfo> OfferedSites => RoleSite is null ? Context.Sites.Where(site => RoleScope.Manages(Context, site.Id)) : [];
+
+    private IReadOnlyList<CmsOption> SiteChoices =>
+        WithStored(Sites, [.. OfferedSites.Select(site => new CmsOption(site.Id.ToString("D"), site.Name))]);
+
+    // The locales of the role's site, or of the sites offered for a role of every site, in the sites' order.
+    private IReadOnlyList<CmsOption> LocaleChoices =>
+        WithStored(Locales, [.. (RoleSite is { } site ? Context.Sites.Where(item => item.Id == site) : OfferedSites)
+            .SelectMany(item => item.Locales)
+            .Select(locale => locale.Code)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(code => new CmsOption(code, LocaleName(code)))]);
+
+    // The fields of the type as GET /schema shows them to the caller, which leaves out those the caller cannot read.
+    private IReadOnlyList<CmsOption> FieldChoices =>
+        WithStored(Fields, [.. (Context.Schema?.Types.FirstOrDefault(item => item.Name == Type)?.Fields ?? []).Select(described => new CmsOption(described.Name, described.Name))]);
+
+    private IReadOnlyList<CmsOption> RuleChoices
+    {
+        get
+        {
+            var rules = Catalogue.RulesFor(Permission);
+            return Rule(Value) is { } stored && !rules.Contains(stored, StringComparer.Ordinal)
+                ? [.. rules.Select(rule => new CmsOption(rule, rule)), new CmsOption(stored, L["Roles.Constraints.RuleNotListed", stored])]
+                : [.. rules.Select(rule => new CmsOption(rule, rule))];
+        }
+    }
+
+    private RenderFragment Choices(string member, string legend, string? help, IReadOnlyList<CmsOption> choices) =>
+        @<fieldset class="cms-field" aria-describedby="@($"{messageId}-{member}")">
+            <legend class="cms-field-label">@legend<span class="cms-visually-hidden">@L["Roles.Constraints.EditWhich", Permission]</span></legend>
+            @foreach (var choice in choices)
+            {
+                <CmsCheckbox @key="choice.Value"
+                             Label="@choice.Text"
+                             Disabled="@Disabled"
+                             MarkedInvalid="@Refused(member)"
+                             DescribedBy="@($"{messageId}-{member}")"
+                             Value="@Chosen(member, choice.Value)"
+                             ValueChanged="@(on => ToggleAsync(member, choice.Value, on))" />
+            }
+            @if (Refused(member))
+            {
+                <span id="@($"{messageId}-{member}")" class="cms-field-message cms-field-message-error">@L["Roles.Constraints.LimitRefused"]</span>
+            }
+            else
+            {
+                <span id="@($"{messageId}-{member}")" class="cms-field-message">@(help is null ? L["Roles.Constraints.NoneChecked"] : L["Roles.Constraints.NoneCheckedWith", help])</span>
+            }
+        </fieldset>;
+
+    private bool Refused(string member) =>
+        Refusals.Any(path => path == $"{Whole}.{member}" || path.StartsWith($"{Whole}.{member}.", StringComparison.Ordinal) || path.StartsWith($"{Whole}.{member}[", StringComparison.Ordinal));
+
+    // The options, then each value stored that they do not offer, marked so, so that it can be taken off; once, since the
+    // server does not make sites or fields distinct.
+    private IReadOnlyList<CmsOption> WithStored(string member, IReadOnlyList<CmsOption> offered)
+    {
+        var options = offered.ToList();
+        foreach (var value in Strings(Value, member) ?? [])
+        {
+            if (!options.Any(option => Same(member, option.Value, value)))
+            {
+                options.Add(new CmsOption(value, L["Roles.Constraints.NotOffered", member == Sites ? SiteName(value) : value]));
+            }
+        }
+
+        return options;
+    }
+
+    private bool Chosen(string member, string value) => Strings(Value, member)?.Any(stored => Same(member, stored, value)) == true;
+
+    private Task ToggleAsync(string member, string value, bool on)
+    {
+        var stored = Strings(Value, member) ?? [];
+        IReadOnlyList<string> next = on
+            ? stored.Any(item => Same(member, item, value)) ? stored : [.. stored, value]
+            : [.. stored.Where(item => !Same(member, item, value))];
+        return SetAsync(member, next.Count == 0 ? null : new JsonArray([.. next.Select(item => (JsonNode)JsonValue.Create(item))]));
+    }
+
+    private Task SetAsync(string member, JsonNode? value)
+    {
+        var next = Value?.DeepClone().AsObject() ?? [];
+        if (value is null)
+        {
+            next.Remove(member);
+        }
+        else
+        {
+            next[member] = value;
+        }
+
+        return ValueChanged.InvokeAsync(next.Count == 0 ? null : next);
+    }
+
+    // As the server compares them: a site by its id and a locale in any case.
+    private static bool Same(string member, string left, string right) => member switch
+    {
+        Sites => Guid.TryParse(left, out var one) && Guid.TryParse(right, out var other) ? one == other : left == right,
+        Locales => string.Equals(left, right, StringComparison.OrdinalIgnoreCase),
+        _ => left == right,
+    };
+
+    private static IReadOnlyList<string>? Strings(JsonObject? constraints, string name) =>
+        constraints?[name] is JsonArray items ? [.. items.Select(item => item?.ToString() ?? string.Empty)] : null;
+
+    private static string? Rule(JsonObject? constraints) =>
+        constraints?[RowRule] is JsonValue rule && rule.TryGetValue<string>(out var name) ? name : null;
+
+    // The site's name as GET /me/sites gives it, or its id for a site the caller has no role in.
+    private string SiteName(string id) =>
+        Guid.TryParse(id, out var site) && Context.Sites.FirstOrDefault(item => item.Id == site) is { } found ? found.Name : id;
+
+    // A media folder by its name where the caller reads it, any other resource by its id.
+    private string ResourceName(string id) =>
+        GrantCatalogue.NamesFolders(Permission, Value) && Catalogue.Folders?.GetValueOrDefault(id) is { } name ? name : id;
+
+    // The code with the language in itself, which the code alone may not say.
+    private string LocaleName(string code)
+    {
+        try
+        {
+            return L["Roles.Constraints.Locale", code, CultureInfo.GetCultureInfo(code, predefinedOnly: true).NativeName];
+        }
+        catch (CultureNotFoundException)
+        {
+            return L["Roles.Constraints.LocaleCode", code];
+        }
+    }
+}

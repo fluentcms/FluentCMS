@@ -1,0 +1,23 @@
+{
+  "manifestVersion": 1,
+  "name": "multi-site",
+  "version": "1.0.0",
+  "adminRange": "[1.0.0,2.0.0)",
+  "assembly": "FluentCMS.Plugins.MultiSite.Admin",
+  "pages": [
+    { "type": "FluentCMS.Plugins.MultiSite.Admin.MultiSiteSitesPage", "route": "/multi-site/sites", "permission": "sites.manage", "instanceOnly": true },
+    { "type": "FluentCMS.Plugins.MultiSite.Admin.MultiSiteHostsPage", "route": "/multi-site/sites/{Id:guid}/hosts", "permission": "sites.manage", "instanceOnly": true }
+  ],
+  "menuItems": [
+    {
+      "type": "FluentCMS.Plugins.MultiSite.Admin.MultiSiteSitesPage",
+      "label": "MultiSite.Sites.Menu",
+      "labels": { "en": "All sites" },
+      "route": "/multi-site/sites",
+      "section": "settings",
+      "order": 21,
+      "permission": "sites.manage",
+      "instanceOnly": true
+    }
+  ]
+}

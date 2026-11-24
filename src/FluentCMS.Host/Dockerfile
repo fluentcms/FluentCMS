@@ -32,6 +32,7 @@ COPY samples/Blog/Blog.csproj samples/Blog/
 COPY admin/src/FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj admin/src/FluentCMS.Admin.Abstractions/
 COPY admin/src/FluentCMS.Admin.Components/FluentCMS.Admin.Components.csproj admin/src/FluentCMS.Admin.Components/
 COPY admin/src/FluentCMS.Admin/FluentCMS.Admin.csproj admin/src/FluentCMS.Admin/
+COPY admin/src/FluentCMS.Admin.Administration/FluentCMS.Admin.Administration.csproj admin/src/FluentCMS.Admin.Administration/
 COPY admin/src/FluentCMS.Admin.App/FluentCMS.Admin.App.csproj admin/src/FluentCMS.Admin.App/
 COPY admin/src/FluentCMS.Admin.Hosting/FluentCMS.Admin.Hosting.csproj admin/src/FluentCMS.Admin.Hosting/
 COPY admin/src/FluentCMS.Admin.RichText/FluentCMS.Admin.RichText.csproj admin/src/FluentCMS.Admin.RichText/

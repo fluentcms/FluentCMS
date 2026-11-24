@@ -1,0 +1,135 @@
+@* The grants of the role (spec 4.15): each with its constraints, which the row edits, and a pick of a permission or a pattern
+   from the catalogue of GET /permissions by its source to add an unconstrained grant. The draft holds them; a save sends
+   them all. *@
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<RolesResources> L
+
+<CmsCard Title="@L["Roles.Grants.Heading"]">
+    @if (Grants.Count == 0)
+    {
+        <p>@L["Roles.Grants.None"]</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var grant in Grants)
+            {
+                <li @key="grant.Key">
+                    <RoleGrantRow Grant="@grant" Catalogue="@Catalogue" RoleSite="@RoleSite" ReadOnly="@ReadOnly" Disabled="@Disabled" OnRemove="@RemoveAsync" OnChanged="@OnChanged" />
+                </li>
+            }
+        </ul>
+    }
+
+    @if (Grants.Any(grant => !Catalogue.Holds(grant.Permission, RoleSite)))
+    {
+        <p>@L["Roles.Grants.NotHeldNote"]</p>
+    }
+
+    <p tabindex="-1" @ref="messageElement">@message</p>
+
+    @if (!ReadOnly)
+    {
+        <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+            <CmsSelect Label="@L["Roles.Grants.Source"]" Options="@SourceOptions" Value="@source" ValueChanged="@OnSourceChanged" Disabled="@Disabled" />
+            <CmsSelect Label="@L["Roles.Grants.Permission"]"
+                       Options="@PermissionOptions"
+                       Value="@permission"
+                       ValueChanged="@(value => permission = value)"
+                       Placeholder="@L["Roles.Grants.Choose"]"
+                       Disabled="@Disabled" />
+            <CmsButton Disabled="@(Disabled || string.IsNullOrEmpty(permission))" OnClick="AddAsync">@L["Roles.Grants.Add"]</CmsButton>
+        </CmsStack>
+    }
+</CmsCard>
+
+@code {
+    private string source = GrantCatalogue.Core;
+    private string? permission;
+    private string? message;
+    private ElementReference messageElement;
+    private bool focusMessage;
+
+    [Parameter, EditorRequired]
+    public List<GrantDraft> Grants { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public GrantCatalogue Catalogue { get; set; } = null!;
+
+    [Parameter]
+    public Guid? RoleSite { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    // While a save is in flight, since the draft it answers replaces the grants.
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    // Raised after the grants changed.
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private IReadOnlyList<CmsOption> SourceOptions =>
+        [.. Catalogue.Sources.Select(item => new CmsOption(item, L[$"Roles.Source.{item}"] is { ResourceNotFound: false } known ? known.Value : item))];
+
+    private IReadOnlyList<CmsOption> PermissionOptions =>
+        [.. Catalogue.Offered(source).Select(name => new CmsOption(name, OptionText(name)))];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusMessage)
+        {
+            focusMessage = false;
+            await messageElement.FocusAsync();
+        }
+    }
+
+    private void OnSourceChanged(string? value) => (source, permission) = (value ?? GrantCatalogue.Core, null);
+
+    // A permission with what the catalogue says of it, the plugin behind it and whether the caller's access shows it.
+    private string OptionText(string name)
+    {
+        string text = Catalogue.Entry(name) is { } entry
+            ? L["Roles.Grants.Option", name, entry.Description]
+            : name == GrantCatalogue.Everything
+                ? L["Roles.Grants.Option", name, L["Roles.Grants.EverythingDescribed"]]
+                : L["Roles.Grants.Option", name, Catalogue.Matches(name).Count is var count && count == 1 ? L["Roles.Grants.MatchesOne"] : L["Roles.Grants.Matches", count]];
+        if (Catalogue.PluginOf(name) is { } plugin)
+        {
+            text = L["Roles.Grants.OptionOfPlugin", text, plugin];
+        }
+
+        return Catalogue.Holds(name, RoleSite) ? text : L["Roles.Grants.OptionNotHeld", text];
+    }
+
+    // An unconstrained grant the role has already, by its identity, so that an empty object is none, is not added twice.
+    private async Task AddAsync()
+    {
+        if (permission is not { Length: > 0 } chosen)
+        {
+            return;
+        }
+
+        if (Grants.Any(grant => grant.Identity == GrantDraft.IdentityOf(chosen, null)))
+        {
+            message = L["Roles.Grants.AlreadyGranted", chosen];
+        }
+        else
+        {
+            Grants.Add(new GrantDraft(chosen, null));
+            (message, permission) = (L["Roles.Grants.Added", chosen], null);
+            await OnChanged.InvokeAsync();
+        }
+
+        Announcer.Announce(message);
+    }
+
+    // The button of the row goes with it, so focus goes to what was done.
+    private async Task RemoveAsync(GrantDraft grant)
+    {
+        Grants.Remove(grant);
+        (message, focusMessage) = (L["Roles.Grants.Removed", grant.Permission], true);
+        await OnChanged.InvokeAsync();
+    }
+}

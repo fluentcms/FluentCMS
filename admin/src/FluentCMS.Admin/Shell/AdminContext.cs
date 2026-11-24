@@ -30,14 +30,27 @@ internal sealed class AdminContext(
     ShellSite site,
     FormatService formats,
     ISessionStorage storage,
+    TimeProvider time,
     ILogger<AdminContext> logger) : IAdminContext, IAdminAccess
 {
     internal const string SchemaRead = "schema.read";
 
+    // How long the reads of a new content locale may take before the shell gives up on them and shows that they failed, with
+    // a retry, rather than a loading state until the client's own timeout of 100 s per attempt (#3446). They are two reads in
+    // a row, /me/access and then /schema with /plugins alongside, each of which may wait once after a 429
+    // (RateLimitHandler.MaxWait) before it tries again, with time for the attempts.
+    public static readonly TimeSpan LocaleReadLimit = (2 * RateLimitHandler.MaxWait) + TimeSpan.FromSeconds(15);
+
     private Task? _starting;
     private int _generation;
+
+    // The reads of ReadPluginsAsync, of which only the last one started applies.
+    private int _pluginReads;
     private Task _localeReads = Task.CompletedTask;
     private Task<IReadOnlyDictionary<string, MyAccessInfo>>? _localeAccess;
+
+    // The content locale AccessInfo was read in, null for the site's default.
+    private string? _accessLocale;
 
     public event Action? Changed;
 
@@ -61,6 +74,15 @@ internal sealed class AdminContext(
     public IAdminAccess Access => this;
 
     public MyAccessInfo? AccessInfo { get; private set; }
+
+    // Whether AccessInfo is that of the content locale: not after a change of the locale until its access is read, nor while
+    // a site is read, so what the user may do in the locale is not known meanwhile, and a gate holds what it decides.
+    public bool AccessCurrent => AccessFor(null);
+
+    // Whether AccessInfo is that of the content locale an address names, as UseLocaleAsync chooses it, or with null of the
+    // content locale: an address that names another locale is read with its access only once UseLocaleAsync has read it.
+    public bool AccessFor(string? locale) =>
+        AccessInfo is not null && string.Equals(_accessLocale, locale is null ? site.ContentLocale : Chosen(locale), StringComparison.Ordinal);
 
     // Null when the user may not read the schema of the site; SchemaRefused says so.
     public SchemaDescription? Schema { get; private set; }
@@ -104,6 +126,126 @@ internal sealed class AdminContext(
         });
     }
 
+    // After a change of a site or its locales (spec 4.16), so that the switchers follow. The site shown takes its new name and
+    // locales; its access and schema are read again when its default locale changed, or when the content locale is no longer
+    // one it has enabled, which then goes back to the default. A site that is gone, as one deleted, is left for the default
+    // site, or the first, as a switch does. A read that fails, or that a switch or a change of locale overtook, changes nothing,
+    // but when the site shown is the one the caller says is gone: every read of that site would be refused (FCMS2301), so the
+    // shell fails, without that site in the switcher, and its Try again starts afresh, which reads the sites and takes the
+    // default site in place of the one the tab kept.
+    public async Task ReadSitesAsync(Guid? gone = null)
+    {
+        if (Status != ShellStatus.Ready)
+        {
+            return;
+        }
+
+        if (gone is { } deleted)
+        {
+            Sites = [.. Sites.Where(item => item.Id != deleted)];
+        }
+
+        var generation = _generation;
+        IReadOnlyList<MySiteInfo> mine;
+        try
+        {
+            mine = await client.GetMySitesAsync(CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)
+        {
+            ShellLog.SitesNotRead(logger, exception);
+            if (generation == _generation && gone is { } lost && Site?.Id == lost)
+            {
+                ++_generation;
+                Status = ShellStatus.Failed;
+                Changed?.Invoke();
+            }
+
+            return;
+        }
+
+        if (generation != _generation || Site is not { } shown)
+        {
+            return;
+        }
+
+        Sites = mine;
+        if (mine.FirstOrDefault(item => item.Id == shown.Id) is not { } same)
+        {
+            await LeaveAsync(mine);
+            return;
+        }
+
+        var (locale, enabled) = (site.ContentLocale, ContentLocales);
+        site.Current = same;
+        if (!enabled.SequenceEqual(ContentLocales, StringComparer.Ordinal))
+        {
+            _localeAccess = null;
+        }
+
+        var chosen = locale is null ? null : Chosen(locale);
+        var newDefault = !string.Equals(same.DefaultLocale, shown.DefaultLocale, StringComparison.Ordinal);
+        if (chosen != locale || newDefault)
+        {
+            if (newDefault)
+            {
+                metadata.ForgetSchema();
+            }
+
+            var next = ++_generation;
+            site.ContentLocale = chosen;
+            Changed?.Invoke();
+            await (_localeReads = RunAsync(next, () => SiteReadsAsync(next, LocaleReadLimit)));
+            return;
+        }
+
+        Changed?.Invoke();
+    }
+
+    // After a plugin was enabled or disabled in the site shown (spec 4.15), so that its admin contributions follow without a
+    // reload. A read that fails, or that a switch, a change of locale or a later read overtook, changes nothing.
+    public async Task ReadPluginsAsync()
+    {
+        if (Status != ShellStatus.Ready)
+        {
+            return;
+        }
+
+        var (generation, read) = (_generation, ++_pluginReads);
+        metadata.ForgetPlugins();
+        IReadOnlyList<PluginInfo> installed;
+        try
+        {
+            installed = await metadata.GetPluginsAsync(CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)
+        {
+            ShellLog.PluginsNotRead(logger, exception);
+            return;
+        }
+
+        if (generation == _generation && read == _pluginReads)
+        {
+            Plugins = installed;
+            Changed?.Invoke();
+        }
+    }
+
+    private Task LeaveAsync(IReadOnlyList<MySiteInfo> mine)
+    {
+        if (mine.Count > 0)
+        {
+            return SwitchSiteAsync((mine.FirstOrDefault(item => item.IsDefault) ?? mine[0]).Id);
+        }
+
+        ++_generation;
+        (site.Current, site.ContentLocale, _localeAccess) = (null, null, null);
+        (AccessInfo, Schema, SchemaRefused, Plugins) = (null, null, false, []);
+        Status = ShellStatus.NoSite;
+        Changed?.Invoke();
+        return Task.CompletedTask;
+    }
+
     // The content locale an address names: one of the site's enabled locales, else the site's default; null keeps the one
     // there is. The access and the schema of the locale before stay until those of the new one are read, so a page awaits
     // this before it reads.
@@ -119,12 +261,7 @@ internal sealed class AdminContext(
             return _localeReads;
         }
 
-        var chosen = ContentLocales.FirstOrDefault(code => string.Equals(code, locale, StringComparison.OrdinalIgnoreCase));
-        if (string.Equals(chosen, current.DefaultLocale, StringComparison.OrdinalIgnoreCase))
-        {
-            chosen = null;
-        }
-
+        var chosen = Chosen(locale);
         if (string.Equals(chosen, site.ContentLocale, StringComparison.Ordinal))
         {
             return _localeReads;
@@ -132,7 +269,15 @@ internal sealed class AdminContext(
 
         var generation = ++_generation;
         site.ContentLocale = chosen;
-        return _localeReads = RunAsync(generation, () => SiteReadsAsync(generation));
+        return _localeReads = RunAsync(generation, () => SiteReadsAsync(generation, LocaleReadLimit));
+    }
+
+    // The content locale an address that names a locale is in: one of the site's enabled locales, null for its default, and
+    // the default for a locale the site does not have enabled.
+    private string? Chosen(string locale)
+    {
+        var chosen = ContentLocales.FirstOrDefault(code => string.Equals(code, locale, StringComparison.OrdinalIgnoreCase));
+        return string.Equals(chosen, Site?.DefaultLocale, StringComparison.OrdinalIgnoreCase) ? null : chosen;
     }
 
     // The locales of the site in which the user may read the type: a grant may be limited to locales, and a read of every
@@ -172,6 +317,34 @@ internal sealed class AdminContext(
     }
 
     public bool Allows(string permission) => AccessInfo is { } access && Holds(access, permission);
+
+    public bool AllowsForInstance(string permission) => AccessInfo is { } access && access.InstancePermissions.Contains(permission, StringComparer.Ordinal);
+
+    // Whether the user may open an area of core's administration pages: it holds the area's permission, for the instance
+    // when the area is instance-only. A permission with a star, as the settings menu's, is held with any name in its place.
+    public bool Allows(AdministrationArea area)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+        if (AccessInfo is not { } access)
+        {
+            return false;
+        }
+
+        var held = area.InstanceOnly ? access.InstancePermissions : [.. access.Permissions, .. access.InstancePermissions];
+        var star = area.Permission.IndexOf('*', StringComparison.Ordinal);
+        if (star < 0)
+        {
+            return held.Contains(area.Permission, StringComparer.Ordinal);
+        }
+
+        var (start, end) = (area.Permission[..star], area.Permission[(star + 1)..]);
+        return held.Any(name => name.Length > start.Length + end.Length && name.StartsWith(start, StringComparison.Ordinal) && name.EndsWith(end, StringComparison.Ordinal));
+    }
+
+    // Whether the user holds the permission of a page of an admin half, for the instance when the page is instance-only.
+    // A page that names none is open to everyone, but an instance-only one, which has nothing to hold for the instance.
+    public bool Allows(string? permission, bool instanceOnly) =>
+        permission is null ? !instanceOnly : instanceOnly ? AllowsForInstance(permission) : Allows(permission);
 
     public TypeAccessInfo? ForType(string type) => AccessInfo is { } access && access.Types.TryGetValue(type, out var found) ? found : null;
 
@@ -248,17 +421,34 @@ internal sealed class AdminContext(
         Changed?.Invoke();
     }
 
-    private async Task SiteReadsAsync(int generation)
+    // Without a limit, a read ends only with the client's timeout. The metadata reads the limit gives up on are dropped, as
+    // they go on until that timeout and a retry would wait for them again.
+    private async Task SiteReadsAsync(int generation, TimeSpan? limit = null)
     {
-        var access = await client.GetMyAccessAsync(site.Site, site.Locale, CancellationToken.None);
-        var plugins = metadata.GetPluginsAsync(CancellationToken.None);
+        using var limited = limit is { } after ? new CancellationTokenSource(after, time) : null;
+        try
+        {
+            await SiteReadsAsync(generation, limited?.Token ?? CancellationToken.None);
+        }
+        catch (OperationCanceledException) when (limited?.IsCancellationRequested == true)
+        {
+            metadata.ForgetPending();
+            throw;
+        }
+    }
+
+    private async Task SiteReadsAsync(int generation, CancellationToken token)
+    {
+        var locale = site.ContentLocale;
+        var access = await client.GetMyAccessAsync(site.Site, locale, token);
+        var plugins = metadata.GetPluginsAsync(token);
         SchemaDescription? schema = null;
         var refused = !Holds(access, SchemaRead);
         if (!refused)
         {
             try
             {
-                schema = await metadata.GetSchemaAsync(CancellationToken.None);
+                schema = await metadata.GetSchemaAsync(token);
             }
             catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.Forbidden)
             {
@@ -272,7 +462,7 @@ internal sealed class AdminContext(
             return;
         }
 
-        (AccessInfo, Schema, SchemaRefused, Plugins) = (access, schema, refused, installed);
+        (AccessInfo, _accessLocale, Schema, SchemaRefused, Plugins) = (access, locale, schema, refused, installed);
         Status = ShellStatus.Ready;
     }
 
@@ -282,8 +472,8 @@ internal sealed class AdminContext(
         {
             await reads();
         }
-        // No cancellation is asked for, so a TaskCanceledException is the client's timeout.
-        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)
+        // No caller cancels, so a cancellation is the client's timeout or the limit of a new locale's reads.
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or OperationCanceledException)
         {
             ShellLog.StartFailed(logger, exception);
             if (generation == _generation)

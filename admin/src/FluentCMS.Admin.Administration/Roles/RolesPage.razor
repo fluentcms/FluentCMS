@@ -1,0 +1,80 @@
+@* The roles the caller manages (spec 4.15): roles.manage for the instance manages every role, and in a site that site's
+   roles. GET /roles answers the whole list of what the caller may read, unpaged, so the page narrows, searches and pages
+   what it read. Which roles the caller manages depends on the site and the access. A site switch drops the page while the
+   new site loads, since the layout shows no page until the shell is ready, and builds it again then; a change of the
+   content locale keeps the page and changes the access, so the list reads again when the access changes. *@
+@page "/roles"
+@implements IDisposable
+@inject IManagementApi Api
+@inject NavigationManager Navigation
+@inject AdminContext Context
+@inject IStringLocalizer<RolesResources> L
+
+<h1 tabindex="-1">@L["Roles.Page.Heading"]</h1>
+
+<p><a href="roles/new">@L["Roles.List.New"]</a></p>
+
+<RecordList @ref="list"
+            TItem="RoleSummary"
+            Label="@L["Roles.Page.Heading"]"
+            Read="@ReadAsync"
+            SearchLabel="@L["Roles.List.Search"]"
+            EmptyText="@L["Roles.List.Empty"]"
+            RowLabel="@(role => role.Name)"
+            OnRowActivated="@Open">
+    <Columns>
+        <CmsDataGridColumn TItem="RoleSummary" Name="name" Title="@L["Roles.List.Name"]" Order="0">
+            <a href="@Route(context)" tabindex="-1">@context.Name</a>
+        </CmsDataGridColumn>
+        <CmsDataGridColumn TItem="RoleSummary" Name="site" Title="@L["Roles.List.Site"]" Order="1" Value="@SiteName" />
+        <CmsDataGridColumn TItem="RoleSummary" Name="kind" Title="@L["Roles.List.Kind"]" Order="2" Value="@Kind" />
+        <CmsDataGridColumn TItem="RoleSummary" Name="description" Title="@L["Roles.List.Description"]" Order="3" Value="@(role => role.Description)" />
+    </Columns>
+</RecordList>
+
+@code {
+    private RecordList<RoleSummary>? list;
+
+    // The access the list was last narrowed with.
+    private MyAccessInfo? narrowedWith;
+
+    protected override void OnInitialized()
+    {
+        narrowedWith = Context.AccessInfo;
+        Context.Changed += OnContextChanged;
+    }
+
+    public void Dispose() => Context.Changed -= OnContextChanged;
+
+    private void OnContextChanged()
+    {
+        if (Context.Status != ShellStatus.Ready || Context.AccessInfo is not { } access || ReferenceEquals(access, narrowedWith))
+        {
+            return;
+        }
+
+        narrowedWith = access;
+        _ = InvokeAsync(() => list?.ReloadAsync() ?? Task.CompletedTask);
+    }
+
+    private static string Route(RoleSummary role) => $"roles/{role.Id:D}";
+
+    private void Open(RoleSummary role) => Navigation.NavigateTo(Route(role));
+
+    private async Task<RecordPage<RoleSummary>> ReadAsync(RecordQuery query, CancellationToken cancellationToken)
+    {
+        List<RoleSummary> managed = [.. (await Api.GetRolesAsync(cancellationToken))
+            .Where(role => RoleScope.Manages(Context, role))
+            .Where(role => query.Search is not { } search || role.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase))];
+        return new RecordPage<RoleSummary>([.. managed.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)], managed.Count);
+    }
+
+    private string SiteName(RoleSummary role) => role.SiteId is not { } site
+        ? L["Roles.List.EverySite"]
+        : Context.Sites.FirstOrDefault(item => item.Id == site)?.Name ?? site.ToString("D");
+
+    private string Kind(RoleSummary role) =>
+        RoleScope.IsPublic(role.Id, role.SiteId, role.Name) ? L["Roles.List.Public"]
+        : role.BuiltIn ? L["Roles.List.BuiltIn"]
+        : L["Roles.List.Custom"];
+}

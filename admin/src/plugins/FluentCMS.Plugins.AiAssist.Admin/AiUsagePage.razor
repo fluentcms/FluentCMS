@@ -1,0 +1,175 @@
+@* The AI usage of the site (spec 5.5), for a caller with ai.usage.read: every call sent to a provider, newest first, in pages,
+   filtered by principal, action and days in UTC, as the daily budget counts them, with the totals of all that the filter
+   matches, in all and by principal and action. A principal is named as it was at its call; a total by principal names the
+   principal by a name the rows read so far gave it, else by its kind and id. *@
+@page "/ai/usage"
+@attribute [AdminPage("/ai/usage", Permission = AiActionNames.ReadUsage)]
+@attribute [AdminMenuItem("Ai.Usage.Menu", Section = AdminSection.Administration, Order = 90)]
+@using System.Globalization
+@using FluentCMS.Plugins.AiAssist.Admin.Api
+@inject IManagementApi Api
+@inject IStringLocalizer<AiAssistResources> L
+
+<div class="ai-usage">
+    <h1 tabindex="-1">@L["Ai.Usage.Page.Heading"]</h1>
+
+    <div class="ai-usage-filters">
+        <CmsSelect Label="@L["Ai.Usage.Principal"]" Options="@Principals" Value="@query.PrincipalId?.ToString("D")" Placeholder="@L["Ai.Usage.Everyone"]" Clearable="true"
+                   ValueChanged="@(value => FilterAsync(query with { PrincipalId = Guid.TryParse(value, out var id) ? id : null }))" />
+        <CmsSelect Label="@L["Ai.Usage.Action"]" Options="@ActionOptions" Value="@query.Action" Placeholder="@L["Ai.Usage.EveryAction"]" Clearable="true"
+                   ValueChanged="@(value => FilterAsync(query with { Action = value }))" />
+        <CmsDatePicker Label="@L["Ai.Usage.From"]" Help="@L["Ai.Usage.DaysInUtc"]" Value="@query.From" ValueChanged="@(value => FilterAsync(query with { From = value }))" />
+        <CmsDatePicker Label="@L["Ai.Usage.To"]" Help="@L["Ai.Usage.DaysInUtc"]" Value="@query.To" ValueChanged="@(value => FilterAsync(query with { To = value }))" />
+    </div>
+
+    @if (problem is { } failure)
+    {
+        <p class="ai-usage-error" role="alert">@failure</p>
+        <CmsButton OnClick="ReadAsync">@L["Ai.Usage.TryAgain"]</CmsButton>
+    }
+    else if (page is null)
+    {
+        <p role="status">@L["Ai.Usage.Loading"]</p>
+    }
+    else if (page.Total == 0)
+    {
+        <p>@L["Ai.Usage.None"]</p>
+    }
+    else
+    {
+        <p class="ai-usage-totals">@L["Ai.Usage.Totals", Number(page.Totals.Calls), Number(page.Totals.PromptTokens), Number(page.Totals.CompletionTokens)]</p>
+
+        <table class="ai-usage-table">
+            <caption>@L["Ai.Usage.ByPrincipal"]</caption>
+            <thead>
+                <tr>
+                    <th scope="col">@L["Ai.Usage.Principal"]</th>
+                    <th scope="col">@L["Ai.Usage.Action"]</th>
+                    <th scope="col">@L["Ai.Usage.Calls"]</th>
+                    <th scope="col">@L["Ai.Usage.PromptTokens"]</th>
+                    <th scope="col">@L["Ai.Usage.CompletionTokens"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var group in page.Totals.Groups)
+                {
+                    <tr>
+                        <th scope="row">@PrincipalName(group.PrincipalKind, group.PrincipalId)</th>
+                        <td>@ActionName(group.Action)</td>
+                        <td>@Number(group.Calls)</td>
+                        <td>@Number(group.PromptTokens)</td>
+                        <td>@Number(group.CompletionTokens)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <table class="ai-usage-table">
+            <caption>@L["Ai.Usage.Calls"]</caption>
+            <thead>
+                <tr>
+                    <th scope="col">@L["Ai.Usage.Time"]</th>
+                    <th scope="col">@L["Ai.Usage.Principal"]</th>
+                    <th scope="col">@L["Ai.Usage.Action"]</th>
+                    <th scope="col">@L["Ai.Usage.Field"]</th>
+                    <th scope="col">@L["Ai.Usage.Model"]</th>
+                    <th scope="col">@L["Ai.Usage.PromptTokens"]</th>
+                    <th scope="col">@L["Ai.Usage.CompletionTokens"]</th>
+                    <th scope="col">@L["Ai.Usage.Duration"]</th>
+                    <th scope="col">@L["Ai.Usage.Outcome"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in page.Items)
+                {
+                    <tr @key="row.Id">
+                        <th scope="row">@L["Ai.Usage.At", row.CreatedAt.UtcDateTime.ToString("g", CultureInfo.CurrentCulture)]</th>
+                        <td>@(string.IsNullOrWhiteSpace(row.PrincipalName) ? PrincipalName(row.PrincipalKind, row.PrincipalId) : row.PrincipalName)</td>
+                        <td>@ActionName(row.Action)</td>
+                        <td>@(string.IsNullOrEmpty(row.Type) ? L["Ai.Usage.Asset"] : $"{row.Type}.{row.Field}")</td>
+                        <td>@row.Model</td>
+                        <td>@Number(row.PromptTokens)</td>
+                        <td>@Number(row.CompletionTokens)</td>
+                        <td>@L["Ai.Usage.Milliseconds", Number(row.DurationMs)]</td>
+                        <td>@L[row.Succeeded ? "Ai.Usage.Succeeded" : "Ai.Usage.Failed"]</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="ai-usage-pages">
+            <CmsButton Disabled="@(page.Page <= 1)" OnClick="@(() => GoToAsync(page.Page - 1))">@L["Ai.Usage.Previous"]</CmsButton>
+            <span>@L["Ai.Usage.Page", Number(page.Page), Number(Pages)]</span>
+            <CmsButton Disabled="@(page.Page >= Pages)" OnClick="@(() => GoToAsync(page.Page + 1))">@L["Ai.Usage.Next"]</CmsButton>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly Dictionary<Guid, string> names = [];
+    private readonly Dictionary<Guid, string> principals = [];
+    private AiUsageQuery query = new();
+    private AiUsageAnswer? page;
+    private string? problem;
+    private int reads;
+
+    private AiApi Ai => new(Api);
+
+    private long Pages => page is null ? 1 : Math.Max(1, (page.Total + page.PageSize - 1) / page.PageSize);
+
+    private IReadOnlyList<CmsOption> ActionOptions => [.. AiActionNames.All.Select(action => new CmsOption(action, ActionName(action)))];
+
+    // Every principal the reads so far met, so that a filter on one keeps the others to choose from.
+    private IReadOnlyList<CmsOption> Principals =>
+        [.. principals.OrderBy(pair => pair.Value, StringComparer.CurrentCulture).Select(pair => new CmsOption(pair.Key.ToString("D"), pair.Value))];
+
+    protected override Task OnInitializedAsync() => ReadAsync();
+
+    private Task FilterAsync(AiUsageQuery filtered) => ReadAsync(filtered with { Page = 1 });
+
+    private Task GoToAsync(int number) => ReadAsync(query with { Page = number });
+
+    private Task ReadAsync() => ReadAsync(query);
+
+    // A read that an earlier one overtakes is dropped, so that the page shows the last filter chosen.
+    private async Task ReadAsync(AiUsageQuery next)
+    {
+        var read = ++reads;
+        (query, problem) = (next, null);
+        try
+        {
+            var answer = await Ai.UsageAsync(next, CancellationToken.None);
+            if (read != reads)
+            {
+                return;
+            }
+
+            page = answer;
+            foreach (var row in answer.Items.Where(row => !string.IsNullOrWhiteSpace(row.PrincipalName)))
+            {
+                names.TryAdd(row.PrincipalId, row.PrincipalName!);
+            }
+
+            foreach (var group in answer.Totals.Groups)
+            {
+                principals[group.PrincipalId] = PrincipalName(group.PrincipalKind, group.PrincipalId);
+            }
+        }
+        catch (ApiProblemException failure) when (read == reads)
+        {
+            (page, problem) = (null, failure.Problem.Title ?? L["Ai.Usage.ReadFailed"]);
+        }
+        catch (Exception failure) when (read == reads && failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            (page, problem) = (null, L["Ai.Usage.ReadFailed"]);
+        }
+    }
+
+    private string PrincipalName(string kind, Guid id) => names.TryGetValue(id, out var name) ? name : L["Ai.Usage.PrincipalOf", Kind(kind), id.ToString("D")];
+
+    private string Kind(string kind) => L[$"Ai.Usage.Kind.{kind}"] is { ResourceNotFound: false } text ? text : kind;
+
+    private string ActionName(string action) => L[$"Ai.Action.{action}"] is { ResourceNotFound: false } text ? text : action;
+
+    private static string Number(long value) => value.ToString("N0", CultureInfo.CurrentCulture);
+}

@@ -572,8 +572,8 @@ jobs:
           cmp THIRD-PARTY-NOTICES.md artifacts/admin/wwwroot/THIRD-PARTY-NOTICES.md
 
       # Admin spec 7: the Brotli size of the first download, without lazy assemblies. The budget was set in #3144 from a
-      # measurement of 3,226,834 B and raised in #3346 at 3,499,922 B; raise it on purpose, in the specification too, never
-      # to let a build through.
+      # measurement of 3,226,834 B and raised in #3346 at 3,499,922 B, and kept in #3354 at 3,561,801 B from the table of the
+      # first download by part; raise it on purpose, in the specification too, never to let a build through.
       - name: Check the download size of the admin
         run: dotnet run eng/check-admin-size.cs -- artifacts/admin 3600000
 

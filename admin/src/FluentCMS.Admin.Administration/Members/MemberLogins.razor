@@ -1,0 +1,131 @@
+@* The external logins of a member (spec 4.15), each removable unless it is the member's last way to sign in (FCMS3184). *@
+@implements IDisposable
+@inject IManagementApi Api
+@inject IStringLocalizer<MembersResources> L
+
+<CmsCard Title="@L["Members.Logins.Heading"]">
+    @if (state == MemberSectionState.Loading)
+    {
+        <p role="status">@L["Members.Logins.Loading"]</p>
+    }
+    else if (state == MemberSectionState.Failed)
+    {
+        <p role="alert">@L["Members.Logins.Failed"] <CmsButton OnClick="ReadAsync">@L["Members.Logins.TryAgain"]</CmsButton></p>
+    }
+    else if (logins.Count == 0)
+    {
+        <p>@L["Members.Logins.None"]</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var login in logins)
+            {
+                <li @key="login.Provider">
+                    @Name(login)
+                    <CmsButton Disabled="@busy" OnClick="@(() => RemoveAsync(login))">
+                        @L["Members.Logins.Remove"]<span class="cms-visually-hidden">@L["Members.Logins.RemoveWhich", Name(login)]</span>
+                    </CmsButton>
+                </li>
+            }
+        </ul>
+    }
+    <p class="members-message" tabindex="-1" @ref="messageElement">@message</p>
+</CmsCard>
+
+@code {
+    private IReadOnlyList<MemberLoginRecord> logins = [];
+    private MemberSectionState state = MemberSectionState.Loading;
+    private string? message;
+    private bool busy;
+    private bool focusMessage;
+    private ElementReference messageElement;
+    private readonly CancellationTokenSource closing = new();
+
+    // A call made once the component is gone, as the read after a change, is cancelled before it starts.
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    [Parameter, EditorRequired]
+    public Guid MemberId { get; set; }
+
+    // Raised when a login was removed, which gives the member a new security stamp and so ends its sessions.
+    [Parameter]
+    public EventCallback OnRemoved { get; set; }
+
+    protected override Task OnInitializedAsync() => ReadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusMessage)
+        {
+            focusMessage = false;
+            await messageElement.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        state = MemberSectionState.Loading;
+        try
+        {
+            logins = await Api.GetMemberLoginsAsync(MemberId, Closing);
+            state = MemberSectionState.Ready;
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            state = MemberSectionState.Failed;
+        }
+    }
+
+    private async Task RemoveAsync(MemberLoginRecord login)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            await Api.RemoveMemberLoginAsync(MemberId, login.Provider, Closing);
+            message = L["Members.Logins.Removed", Name(login)];
+            await OnRemoved.InvokeAsync();
+            await ReadAsync();
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.LastWayIn))
+        {
+            message = L["Members.Logins.LastWayIn", Name(login)];
+        }
+        catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.LoginNotFound))
+        {
+            message = L["Members.Logins.AlreadyRemoved"];
+            await ReadAsync();
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (MemberProblems.IsFailure(exception))
+        {
+            message = L["Members.Logins.RemoveFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        focusMessage = true;
+    }
+
+    private static string Name(MemberLoginRecord login) => string.IsNullOrWhiteSpace(login.DisplayName) ? login.Provider : login.DisplayName;
+}
