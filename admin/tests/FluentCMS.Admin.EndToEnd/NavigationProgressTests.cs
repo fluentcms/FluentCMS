@@ -20,7 +20,9 @@ public sealed class NavigationProgressTests(EndToEndHost host) : BrowserTest(hos
     // Past the shell's limit for the reads of a new content locale, 75 s, and short of the client's 100 s per attempt.
     private static readonly LocatorAssertionsToBeVisibleOptions PastTheLimit = new() { Timeout = 95_000 };
 
+    // Not on WebKit (spec 7): WebKit takes the assembly from its cache on the reload, and the route that holds it never sees it.
     [Fact]
+    [Trait("NotOn", "webkit")]
     public async Task AReloadOfAnAdministrationRouteShowsTheShellAndALoadingStateBeforeThePage()
     {
         var browser = await OpenBrowserAsync();

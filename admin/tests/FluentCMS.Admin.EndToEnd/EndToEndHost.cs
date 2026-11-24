@@ -95,8 +95,11 @@ public sealed partial class EndToEndHost : IAsyncLifetime
     // holds it, and it can hold what the browser never saw, such as an authorization code, which no mask then knows.
     internal string HostLog => AddressQuery().Replace(_host?.Tail ?? "", "$1?[query]");
 
-    // Why the browser tests are skipped: Chromium is not installed for this version of Playwright.
+    // Why the browser tests are skipped: the run's browser is not installed for this version of Playwright.
     public string? BrowserMissing { get; private set; }
+
+    // The browser of the run, which FLUENTCMS_E2E_BROWSER names; Chromium when it is unset.
+    internal BrowserEngine Engine { get; } = BrowserEngine.Chosen();
 
     // Why every case is skipped: the host cannot run here, as when the image is asked for and Docker does not answer.
     public string? HostMissing { get; private set; }
@@ -105,11 +108,12 @@ public sealed partial class EndToEndHost : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
+        SlowMode.Refuse(Engine);
         SweepStaleRuns();
         _host = HostProcess.Create(_root);
 
         // Beside the publish of the host, where the case of the static build can run; it asks for it itself otherwise.
-        if (_host is PublishedHost && Chromium.LooksInstalled())
+        if (_host is PublishedHost && Engine.LooksInstalled())
         {
             _ = StaticBuildAsync();
         }
@@ -134,7 +138,7 @@ public sealed partial class EndToEndHost : IAsyncLifetime
         Sites = await AddSecondSiteAsync();
         Reader = NewEditor();
         await CommandAsync(Reader.Password, "user", "create", "--email", Reader.Email, "--role", ReaderRole, "--password-stdin");
-        (_playwright, _browser, BrowserMissing) = await Chromium.LaunchAsync(ServerCertificateHash);
+        (_playwright, _browser, BrowserMissing) = await Engine.LaunchAsync(ServerCertificateHash);
     }
 
     public async ValueTask DisposeAsync()
@@ -213,7 +217,7 @@ public sealed partial class EndToEndHost : IAsyncLifetime
         return this;
     }
 
-    // A browser context of its own for a test; the test is skipped, with the reason, when Chromium is not installed. It is
+    // A browser context of its own for a test; the test is skipped, with the reason, when the browser is not installed. It is
     // traced when FLUENTCMS_E2E_TRACES names a directory, or when a test asks for traces itself.
     internal Task<AdminBrowser> OpenBrowserAsync(string? traces = null)
     {

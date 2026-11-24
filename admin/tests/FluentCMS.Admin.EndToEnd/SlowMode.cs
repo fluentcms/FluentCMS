@@ -27,14 +27,27 @@ internal sealed class SlowMode
         context.Page += (_, page) => Throttled(page);
     }
 
+    // The DevTools protocol is Chromium's, so a run on another browser that asks for slow mode stops before it starts rather
+    // than run at full speed as if it were slowed.
+    public static void Refuse(BrowserEngine engine)
+    {
+        if (IsSet() && !engine.IsChromium)
+        {
+            throw new InvalidOperationException(
+                $"{Variable} slows Chromium through the DevTools protocol, which {engine.Display} does not have. Unset {Variable}, "
+                + $"or unset {BrowserEngine.Variable} to run in Chromium.");
+        }
+    }
+
     // The slow mode of the context, or none when the variable is not set.
     public static SlowMode? For(IBrowserContext context)
     {
-        var value = Environment.GetEnvironmentVariable(Variable);
-        if (string.IsNullOrWhiteSpace(value) || value is "0" or "false")
+        if (!IsSet())
         {
             return null;
         }
+
+        var value = Environment.GetEnvironmentVariable(Variable)!;
 
         var rate = value is "1" or "true" ? DefaultRate : Number(value, Variable, 1);
         var latency = Environment.GetEnvironmentVariable(LatencyVariable) is { Length: > 0 } text ? Number(text, LatencyVariable, 0) : DefaultLatency;
@@ -57,6 +70,8 @@ internal sealed class SlowMode
             ["uploadThroughput"] = -1,
         });
     }
+
+    private static bool IsSet() => Environment.GetEnvironmentVariable(Variable) is { } value && !string.IsNullOrWhiteSpace(value) && value is not ("0" or "false");
 
     private static double Number(string text, string variable, double least) =>
         double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) && number >= least

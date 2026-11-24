@@ -179,7 +179,9 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
+    // Not on WebKit (spec 7): Playwright's WebKit runs the unload handlers of a close and never closes the page.
     [Fact]
+    [Trait("NotOn", "webkit")]
     public async Task ATabWithoutUnsavedChangesClosesWithoutAQuestion()
     {
         var browser = await OpenBrowserAsync();

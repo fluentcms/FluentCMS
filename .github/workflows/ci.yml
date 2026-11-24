@@ -17,6 +17,10 @@ on:
         description: Keep a masked Playwright trace of each failed end-to-end test in the test results.
         type: boolean
         default: false
+      browsers:
+        description: Run the admin's end-to-end tests in Firefox and WebKit too, as the nightly run does.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -186,6 +190,54 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: test-results-end-to-end
+          path: artifacts/test-results
+          retention-days: 14
+
+  # The admin's browser tests in Firefox and WebKit (spec 7), against the publish as End-to-end (admin) runs them, on the
+  # nightly run and on a manual run with the browsers input, not on a push or a pull request. Each job installs its browser
+  # with the system libraries it needs, which the runner's image does not hold for WebKit. The cases a browser cannot run
+  # carry the trait NotOn with its name and are left out, so a skip still fails the job.
+  end-to-end-browsers:
+    name: End-to-end (admin, ${{ matrix.browser }})
+    needs: plan
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.browsers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build admin/tests/FluentCMS.Admin.EndToEnd -c Release -warnaserror -p:FluentCmsAdminPseudoCultures=true
+
+      - name: Install ${{ matrix.browser }}
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/bin/Release/net10.0/playwright.ps1 install --with-deps ${{ matrix.browser }}
+
+      - name: Test
+        env:
+          FLUENTCMS_E2E_BROWSER: ${{ matrix.browser }}
+          FLUENTCMS_E2E_TRACES: ${{ inputs.traces && format('{0}/artifacts/test-results/traces', github.workspace) || '' }}
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 35m -RetryTimeout 8m -ExcludeTrait NotOn=${{ matrix.browser }}
+
+      - name: Name the tests that were running
+        if: failure() || cancelled()
+        shell: bash
+        run: grep -h -A6 -e "\[Long Running Test\]" -e "\[FAIL\]" artifacts/test-results/*.diag 2>/dev/null || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: test-results-end-to-end-${{ matrix.browser }}
           path: artifacts/test-results
           retention-days: 14
 
@@ -756,7 +808,7 @@ jobs:
   # opens an issue.
   nightly-report:
     name: Report nightly failure
-    needs: [markdown, build, test, end-to-end, typescript, rich-text, build-test-windows, plan, data-tests, pack, templates]
+    needs: [markdown, build, test, end-to-end, end-to-end-browsers, typescript, rich-text, build-test-windows, plan, data-tests, pack, templates]
     if: (failure() || cancelled()) && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 5

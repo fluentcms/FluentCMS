@@ -58,7 +58,7 @@ public abstract class BrowserTest(EndToEndHost host) : IAsyncDisposable
     // class signs in as it, so nothing another class does to its sessions or its data reaches it.
     protected Task<Editor> EditorAsync() => Host.EditorOfAsync(GetType());
 
-    // A browser context of its own; skipped, with the reason, when Chromium is not installed.
+    // A browser context of its own; skipped, with the reason, when the browser is not installed.
     protected async Task<AdminBrowser> OpenBrowserAsync(string? traces = null)
     {
         var browser = await Host.OpenBrowserAsync(traces);
