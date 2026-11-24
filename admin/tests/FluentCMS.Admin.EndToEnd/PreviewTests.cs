@@ -115,7 +115,7 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
 
     // The page said ready, then the editor follows its link to a page without the script, whose load is the frame's next: the
     // pane forgets ready, gives the five seconds again, and the next save loads the frame instead of telling it to refresh.
-    // Not on WebKit (spec 7): WebKit reports the frame's load before the page's ready, and the pane keeps ready.
+    // Not on WebKit (spec 7, #3650): WebKit reports the frame's load before the page's ready, and the pane keeps ready.
     [Fact]
     [Trait("NotOn", "webkit")]
     public async Task APageThatNavigatesToOneWithoutTheContractIsLoadedAgainOnASave()

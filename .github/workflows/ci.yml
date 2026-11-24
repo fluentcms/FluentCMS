@@ -198,15 +198,15 @@ jobs:
   # The admin's browser tests in Firefox and WebKit (spec 7), against the publish as End-to-end (admin) runs them, on the
   # nightly run and on a manual run with the browsers input, not on a push or a pull request. Each job installs its browser
   # with the system libraries it needs, which the runner's image does not hold for WebKit. The cases a browser cannot run
-  # carry the trait NotOn with its name and are left out, so a skip still fails the job. On a Windows PC the whole project
-  # took 27 min in Firefox and 46 min in WebKit, with other builds running; the limits leave room until the first nightly
-  # runs give the runner's times.
+  # carry the trait NotOn with its name and are left out, so a skip still fails the job. On a Windows PC, with the axe-core
+  # sweep and other builds running, the whole project took 37 min in Firefox and 40 min in WebKit; the limits leave room
+  # for the install with its system libraries and a retry until the first nightly runs give the runner's times.
   end-to-end-browsers:
     name: End-to-end (admin, ${{ matrix.browser }})
     needs: plan
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.browsers)
     runs-on: ubuntu-latest
-    timeout-minutes: 80
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -230,7 +230,7 @@ jobs:
         env:
           FLUENTCMS_E2E_BROWSER: ${{ matrix.browser }}
           FLUENTCMS_E2E_TRACES: ${{ inputs.traces && format('{0}/artifacts/test-results/traces', github.workspace) || '' }}
-        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 60m -RetryTimeout 10m -ExcludeTrait NotOn=${{ matrix.browser }}
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 60m -RetryTimeout 12m -ExcludeTrait NotOn=${{ matrix.browser }}
 
       - name: Name the tests that were running
         if: failure() || cancelled()
