@@ -33,9 +33,18 @@ internal sealed class TextCommandInput(TextReader reader, bool terminal) : Comma
 
 internal sealed class ConsoleCommandInput : CommandInput
 {
+    // One reader for the process, since it buffers what it has read ahead.
+    private readonly Lazy<TextReader> _redirected = new(() => Redirected(Console.OpenStandardInput(), Console.InputEncoding));
+
     public override bool IsTerminal => !Console.IsInputRedirected;
 
-    public override async Task<string?> ReadLineAsync(CancellationToken cancellationToken) => await Console.In.ReadLineAsync(cancellationToken);
+    public override async Task<string?> ReadLineAsync(CancellationToken cancellationToken) =>
+        await (Console.IsInputRedirected ? _redirected.Value : Console.In).ReadLineAsync(cancellationToken);
+
+    // Console.In keeps a byte order mark as text, and PowerShell on Windows can write one before what it pipes, which
+    // would then be part of a password. Here the mark is dropped, and what follows it is read as the mark says.
+    internal static TextReader Redirected(Stream input, Encoding encoding) =>
+        new StreamReader(input, encoding, detectEncodingFromByteOrderMarks: true);
 
     public override async Task<string?> ReadSecretAsync(TextWriter prompt, string label, CancellationToken cancellationToken)
     {
