@@ -1,5 +1,7 @@
 @namespace FluentCMS.Admin.Components
 
+@* The library's button has its role and its disabled state from ElementInternals only, which axe-core does not read: the
+   attributes say them too, the role where a state of the button needs it (spec 4.18). *@
 <FluentButton @ref="_button"
               Type="@(Submit ? ButtonType.Submit : ButtonType.Button)"
               Appearance="@ToLibrary(Appearance)"
@@ -8,6 +10,8 @@
               IconOnly="@IconOnly"
               Title="@(IconOnly ? Label : null)"
               aria-label="@(IconOnly ? Label : null)"
+              aria-disabled="@(Disabled ? "true" : null)"
+              role="@(Expanded is null ? null : "button")"
               aria-expanded="@(Expanded is { } expanded ? (expanded ? "true" : "false") : null)"
               aria-controls="@Controls"
               Class="cms-button"

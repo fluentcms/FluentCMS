@@ -45,6 +45,13 @@ internal static class Repository
     // page by, beside its address.
     public static string AdministrationHeading(string area) => AdministrationText(area, $"{area}.Page.Heading");
 
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, IReadOnlyDictionary<string, string>> FileTexts = new(StringComparer.Ordinal);
+
+    // A text of any resource file of the admin, by its path under admin/src, read once.
+    public static string Text(string file, string key) =>
+        FileTexts.GetOrAdd(file, path => ReadTexts(Path.Combine(Root, "admin", "src", path)))
+            .TryGetValue(key, out var text) ? text : throw new KeyNotFoundException($"{file} has no key {key}.");
+
     public static IReadOnlyDictionary<string, string> RichTextTexts { get; } = ReadTexts(Path.Combine(Root, "admin", "src", "FluentCMS.Admin.RichText", "RichTextResources.resx"));
 
     public static string RichTextText(string key) =>

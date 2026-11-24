@@ -10,7 +10,8 @@
 
 .cms-root {
     --cms-color-accent: var(--fluentcms-brand-accent, #154ef2);
-    --cms-color-on-accent: #ffffff;
+    --cms-color-on-accent: var(--fluentcms-brand-on-accent, #ffffff);
+    --cms-color-accent-shade: var(--fluentcms-brand-accent-shade, #000000);
     --cms-color-accent-text: var(--cms-color-accent);
     --cms-color-bg: #ffffff;
     --cms-color-surface: #f5f6f8;
@@ -72,20 +73,28 @@
     color-scheme: dark;
 }
 
-/* The library's own tokens, driven by the FluentCMS ones so that the accent and the focus ring are the same everywhere. */
+/* The library's own tokens, driven by the FluentCMS ones so that the accent and the focus ring are the same everywhere. A
+ * state of a control on the accent mixes in the shade, the opposite of the color on the accent, so that it contrasts with
+ * that color at least as much as the accent does. */
 .cms-root {
     --colorBrandBackground: var(--cms-color-accent);
-    --colorBrandBackgroundHover: color-mix(in srgb, var(--cms-color-accent) 85%, #000000);
-    --colorBrandBackgroundPressed: color-mix(in srgb, var(--cms-color-accent) 70%, #000000);
-    --colorBrandBackgroundSelected: color-mix(in srgb, var(--cms-color-accent) 80%, #000000);
+    --colorBrandBackgroundHover: color-mix(in srgb, var(--cms-color-accent) 85%, var(--cms-color-accent-shade));
+    --colorBrandBackgroundPressed: color-mix(in srgb, var(--cms-color-accent) 70%, var(--cms-color-accent-shade));
+    --colorBrandBackgroundSelected: color-mix(in srgb, var(--cms-color-accent) 80%, var(--cms-color-accent-shade));
     --colorCompoundBrandBackground: var(--cms-color-accent);
-    --colorCompoundBrandBackgroundHover: color-mix(in srgb, var(--cms-color-accent) 85%, #000000);
-    --colorCompoundBrandBackgroundPressed: color-mix(in srgb, var(--cms-color-accent) 70%, #000000);
+    --colorCompoundBrandBackgroundHover: color-mix(in srgb, var(--cms-color-accent) 85%, var(--cms-color-accent-shade));
+    --colorCompoundBrandBackgroundPressed: color-mix(in srgb, var(--cms-color-accent) 70%, var(--cms-color-accent-shade));
     --colorCompoundBrandStroke: var(--cms-color-accent);
-    --colorCompoundBrandStrokeHover: color-mix(in srgb, var(--cms-color-accent) 85%, #000000);
+    --colorCompoundBrandStrokeHover: color-mix(in srgb, var(--cms-color-accent) 85%, var(--cms-color-accent-shade));
+    --colorCompoundBrandStrokePressed: color-mix(in srgb, var(--cms-color-accent) 70%, var(--cms-color-accent-shade));
+    --colorCompoundBrandForeground1: var(--cms-color-accent-text);
+    --colorCompoundBrandForeground1Hover: var(--cms-color-accent-text);
+    --colorCompoundBrandForeground1Pressed: var(--cms-color-accent-text);
     --colorBrandStroke1: var(--cms-color-accent);
     --colorBrandForeground1: var(--cms-color-accent-text);
     --colorBrandForegroundLink: var(--cms-color-accent-text);
+    --colorBrandForegroundLinkHover: var(--cms-color-accent-text);
+    --colorBrandForegroundLinkPressed: var(--cms-color-accent-text);
     --colorNeutralForegroundOnBrand: var(--cms-color-on-accent);
     --colorNeutralBackground1: var(--cms-color-bg);
     --colorNeutralForeground1: var(--cms-color-text);

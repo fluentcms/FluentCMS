@@ -40,7 +40,7 @@
                             aria-keyshortcuts="@KeysOf(button)"
                             aria-pressed="@(button.Toggle ? (active.Contains(button.Command) ? "true" : "false") : null)"
                             @onclick="@(() => ToolbarAsync(button.Command))">
-                        <span aria-hidden="true">@(button.Glyph ?? L[button.Resource + ".Glyph"])</span>
+                        <span class="rich-text-glyph" aria-hidden="true" data-glyph="@(button.Glyph ?? L[button.Resource + ".Glyph"])"></span>
                     </button>
                 }
             </div>
