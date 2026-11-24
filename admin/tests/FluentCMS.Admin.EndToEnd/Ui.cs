@@ -111,13 +111,14 @@ public static class Ui
     public static async Task<IResponse> AnswerAsync(this AdminTab tab, Func<Task> action, Func<IResponse, bool> match)
     {
         var refused = new RefusedCount();
+        var from = tab.CallsSeen;
         try
         {
             return await tab.Page.RunAndWaitForResponseAsync(action, refused.Skipping(match), new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         }
-        catch (Exception exception) when (exception is TimeoutException or PlaywrightException && refused.Count > 0)
+        catch (Exception exception) when (exception is TimeoutException || (exception is PlaywrightException && refused.Count > 0))
         {
-            throw refused.Explained(exception);
+            throw refused.Explained(exception, tab.CallsSince(from));
         }
     }
 
@@ -128,13 +129,14 @@ public static class Ui
     public static async Task<IResponse> NextAnswerAsync(this AdminTab tab, Func<IResponse, bool> match)
     {
         var refused = new RefusedCount();
+        var from = tab.CallsSeen;
         try
         {
             return await tab.Page.WaitForResponseAsync(refused.Skipping(match), new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         }
-        catch (Exception exception) when (exception is TimeoutException or PlaywrightException && refused.Count > 0)
+        catch (Exception exception) when (exception is TimeoutException || (exception is PlaywrightException && refused.Count > 0))
         {
-            throw refused.Explained(exception);
+            throw refused.Explained(exception, tab.CallsSince(from));
         }
     }
 
@@ -226,8 +228,14 @@ internal sealed class RefusedCount
         return true;
     };
 
-    public Exception Explained(Exception timeout) =>
-        new TimeoutException($"The call was answered 401 {Count} time(s), and the admin did not send it again after a refresh within {AdminBrowser.Wait.TotalSeconds:0} s.", timeout);
+    // Why the wait ended, with the tab's calls from its start, which show whether the browser sent the call and saw an answer.
+    public Exception Explained(Exception timeout, string calls)
+    {
+        var why = Count > 0
+            ? $"The call was answered 401 {Count} time(s), and the admin did not send it again after a refresh within {AdminBrowser.Wait.TotalSeconds:0} s."
+            : $"No answer that matched came within {AdminBrowser.Wait.TotalSeconds:0} s.";
+        return new TimeoutException($"{why}{Environment.NewLine}The tab's calls from the start of the wait:{Environment.NewLine}{calls}", timeout);
+    }
 }
 
 // The media library's controls, which the library, the detail panel and the picker share.
