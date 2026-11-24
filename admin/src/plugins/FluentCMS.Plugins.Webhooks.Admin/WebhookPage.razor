@@ -1,0 +1,389 @@
+@* One webhook and its delivery log (spec 5.3), for a caller who holds webhooks.manage in the site: every attempt, newest first,
+   in pages, with its state, status, duration, and on demand the body it sent, the start of the answer and the error. An
+   attempt is sent again as a new delivery, and a ping sends the ping event; either is queued, so the page reads the log
+   again until the new delivery has its result, for a while, and says what it was. The webhook is changed on /webhooks. *@
+@page "/webhooks/{Id:guid}"
+@attribute [AdminPage("/webhooks/{Id:guid}", Permission = "webhooks.manage")]
+@using System.Globalization
+@using System.Text.Json
+@using System.Text.Json.Nodes
+@using FluentCMS.Plugins.Webhooks.Admin.Api
+@implements IDisposable
+@inject IManagementApi Api
+@inject IAnnouncer Announcer
+@inject TimeProvider Clock
+@inject IStringLocalizer<WebhooksResources> L
+
+<h1 tabindex="-1">@(webhook?.Name ?? L[state == State.NotFound ? "Webhooks.Webhook.NotFound" : "Webhooks.Webhook.Heading"])</h1>
+<p><a href="@WebhookRoutes.List">@L["Webhooks.Webhook.BackToList"]</a></p>
+
+@if (state == State.Loading)
+{
+    <p role="status">@L["Webhooks.Webhook.Loading"]</p>
+}
+else if (state == State.Failed)
+{
+    <p role="alert">@failure <CmsButton OnClick="ReadAsync">@L["Webhooks.Webhook.TryAgain"]</CmsButton></p>
+}
+else if (webhook is not null)
+{
+    <dl class="webhooks-facts">
+        <dt>@L["Webhooks.List.Url"]</dt>
+        <dd><code>@webhook.Url</code></dd>
+        <dt>@L["Webhooks.List.Events"]</dt>
+        <dd>@string.Join(", ", webhook.Events)</dd>
+        <dt>@L["Webhooks.List.State"]</dt>
+        <dd>@L[webhook.Enabled ? "Webhooks.List.Enabled" : "Webhooks.List.Disabled"]</dd>
+        <dt>@L["Webhooks.Webhook.Headers"]</dt>
+        <dd>@(webhook.Headers.Count == 0 ? L["Webhooks.Webhook.NoHeaders"] : string.Join(", ", webhook.Headers.Keys))</dd>
+        @if (webhook.PreviousSecretExpiresAt is { } until)
+        {
+            <dt>@L["Webhooks.Webhook.PreviousSecret"]</dt>
+            <dd>@L["Webhooks.Webhook.PreviousSecretUntil", Time(until)]</dd>
+        }
+    </dl>
+
+    <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+        <CmsButton Disabled="@busy" OnClick="PingAsync">@L["Webhooks.Log.Ping"]</CmsButton>
+        <CmsButton Disabled="@busy" OnClick="RefreshAsync">@L["Webhooks.Log.Refresh"]</CmsButton>
+    </CmsStack>
+    <p class="webhooks-message" tabindex="-1" @ref="messageElement">@message</p>
+
+    <section aria-labelledby="webhooks-log">
+        <h2 id="webhooks-log">@L["Webhooks.Log.Heading"]</h2>
+        @if (log is null)
+        {
+            @if (logFailed)
+            {
+                <p role="alert">@L["Webhooks.Log.Failed"] <CmsButton OnClick="RefreshAsync">@L["Webhooks.Webhook.TryAgain"]</CmsButton></p>
+            }
+            else
+            {
+                <p role="status">@L["Webhooks.Log.Loading"]</p>
+            }
+        }
+        else if (log.Total == 0)
+        {
+            <p>@L["Webhooks.Log.None"]</p>
+        }
+        else
+        {
+            <table class="webhooks-log">
+                <caption class="cms-visually-hidden">@L["Webhooks.Log.Heading"]</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">@L["Webhooks.Log.Time"]</th>
+                        <th scope="col">@L["Webhooks.Log.Event"]</th>
+                        <th scope="col">@L["Webhooks.Log.Attempt"]</th>
+                        <th scope="col">@L["Webhooks.Log.State"]</th>
+                        <th scope="col">@L["Webhooks.Log.Status"]</th>
+                        <th scope="col">@L["Webhooks.Log.Duration"]</th>
+                        <th scope="col"><span class="cms-visually-hidden">@L["Webhooks.List.Actions"]</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var attempt in log.Items)
+                    {
+                        var detailsId = $"webhooks-attempt-{attempt.Id:N}";
+                        var open = expanded.Contains(attempt.Id);
+                        <tr @key="attempt.Id" class="webhooks-attempt">
+                            <th scope="row">@Time(attempt.CreatedAt)</th>
+                            <td><code>@attempt.Event</code></td>
+                            <td>@Number(attempt.Attempt)</td>
+                            <td>@StateText(attempt.State)</td>
+                            <td>@(attempt.StatusCode is { } status ? Number(status) : L["Webhooks.Log.NoStatus"])</td>
+                            <td>@L["Webhooks.Log.Milliseconds", Number(attempt.DurationMs)]</td>
+                            <td>
+                                <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                                    <CmsButton Expanded="@open" Controls="@detailsId" OnClick="@(() => Toggle(attempt.Id))">
+                                        @L["Webhooks.Log.Details"]<span class="cms-visually-hidden">@L["Webhooks.Log.OfAttempt", attempt.Event, Number(attempt.Attempt)]</span>
+                                    </CmsButton>
+                                    @if (IsDone(attempt.State))
+                                    {
+                                        <CmsButton Disabled="@busy" OnClick="@(() => RedeliverAsync(attempt))">
+                                            @L["Webhooks.Log.Redeliver"]<span class="cms-visually-hidden">@L["Webhooks.Log.OfAttempt", attempt.Event, Number(attempt.Attempt)]</span>
+                                        </CmsButton>
+                                    }
+                                </CmsStack>
+                            </td>
+                        </tr>
+                        @if (open)
+                        {
+                            <tr @key="(attempt.Id, true)" class="webhooks-attempt-details">
+                                <td colspan="7" id="@detailsId">
+                                    <dl>
+                                        <dt>@L["Webhooks.Log.Delivery"]</dt>
+                                        <dd><code>@attempt.DeliveryId.ToString("D")</code></dd>
+                                        @if (attempt.Error is { } error)
+                                        {
+                                            <dt>@L["Webhooks.Log.Error"]</dt>
+                                            <dd>@error</dd>
+                                        }
+                                        @if (attempt.NextRetryAt is { } next)
+                                        {
+                                            <dt>@L["Webhooks.Log.NextRetry"]</dt>
+                                            <dd>@Time(next)</dd>
+                                        }
+                                        <dt>@L["Webhooks.Log.Body"]</dt>
+                                        <dd><pre class="webhooks-body">@Indented(attempt.Request)</pre></dd>
+                                        <dt>@L["Webhooks.Log.Answer"]</dt>
+                                        <dd>
+                                            @if (string.IsNullOrEmpty(attempt.Response))
+                                            {
+                                                @L["Webhooks.Log.NoAnswer"]
+                                            }
+                                            else
+                                            {
+                                                <pre class="webhooks-answer">@attempt.Response</pre>
+                                            }
+                                        </dd>
+                                    </dl>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+
+            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                <CmsButton Disabled="@(busy || log.Page <= 1)" OnClick="@(() => GoToAsync(log.Page - 1))">@L["Webhooks.Log.Previous"]</CmsButton>
+                <span>@L["Webhooks.Log.Page", Number(log.Page), Number(Pages)]</span>
+                <CmsButton Disabled="@(busy || log.Page >= Pages)" OnClick="@(() => GoToAsync(log.Page + 1))">@L["Webhooks.Log.Next"]</CmsButton>
+            </CmsStack>
+        }
+    </section>
+}
+
+@code {
+    // How often and how long the page reads the log again for the result of a ping or a redelivery.
+    internal static readonly TimeSpan FollowEvery = TimeSpan.FromSeconds(2);
+    internal const int FollowReads = 15;
+
+    private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
+
+    private enum State
+    {
+        Loading,
+        Ready,
+        NotFound,
+        Failed,
+    }
+
+    private WebhookRecord? webhook;
+    private Guid? shownId;
+    private State state = State.Loading;
+    private string? failure;
+    private WebhookDeliveryPage? log;
+    private bool logFailed;
+    private int page = 1;
+    private readonly HashSet<Guid> expanded = [];
+    private bool busy;
+    private string? message;
+    private ElementReference messageElement;
+    private ElementReference? focusAfterRender;
+    private CancellationTokenSource? reading;
+    private readonly CancellationTokenSource closing = new();
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    private long Pages => log is null ? 1 : Math.Max(1, (log.Total + log.PageSize - 1) / Math.Max(1, log.PageSize));
+
+    // The page is one instance for every id, so another id reads its webhook afresh.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (shownId != Id)
+        {
+            shownId = Id;
+            (webhook, log, page, message) = (null, null, 1, null);
+            expanded.Clear();
+            await ReadAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender is { } element)
+        {
+            focusAfterRender = null;
+            await element.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private static string Time(DateTimeOffset value) => value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+
+    private static string Number(long value) => value.ToString("N0", CultureInfo.CurrentCulture);
+
+    private static bool IsDone(string state) => state is "succeeded" or "failed" or "dead";
+
+    private string StateText(string value) => L[$"Webhooks.State.{value}"] is { ResourceNotFound: false } text ? text : value;
+
+    // The body as sent, indented when it is JSON.
+    private static string Indented(string body)
+    {
+        try
+        {
+            return JsonNode.Parse(body)?.ToJsonString(IndentedJson) ?? body;
+        }
+        catch (JsonException)
+        {
+            return body;
+        }
+    }
+
+    // A read of another id cancels the one before, whose answer is then dropped.
+    private async Task ReadAsync()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+        reading = CancellationTokenSource.CreateLinkedTokenSource(Closing);
+        var token = reading.Token;
+        (state, failure) = (State.Loading, null);
+        try
+        {
+            webhook = await Api.GetWebhookAsync(Id, token);
+            state = State.Ready;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (WebhookProblems.IsGone(exception))
+        {
+            (webhook, state) = (null, State.NotFound);
+            return;
+        }
+        catch (Exception exception) when (WebhookProblems.IsFailure(exception))
+        {
+            (webhook, state, failure) = (null, State.Failed, L[WebhookProblems.IsForbidden(exception) ? "Webhooks.List.Forbidden" : "Webhooks.Webhook.Failed"]);
+            return;
+        }
+
+        await ReadLogAsync(token);
+    }
+
+    private async Task<bool> ReadLogAsync(CancellationToken token)
+    {
+        logFailed = false;
+        try
+        {
+            log = await Api.GetDeliveriesAsync(Id, page, token);
+            return true;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception exception) when (WebhookProblems.IsFailure(exception))
+        {
+            (log, logFailed) = (null, true);
+            return false;
+        }
+    }
+
+    private Task RefreshAsync() => ReadLogAsync(Closing);
+
+    private async Task GoToAsync(int number)
+    {
+        page = Math.Max(1, number);
+        await ReadLogAsync(Closing);
+    }
+
+    private void Toggle(Guid attempt)
+    {
+        if (!expanded.Remove(attempt))
+        {
+            expanded.Add(attempt);
+        }
+    }
+
+    private Task PingAsync() => QueueAsync(token => Api.PingAsync(Id, token), ping: true);
+
+    private Task RedeliverAsync(WebhookDeliveryRecord attempt) => QueueAsync(token => Api.RedeliverAsync(Id, attempt.DeliveryId, token), ping: false);
+
+    // Queues the delivery, then reads the first page of the log until the delivery is in it with a result.
+    private async Task QueueAsync(Func<CancellationToken, Task<Guid>> queue, bool ping)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            Guid queued;
+            try
+            {
+                queued = await queue(Closing);
+            }
+            catch (OperationCanceledException) when (closing.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception exception) when (WebhookProblems.IsGone(exception) && !WebhookProblems.Has(exception, WebhookProblems.DeliveryNotFound))
+            {
+                (webhook, state) = (null, State.NotFound);
+                return;
+            }
+            catch (Exception exception) when (WebhookProblems.IsFailure(exception))
+            {
+                Say(L[WebhookProblems.IsForbidden(exception) ? "Webhooks.List.Forbidden" : ping ? "Webhooks.Log.PingFailedToQueue" : "Webhooks.Log.RedeliverFailedToQueue"]);
+                return;
+            }
+
+            Say(L[ping ? "Webhooks.Log.PingQueued" : "Webhooks.Log.RedeliverQueued"]);
+            await InvokeAsync(StateHasChanged);
+            page = 1;
+            for (var read = 0; read < FollowReads; read++)
+            {
+                if (read > 0)
+                {
+                    await Task.Delay(FollowEvery, Clock, Closing);
+                }
+
+                if (await ReadLogAsync(Closing) && log!.Items.Where(item => item.DeliveryId == queued).MaxBy(item => item.Attempt) is { } result && IsDone(result.State))
+                {
+                    Say(Result(result, ping));
+                    return;
+                }
+
+                await InvokeAsync(StateHasChanged);
+            }
+
+            Say(L["Webhooks.Log.StillQueued"]);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private string Result(WebhookDeliveryRecord result, bool ping)
+    {
+        var what = L[ping ? "Webhooks.Log.ThePing" : "Webhooks.Log.TheRedelivery"];
+        return result.State == "succeeded"
+            ? L["Webhooks.Log.ResultSucceeded", what, result.StatusCode is { } code ? Number(code) : "", Number(result.DurationMs)]
+            : L["Webhooks.Log.ResultFailed", what, result.StatusCode is { } status ? L["Webhooks.Log.ResultStatus", Number(status)] : result.Error ?? StateText(result.State)];
+    }
+
+    private void Say(string text)
+    {
+        message = text;
+        Announcer.Announce(text);
+        focusAfterRender = messageElement;
+    }
+}
