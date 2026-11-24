@@ -20,7 +20,7 @@ public class EndToEndRulesTests
     // The harness, which waits by timers and reads clocks on purpose: the shared helpers, the browser context with its slow
     // mode and its tokens' due time, the host with its process, which wait for a process to start and to end, the browser's
     // launch, which times itself, and the run's certificates, whose validity starts now.
-    private static readonly string[] Harness = ["Ui.cs", "AdminBrowser.cs", "SlowMode.cs", "EndToEndHost.cs", "ChildProcess.cs", "Chromium.cs", "TestCertificates.cs"];
+    private static readonly string[] Harness = ["Ui.cs", "AdminBrowser.cs", "SlowMode.cs", "EndToEndHost.cs", "ChildProcess.cs", "BrowserEngine.cs", "TestCertificates.cs"];
 
     private const string Body = "reads a response's body after the fact; read its request, status and headers";
     private const string Timer = "waits by a timer; wait on the page's state, or use Ui.UntilAsync or Ui.FocusReturnedAsync";

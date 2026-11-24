@@ -46,7 +46,12 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
         await Expect(frame).ToHaveCSSAsync("width", "390px");
         await Expect(pane).ToBeFocusedAsync();
         await Expect(pane).ToHaveAttributeAsync("data-ready", "true");
-        (await ControlledAsync(tab.Page, Repository.AdminText("Content.Preview.Open"))).ShouldBe(["content-preview"]);
+        // The accessibility tree is read through Chromium's DevTools protocol, which the other browsers do not have.
+        if (Host.Engine.IsChromium)
+        {
+            (await ControlledAsync(tab.Page, Repository.AdminText("Content.Preview.Open"))).ShouldBe(["content-preview"]);
+        }
+
         var page = tab.Page.FrameLocator(".content-preview iframe");
         await Expect(page.Locator("#state")).ToHaveTextAsync("ready");
 
@@ -110,7 +115,9 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
 
     // The page said ready, then the editor follows its link to a page without the script, whose load is the frame's next: the
     // pane forgets ready, gives the five seconds again, and the next save loads the frame instead of telling it to refresh.
+    // Not on WebKit (spec 7, #3650): WebKit reports the frame's load before the page's ready, and the pane keeps ready.
     [Fact]
+    [Trait("NotOn", "webkit")]
     public async Task APageThatNavigatesToOneWithoutTheContractIsLoadedAgainOnASave()
     {
         using var api = await Host.ManagementClientAsync();

@@ -74,7 +74,10 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
                 const bytes = Uint8Array.from(atob(png), c => c.charCodeAt(0));
                 const transfer = new DataTransfer();
                 transfer.items.add(new File([bytes], name, { type: "image/png" }));
-                document.body.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: transfer }));
+                const paste = new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: transfer });
+                // Firefox gives an event made by a script an empty clipboard of its own, whatever the event was made with.
+                Object.defineProperty(paste, "clipboardData", { value: transfer });
+                document.body.dispatchEvent(paste);
             }
             """,
             new object[] { $"{mark}-pasted.png", Png });

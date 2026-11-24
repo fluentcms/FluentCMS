@@ -78,7 +78,7 @@ public sealed class AdminBrowser
     internal static async Task<AdminBrowser> OpenAsync(EndToEndHost host, IBrowser browser, string? traces)
     {
         SetDefaultExpectTimeout((float)Wait.TotalMilliseconds);
-        var context = await browser.NewContextAsync(new BrowserNewContextOptions { Locale = "en-US", ServiceWorkers = ServiceWorkerPolicy.Block });
+        var context = await browser.NewContextAsync(host.Engine.ContextOptions());
         context.SetDefaultTimeout((float)Wait.TotalMilliseconds);
         context.SetDefaultNavigationTimeout((float)Wait.TotalMilliseconds);
         if (traces is not null)
@@ -150,7 +150,9 @@ public sealed class AdminBrowser
 
     // Lets the pages of the host read and write the clipboard, as a user who allows it does.
     public Task GrantClipboardAsync() =>
-        _context.GrantPermissionsAsync(["clipboard-read", "clipboard-write"], new BrowserContextGrantPermissionsOptions { Origin = _host.Origin.GetLeftPart(UriPartial.Authority) });
+        _host.Engine.ClipboardPermissions is { Length: > 0 } permissions
+            ? _context.GrantPermissionsAsync(permissions, new BrowserContextGrantPermissionsOptions { Origin = _host.Origin.GetLeftPart(UriPartial.Authority) })
+            : Task.CompletedTask;
 
     // Every secret this context has seen, for a test of a kept trace.
     public async Task<IReadOnlyCollection<string>> SecretsAsync()

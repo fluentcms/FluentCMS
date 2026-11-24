@@ -50,16 +50,17 @@ public sealed class SitesTests(EndToEndHost host) : BrowserTest(host)
             await Ui.PressAsync(main.GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = MultiSite("MultiSite.Sites.Hosts") + Ui.Format(MultiSite("MultiSite.Sites.OfWhich"), name), Exact = true }), "Enter");
             await Expect(Heading(tab, Ui.Format(MultiSite("MultiSite.Hosts.HeadingOf"), name))).ToBeVisibleAsync();
             var (first, second) = ($"a-{Mark}.example.test", $"b-{Mark}.example.test");
-            foreach (var hostname in (string[])[first, second])
+            var hosts = main.Locator("ul.multi-site-hosts li");
+            foreach (var (hostname, count) in ((string, int)[])[(first, 1), (second, 2)])
             {
                 var add = Region(tab, MultiSite("MultiSite.Hosts.AddHeading"));
                 await Field(add, MultiSite("MultiSite.Hosts.Hostname")).FillAsync(hostname);
                 var added = await tab.AnswerAsync(() => Ui.PressAsync(Ui.ButtonIn(add, MultiSite("MultiSite.Hosts.Add")), "Enter"), "POST", tab.ManagementUrl($"sites/{id}/hosts"));
                 added.Status.ShouldBe(201);
-            }
 
-            var hosts = main.Locator("ul.multi-site-hosts li");
-            await Expect(hosts).ToHaveCountAsync(2);
+                // The page empties the field once the host is added, after its answer; a name filled before that is lost.
+                await Expect(hosts).ToHaveCountAsync(count);
+            }
             var primary = await tab.AnswerAsync(
                 () => Ui.PressAsync(Ui.ButtonIn(main, MultiSite("MultiSite.Hosts.MakePrimary") + Ui.Format(MultiSite("MultiSite.Hosts.Which"), second)), "Enter"),
                 response => response.Request.Method == "PATCH" && response.Url.StartsWith(tab.ManagementUrl($"sites/{id}/hosts/"), StringComparison.Ordinal));
