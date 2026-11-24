@@ -702,8 +702,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  # The compose file of the reference host with its smoke test, on pushes to main and manual runs that are not quick, not
-  # on pull requests or the nightly run. Pushes to feature branches run it from compose.yml itself.
+  # The compose file of the reference host with its smoke test, and the admin's end-to-end tests on the image, on pushes to
+  # main and manual runs that are not quick, not on pull requests or the nightly run. Pushes to feature branches run it from compose.yml itself.
   compose:
     name: Compose
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.quick)

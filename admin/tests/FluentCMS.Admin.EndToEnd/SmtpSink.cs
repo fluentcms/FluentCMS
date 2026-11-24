@@ -4,7 +4,8 @@ using System.Text;
 
 namespace FluentCMS.Admin.EndToEnd;
 
-// Just enough SMTP on a loopback port for the host to hand over a message, without TLS: the host sends nothing in Production
+// Just enough SMTP on a port of the address the host reaches the run's servers by (the loopback address, unless the host
+// runs in a container) for the host to hand over a message, without TLS: the host sends nothing in Production
 // without a sender, and an invitation that cannot be sent is revoked at once. The messages go nowhere. Each connection is
 // answered on its own and within a time, so that one that breaks off or stalls leaves the next answered.
 internal sealed class SmtpSink : IDisposable
@@ -12,11 +13,12 @@ internal sealed class SmtpSink : IDisposable
     // Far above what the host takes to send one message, and below MailKit's own timeout of two minutes.
     private static readonly TimeSpan ConversationLimit = TimeSpan.FromSeconds(30);
 
-    private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
+    private readonly TcpListener _listener;
     private readonly CancellationTokenSource _stop = new();
 
-    public SmtpSink()
+    public SmtpSink(IPAddress address)
     {
+        _listener = new TcpListener(address, 0);
         _listener.Start();
         _ = AcceptAsync();
     }

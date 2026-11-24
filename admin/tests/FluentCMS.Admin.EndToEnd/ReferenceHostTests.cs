@@ -7,9 +7,11 @@ using Xunit;
 namespace FluentCMS.Admin.EndToEnd;
 
 // The host the browser tests drive, checked without a browser, so that these run wherever the tests build: started from its
-// publish in Production, seeded with its own commands, and serving the admin over https at its public origin.
-public sealed class ReferenceHostTests(EndToEndHost host)
+// publish or its image in Production, seeded with its own commands, and serving the admin over https at its public origin.
+public sealed class ReferenceHostTests(EndToEndHost running)
 {
+    private readonly EndToEndHost host = running.Running();
+
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]

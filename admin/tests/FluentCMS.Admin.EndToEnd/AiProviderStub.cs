@@ -14,17 +14,21 @@ internal sealed class AiProviderStub : IDisposable
 {
     private static readonly TimeSpan ConversationLimit = TimeSpan.FromMinutes(2);
 
-    private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
+    private readonly TcpListener _listener;
     private readonly CancellationTokenSource _stop = new();
+    private readonly string _host;
 
-    public AiProviderStub()
+    // It listens on the address and is named by the host it is reached by, which differ when the host runs in a container.
+    public AiProviderStub(IPAddress address, string host)
     {
+        _listener = new TcpListener(address, 0);
+        _host = host;
         _listener.Start();
         _ = AcceptAsync();
     }
 
     // The endpoint a site names, under which the client asks /chat/completions.
-    public string Endpoint => $"http://{IPAddress.Loopback}:{((IPEndPoint)_listener.LocalEndpoint).Port}/v1";
+    public string Endpoint => $"http://{_host}:{((IPEndPoint)_listener.LocalEndpoint).Port}/v1";
 
     public IReadOnlyList<string> Pieces { get; set; } = ["A suggestion."];
 

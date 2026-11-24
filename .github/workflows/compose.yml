@@ -5,7 +5,8 @@ name: Compose
 # dispatched there. Pull requests do not run it, but Publish calls it, on a pull request too, with the archive of the image it
 # built and that image's digest, which the job loads instead of building one; Publish pushes that image only. A manual run with
 # an image runs the published one instead of building it, such as ghcr.io/fluentcms/fluentcms:1.0.0-preview.1 after a release
-# (docs/releasing.md); the image must be public.
+# (docs/releasing.md); the image must be public. Beside the smoke test, the admin's end-to-end tests run against the image,
+# built or published, except when Publish calls the workflow with an archive.
 on:
   push:
     branches: ["feature/**"]
@@ -347,3 +348,73 @@ jobs:
         run: |
           docker compose down -v --remove-orphans || true
           rm -f .env
+
+  # The admin's end-to-end project on the image (admin spec 7): the harness runs the host as a container of it, its commands
+  # as one-off containers on a volume of the run, and Chromium against its https port on the loopback address. A case that
+  # fails is run once more against the same image (run-with-retry.ps1), and a skipped case fails the job, as one does where
+  # Docker does not answer. A manual run with an image runs the published one instead of building it. With an archive, as
+  # Publish calls this workflow, the job is left out, so that a release waits for the smoke test only.
+  end-to-end:
+    name: End-to-end on the image (admin)
+    if: ${{ !inputs.archive }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: compose-end-to-end-${{ github.event_name }}-${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && github.run_id || github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' }}
+    env:
+      BUILDKIT_PROGRESS: plain
+      FLUENTCMS_E2E_IMAGE: ${{ inputs.image || 'fluentcms-e2e' }}
+      TESTINGPLATFORM_DIAGNOSTIC: 1
+      TESTINGPLATFORM_DIAGNOSTIC_VERBOSITY: Information
+      TESTINGPLATFORM_DIAGNOSTIC_OUTPUT_DIRECTORY: ${{ github.workspace }}/artifacts/test-results
+      TESTINGPLATFORM_DIAGNOSTIC_SYNCHRONOUS_WRITE: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build the image
+        if: ${{ !inputs.image }}
+        run: docker build -f src/FluentCMS.Host/Dockerfile -t "$FLUENTCMS_E2E_IMAGE" .
+
+      - name: Pull the published image
+        if: ${{ inputs.image }}
+        run: docker pull "$FLUENTCMS_E2E_IMAGE"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+
+      - name: Build the tests
+        run: dotnet build admin/tests/FluentCMS.Admin.EndToEnd -c Release -warnaserror
+
+      - name: Install Chromium
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/bin/Release/net10.0/playwright.ps1 install --only-shell chromium
+
+      - name: Test
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 20m -RetryTimeout 8m
+
+      - name: Name the tests that were running
+        if: failure() || cancelled()
+        run: grep -h -A6 -e "\[Long Running Test\]" -e "\[FAIL\]" artifacts/test-results/*.diag 2>/dev/null || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: test-results-end-to-end-image
+          path: artifacts/test-results
+          retention-days: 14
+
+      # The harness removes them itself; this step covers a test process that was killed, as a cancelled run may be. It removes
+      # every labelled container and volume of the engine and every run folder, which is right only on a runner of this one
+      # run: on a machine that others share, leave the clean-up to the harness.
+      - name: Remove the containers, the volume and the certificates of the run
+        if: always()
+        run: |
+          containers=$(docker ps -aq --filter label=org.fluentcms.e2e)
+          [ -z "$containers" ] || docker rm -f $containers
+          volumes=$(docker volume ls -q --filter label=org.fluentcms.e2e)
+          [ -z "$volumes" ] || docker volume rm -f $volumes
+          rm -rf "${TMPDIR:-/tmp}"/fluentcms-e2e-*
