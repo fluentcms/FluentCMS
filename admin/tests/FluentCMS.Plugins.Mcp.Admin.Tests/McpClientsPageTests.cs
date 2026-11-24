@@ -79,6 +79,46 @@ public sealed class McpClientsPageTests : McpTestContext
         ]);
     }
 
+    // The server changes nothing for the role a client has, so Change waits for another.
+    [Fact]
+    public void AChangeOfRoleStartsFromTheClientsRoleAndIsOffUntilAnotherIsChosen()
+    {
+        Server.AddClient("Build bot", "approved", Editor);
+        var cut = Render<McpClientsPage>();
+        cut.WaitForAssertion(() => HasButton(cut, "Change the role of the client Build bot").ShouldBeTrue());
+
+        Button(cut, "Change the role of the client Build bot").Click();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("This ends every token of the client"));
+        Field(cut, "Role").GetAttribute("value").ShouldBe(Editor.ToString("D"));
+        Button(cut, "Change the role").HasAttribute("disabled").ShouldBeTrue();
+
+        Field(cut, "Role").Change(Reader.ToString("D"));
+        cut.WaitForAssertion(() => Button(cut, "Change the role").HasAttribute("disabled").ShouldBeFalse());
+        Field(cut, "Role").Change(Editor.ToString("D"));
+        cut.WaitForAssertion(() => Button(cut, "Change the role").HasAttribute("disabled").ShouldBeTrue());
+        Server.Requests.ShouldNotContain(request => request.Method == HttpMethod.Put);
+    }
+
+    // A role of one site is not offered, so the select starts empty rather than holding a role the user cannot see.
+    [Fact]
+    public void AChangeOfTheRoleOfAClientWithARoleOfOneSiteStartsWithNoRole()
+    {
+        Server.AddClient("Shop bot", "approved", SiteRole);
+        var cut = Render<McpClientsPage>();
+        cut.WaitForAssertion(() => HasButton(cut, "Change the role of the client Shop bot").ShouldBeTrue());
+
+        Button(cut, "Change the role of the client Shop bot").Click();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("This ends every token of the client"));
+        Field(cut, "Role").GetAttribute("value").ShouldBeNullOrEmpty();
+        Button(cut, "Change the role").HasAttribute("disabled").ShouldBeTrue();
+
+        Field(cut, "Role").Change(Editor.ToString("D"));
+        cut.WaitForAssertion(() => Button(cut, "Change the role").HasAttribute("disabled").ShouldBeFalse());
+        Button(cut, "Change the role").Click();
+        cut.WaitForAssertion(() => cut.Find(".mcp-list-message").TextContent.ShouldBe("The client Shop bot now has the role Editor. Its users sign in through it again."));
+        Server.Requests.Single(request => request.Method == HttpMethod.Put).Body!.ToJsonString().ShouldBe($$"""{"role":"{{Editor:D}}"}""");
+    }
+
     [Fact]
     public void AnApprovalNeedsARoleAndARejectAsksFirst()
     {
@@ -194,12 +234,17 @@ public sealed class McpClientsPageTests : McpTestContext
     [Fact]
     public void WithoutTheRolesNoClientIsGivenARoleButOneIsStillRevoked()
     {
-        Server.AddClient("Desk agent", "approved", Editor);
+        var id = Server.AddClient("Desk agent", "approved", Editor);
         Server.Refuse = request => request.Path == "roles" ? Problem(403, "FCMS3000") : null;
         var cut = Render<McpClientsPage>();
 
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("The roles could not be read"));
         Button(cut, "Change the role of the client Desk agent").HasAttribute("disabled").ShouldBeTrue();
-        Button(cut, "Revoke the client Desk agent").HasAttribute("disabled").ShouldBeFalse();
+        Button(cut, "Revoke the client Desk agent").Click();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Revoke the client Desk agent? It is removed"));
+        Button(cut, "Revoke").Click();
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No MCP client has registered yet."));
+        Server.Requests.ShouldContain(request => request.Method == HttpMethod.Delete && request.Path == $"mcp/clients/{id:D}");
     }
 }

@@ -333,6 +333,18 @@
   <data name="Mcp.Instructions.RemoveFailed" xml:space="preserve">
     <value>Nothing was removed. Try again.</value>
   </data>
+  <data name="Mcp.Instructions.RemoveTitle" xml:space="preserve">
+    <value>Remove the instructions</value>
+  </data>
+  <data name="Mcp.Instructions.RemoveGuidelinesText" xml:space="preserve">
+    <value>Remove the guidelines of the site? Agents are no longer told them.</value>
+  </data>
+  <data name="Mcp.Instructions.RemoveTypeText" xml:space="preserve">
+    <value>Remove the instructions of {0}? Agents are no longer told them.</value>
+  </data>
+  <data name="Mcp.Instructions.RemoveConfirm" xml:space="preserve">
+    <value>Remove</value>
+  </data>
   <data name="Mcp.Instructions.GuidelinesRemoved" xml:space="preserve">
     <value>The guidelines of the site are removed.</value>
   </data>

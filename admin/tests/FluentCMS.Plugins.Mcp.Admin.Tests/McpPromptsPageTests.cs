@@ -27,7 +27,9 @@ public sealed class McpPromptsPageTests : McpTestContext
         Field(cut, "Name").GetAttribute("value").ShouldBeNullOrEmpty();
 
         Button(cut, "Change the prompt summarize").Click();
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Change the prompt summarize"));
+        cut.WaitForAssertion(() => cut.Find(".cms-card-title").TextContent.ShouldBe("Change the prompt summarize"));
+        Field(cut, "Name").GetAttribute("value").ShouldBe("summarize");
+        HasButton(cut, "Save the prompt").ShouldBeTrue();
         Field(cut, "Name of argument 1").GetAttribute("value").ShouldBe("id");
         Field(cut, "Template").Input("Summarize {{id}} in one line.");
         cut.Find("form").Submit();

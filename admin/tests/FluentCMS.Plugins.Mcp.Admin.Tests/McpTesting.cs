@@ -195,7 +195,7 @@ internal sealed class FakeMcp : IManagementApi
         return new ApiResponse(HttpStatusCode.NoContent, null);
     }
 
-    private static string RoleName(Guid role) => role == McpTestContext.Editor ? "Editor" : "Reader";
+    private static string RoleName(Guid role) => role == McpTestContext.Editor ? "Editor" : role == McpTestContext.Reader ? "Reader" : "Shop editor";
 
     private JsonNode Answer(ApiRequest request)
     {

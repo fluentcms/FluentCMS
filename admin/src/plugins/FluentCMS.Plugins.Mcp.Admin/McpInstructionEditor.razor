@@ -1,6 +1,6 @@
 @* One text of the instructions page: the guidelines of the site when Type is null, else the instructions of one type, saved
-   whole and removed. SavedText and SavedAt are what the server holds, null while there is none; a save or a remove raises
-   Changed, and the page reads the list again. *@
+   whole. SavedText and SavedAt are what the server holds, null while there is none; a save raises Changed, and the page
+   reads the list again. Remove raises OnRemove, since the page asks first and removes. *@
 @inject IManagementApi Api
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<McpResources> L
@@ -19,7 +19,7 @@
         </CmsButton>
         @if (SavedAt is not null)
         {
-            <CmsButton Disabled="@busy" OnClick="DeleteAsync">
+            <CmsButton Disabled="@busy" OnClick="OnRemove">
                 @L["Mcp.Instructions.Remove"]<span class="cms-visually-hidden">@Which</span>
             </CmsButton>
         }
@@ -51,6 +51,9 @@
     [Parameter]
     public EventCallback Changed { get; set; }
 
+    [Parameter]
+    public EventCallback OnRemove { get; set; }
+
     private string Which => Type is null ? L["Mcp.Instructions.OfGuidelines"] : L["Mcp.Instructions.OfType", Label];
 
     // A text the server answers anew, as after a save, replaces the one typed; another render keeps what is typed.
@@ -59,6 +62,7 @@
         if (SavedAt != shown)
         {
             (text, shown) = (SavedText, SavedAt);
+            message = SavedAt is null ? null : message;
         }
     }
 
@@ -102,42 +106,6 @@
         if (saved)
         {
             Announcer.Announce(message!);
-            await Changed.InvokeAsync();
-        }
-    }
-
-    // Instructions that are gone already are taken as removed.
-    private async Task DeleteAsync()
-    {
-        if (busy)
-        {
-            return;
-        }
-
-        (busy, error, message) = (true, null, null);
-        var removed = false;
-        try
-        {
-            await Api.DeleteInstructionAsync(Type, CancellationToken.None);
-            removed = true;
-        }
-        catch (Exception exception) when (McpProblems.Has(exception, McpProblems.InstructionNotFound))
-        {
-            removed = true;
-        }
-        catch (Exception exception) when (McpProblems.IsFailure(exception))
-        {
-            message = L["Mcp.Instructions.RemoveFailed"];
-        }
-        finally
-        {
-            busy = false;
-        }
-
-        if (removed)
-        {
-            Announcer.Announce(Type is null ? L["Mcp.Instructions.GuidelinesRemoved"] : L["Mcp.Instructions.TypeRemoved", Label]);
-            (text, shown) = (null, null);
             await Changed.InvokeAsync();
         }
     }

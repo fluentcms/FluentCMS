@@ -1,13 +1,14 @@
 @* What agents are told in the site (spec 5.4), for a caller who holds mcp.manage there: the guidelines of the site, which go
    into the handshake, and the instructions of a content type, which go into the descriptions of its tools. Each is written,
-   changed and removed on its own; a type that is no longer in the schema keeps its instructions, which no agent is served,
-   until they are removed. The types are named as the schema names them. *@
+   changed and removed on its own, a removal after a question; a type that is no longer in the schema keeps its
+   instructions, which no agent is served, until they are removed. The types are named as the schema names them. *@
 @page "/mcp/instructions"
 @attribute [AdminPage("/mcp/instructions", Permission = "mcp.manage")]
 @attribute [AdminMenuItem("Mcp.Instructions.Menu", Section = AdminSection.Administration, Order = 81)]
 @implements IDisposable
 @inject IManagementApi Api
 @inject IAdminSchema Schema
+@inject IAnnouncer Announcer
 @inject IStringLocalizer<McpResources> L
 
 <h1 tabindex="-1">@L["Mcp.Instructions.Page.Heading"]</h1>
@@ -28,7 +29,7 @@
 else
 {
     <CmsCard Title="@L["Mcp.Instructions.Guidelines.Heading"]">
-        <McpInstructionEditor Label="@L["Mcp.Instructions.Guidelines"]" SavedText="@Guidelines?.Text" SavedAt="@Guidelines?.UpdatedAt" Changed="ReadAsync" />
+        <McpInstructionEditor Label="@L["Mcp.Instructions.Guidelines"]" SavedText="@Guidelines?.Text" SavedAt="@Guidelines?.UpdatedAt" Changed="ReadAsync" OnRemove="@(() => AskRemove(null, L["Mcp.Instructions.Guidelines"].Value))" />
     </CmsCard>
 
     <CmsCard Title="@L["Mcp.Instructions.Types.Heading"]">
@@ -44,7 +45,7 @@ else
                 {
                     <p>@L["Mcp.Instructions.Orphaned"]</p>
                 }
-                <McpInstructionEditor Type="@row.Type" Label="@TypeName(row.Type!)" SavedText="@row.Text" SavedAt="@row.UpdatedAt" Changed="ReadAsync" />
+                <McpInstructionEditor Type="@row.Type" Label="@TypeName(row.Type!)" SavedText="@row.Text" SavedAt="@row.UpdatedAt" Changed="ReadAsync" OnRemove="@(() => AskRemove(row.Type, TypeName(row.Type!)))" />
             </section>
         }
 
@@ -74,12 +75,32 @@ else
     </CmsCard>
 }
 
+<CmsDialog Title="@L["Mcp.Instructions.RemoveTitle"]" Open="@(removing is not null)" OpenChanged="@(open => { if (!open) CancelRemove(); })">
+    <ChildContent>
+        @if (removing is { } asked)
+        {
+            <p>@(asked.Type is null ? L["Mcp.Instructions.RemoveGuidelinesText"] : L["Mcp.Instructions.RemoveTypeText", asked.Label])</p>
+            @if (removeError is { } failure)
+            {
+                <p role="alert">@failure</p>
+            }
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="RemoveAsync">@L["Mcp.Instructions.RemoveConfirm"]</CmsButton>
+        <CmsButton Disabled="@busy" OnClick="CancelRemove">@L["Mcp.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
 @code {
     private IReadOnlyList<McpInstruction>? instructions;
     private Dictionary<string, string>? types;
     private bool failed;
     private bool typesFailed;
     private string? addType;
+    private (string? Type, string Label)? removing;
+    private string? removeError;
+    private bool busy;
     private readonly CancellationTokenSource closing = new();
 
     private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
@@ -135,6 +156,56 @@ else
     }
 
     private string TypeName(string type) => types?.GetValueOrDefault(type) ?? type;
+
+    private void AskRemove(string? type, string label) => (removing, removeError) = ((type, label), null);
+
+    private void CancelRemove()
+    {
+        if (!busy)
+        {
+            (removing, removeError) = (null, null);
+        }
+    }
+
+    // Instructions that are gone already are taken as removed.
+    private async Task RemoveAsync()
+    {
+        if (busy || removing is not { } asked)
+        {
+            return;
+        }
+
+        (busy, removeError) = (true, null);
+        var removed = false;
+        try
+        {
+            await Api.DeleteInstructionAsync(asked.Type, Closing);
+            removed = true;
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (McpProblems.Has(exception, McpProblems.InstructionNotFound))
+        {
+            removed = true;
+        }
+        catch (Exception exception) when (McpProblems.IsFailure(exception))
+        {
+            removeError = L["Mcp.Instructions.RemoveFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (removed)
+        {
+            removing = null;
+            Announcer.Announce(asked.Type is null ? L["Mcp.Instructions.GuidelinesRemoved"] : L["Mcp.Instructions.TypeRemoved", asked.Label]);
+            await ReadAsync();
+        }
+    }
 
     private Task AddedAsync()
     {

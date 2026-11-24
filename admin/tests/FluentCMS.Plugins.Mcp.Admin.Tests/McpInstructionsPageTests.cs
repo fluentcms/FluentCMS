@@ -25,6 +25,8 @@ public sealed class McpInstructionsPageTests : McpTestContext
         cut.WaitForAssertion(() => Server.Instructions.Single()["text"]!.GetValue<string>().ShouldBe("Write in plain English. Never publish."));
 
         Button(cut, "Remove the guidelines").Click();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Remove the guidelines of the site? Agents are no longer told them."));
+        Button(cut, "Remove").Click();
         cut.WaitForAssertion(() => HasButton(cut, "Remove the guidelines").ShouldBeFalse());
         Server.Instructions.ShouldBeEmpty();
         Field(cut, "Guidelines").GetAttribute("value").ShouldBeNullOrEmpty();
@@ -52,9 +54,28 @@ public sealed class McpInstructionsPageTests : McpTestContext
         cut.WaitForAssertion(() => Server.Instructions.Single()["text"]!.GetValue<string>().ShouldBe("Keep a title under 50 characters."));
 
         Button(cut, "Remove the instructions of Article").Click();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Remove the instructions of Article? Agents are no longer told them."));
+        Button(cut, "Remove").Click();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("No content type has instructions yet."));
         Server.Requests.ShouldContain(request => request.Method == HttpMethod.Delete && request.Path == "mcp/instructions/article");
         Announcer.Messages[^1].ShouldBe("The instructions of Article are removed.");
+    }
+
+    [Fact]
+    public void ARemovalAsksFirstAndACancelKeepsTheText()
+    {
+        Server.AddInstruction(null, "Write in plain English.");
+        var cut = Render<McpInstructionsPage>();
+        cut.WaitForAssertion(() => HasButton(cut, "Remove the guidelines").ShouldBeTrue());
+
+        Button(cut, "Remove the guidelines").Click();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Remove the guidelines of the site?"));
+        Button(cut, "Cancel").Click();
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldNotContain("Remove the guidelines of the site?"));
+        Server.Requests.ShouldNotContain(request => request.Method == HttpMethod.Delete);
+        Server.Instructions.Count.ShouldBe(1);
+        Field(cut, "Guidelines").GetAttribute("value").ShouldBe("Write in plain English.");
     }
 
     [Fact]

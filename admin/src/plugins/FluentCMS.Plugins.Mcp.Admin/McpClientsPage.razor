@@ -160,7 +160,7 @@ else
         }
     </ChildContent>
     <Actions>
-        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="SetRoleAsync">@L[approving ? "Mcp.Role.Approve" : "Mcp.Role.Change"]</CmsButton>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(busy || !CanSetRole)" OnClick="SetRoleAsync">@L[approving ? "Mcp.Role.Approve" : "Mcp.Role.Change"]</CmsButton>
         <CmsButton Disabled="@busy" OnClick="Cancel">@L["Mcp.Cancel"]</CmsButton>
     </Actions>
 </CmsDialog>
@@ -284,8 +284,17 @@ else
 
     private static string Time(DateTimeOffset value) => value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
 
-    private void AskRole(McpClient client, bool approve) =>
-        (roleFor, approving, chosenRole, roleError, dialogError) = (client, approve, approve ? null : client.RoleId?.ToString("D"), null, null);
+    // A change starts from the client's role when it is offered, and is off until another is chosen, since the server changes
+    // nothing for the same role. A role of one site is not offered, so the select then starts empty.
+    private void AskRole(McpClient client, bool approve)
+    {
+        var current = client.RoleId?.ToString("D");
+        var offered = !approve && roles?.Any(role => role.Value == current) == true;
+        (roleFor, approving, chosenRole, roleError, dialogError) = (client, approve, offered ? current : null, null, null);
+    }
+
+    private bool CanSetRole =>
+        approving || (!string.IsNullOrEmpty(chosenRole) && chosenRole != roleFor?.RoleId?.ToString("D"));
 
     private void AskConfirm(McpClient client, ClientAction action) => (confirmFor, confirming, dialogError) = (client, action, null);
 
@@ -300,7 +309,7 @@ else
 
     private async Task SetRoleAsync()
     {
-        if (busy || roleFor is not { } client)
+        if (busy || roleFor is not { } client || !CanSetRole)
         {
             return;
         }
