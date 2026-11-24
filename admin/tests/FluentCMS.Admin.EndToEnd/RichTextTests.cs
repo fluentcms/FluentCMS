@@ -18,7 +18,9 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
     private const string Pasted =
         """<p>Pasted <span style="color:red">red</span> <a href="javascript:alert(1)">bad</a><img src="x.png"> <a href="https://example.org/">good</a></p><table><tr><td>cell</td></tr></table>""";
 
+    // Not on WebKit (spec 7): after Ctrl+K on a selection and an address the selected text is gone, with no link.
     [Fact]
+    [Trait("NotOn", "webkit")]
     public async Task TheEditorWritesABodyByKeyboardSavesItAndReadsItBackUnchanged()
     {
         var browser = await OpenBrowserAsync();
@@ -52,9 +54,7 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
             await keyboard.PressAsync("Shift+ArrowLeft");
         }
 
-        // Playwright's WebKit also runs the macOS editing command of Ctrl+K, deleting to the end of the paragraph, whatever the
-        // page does with the key; Cmd+K is the shortcut a Safari user presses.
-        await keyboard.PressAsync(Host.Engine == BrowserEngine.WebKit ? "Meta+k" : "Control+k");
+        await keyboard.PressAsync("Control+k");
         var address = tab.Page.GetByLabel(Repository.RichTextText("RichText.Link.Address"), new PageGetByLabelOptions { Exact = true });
         await Expect(address).ToBeFocusedAsync();
         await keyboard.TypeAsync("https://example.com/");

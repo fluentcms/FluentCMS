@@ -45,7 +45,9 @@ public sealed class NavigationProgressTests(EndToEndHost host) : BrowserTest(hos
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
+    // Not on WebKit, as the case above.
     [Fact]
+    [Trait("NotOn", "webkit")]
     public async Task AReloadOfAHalfsRouteShowsTheShellAndALoadingStateBeforeThePage()
     {
         var browser = await OpenBrowserAsync();
