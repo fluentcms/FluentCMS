@@ -11,7 +11,9 @@ namespace FluentCMS.Admin.EndToEnd;
 // message only, and the standard output of a command that prints a secret is kept out of that message.
 internal sealed class ChildProcess : IDisposable
 {
-    private const int KeptLines = 400;
+    // The host logs a line at the start and the end of each request, and a case that signs in to the admin asks for a hundred
+    // files, so it writes some 300 lines in 20 seconds; a busy half minute holds about twice that.
+    private const int KeptLines = 1000;
 
     private readonly Process _process;
     private readonly ConcurrentQueue<string> _lines = new();
