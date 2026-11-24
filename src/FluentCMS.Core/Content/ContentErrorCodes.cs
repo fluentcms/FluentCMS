@@ -11,4 +11,5 @@ internal static class ContentErrorCodes
     public const string NonexistentLocalTime = "FCMS2408";
     public const string ScheduledDraftChanged = "FCMS2409";
     public const string HookTimedOut = "FCMS2410";
+    public const string EntryBusy = "FCMS2411";
 }

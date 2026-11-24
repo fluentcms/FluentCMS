@@ -110,6 +110,8 @@ internal sealed class QueryDatabase : IDisposable
 
     public CmsDbContext Context { get; }
 
+    public string ConnectionString => _database.ConnectionString;
+
     public IServiceProvider Services => _scope.ServiceProvider;
 
     public IServiceScope NewScope() => _services.CreateScope();

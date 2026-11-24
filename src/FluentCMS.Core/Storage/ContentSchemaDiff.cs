@@ -30,7 +30,7 @@ internal sealed record SchemaApplyStep(string Description, SchemaStepKind Kind, 
     public bool IsDestructive => Kind == SchemaStepKind.Destructive;
 }
 
-// What schema apply does, and the tables it leaves alone, each with the reason.
+// What schema apply does, and the tables and collations it leaves alone, each with the reason.
 internal sealed record SchemaApplyPlan(IReadOnlyList<SchemaApplyStep> Steps, IReadOnlyList<string> LeftAlone);
 
 // The content model against the database. It starts from the operations that would create the whole content model,
@@ -79,7 +79,8 @@ internal sealed partial class ContentSchemaDiff
     // What schema apply does, from PlanAsync only.
     public IReadOnlyList<SchemaApplyStep> Steps => _steps;
 
-    // The tables under the prefix of a plugin the host does not register, which schema apply leaves alone, from PlanAsync only.
+    // The tables under the prefix of a plugin the host does not register, and the columns of another collation than the
+    // model's, which schema apply leaves alone, from PlanAsync only.
     public IReadOnlyList<string> LeftAlone => _leftAlone;
 
     // The operations of the steps in the order they run.
@@ -383,6 +384,9 @@ internal sealed partial class ContentSchemaDiff
     private static bool Differs(AddColumnOperation wanted, DatabaseColumn existing) =>
         !Same(wanted.ColumnType, existing.StoreType) || wanted.IsNullable != existing.IsNullable;
 
+    // An altered column takes the model's collation. One that is otherwise the model's keeps its own: changing it rebuilds
+    // the column's indexes, SQL Server refuses it on an indexed column, and it changes what a sort and a cursor return, so it
+    // is named and left to the operator (#3476).
     private void CompareColumn(CreateTableOperation create, DatabaseTable table, AddColumnOperation wanted, DatabaseColumn existing)
     {
         if (Differs(wanted, existing))
@@ -397,6 +401,10 @@ internal sealed partial class ContentSchemaDiff
                     (AlterPhase, Alter(wanted, existing)),
                     .. AddChecks(create.CheckConstraints.Where(check => References(check, wanted.Name))),
                 ]);
+        }
+        else if (wanted.Collation is not null && !Same(wanted.Collation, existing.Collation))
+        {
+            LeaveAlone($"column {wanted.Name} on table {wanted.Table}, whose collation is {existing.Collation ?? "the database's default"} and not {wanted.Collation} as in the content model; schema apply does not change a collation, so a sort and a cursor on the column follow the one it has until it is altered by hand");
         }
     }
 
@@ -424,7 +432,9 @@ internal sealed partial class ContentSchemaDiff
             }
         }
 
-        foreach (var extra in existing.Indexes.Where(index => !wanted.Any(other => Same(other.Name, index.Name))))
+        // An index with a key that is an expression is not one the content model can declare, so it was made by hand and is
+        // kept, as it was while the PostgreSQL reader did not list it (#3530).
+        foreach (var extra in existing.Indexes.Where(index => !wanted.Any(other => Same(other.Name, index.Name)) && !index.Columns.Contains("")))
         {
             var description = $"drop index {extra.Name} from table {table}";
             _notApplied.Add(description);

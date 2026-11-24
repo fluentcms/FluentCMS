@@ -227,6 +227,11 @@ public sealed class ApiKeyAddressAndRotationTests : IDisposable
         {
             (await Should.ThrowAsync<ValidationException>(() => RotateAsync(created.Key.Id, overlap))).Errors.ShouldHaveSingleItem().Code.ShouldBe(ApiKeyErrorCodes.InvalidOverlap);
         }
+
+        // The key says the configured longest, which is what it is held to above, revoked or not.
+        (created.Key.MaxOverlapSeconds, shorter.Key.MaxOverlapSeconds).ShouldBe(((int)Overlap.TotalSeconds, (int)Overlap.TotalSeconds));
+        (await WithKeysAsync(keys => keys.RevokeAsync(created.Key.Id, Token))).ShouldBeTrue();
+        (await WithKeysAsync(keys => keys.FindAsync(created.Key.Id, Token)))!.MaxOverlapSeconds.ShouldBe((int)Overlap.TotalSeconds);
     }
 
     [Fact]

@@ -55,7 +55,7 @@ Every issue has one `type:*` label. Issues that belong to a part of the codebase
 | Label | Meaning |
 | --- | --- |
 | `type:feature` | A new capability. |
-| `type:bug` | A defect. |
+| `type:bug` | A defect. A review finding is one only when it is a blocker: see [Review findings](#review-findings). |
 | `type:chore` | Repository, tooling or housekeeping. |
 | `type:docs` | Documentation. |
 | `type:epic` | A milestone-level feature, sliced into issues. |
@@ -94,6 +94,16 @@ The description contains, in this order:
 - Every required check must pass. Once the review is done, enable auto-merge with `gh pr merge <number> --auto --squash`; GitHub merges the pull request as soon as every required check passes.
 - Branch protection does not require an issue branch to be up to date with its target. Merge the target into the issue branch only to resolve a conflict.
 - Pull requests are squash-merged into a linear history. The title becomes the commit title, so it is short and imperative, for example "Update the contributing guide and add decision records".
+
+### Review findings
+
+A review sorts each finding as a blocker or a follow-up and names its evidence: a failing test, a reproduction or "from reading". A follow-up filed as a bug of its own brings a pull request, a review of that and a full CI run, and the review brings more follow-ups, so only blockers get that path.
+
+- **A blocker** is a security hole, a loss or corruption of data, a wrong result on an ordinary path, or a finding shown by a failing test or a reproduction. It is fixed in the pull request before it merges. Found after the merge, it becomes a `type:bug` issue.
+- **A follow-up** is everything else: a finding from reading alone, a race that needs requests in parallel on one row, a decision the specification still owes, the wording of a message or a guide, test hygiene, or something older than the pull request. It does not block the merge and gets no issue of its own. Add it as a line to the follow-up list of its area: [#3608](https://github.com/fluentcms/FluentCMS/issues/3608) for content, [#3609](https://github.com/fluentcms/FluentCMS/issues/3609) for identity and access, [#3610](https://github.com/fluentcms/FluentCMS/issues/3610) for the admin and [#3611](https://github.com/fluentcms/FluentCMS/issues/3611) for storage, jobs, events and settings. Open a new list, labelled `type:chore` with its `area:*` labels, only for an area none of them covers. One pull request works a list off at the end of a milestone.
+- **One review per pull request.** A second follows only a fix round that changed security, deletion or model-change code. There is no third: after two, the maintainer decides.
+- **Review before the pull request opens** when the reviewer can read the branch: push the branch, have `origin/<target>...<branch>` reviewed, push the fixes and then open the pull request, so CI runs once.
+- **Ask a reviewer for correctness gaps** against the issue's acceptance list and the specification, not for problems in general: a review asked to find problems always finds some.
 
 ## Local development
 

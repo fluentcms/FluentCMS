@@ -128,6 +128,7 @@ internal sealed partial class ContentService
             Errors = validation.Errors,
         },
         HookRejectedException rejected => new BulkProblem(rejected.Code, rejected.Message),
+        EntryBusyException busy => new BulkProblem(ContentErrorCodes.EntryBusy, busy.Message),
         _ => null,
     };
 

@@ -746,8 +746,14 @@ try {
     $plugin = 'Acme.FreshMachine'
     $pluginDirectory = Join-Path $WorkDirectory $plugin
     Start-Step "dotnet new fluentcms-plugin -n $plugin, built and tested"
+    $pluginArguments = @('new', 'fluentcms-plugin', '-n', $plugin, '-o', $pluginDirectory, '--debug:custom-hive', $hive)
+    # A release before A-47 publishes no admin package, so the admin half cannot restore from a URL feed. The template of
+    # 1.0.0-preview.1 has neither the half nor --admin.
+    if ($feedIsUrl -and ((& dotnet new fluentcms-plugin --help --debug:custom-hive $hive) -match '--admin')) {
+        $pluginArguments += @('--admin', 'false')
+    }
     Use-Location $WorkDirectory {
-        Invoke-Checked dotnet @('new', 'fluentcms-plugin', '-n', $plugin, '-o', $pluginDirectory, '--debug:custom-hive', $hive)
+        Invoke-Checked dotnet $pluginArguments
     }
     Assert-TemplateVersions $pluginDirectory
     Invoke-Checked dotnet @('restore', (Join-Path $pluginDirectory "$plugin.slnx"))

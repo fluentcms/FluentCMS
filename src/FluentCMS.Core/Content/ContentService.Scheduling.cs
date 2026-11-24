@@ -49,7 +49,13 @@ internal sealed partial class ContentService
         var document = await InTransactionAsync(
             async () =>
             {
+                // The row of the locale is held, once the entry is reached, before the version and shared hash are read, in
+                // the lock order: a write that moves them, such as one that adds a locale, commits first and is read here, or
+                // waits and then moves this schedule with the others (#3534).
                 var (documents, document, target) = await ReachLocaleAsync(write, kind, id, cancellationToken);
+                await HoldInOrderAsync([document], cancellationToken);
+                documents = await store.DocumentsAsync(write.Type, id, write.Site, trashed: false, cancellationToken);
+                document = documents.Find(item => item.Id == document.Id) ?? throw new EntryNotFoundException(write.Type.Name, id);
                 string? shared = null;
                 if (kind == ContentOperation.Publish)
                 {
@@ -115,7 +121,9 @@ internal sealed partial class ContentService
         await InTransactionAsync(
             async () =>
             {
+                // The schedule is ended before its mirror on the row is cleared, so the row is held first, in the lock order.
                 var (documents, document, target) = await ReachLocaleAsync(write, kind, id, cancellationToken);
+                await HoldInOrderAsync([document], cancellationToken);
                 if (kind == ContentOperation.Publish)
                 {
                     var draft = await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken);
@@ -170,9 +178,18 @@ internal sealed partial class ContentService
         }
     }
 
-    private async Task<ScheduleOutcome> RunClaimedAsync(OperationContext operation, ScheduleRow row, ScheduleAction action, Guid jobId, CancellationToken cancellationToken)
+    // The entry's rows are held first, in the lock order, every locale since the publish takes the published ones, and the
+    // schedule is read again under them: a write that moved it since the read before the transaction, such as one that
+    // added a locale and moved its version, has committed, and one after waits for the job (#3524, #3534).
+    private async Task<ScheduleOutcome> RunClaimedAsync(OperationContext operation, ScheduleRow found, ScheduleAction action, Guid jobId, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
+        await HoldEveryRowAsync(found.DocumentId, await store.AllRowsAsync(found.DocumentId, cancellationToken), null, cancellationToken);
+        if (await schedules.FindAsync(found.Id, cancellationToken) is not { Status: ScheduleRow.Pending } row || row.JobId != jobId)
+        {
+            return ScheduleOutcome.Superseded;
+        }
+
         var state = await context.Documents.IgnoreQueryFilters().AsNoTracking()
             .Where(document => document.DocumentId == row.DocumentId && document.Locale == row.Locale)
             .Select(document => new { document.Type, document.DeletedAt })

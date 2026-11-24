@@ -24,6 +24,12 @@ internal sealed class MemberGoogleHandler(IOptionsMonitor<GoogleOptions> options
 
     protected override Task<OAuthTokenResponse> ExchangeCodeAsync(OAuthCodeExchangeContext context) =>
         base.ExchangeCodeAsync(MemberProviders.Callback(origin, Options.CallbackPath, context));
+
+    protected override async Task InitializeEventsAsync()
+    {
+        await base.InitializeEventsAsync();
+        Events = MemberProviderRegistration.Chain(Events, new OAuthEvents());
+    }
 }
 
 internal sealed class MemberMicrosoftHandler(IOptionsMonitor<MicrosoftAccountOptions> options, ILoggerFactory logger, UrlEncoder encoder, PublicOrigin origin)
@@ -34,6 +40,12 @@ internal sealed class MemberMicrosoftHandler(IOptionsMonitor<MicrosoftAccountOpt
 
     protected override Task<OAuthTokenResponse> ExchangeCodeAsync(OAuthCodeExchangeContext context) =>
         base.ExchangeCodeAsync(MemberProviders.Callback(origin, Options.CallbackPath, context));
+
+    protected override async Task InitializeEventsAsync()
+    {
+        await base.InitializeEventsAsync();
+        Events = MemberProviderRegistration.Chain(Events, new OAuthEvents());
+    }
 }
 
 internal sealed class MemberAppleHandler(IOptionsMonitor<AppleAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder, PublicOrigin origin)
@@ -44,6 +56,17 @@ internal sealed class MemberAppleHandler(IOptionsMonitor<AppleAuthenticationOpti
 
     protected override Task<OAuthTokenResponse> ExchangeCodeAsync(OAuthCodeExchangeContext context) =>
         base.ExchangeCodeAsync(MemberProviders.Callback(origin, Options.CallbackPath, context));
+
+    // The Apple events sign the client secret and validate the id token; both stay the events the handler found.
+    protected override async Task InitializeEventsAsync()
+    {
+        await base.InitializeEventsAsync();
+        var host = Events;
+        var chained = MemberProviderRegistration.Chain(host, new AppleAuthenticationEvents());
+        chained.OnGenerateClientSecret = host.GenerateClientSecret;
+        chained.OnValidateIdToken = host.ValidateIdToken;
+        Events = chained;
+    }
 
     // A handler's log is named after its type, and the Apple handler writes the tokens of a sign-in to it at Trace.
     // The log keeps the name of the package's handler, so that a host that turns the FluentCMS categories up for a
@@ -72,6 +95,12 @@ internal sealed class MemberGitHubHandler(IOptionsMonitor<GitHubAuthenticationOp
 
     protected override Task<OAuthTokenResponse> ExchangeCodeAsync(OAuthCodeExchangeContext context) =>
         base.ExchangeCodeAsync(MemberProviders.Callback(origin, Options.CallbackPath, context));
+
+    protected override async Task InitializeEventsAsync()
+    {
+        await base.InitializeEventsAsync();
+        Events = MemberProviderRegistration.Chain(Events, new OAuthEvents());
+    }
 
     protected override async Task<string?> GetEmailAsync(OAuthTokenResponse tokens)
     {

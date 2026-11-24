@@ -13,4 +13,18 @@ public sealed class FluentCmsConfigurationException : InvalidOperationException
     public string Code { get; }
 
     internal string Detail { get; }
+
+    // A value of an option the host cannot start with (FCMS1101), as the validate of AddFluentCmsOptions throws it.
+    public static FluentCmsConfigurationException InvalidOption(string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        return new(HostErrorCodes.InvalidOption, message);
+    }
+
+    // Something the host needs is missing, such as a call that registers a package's services or a file it serves (FCMS1103).
+    public static FluentCmsConfigurationException NotRegistered(string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        return new(HostErrorCodes.NotRegistered, message);
+    }
 }

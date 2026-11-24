@@ -64,6 +64,40 @@ public sealed class HealthProbeTests : IAsyncDisposable
         handler.Requested.ShouldBe(new Uri("http://localhost:5080/cms/health/ready"));
     }
 
+    [Fact]
+    public async Task AnHttpEndpointOfKestrelWinsOverUrls()
+    {
+        using var root = new EmptyDirectory();
+        File.WriteAllText(System.IO.Path.Combine(root.Path, "appsettings.json"), """
+            {
+              "urls": "http://+:5080",
+              "Kestrel": { "Endpoints": { "Https": { "Url": "https://*:5443" }, "Http": { "Url": "http://*:5090" } } }
+            }
+            """);
+        using var handler = new Recorder();
+
+        var exitCode = await HealthProbe.RunAsync(HealthProbe.Configuration(root.Path), TimeSpan.FromSeconds(30), handler);
+
+        exitCode.ShouldBe(0);
+        handler.Requested.ShouldBe(new Uri("http://localhost:5090/health/ready"));
+    }
+
+    // Kestrel ignores urls and http_ports once endpoints are configured; the probe still falls back to them.
+    [Fact]
+    public async Task WithHttpsOnlyEndpointsTheProbeFallsBackToUrlsAndThenHttpPorts()
+    {
+        using var root = new EmptyDirectory();
+        File.WriteAllText(System.IO.Path.Combine(root.Path, "appsettings.json"), """
+            { "Kestrel": { "Endpoints": { "Https": { "Url": "https://*:5443" } } }, "http_ports": "5081" }
+            """);
+        using var handler = new Recorder();
+
+        var exitCode = await HealthProbe.RunAsync(HealthProbe.Configuration(root.Path), TimeSpan.FromSeconds(30), handler);
+
+        exitCode.ShouldBe(0);
+        handler.Requested.ShouldBe(new Uri("http://localhost:5081/health/ready"));
+    }
+
     private sealed class Recorder : HttpMessageHandler
     {
         public Uri? Requested { get; private set; }

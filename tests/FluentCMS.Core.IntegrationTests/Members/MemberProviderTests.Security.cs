@@ -1,4 +1,7 @@
+using System.Collections.Concurrent;
 using System.Net;
+using AspNet.Security.OAuth.Apple;
+using AspNet.Security.OAuth.GitHub;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Members;
@@ -8,6 +11,9 @@ using FluentCMS.Core.IntegrationTests.Identity;
 using FluentCMS.Events;
 using FluentCMS.Testing;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
+using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
@@ -602,6 +608,213 @@ public sealed partial class MemberProviderTests
         var told = logs.Entries.Where(entry => entry.Message.Contains(generated, StringComparison.Ordinal) || entry.Message.StartsWith("ID Token:", StringComparison.Ordinal)).ToList();
         told.Count.ShouldBeGreaterThanOrEqualTo(2);
         told.ShouldAllBe(entry => entry.Level == LogLevel.Trace && entry.Category.StartsWith(AppleLogLevel.Category, StringComparison.Ordinal));
+    }
+
+    // A host's own events on an OpenID Connect provider, as Events or as EventsType, keep FluentCMS's: the login's key from
+    // sub, the provider's name in the ticket, the way back to the login page after a failure, and the logout paths left
+    // unserved; the host's run after them (#3526). The test host registers a host's services before AddFluentCms, so they
+    // are set in a PostConfigure, which runs after every Configure as a host's Configure after AddFluentCms does.
+    [Fact]
+    public async Task AHostsOwnEventsOnAnOidcProviderKeepItsChecks()
+    {
+        foreach (var asType in new[] { false, true })
+        {
+            var events = new HostEvents();
+            await using var host = NewHost(fixture.Providers, fixture.Oidc, fixture.Emails).WithServices(services =>
+            {
+                services.AddSingleton(events);
+                services.PostConfigure<OpenIdConnectOptions>(MemberProvider.SchemeOf(Corp), options =>
+                {
+                    if (asType)
+                    {
+                        options.EventsType = typeof(HostEvents);
+                    }
+                    else
+                    {
+                        options.Events = events;
+                    }
+                });
+            });
+
+            var address = MemberFixture.NewAddress();
+            using (var browser = new HostedPagesBrowser(host, "10.7.9.1"))
+            {
+                using var back = await SignInWithAsync(browser, Corp, FakeAccount.Of(address));
+                (await DecideAsync(browser, back)).ShouldBe("/", asType.ToString());
+                browser.HasCookie(MemberCookie).ShouldBeTrue();
+            }
+
+            events.TokensValidated.ShouldBe(1);
+            var member = (await MemberAsync(host, address)).ShouldNotBeNull();
+            (await LoginsAsync(host, member.Id)).ShouldHaveSingleItem().LoginProvider.ShouldBe(Corp);
+
+            using var visitor = new HostedPagesBrowser(host, "10.7.9.2");
+            using (var failed = await SignInWithAsync(visitor, Corp, FakeAccount.Of(MemberFixture.NewAddress()), error: "server_error"))
+            {
+                failed.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+                failed.Headers.Location!.OriginalString.ShouldStartWith("/account/members/login?");
+                failed.Headers.Location.OriginalString.ShouldContain("Status=external-failed");
+            }
+
+            foreach (var path in new[] { $"/account/members/sso/{Corp}/signout?sid=s1&iss={Uri.EscapeDataString(fixture.Oidc.Issuer)}", $"/account/members/sso/{Corp}/signed-out" })
+            {
+                using var answer = await visitor.GetAsync(path);
+                answer.StatusCode.ShouldBe(HttpStatusCode.NotFound, path);
+            }
+
+            events.SignOuts.ShouldBe(2);
+        }
+    }
+
+    private sealed class HostEvents : OpenIdConnectEvents
+    {
+        private int _tokensValidated;
+        private int _signOuts;
+
+        public int TokensValidated => Volatile.Read(ref _tokensValidated);
+
+        public int SignOuts => Volatile.Read(ref _signOuts);
+
+        public override Task TokenValidated(TokenValidatedContext context)
+        {
+            Interlocked.Increment(ref _tokensValidated);
+            return base.TokenValidated(context);
+        }
+
+        public override Task RemoteSignOut(RemoteSignOutContext context)
+        {
+            Interlocked.Increment(ref _signOuts);
+            return base.RemoteSignOut(context);
+        }
+
+        public override Task SignedOutCallbackRedirect(RemoteSignOutContext context)
+        {
+            Interlocked.Increment(ref _signOuts);
+            return base.SignedOutCallbackRedirect(context);
+        }
+    }
+
+    // A host's own events on a Google, Microsoft, GitHub or Apple provider, as Events, as EventsType or as a delegate set
+    // in a PostConfigure, keep FluentCMS's: the provider's name in the ticket, without which the external login page
+    // refuses the sign-in, and the way back to the member login page after a failure, with its row; the host's run after
+    // them (#3564).
+    [Fact]
+    public async Task AHostsOwnEventsOnAnOAuthProviderKeepTheProviderNameAndTheWayBackToTheLoginPage()
+    {
+        string[] providers = [Google, MicrosoftAccount, GitHub, Apple];
+        var client = 0;
+        foreach (var way in new[] { "Events", "EventsType", "delegate" })
+        {
+            var seen = new HostSeen();
+            await using var host = NewHost(fixture.Providers, fixture.Oidc, fixture.Emails).WithServices(services =>
+            {
+                services.AddSingleton(seen);
+                services.AddTransient<HostOAuthEvents>();
+                services.AddTransient<HostAppleEvents>();
+                SetEvents<GoogleOptions>(services, Google, way, seen);
+                SetEvents<MicrosoftAccountOptions>(services, MicrosoftAccount, way, seen);
+                SetEvents<GitHubAuthenticationOptions>(services, GitHub, way, seen);
+                SetEvents<AppleAuthenticationOptions>(services, Apple, way, seen);
+            });
+
+            foreach (var provider in providers)
+            {
+                var member = await host.CreateMemberAsync(cancellationToken: Token);
+                var account = provider == Apple ? new FakeAccount("001234." + Guid.NewGuid().ToString("N"), MemberFixture.NewAddress()) : FakeAccount.Of(MemberFixture.NewAddress());
+                await LinkAsync(host, member.Id, provider, account.Subject);
+                using (var browser = new HostedPagesBrowser(host, $"10.7.16.{++client}"))
+                {
+                    using var back = await SignInWithAsync(browser, provider, account);
+                    (await DecideAsync(browser, back)).ShouldBe("/", $"{way} {provider}");
+                    browser.HasCookie(MemberCookie).ShouldBeTrue();
+                }
+
+                var address = $"10.7.16.{++client}";
+                using (var visitor = new HostedPagesBrowser(host, address))
+                {
+                    using var failed = await SignInWithAsync(visitor, provider, FakeAccount.Of(MemberFixture.NewAddress()), error: "server_error");
+                    failed.StatusCode.ShouldBe(HttpStatusCode.Redirect, $"{way} {provider}");
+                    failed.Headers.Location!.OriginalString.ShouldBe("/account/members/login?ReturnUrl=%2F&Status=external-failed", $"{way} {provider}");
+                }
+
+                var row = (await MemberFixture.ActivityAsync(host, "member.login_failed")).Single(row => row.Ip == address);
+                Details(row)["method"].ShouldBe(provider);
+                Details(row)["reason"].ShouldBe(LoginFailureReasons.InvalidCredentials);
+            }
+
+            // The host's events saw the ticket with the provider's name and the failure already answered.
+            seen.Events.ShouldBe(providers.SelectMany(provider => new[] { $"ticket member-{provider} {provider}", $"failure member-{provider} handled" }), way);
+        }
+    }
+
+    private static void SetEvents<TOptions>(IServiceCollection services, string provider, string way, HostSeen seen)
+        where TOptions : OAuthOptions =>
+        services.PostConfigure<TOptions>(MemberProvider.SchemeOf(provider), options =>
+        {
+            var apple = options is AppleAuthenticationOptions;
+            switch (way)
+            {
+                case "Events":
+                    options.Events = apple ? new HostAppleEvents(seen) : new HostOAuthEvents(seen);
+                    break;
+                case "EventsType":
+                    options.EventsType = apple ? typeof(HostAppleEvents) : typeof(HostOAuthEvents);
+                    break;
+                default:
+                    options.Events.OnTicketReceived = seen.TicketReceived;
+                    options.Events.OnRemoteFailure = seen.RemoteFailure;
+                    break;
+            }
+        });
+
+    private sealed class HostSeen
+    {
+        private readonly ConcurrentQueue<string> _events = new();
+
+        public IReadOnlyCollection<string> Events => _events;
+
+        public Task TicketReceived(TicketReceivedContext context)
+        {
+            var named = context.Properties?.Items.TryGetValue(MemberProviders.ProviderItem, out var name) == true ? name : null;
+            _events.Enqueue($"ticket {context.Scheme.Name} {named}");
+            return Task.CompletedTask;
+        }
+
+        public Task RemoteFailure(RemoteFailureContext context)
+        {
+            _events.Enqueue($"failure {context.Scheme.Name} {(context.Result?.Handled == true ? "handled" : "open")}");
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class HostOAuthEvents(HostSeen seen) : OAuthEvents
+    {
+        public override async Task TicketReceived(TicketReceivedContext context)
+        {
+            await seen.TicketReceived(context);
+            await base.TicketReceived(context);
+        }
+
+        public override async Task RemoteFailure(RemoteFailureContext context)
+        {
+            await seen.RemoteFailure(context);
+            await base.RemoteFailure(context);
+        }
+    }
+
+    private sealed class HostAppleEvents(HostSeen seen) : AppleAuthenticationEvents
+    {
+        public override async Task TicketReceived(TicketReceivedContext context)
+        {
+            await seen.TicketReceived(context);
+            await base.TicketReceived(context);
+        }
+
+        public override async Task RemoteFailure(RemoteFailureContext context)
+        {
+            await seen.RemoteFailure(context);
+            await base.RemoteFailure(context);
+        }
     }
 
     private async Task ChangeAsync(string memberId, Func<MemberManager, CmsMember, Task> change)

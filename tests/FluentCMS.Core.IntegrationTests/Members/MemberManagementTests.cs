@@ -6,6 +6,7 @@ using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.IntegrationTests.Identity;
 using FluentCMS.Events;
 using FluentCMS.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 
@@ -328,6 +329,42 @@ public sealed class MemberManagementTests(MemberFixture fixture) : IClassFixture
         (await fixture.ManageAsync(HttpMethod.Get, $"users/{member.Id:D}")).Status.ShouldBe(HttpStatusCode.NotFound);
         var admin = await fixture.Host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
         (await fixture.ManageAsync(HttpMethod.Get, $"members/{admin.Id:D}")).Status.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    // The end of every session of a member is a row of the administrator with its reason only when a session was live
+    // (#3207, #3531): a deactivation, a removed login and a deletion. A member whose tokens were all revoked already ends
+    // nothing, though OpenIddict's revocations by subject count those rows again.
+    [Fact]
+    public async Task TheEndOfEverySessionOfAMemberIsARowWithItsReasonOnlyWhenOneWasLive()
+    {
+        var member = await fixture.Host.CreateMemberAsync(password: MemberFixture.Password, cancellationToken: Token);
+        var path = $"members/{member.Id:D}";
+        (await fixture.ManageAsync(HttpMethod.Post, path + "/deactivate")).Status.ShouldBe(HttpStatusCode.OK);
+        (await fixture.ManageAsync(HttpMethod.Post, path + "/reactivate")).Status.ShouldBe(HttpStatusCode.OK);
+        (await fixture.ActivityAsync("member.sessions_ended", member.Id.ToString("D"))).ShouldBeEmpty();
+
+        var tokens = await fixture.Host.SignInAsync(member);
+        (await fixture.ManageAsync(HttpMethod.Post, path + "/deactivate")).Status.ShouldBe(HttpStatusCode.OK);
+        (await fixture.RefreshAsync(tokens.RefreshToken!, FluentCmsTestHost.OAuthMemberClientId)).Status.ShouldBe(HttpStatusCode.BadRequest);
+        (await fixture.ManageAsync(HttpMethod.Post, path + "/reactivate")).Status.ShouldBe(HttpStatusCode.OK);
+        (await fixture.ManageAsync(HttpMethod.Post, path + "/deactivate")).Status.ShouldBe(HttpStatusCode.OK);
+        (await fixture.ManageAsync(HttpMethod.Post, path + "/reactivate")).Status.ShouldBe(HttpStatusCode.OK);
+
+        await using (var scope = fixture.Host.Services.CreateAsyncScope())
+        {
+            var members = scope.ServiceProvider.GetRequiredService<MemberManager>();
+            (await members.AddLoginAsync((await members.FindByIdAsync(member.Id.ToString()))!, new Microsoft.AspNetCore.Identity.UserLoginInfo("corp", Guid.NewGuid().ToString("N"), "Corp"))).Succeeded.ShouldBeTrue();
+        }
+
+        await fixture.Host.SignInAsync(member);
+        (await fixture.ManageAsync(HttpMethod.Delete, path + "/logins/corp")).Status.ShouldBe(HttpStatusCode.NoContent);
+        await fixture.Host.SignInAsync(member);
+        (await fixture.ManageAsync(HttpMethod.Delete, path)).Status.ShouldBe(HttpStatusCode.NoContent);
+
+        var ended = await fixture.ActivityAsync("member.sessions_ended", member.Id.ToString("D"));
+        ended.Select(row => Details(row.Details)["reason"]).ShouldBe([SessionEndReasons.Deactivated, SessionEndReasons.LoginRemoved, SessionEndReasons.Deleted], ignoreOrder: true);
+        ended.ShouldAllBe(row => row.ActorType == PrincipalKind.AdminUser && row.SiteId == null);
+        ended.ShouldAllBe(row => !row.Details!.Contains(tokens.RefreshToken!));
     }
 
     [Fact]

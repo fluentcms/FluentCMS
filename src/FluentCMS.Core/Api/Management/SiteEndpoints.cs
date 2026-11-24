@@ -24,6 +24,8 @@ internal static class SiteEndpoints
 {
     private const string SettingsDocument = "The whole settings document of the area, as the JSON schema of the read describes it. A secret it leaves out keeps what is stored, and one that a site inherits from the instance defaults stays inherited; a secret it names, even as null, replaces it and is no longer inherited.";
 
+    private const string RemoveLocale = "Refused with FCMS3136 (409) for the default locale of the site and for a locale the site has entries in, trashed ones included, which can be disabled instead. Refused with FCMS3143 (409) while other locales of the site name it in their fallbacks, with one error for each of them at locales.{code}.fallbacks; no chain is changed, so take it out of those fallbacks first. A locale whose fallbacks are the implicit chain names none.";
+
     public static IServiceCollection AddManagementSiteApi(this IServiceCollection services) =>
         services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Management, Map);
 
@@ -36,7 +38,7 @@ internal static class SiteEndpoints
         sites.MapGet("/{id}/locales", LocalesAsync).Produces<ItemList<SiteLocaleInfo>>();
         sites.MapPost("/{id}/locales", AddLocaleAsync).Takes<SiteLocaleCreateRequest>().Produces<SiteLocaleInfo>(StatusCodes.Status201Created);
         sites.MapPatch("/{id}/locales/{code}", UpdateLocaleAsync).Takes<SiteLocaleUpdateRequest>().Produces<SiteLocaleInfo>();
-        sites.MapDelete("/{id}/locales/{code}", RemoveLocaleAsync).Produces(StatusCodes.Status204NoContent);
+        sites.MapDelete("/{id}/locales/{code}", RemoveLocaleAsync).Produces(StatusCodes.Status204NoContent).WithDescription(RemoveLocale);
 
         var areas = management.MapGroup("/settings").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
         areas.MapGet("", ListSettingsAsync).Produces<ItemList<SettingsAreaInfo>>();

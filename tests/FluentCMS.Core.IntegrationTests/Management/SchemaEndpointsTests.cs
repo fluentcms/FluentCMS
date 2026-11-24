@@ -276,6 +276,42 @@ public sealed class SchemaEndpointsTests(SchemaFixture fixture) : IClassFixture<
         (await SnapshotAsync(admin)).Text.ShouldContain("\"displayName\": \"News story\",\n      \"titleField\": \"headline\"");
     }
 
+    // A host of its own, since the template is a setting of the site that the stored document reads as none (#3432).
+    [Fact]
+    public async Task ATypeIsPreviewableWhileTheSiteHasATemplateThatTheCallerCanFill()
+    {
+        await using var host = new FluentCmsTestHost().WithContentTypes([.. BlogSample.ContentTypes]);
+        using var admin = await host.AsUserAsync(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: TestContext.Current.CancellationToken));
+        Previewable((await SchemaFixture.GetAsync("schema", admin)).Json).ShouldBeEmpty();
+
+        var saved = await AdminFixture.SendAsync(admin, HttpMethod.Put, "settings/preview", """{ "templates": { "article": "https://www.example.com/{locale}/articles/{slug}?preview={token}" } }""", "\"0\"");
+        saved.Status.ShouldBe(HttpStatusCode.OK, saved.Body?.ToJsonString());
+
+        var schema = (await SchemaFixture.GetAsync("schema", admin)).Json;
+        Previewable(schema).ShouldBe(["article"]);
+        schema["components"]!.AsArray().Concat(schema["blocks"]!.AsArray()).ShouldAllBe(part => !part!["previewable"]!.GetValue<bool>());
+        (await SchemaFixture.GetAsync("schema/types/article", admin)).Json["previewable"]!.GetValue<bool>().ShouldBeTrue();
+        (await SchemaFixture.GetAsync("schema/types/author", admin)).Json["previewable"]!.GetValue<bool>().ShouldBeFalse();
+        schema.Deserialize<SchemaDescription>(SdkJson)!.Types.Single(type => type.Name == "article").Previewable.ShouldBeTrue();
+
+        var changed = await AdminFixture.SendAsync(admin, HttpMethod.Put, "settings/preview", """{ "templates": { "author": "https://www.example.com/authors/{slug}?preview={token}" } }""", saved.ETag);
+        changed.Status.ShouldBe(HttpStatusCode.OK, changed.Body?.ToJsonString());
+        Previewable((await SchemaFixture.GetAsync("schema", admin)).Json).ShouldBe(["author"]);
+
+        // The token's URL is filled from the caller's own read, so one who may not read the slug could never get it.
+        var role = await AdminFixture.SendAsync(admin, HttpMethod.Post, "roles", """
+            { "name": "author-names", "grants": [ { "permission": "schema.read" }, { "permission": "content.author.read", "constraints": { "fields": ["name"] } } ] }
+            """);
+        role.Status.ShouldBe(HttpStatusCode.Created, role.Body?.ToJsonString());
+        using var reader = await host.AsUserAsync(await host.CreateUserAsync("author-names", cancellationToken: TestContext.Current.CancellationToken));
+        var narrow = (await SchemaFixture.GetAsync("schema", reader)).Json;
+        Names(narrow["types"]!).ShouldBe(["author"]);
+        Previewable(narrow).ShouldBeEmpty();
+    }
+
+    private static List<string> Previewable(JsonNode schema) =>
+        [.. schema["types"]!.AsArray().Where(type => type!["previewable"]!.GetValue<bool>()).Select(type => type!["name"]!.GetValue<string>())];
+
     private static readonly JsonSerializerOptions SdkJson = new(JsonSerializerDefaults.Web)
     {
         Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },

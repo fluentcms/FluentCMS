@@ -1,5 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Providers;
+using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Plugins.Search;
@@ -58,7 +59,10 @@ internal sealed class SearchStore(PluginDbContext<SearchPlugin> database, TimePr
         await database.Set<SearchEntry>().Where(entry => entry.Type == type && entry.SiteId == site).Select(entry => entry.Locale).Distinct().ToListAsync(cancellationToken);
 
     // Inserts, changes and removes rows to match, a row per field, and leaves a row whose text is already the same as it
-    // is. The rows of a field that is not given go. Returns how many rows changed.
+    // is. The rows of a field that is not given go. Returns how many rows changed. A write that adds rows of a site holds
+    // the site to its commit, so that the site's deletion waits for it and its rows go with DeletedSiteSearch, or it finds
+    // the site gone and is refused with FCMS2301 (#3586); the outbox tries the delivery again, and the entry, which went
+    // before its site, is then read as gone and adds no row.
     public async Task<int> WriteAsync(IReadOnlyCollection<SearchRow> rows, CancellationToken cancellationToken)
     {
         if (rows.Count == 0)
@@ -110,11 +114,35 @@ internal sealed class SearchStore(PluginDbContext<SearchPlugin> database, TimePr
 
         if (changed > 0)
         {
-            await database.SaveChangesAsync(cancellationToken);
+            await SaveAsync(cancellationToken);
         }
 
         database.ChangeTracker.Clear();
         return changed;
+    }
+
+    private async Task SaveAsync(CancellationToken cancellationToken)
+    {
+        var sites = database.ChangeTracker.Entries<SearchEntry>()
+            .Where(entry => entry.State == EntityState.Added && entry.Entity.SiteId is not null)
+            .Select(entry => entry.Entity.SiteId!.Value)
+            .Distinct()
+            .Order()
+            .ToList();
+        if (sites.Count == 0)
+        {
+            await database.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+        foreach (var site in sites)
+        {
+            await database.HoldSiteAsync(new SiteId(site), cancellationToken);
+        }
+
+        await database.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(CancellationToken.None);
     }
 
     public async Task<int> RemoveDocumentAsync(Guid documentId, CancellationToken cancellationToken) =>

@@ -102,6 +102,7 @@ public static class ErrorCodeRegistry
         Startup(PluginErrorCodes.RequiredFieldReference, "Required field reference"),
         Startup(PluginErrorCodes.InvalidProtectedResource, "Invalid protected resource"),
         Startup(PluginErrorCodes.InvalidFieldTypeName, "Invalid field type name"),
+        Startup(PluginErrorCodes.NameTooLong, "Plugin storage name too long"),
         new(PluginErrorCodes.PluginDisabled, StatusCodes.Status404NotFound, "Plugin not enabled"),
         new(PluginErrorCodes.PluginNotFound, StatusCodes.Status404NotFound, "Plugin not found"),
 
@@ -161,6 +162,7 @@ public static class ErrorCodeRegistry
         Invalid(ContentErrorCodes.NonexistentLocalTime, "Local time does not exist"),
         new(ContentErrorCodes.ScheduledDraftChanged, StatusCodes.Status409Conflict, "Draft changed since it was scheduled"),
         new(ContentErrorCodes.HookTimedOut, StatusCodes.Status503ServiceUnavailable, "Hook timed out"),
+        new(ContentErrorCodes.EntryBusy, StatusCodes.Status503ServiceUnavailable, "Entry busy"),
 
         // 25xx jobs
         Startup(JobErrorCodes.UnknownJobType, "Unknown job type"),
@@ -288,6 +290,7 @@ public static class ErrorCodeRegistry
         new(LocaleErrorCodes.LocaleNotFound, StatusCodes.Status404NotFound, "Locale not found"),
         new(LocaleErrorCodes.LocaleInUse, StatusCodes.Status409Conflict, "Locale in use"),
         new(LocaleErrorCodes.LocaleExists, StatusCodes.Status409Conflict, "Locale exists"),
+        new(LocaleErrorCodes.LocaleIsFallback, StatusCodes.Status409Conflict, "Locale is a fallback"),
         BadQuery(IdempotencyErrorCodes.InvalidKey, "Invalid Idempotency-Key"),
         Invalid(IdempotencyErrorCodes.KeyReused, "Idempotency-Key used for another request"),
         new(IdempotencyErrorCodes.InProgress, StatusCodes.Status409Conflict, "Request with this Idempotency-Key still running"),

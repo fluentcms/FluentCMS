@@ -105,7 +105,7 @@ public sealed class ClientRegistrationTests
 
         code.ShouldBeNull();
         error.ShouldBe(ConnectEndpoints.ClientPendingApproval);
-        consented.ShouldBeFalse();
+        consented.ShouldBe(ConsentGrant.Refused);
     }
 
     // The role of the client is a claim of its tokens, which the evaluator reads: what the user's roles allow and the
@@ -176,7 +176,7 @@ public sealed class ClientRegistrationTests
     private static async Task<TestTokens> SignInAsync(FluentCmsTestHost host, HttpClient client, TestUser user, string clientId)
     {
         // The user's consent, which the hosted page records; the tests of the pages cover the page itself.
-        (await WithScopeAsync(host, services => services.GetRequiredService<ClientConsents>().GrantAsync(user.Id, clientId, ["openid", "mcp"], Token))).ShouldBeTrue();
+        (await WithScopeAsync(host, services => services.GetRequiredService<ClientConsents>().GrantAsync(user.Id, clientId, ["openid", "mcp"], Token))).ShouldBe(ConsentGrant.Granted);
         var (code, error, verifier) = await AuthorizeAsync(host, client, user, clientId);
         code.ShouldNotBeNull(error);
 

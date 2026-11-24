@@ -53,9 +53,22 @@ internal static class SsoRegistration
             }
         });
 
+        // A host that replaces a provider's events after FluentCMS set them, in a PostConfigure registered after
+        // AddFluentCms, would drop the check of the remote sign-out, so the host does not start (#3531). The options of
+        // a scheme are read apart from the authentication options, which AddOpenIdConnect's own post-configure reads
+        // while it builds them: read inside those, they would wait on themselves.
+        services.AddOptions<KeptEvents>().Configure<SsoOptions, IOptionsMonitor<OpenIdConnectOptions>>((_, options, handlers) =>
+        {
+            foreach (var name in options.Providers.Keys)
+            {
+                SsoOptions.Require(
+                    ChainedOpenIdConnectEvents.Kept<SsoEvents>(handlers.Get(name)),
+                    $"{nameof(SsoOptions.Providers)}:{name}: the Events or EventsType of the provider's OpenIdConnectOptions were replaced after FluentCMS set them, which would drop its checks; set them in services.Configure<OpenIdConnectOptions>(\"{name}\", ...), or set a delegate of options.Events.");
+            }
+        }).ValidateOnStart();
+
         services.AddSingleton<IConfigureOptions<OpenIdConnectOptions>, HandlerOptions>();
         services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, ChainedEvents>();
-        services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, PublicOriginCallback>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());
         services.AddScoped<SsoSignIn>();
     }
@@ -101,10 +114,9 @@ internal static class SsoRegistration
         }
     }
 
-    // The events of a provider run FluentCMS's own first and then those the host set, as Events or as EventsType, so that a
-    // host's events drop neither the check of the remote sign-out nor the token's subject and session (#3225). It runs
-    // after every Configure, and before PublicOriginCallback, which wraps the events it leaves.
-    private sealed class ChainedEvents(SsoOptions sso) : IPostConfigureOptions<OpenIdConnectOptions>
+    // The events of a provider run FluentCMS's own first and then those the host set, so that a host's events drop neither
+    // the check of the remote sign-out nor the token's subject and session (#3225). It runs after every Configure.
+    private sealed class ChainedEvents(SsoOptions sso, PublicOrigin origin) : IPostConfigureOptions<OpenIdConnectOptions>
     {
         public void PostConfigure(string? name, OpenIdConnectOptions options)
         {
@@ -113,66 +125,43 @@ internal static class SsoRegistration
                 return;
             }
 
-            options.Events = new SsoEvents(options.Events, options.EventsType);
+            options.Events = new SsoEvents(options, origin);
             options.EventsType = null;
         }
     }
 
-    private sealed class SsoEvents : OpenIdConnectEvents
+    private sealed class KeptEvents;
+
+    private sealed class SsoEvents(OpenIdConnectOptions options, PublicOrigin origin) : ChainedOpenIdConnectEvents(options)
     {
-        private static readonly OpenIdConnectEvents NoEvents = new();
-
-        private readonly object _hostItem = new();
-        private readonly OpenIdConnectEvents? _host;
-        private readonly Type? _hostType;
-
-        public SsoEvents(OpenIdConnectEvents? host, Type? hostType)
+        // The callback a provider is given is on the public origin when one is set, as links in emails are; the handler
+        // keeps the redirect_uri it sends for the code's redemption, so both use it.
+        public override Task RedirectToIdentityProvider(RedirectContext context)
         {
-            (_host, _hostType) = (host, hostType);
-            OnAuthenticationFailed = context => Host(context.HttpContext).AuthenticationFailed(context);
-            OnAuthorizationCodeReceived = context => Host(context.HttpContext).AuthorizationCodeReceived(context);
-            OnMessageReceived = context => Host(context.HttpContext).MessageReceived(context);
-            OnPushAuthorization = context => Host(context.HttpContext).PushAuthorization(context);
-            OnRedirectToIdentityProvider = context => Host(context.HttpContext).RedirectToIdentityProvider(context);
-            OnRedirectToIdentityProviderForSignOut = context => Host(context.HttpContext).RedirectToIdentityProviderForSignOut(context);
-            OnSignedOutCallbackRedirect = context => Host(context.HttpContext).SignedOutCallbackRedirect(context);
-            OnTokenResponseReceived = context => Host(context.HttpContext).TokenResponseReceived(context);
-            OnUserInformationReceived = context => Host(context.HttpContext).UserInformationReceived(context);
-            OnAccessDenied = context => Host(context.HttpContext).AccessDenied(context);
-            OnTicketReceived = context => Host(context.HttpContext).TicketReceived(context);
-            OnTokenValidated = async context =>
+            if (origin.Base is { } publicBase)
             {
-                await KeepSubjectAndSession(context);
-                await Host(context.HttpContext).TokenValidated(context);
-            };
-            OnRemoteFailure = async context =>
-            {
-                await BackToLoginAsync(context);
-                await Host(context.HttpContext).RemoteFailure(context);
-            };
-            OnRemoteSignOut = async context =>
-            {
-                await NamedSignInOnlyAsync(context);
-                await Host(context.HttpContext).RemoteSignOut(context);
-            };
+                context.ProtocolMessage.RedirectUri = publicBase + context.Options.CallbackPath;
+            }
+
+            return base.RedirectToIdentityProvider(context);
         }
 
-        // A type is resolved once a request, as the handler resolves EventsType.
-        private OpenIdConnectEvents Host(HttpContext http)
+        public override async Task TokenValidated(TokenValidatedContext context)
         {
-            if (_hostType is null)
-            {
-                return _host ?? NoEvents;
-            }
+            await KeepSubjectAndSession(context);
+            await base.TokenValidated(context);
+        }
 
-            if (http.Items.TryGetValue(_hostItem, out var resolved) && resolved is OpenIdConnectEvents events)
-            {
-                return events;
-            }
+        public override async Task RemoteFailure(RemoteFailureContext context)
+        {
+            await BackToLoginAsync(context);
+            await base.RemoteFailure(context);
+        }
 
-            events = (OpenIdConnectEvents)http.RequestServices.GetRequiredService(_hostType);
-            http.Items[_hostItem] = events;
-            return events;
+        public override async Task RemoteSignOut(RemoteSignOutContext context)
+        {
+            await NamedSignInOnlyAsync(context);
+            await base.RemoteSignOut(context);
         }
 
         // The provider's front-channel logout ends the sign-in on the hosted pages, the admin session, only when it carries
@@ -265,31 +254,6 @@ internal static class SsoRegistration
 
             context.Response.Redirect(context.Request.PathBase + HostedPagePaths.Login + query);
             context.HandleResponse();
-        }
-    }
-
-    // The callback a provider is given is on the public origin when one is set, as links in emails are; the handler keeps
-    // the redirect_uri it sends for the code's redemption, so both use it. It runs after every Configure, and before the
-    // event a host set, so a host's own OnRedirectToIdentityProvider keeps it.
-    private sealed class PublicOriginCallback(SsoOptions sso, PublicOrigin origin) : IPostConfigureOptions<OpenIdConnectOptions>
-    {
-        public void PostConfigure(string? name, OpenIdConnectOptions options)
-        {
-            if (name is null || !sso.Providers.ContainsKey(name))
-            {
-                return;
-            }
-
-            var next = options.Events.OnRedirectToIdentityProvider;
-            options.Events.OnRedirectToIdentityProvider = context =>
-            {
-                if (origin.Base is { } publicBase)
-                {
-                    context.ProtocolMessage.RedirectUri = publicBase + context.Options.CallbackPath;
-                }
-
-                return next(context);
-            };
         }
     }
 }

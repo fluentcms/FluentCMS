@@ -1,12 +1,17 @@
+using System.Collections.Frozen;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Core.Settings;
 
-// A stored document left as it is, by its area and scope; Keys names the secret keys the key ring cannot unprotect, and is
-// empty for an area that no class of the host registers, whose secret keys are not known.
-internal sealed record SecretSettingsLeft(string Area, Guid? Site, IReadOnlyList<string> Keys);
+// A stored document that still needs an older key of the ring, by its area and scope. Unreadable names the secret keys the
+// key ring cannot unprotect, which leave the whole row as it is; Unreached names the keys that hold a protected value
+// the class does not read as a secret, such as a key it no longer has, which the pass does not protect again. Every row of
+// an area that no class of the host registers is left as it is and listed, since which of its keys are secrets is not
+// known, nor whether the plugin that owns it is only not loaded in this run; it still needs an older key only when one of
+// its protected values, which are then in Unreached, is not under the default key.
+internal sealed record SecretSettingsLeft(string Area, Guid? Site, bool Registered, IReadOnlyList<string> Unreadable, IReadOnlyList<string> Unreached);
 
 internal sealed record SecretSettingsReprotected(int Documents, IReadOnlyList<SecretSettingsLeft> Left);
 
@@ -31,18 +36,20 @@ internal sealed class SecretSettingsReprotection(SystemDbContext context, Settin
         {
             if (registry.Find(row.Key) is not { } descriptor)
             {
-                if (row.Json.Contains(SettingsProtection.Prefix, StringComparison.Ordinal))
-                {
-                    left.Add(new SecretSettingsLeft(row.Key, row.SiteId, []));
-                }
+                left.Add(new SecretSettingsLeft(row.Key, row.SiteId, Registered: false, [], protection.Unreached(row.Key, FrozenSet<string>.Empty, row.Json, row.SiteId)));
+                continue;
             }
-            else if (await ReprotectAsync(descriptor, row, cancellationToken) is not { } unreadable)
+
+            var unreadable = await ReprotectAsync(descriptor, row, cancellationToken);
+            if (unreadable is null)
             {
                 documents++;
             }
-            else if (unreadable.Count > 0)
+
+            var unreached = protection.Unreached(descriptor, row.Json, row.SiteId);
+            if (unreadable is { Count: > 0 } || unreached.Count > 0)
             {
-                left.Add(new SecretSettingsLeft(row.Key, row.SiteId, unreadable));
+                left.Add(new SecretSettingsLeft(row.Key, row.SiteId, Registered: true, unreadable ?? [], unreached));
             }
         }
 

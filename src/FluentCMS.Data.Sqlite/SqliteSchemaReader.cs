@@ -11,9 +11,10 @@ internal sealed class SqliteSchemaReader : IDatabaseSchemaReader
         where m.type = 'table' and m.name not like 'sqlite_%'
         """;
 
-    // Origin 'c' is an index from CREATE INDEX, not one SQLite made for a key.
+    // Origin 'c' is an index from CREATE INDEX, not one SQLite made for a key. A key that is an expression has no column
+    // name and is listed with an empty one, as on PostgreSQL (#3530).
     private const string IndexesSql = """
-        select m.name, i.name, i."unique", i.partial, c.name
+        select m.name, i.name, i."unique", i.partial, coalesce(c.name, '')
         from sqlite_master m join pragma_index_list(m.name) i join pragma_index_info(i.name) c
         where m.type = 'table' and m.name not like 'sqlite_%' and i.origin = 'c'
         order by m.name, i.name, c.seqno

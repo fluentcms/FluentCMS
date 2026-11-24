@@ -21,4 +21,7 @@ internal static partial class MigrationLog
 
     [LoggerMessage(EventId = 9306, Level = LogLevel.Warning, Message = "The {Stream} stream has applied its baseline {Baseline} but lacks the indexes {Indexes}, which a later build added to it. The host starts, and what they serve reads more rows; a preview does not upgrade a database, so recreate it (on SQLite, delete its file) and apply the migrations again to get them.")]
     public static partial void BaselineIndexesMissing(ILogger logger, string stream, string baseline, string indexes);
+
+    [LoggerMessage(EventId = 9307, Level = LogLevel.Warning, Message = "The release of a migrations lock failed ({ExceptionType}); the outcome of the migration stands, and the lock ends with its database session.")]
+    public static partial void MigrationsLockNotReleased(ILogger logger, string exceptionType, Exception exception);
 }

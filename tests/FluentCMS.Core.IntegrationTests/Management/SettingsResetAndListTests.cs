@@ -115,10 +115,10 @@ public sealed class SettingsResetAndListTests(AdminFixture fixture) : IClassFixt
         var items = listed.Json["items"]!.AsArray();
         items.Select(item => item!["area"]!.GetValue<string>()).ShouldBeInOrder(SortDirection.Ascending, StringComparer.Ordinal);
         var mail = items.Single(item => item!["area"]!.GetValue<string>() == "mail")!;
-        mail.AsObject().Select(property => property.Key).ShouldBe(["area", "plugin", "site", "defaults"]);
+        mail.AsObject().Select(property => property.Key).ShouldBe(["area", "plugin", "site", "defaults", "instanceOnly"]);
         mail["plugin"].ShouldBeNull();
-        (mail["site"]!.GetValue<bool>(), mail["defaults"]!.GetValue<bool>()).ShouldBe((true, true));
-        items.ShouldContain(item => item!["area"]!.GetValue<string>() == "branding");
+        (mail["site"]!.GetValue<bool>(), mail["defaults"]!.GetValue<bool>(), mail["instanceOnly"]!.GetValue<bool>()).ShouldBe((true, true, false));
+        items.Single(item => item!["area"]!.GetValue<string>() == "branding")!["instanceOnly"]!.GetValue<bool>().ShouldBeTrue();
 
         var role = await fixture.CreateRoleAsync($$"""
             { "name": "Mail admin {{Guid.NewGuid():N}}", "siteId": "{{Site}}", "grants": [ { "permission": "settings.mail.manage" } ] }

@@ -83,12 +83,10 @@ public sealed class MigrationRunner(
         // Schema sync leaves the content stream out, so a host may sync on SQLite with content migrations of its server provider.
         var sync = options.MigrateOnStartup && options.SchemaSync == SchemaSyncMode.Auto;
         await RefuseForeignMigrationsAsync(sync ? Plugins : [.. Plugins, Content], cancellationToken);
-        await RefuseMigrationsBeforeBaselineAsync(cancellationToken);
-        await RefuseEarlierBaselineAsync(cancellationToken);
 
         if (options.MigrateOnStartup)
         {
-            await ApplyAsync(SystemAndPlugins, cancellationToken);
+            await CheckAndApplyAsync(sync ? SystemAndPlugins : AllStreams, cancellationToken);
 
             if (sync)
             {
@@ -101,7 +99,6 @@ public sealed class MigrationRunner(
                 return;
             }
 
-            await ApplyAsync([Content], cancellationToken);
             await ValidateContentSchemaAsync(cancellationToken);
             if (await HasContentMigrationsAsync(cancellationToken))
             {
@@ -115,6 +112,8 @@ public sealed class MigrationRunner(
             return;
         }
 
+        await RefuseMigrationsBeforeBaselineAsync(cancellationToken);
+        await RefuseEarlierBaselineAsync(cancellationToken);
         await ValidateSystemAndPluginStreamsAsync(cancellationToken);
         await ValidateContentSchemaAsync(cancellationToken);
         await _history.CheckDriftAsync(schema, UsesSchemaApplyAsync, cancellationToken);
@@ -124,9 +123,7 @@ public sealed class MigrationRunner(
     public async Task<IReadOnlyList<StreamMigration>> MigrateAsync(CancellationToken cancellationToken = default)
     {
         await RefuseForeignMigrationsAsync(cancellationToken);
-        await RefuseMigrationsBeforeBaselineAsync(cancellationToken);
-        await RefuseEarlierBaselineAsync(cancellationToken);
-        var applied = await ApplyAsync([.. SystemAndPlugins, Content], cancellationToken);
+        var applied = await CheckAndApplyAsync(AllStreams, cancellationToken);
         if (!await HasContentMigrationsAsync(cancellationToken))
         {
             return applied;
@@ -422,9 +419,7 @@ public sealed class MigrationRunner(
     // therefore hold every table and column of its model, or the database is refused before anything is applied.
     internal async Task RefuseEarlierBaselineAsync(CancellationToken cancellationToken = default)
     {
-        var refused = new List<string>();
-        var slow = new List<(string Stream, string Baseline, string Indexes)>();
-        DatabaseSchema? database = null;
+        var atBaseline = new List<(string Stream, string Baseline, IModel Model)>();
         foreach (var stream in SystemAndPlugins)
         {
             await using var scope = scopes.CreateAsyncScope();
@@ -436,19 +431,32 @@ public sealed class MigrationRunner(
                 continue;
             }
 
-            database ??= await ReadDatabaseAsync(context, cancellationToken);
-            var model = context.GetService<IDesignTimeModel>().Model;
+            atBaseline.Add((stream.Name, baseline, context.GetService<IDesignTimeModel>().Model));
+        }
+
+        if (atBaseline.Count == 0)
+        {
+            return;
+        }
+
+        // After every history: another process may be creating the database, and commits a stream's tables with or before
+        // the row of its history, so a catalog read later holds the tables of each history read here (#3528).
+        var database = await ReadDatabaseAsync(cancellationToken);
+        var refused = new List<string>();
+        var slow = new List<(string Stream, string Baseline, string Indexes)>();
+        foreach (var (stream, baseline, model) in atBaseline)
+        {
             var indexes = IndexesMissingFrom(database, model);
             var missing = MissingFrom(database, model);
             missing.AddRange(indexes.Where(index => index.IsUnique).Select(index => $"index {index.Name}"));
             if (missing.Count > 0)
             {
-                refused.Add($"stream {stream.Name} has applied its baseline {baseline} but lacks {string.Join(", ", missing)}");
+                refused.Add($"stream {stream} has applied its baseline {baseline} but lacks {string.Join(", ", missing)}");
             }
 
             if (indexes.Where(index => !index.IsUnique).Select(index => index.Name).ToList() is { Count: > 0 } slower)
             {
-                slow.Add((stream.Name, baseline, string.Join(", ", slower)));
+                slow.Add((stream, baseline, string.Join(", ", slower)));
             }
         }
 
@@ -533,8 +541,10 @@ public sealed class MigrationRunner(
         return [.. missing.Order(StringComparer.Ordinal)];
     }
 
-    private async Task<DatabaseSchema> ReadDatabaseAsync(DbContext context, CancellationToken cancellationToken)
+    private async Task<DatabaseSchema> ReadDatabaseAsync(CancellationToken cancellationToken)
     {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = System.ResolveContext(scope.ServiceProvider);
         await context.Database.OpenConnectionAsync(cancellationToken);
         try
         {
@@ -566,17 +576,33 @@ public sealed class MigrationRunner(
         return pending;
     }
 
+    // The checks read what a running migration locks, the history tables on PostgreSQL and the catalog on SQL Server, so a
+    // run takes the lock first. EF takes its own in the session that migrates, so the system context's is released before
+    // anything is applied: held across MigrateAsync it would keep EF waiting for this process.
+    private async Task<IReadOnlyList<StreamMigration>> CheckAndApplyAsync(IEnumerable<Stream> streams, CancellationToken cancellationToken)
+    {
+        await using var run = await WaitForSessionLockAsync(provider.LockMigrationsAsync, stream: null, DatabaseMigrationsLock, cancellationToken);
+        await using (var scope = scopes.CreateAsyncScope())
+        {
+            var context = System.ResolveContext(scope.ServiceProvider);
+            await using var checking = await WaitForSessionLockAsync(token => provider.TakeMigrationsLockAsync(context, token), stream: null, EfApplicationLock, cancellationToken);
+            await RefuseMigrationsBeforeBaselineAsync(cancellationToken);
+            await RefuseEarlierBaselineAsync(cancellationToken);
+        }
+
+        return await ApplyAsync(streams, cancellationToken);
+    }
+
     private async Task<IReadOnlyList<StreamMigration>> ApplyAsync(IEnumerable<Stream> streams, CancellationToken cancellationToken)
     {
-        Stream[] ordered = [.. streams];
-
-        // Taken before the pending migrations are read, so that a process that waited finds what the other applied.
-        await using var held = await WaitForSessionLockAsync(provider.LockMigrationsAsync, ordered[0].Name, DatabaseMigrationsLock, cancellationToken);
         var applied = new List<StreamMigration>();
-        foreach (var stream in ordered)
+        foreach (var stream in streams)
         {
             await using var scope = scopes.CreateAsyncScope();
             var context = stream.ResolveContext(scope.ServiceProvider);
+
+            // Before the pending migrations are read, which another process's migration can block and can change.
+            await using var taken = await WaitForSessionLockAsync(token => provider.TakeMigrationsLockAsync(context, token), stream.Name, EfApplicationLock, cancellationToken);
 
             // Migrating with nothing to do would still create the history table.
             var pending = (await context.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
@@ -586,7 +612,6 @@ public sealed class MigrationRunner(
             }
 
             await WaitForMigrationsLockAsync(context, stream.Name, cancellationToken);
-            await using var taken = await WaitForSessionLockAsync(token => provider.TakeMigrationsLockAsync(context, token), stream.Name, EfApplicationLock, cancellationToken);
             MigrationLog.ApplyingStream(logger, pending.Count, stream.Name);
             using var recorder = AppliedMigrations.Record(context.GetService<IMigrator>());
             await context.Database.MigrateAsync(cancellationToken);
@@ -644,14 +669,16 @@ public sealed class MigrationRunner(
         "process finish and run again, and if it does not finish, find the session that holds the lock on the database server " +
         "and what it runs";
 
-    private static TimeoutException MigrationsLockTimeout(string held, string stream, string fix, Exception? inner = null) => new(
-        $"{held}, was not released within {MigrationsLockWait.TotalMinutes:0} minutes, so the {stream} stream was not migrated; {fix}.", inner);
+    // A null stream is the wait of a whole run, before it has read what any stream has pending.
+    private static TimeoutException MigrationsLockTimeout(string held, string? stream, string fix, Exception? inner = null) => new(
+        $"{held}, was not released within {MigrationsLockWait.TotalMinutes:0} minutes, so " +
+        $"{(stream is null ? "this run migrated no stream" : $"the {stream} stream was not migrated")}; {fix}.", inner);
 
     // EF waits for a lock that ends with its holder's session no longer than a command may run, 30 seconds by default, and its
     // timeout names nothing, and the lock of a whole run has no bound at all. So a provider takes such a lock with no timeout of
     // its own, and the runner bounds the wait as it bounds the wait for SQLite's row. A lock granted as the wait gives up is kept.
     private async Task<IAsyncDisposable?> WaitForSessionLockAsync(
-        Func<CancellationToken, Task<IAsyncDisposable?>> take, string stream, string held, CancellationToken cancellationToken)
+        Func<CancellationToken, Task<IAsyncDisposable?>> take, string? stream, string held, CancellationToken cancellationToken)
     {
         using var giveUp = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var taking = take(giveUp.Token);
@@ -663,7 +690,7 @@ public sealed class MigrationRunner(
             var waited = _time.GetElapsedTime(started);
             if (!logged && waited >= MigrationsLockWaitLogged)
             {
-                MigrationLog.WaitingForMigrationsLock(logger, stream, held, MigrationsLockWait.TotalMinutes, SessionLockFix);
+                MigrationLog.WaitingForMigrationsLock(logger, stream ?? SystemStream, held, MigrationsLockWait.TotalMinutes, SessionLockFix);
                 logged = true;
             }
 
@@ -679,11 +706,27 @@ public sealed class MigrationRunner(
 
         try
         {
-            return await taking;
+            return await taking is { } taken ? new SessionLock(taken, logger) : null;
         }
         catch (Exception exception) when (giveUp.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
             throw MigrationsLockTimeout(held, stream, SessionLockFix, exception);
+        }
+    }
+
+    // A release that threw would replace the outcome of what ran under the lock.
+    private sealed class SessionLock(IAsyncDisposable taken, ILogger logger) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            try
+            {
+                await taken.DisposeAsync();
+            }
+            catch (Exception exception)
+            {
+                MigrationLog.MigrationsLockNotReleased(logger, exception.GetType().Name, exception);
+            }
         }
     }
 

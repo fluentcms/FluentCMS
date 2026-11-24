@@ -44,6 +44,10 @@ internal sealed class MediaDimensionsJob(
 
     public static readonly TimeSpan Lease = TimeSpan.FromHours(1);
 
+    // Far past a run of the default 100 images, each read from its storage once or twice. It is not resumable: a run moves
+    // the cursor only at its end, so one stopped there would end the chain.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(30);
+
     private static readonly MediaType[] Oriented = [MediaTypes.Jpeg, MediaTypes.WebP, MediaTypes.Avif];
 
     // At a start of the host: claims the check unless the library was gone over or a chain claimed it within Lease, by adding

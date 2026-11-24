@@ -25,7 +25,9 @@ internal sealed record SettingsAreaInfo(
     [property: Description("Whether the caller may read, write and reset the area in the site of the request, at /settings/{area}.")]
     bool Site,
     [property: Description("Whether the caller may read, write and reset the instance defaults of the area, at /settings/{area}/defaults.")]
-    bool Defaults);
+    bool Defaults,
+    [property: Description("Whether the area is read from the instance defaults only, as its registration says: a site's own values change nothing, so it is edited at /settings/{area}/defaults.")]
+    bool InstanceOnly);
 
 // The settings of every area, as documents. ISettings<T> is a typed face on it, and the Management endpoint (B-50) is another.
 // A typed read is not checked against permissions; the redacted read and a write need settings.{area}.manage for the site, or with no site limit for the
@@ -81,7 +83,7 @@ internal sealed class SettingsService(
             var defaults = permissions.Allows(descriptor.Permission, new AccessTarget(null, null));
             if (inSite || defaults)
             {
-                areas.Add(new SettingsAreaInfo(descriptor.Area, plugins.Contributions.SettingsOwner(descriptor.Type), inSite, defaults));
+                areas.Add(new SettingsAreaInfo(descriptor.Area, plugins.Contributions.SettingsOwner(descriptor.Type), inSite, defaults, descriptor.InstanceOnly));
             }
         }
 

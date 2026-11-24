@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Data.Common;
+using System.Runtime.CompilerServices;
 using FluentCMS.Core.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -14,6 +15,10 @@ namespace FluentCMS.Core.Caching;
 internal sealed class LeaseRenewalInterceptor : DbTransactionInterceptor
 {
     private readonly ConcurrentDictionary<DatabaseDistributedLock.Handle, byte> _held = new();
+
+    // What the renewals inside a transaction found, kept until it is known whether it committed: a commit that fails rolls
+    // them back with the rest, and the row keeps its lease. What neither end settles goes with its transaction.
+    private readonly ConditionalWeakTable<DbTransaction, List<DatabaseDistributedLock.Renewal>> _found = new();
 
     // On the host's contexts only where the database has one writer; elsewhere a renewal waits only for the lock's row.
     public static void AddTo(DbContextOptionsBuilder options, IServiceProvider services, IDataProvider provider)
@@ -32,9 +37,9 @@ internal sealed class LeaseRenewalInterceptor : DbTransactionInterceptor
     {
         foreach (var (handle, _) in _held)
         {
-            if (handle.RenewalDue)
+            if (handle.RenewalDue && handle.RenewWithin(transaction) is { } renewal)
             {
-                handle.RenewWithin(transaction);
+                _found.GetOrCreateValue(transaction).Add(renewal);
             }
         }
 
@@ -45,12 +50,46 @@ internal sealed class LeaseRenewalInterceptor : DbTransactionInterceptor
     {
         foreach (var (handle, _) in _held)
         {
-            if (handle.RenewalDue)
+            if (handle.RenewalDue && await handle.RenewWithinAsync(transaction) is { } renewal)
             {
-                await handle.RenewWithinAsync(transaction);
+                _found.GetOrCreateValue(transaction).Add(renewal);
             }
         }
 
         return result;
+    }
+
+    public override void TransactionCommitted(DbTransaction transaction, TransactionEndEventData eventData) => Settle(transaction, committed: true);
+
+    public override Task TransactionCommittedAsync(DbTransaction transaction, TransactionEndEventData eventData, CancellationToken cancellationToken = default)
+    {
+        Settle(transaction, committed: true);
+        return Task.CompletedTask;
+    }
+
+    // A commit that fails is reported here before anything rolls the transaction back.
+    public override void TransactionFailed(DbTransaction transaction, TransactionErrorEventData eventData) => Settle(transaction, committed: false);
+
+    public override Task TransactionFailedAsync(DbTransaction transaction, TransactionErrorEventData eventData, CancellationToken cancellationToken = default)
+    {
+        Settle(transaction, committed: false);
+        return Task.CompletedTask;
+    }
+
+    private void Settle(DbTransaction transaction, bool committed)
+    {
+        if (!_found.TryGetValue(transaction, out var renewals))
+        {
+            return;
+        }
+
+        _found.Remove(transaction);
+        if (committed)
+        {
+            foreach (var renewal in renewals)
+            {
+                renewal.Handle.Committed(renewal.Until);
+            }
+        }
     }
 }

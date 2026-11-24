@@ -73,9 +73,9 @@ public class ManagementAuthorityTests
         (await new PermissionChecker(authority).HoldsGrantInAsync(Site, Token)).ShouldBeFalse();
     }
 
-    // A grant reaches a site through a role of that site or of the instance, within its own site limit, whatever it permits.
+    // A grant reaches a site through a role of that site or of the instance, within its own site limit.
     [Fact]
-    public async Task AGrantReachesTheSitesOfItsRoleAndOfItsLimitWhateverItPermits()
+    public async Task AGrantReachesTheSitesOfItsRoleAndOfItsLimit()
     {
         var other = new SiteId(Guid.CreateVersion7());
         var principal = new Principal(PrincipalKind.ApiKey, Guid.CreateVersion7(), "key", [new(TokenScopes.Claim, "management")]);
@@ -91,6 +91,30 @@ public class ManagementAuthorityTests
         (await ReachAsync(new EffectiveGrant("content.*.read", new PermissionConstraints { Sites = [other] }, roleSite: null))).ShouldBe((false, true));
         (await ReachAsync(new EffectiveGrant("schema.read", PermissionConstraints.None, roleSite: null))).ShouldBe((true, true));
         (await ReachAsync()).ShouldBe((false, false));
+    }
+
+    // #3595: a grant that reaches the site counts only when it gives a permission there, as Allows and ResourcesOf decide.
+    [Theory]
+    [InlineData("content.page.read", null, null, true)]
+    [InlineData("users.manage", null, null, true)]
+    [InlineData("content.page.read", "own-entries", null, true)]
+    [InlineData("*", "own-entries", null, true)]
+    [InlineData("*.*.update", "own-entries", null, true)]
+    [InlineData("media.read", null, "folder", true)]
+    [InlineData("*", null, "folder", true)]
+    [InlineData("users.manage", "own-entries", null, false)]
+    [InlineData("settings.*.manage", "own-entries", null, false)]
+    [InlineData("content.*.read", null, "folder", false)]
+    [InlineData("media.read", "own-entries", "folder", false)]
+    [InlineData("media.read", null, "", false)]
+    public async Task OnlyAGrantThatGivesAPermissionInTheSiteCounts(string pattern, string? rowRule, string? resource, bool counts)
+    {
+        var principal = new Principal(PrincipalKind.ApiKey, Guid.CreateVersion7(), "key", [new(TokenScopes.Claim, "management")]);
+        var accessor = new OperationContextAccessor { Current = new OperationContext(principal, Origin.Api, Site, "en", null, "test", DateTimeOffset.UtcNow) };
+        var constraints = new PermissionConstraints { RowRule = rowRule, Resources = resource is null ? null : resource.Length == 0 ? [] : [resource] };
+        var checker = new PermissionChecker(new ManagementAuthority(new Evaluator(new EffectiveGrant(pattern, constraints, Site.Value)), accessor));
+
+        (await checker.HoldsGrantInAsync(Site, Token)).ShouldBe(counts);
     }
 
     // Only a token or key for managing may manage, and the mcp scope on the MCP server: the anonymous caller, a Delivery or

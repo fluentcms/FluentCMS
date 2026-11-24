@@ -36,12 +36,12 @@ internal sealed class WebhookInsecureDefaults(IOptions<WebhooksOptions> options,
 
     public IEnumerable<InsecureDefault> GetInsecureDefaults()
     {
-        if (environment.IsProduction() && options.Value.AllowPrivateNetworks)
+        if (!environment.IsDevelopment() && options.Value.AllowPrivateNetworks)
         {
             yield return new InsecureDefault
             {
                 Id = PrivateNetworks,
-                Message = $"{WebhooksOptions.Section}:{nameof(WebhooksOptions.AllowPrivateNetworks)} is on in Production, so a webhook can deliver to loopback, private and cloud metadata addresses. Turn it off unless every receiver is internal.",
+                Message = $"{WebhooksOptions.Section}:{nameof(WebhooksOptions.AllowPrivateNetworks)} is on outside Development, so a webhook can deliver to loopback, private and cloud metadata addresses. Turn it off unless every receiver is internal.",
             };
         }
     }

@@ -64,6 +64,49 @@ public sealed partial class BaselineTests : IDisposable
         ("index:cms_outbox.ix_cms_outbox_failed_handler:", "handler", "status='failed'"),
     ];
 
+    // Without the index's name, which can hold a key's, as ix_cms_outbox_failed_handler does.
+    private static string DefinitionOf(List<string> catalog, string index)
+    {
+        var line = catalog.Single(item => item.StartsWith(index, StringComparison.Ordinal))[index.Length..];
+        return Normalized(line.Replace(index[(index.IndexOf('.', StringComparison.Ordinal) + 1)..^1], "", StringComparison.Ordinal));
+    }
+
+    // The whole key list of an index, and what it includes after it, so that a key too many or an included column fails the
+    // comparison as a wrong key does. SQLite and PostgreSQL list the keys in the parentheses after the table, and SQL Server
+    // in fields of its own.
+    private static string KeysOf(List<string> catalog, string index)
+    {
+        var line = catalog.Single(item => item.StartsWith(index, StringComparison.Ordinal))[index.Length..];
+        string keys;
+        string included;
+        if (TestProvider.IsSqlServer)
+        {
+            var fields = SqlServerKeys().Match(line);
+            keys = fields.Groups["keys"].Value;
+            included = fields.Groups["include"].Value;
+        }
+        else
+        {
+            var start = line.IndexOf('(', line.IndexOf(" ON ", StringComparison.OrdinalIgnoreCase));
+            var end = start + 1;
+            for (var depth = 1; depth > 0; end++)
+            {
+                depth += line[end] switch { '(' => 1, ')' => -1, _ => 0 };
+            }
+
+            keys = line[(start + 1)..(end - 1)];
+            included = Include().Match(line[end..]).Groups["columns"].Value;
+        }
+
+        return Normalized(keys) + (included.Length == 0 ? "" : $"include:{Normalized(included)}");
+    }
+
+    [GeneratedRegex(":keys=(?<keys>[^:]*):include=(?<include>.*)$")]
+    private static partial Regex SqlServerKeys();
+
+    [GeneratedRegex(@"^\s*INCLUDE\s*\((?<columns>[^)]*)\)", RegexOptions.IgnoreCase)]
+    private static partial Regex Include();
+
     private static string Normalized(string line) =>
         new([.. line.Replace("::text", "", StringComparison.Ordinal).ToLowerInvariant().Where(character => character is not ('"' or '[' or ']' or '(' or ')' or ' ' or '`'))]);
 
@@ -137,8 +180,8 @@ public sealed partial class BaselineTests : IDisposable
         var all = DatabaseCatalog.Of(baseline, historyRows: false);
         foreach (var (index, keys, filter) in AddedIndexShapes)
         {
-            var line = Normalized(all.Single(item => item.StartsWith(index, StringComparison.Ordinal)));
-            line.ShouldContain(keys, Case.Sensitive, index);
+            KeysOf(all, index).ShouldBe(keys, index);
+            var line = DefinitionOf(all, index);
             if (filter is null)
             {
                 line.ShouldNotContain("status='", Case.Sensitive, index);
@@ -163,6 +206,29 @@ public sealed partial class BaselineTests : IDisposable
         {
             built.ShouldContain("option:read_committed_snapshot=1");
         }
+    }
+
+    // An index of that name on another key, on the right key with one more after it, and on another key with the right one
+    // included, which SQLite cannot make.
+    [Theory]
+    [InlineData("sequence", null)]
+    [InlineData("handler,sequence", null)]
+    [InlineData("sequence", "handler")]
+    public async Task TheShapeCheckFailsForAnIndexOfTheRightNameOnOtherKeys(string columns, string? include)
+    {
+        Assert.SkipWhen(include is not null && TestProvider.IsSqlite, "SQLite has no included columns.");
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production);
+        await host.Services.GetRequiredService<MigrationRunner>().MigrateAsync(Token);
+        var (index, keys, _) = AddedIndexShapes.Single(shape => shape.Index == "index:cms_outbox.ix_cms_outbox_failed_handler:");
+        KeysOf(DatabaseCatalog.Of(_database, historyRows: false), index).ShouldBe(keys);
+
+        var name = TestProvider.Quote("ix_cms_outbox_failed_handler");
+        var table = TestProvider.Quote("cms_outbox");
+        string Quoted(string list) => string.Join(", ", list.Split(',').Select(TestProvider.Quote));
+        _database.Execute(TestProvider.IsSqlServer ? $"drop index {name} on {table}" : $"drop index {name}");
+        _database.Execute($"create index {name} on {table} ({Quoted(columns)}){(include is null ? "" : $" include ({Quoted(include)})")} where {TestProvider.Quote("status")} = 'failed'");
+
+        KeysOf(DatabaseCatalog.Of(_database, historyRows: false), index).ShouldNotBe(keys);
     }
 
     [Theory]
@@ -255,6 +321,29 @@ public sealed partial class BaselineTests : IDisposable
         exitCode.ShouldBe(1);
         error.ShouldBe(refusal + Environment.NewLine);
         DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
+    }
+
+    // A host that does not migrate takes no lock, so the order of its reads alone keeps it from refusing the database: the
+    // other process applies the media stream just after the host first read the catalog.
+    [Fact]
+    public async Task ADatabaseThatAnotherProcessIsCreatingIsNotRefusedAsAnEarlierBaseline()
+    {
+        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production))
+        {
+            await built.StartAsync(Token);
+            await built.StopAsync(Token);
+        }
+
+        using var creating = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.AddPlugin<MediaPlugin>());
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, settings: NoMigrationOnStartup, configure: cms => cms.AddPlugin<MediaPlugin>());
+        var catalog = new CatalogReader(
+            host.Services.GetRequiredService<IDataProvider>().SchemaReader,
+            () => creating.Services.GetRequiredService<MigrationRunner>().MigrateAsync(Token));
+        var runner = InterceptedProvider.Runner(host.Services, (member, value) => member == $"get_{nameof(IDataProvider.SchemaReader)}" ? catalog : value);
+
+        await runner.RunAtStartupAsync(Token);
+
+        _database.Tables().ShouldContain("cms_media_preset");
     }
 
     // A column folded into a table the earlier build already made, as cms_version.author_kind (#3097), is missed the same way.
@@ -509,6 +598,24 @@ public sealed partial class BaselineTests : IDisposable
         using var command = connection.CreateCommand();
         command.CommandText = $"IF (SELECT is_read_committed_snapshot_on FROM sys.databases WHERE database_id = DB_ID()) <> {(on ? 1 : 0)} ALTER DATABASE CURRENT SET READ_COMMITTED_SNAPSHOT {(on ? "ON" : "OFF")} WITH ROLLBACK IMMEDIATE";
         command.ExecuteNonQuery();
+    }
+
+    // Runs what another process does once, after the first read of the catalog.
+    private sealed class CatalogReader(IDatabaseSchemaReader inner, Func<Task> afterFirstRead) : IDatabaseSchemaReader
+    {
+        private bool _read;
+
+        public async Task<DatabaseSchema> ReadAsync(System.Data.Common.DbConnection connection, CancellationToken cancellationToken = default)
+        {
+            var schema = await inner.ReadAsync(connection, cancellationToken);
+            if (!_read)
+            {
+                _read = true;
+                await afterFirstRead();
+            }
+
+            return schema;
+        }
     }
 
     [GeneratedRegex(@"^\s*GO\s*$", RegexOptions.Multiline)]

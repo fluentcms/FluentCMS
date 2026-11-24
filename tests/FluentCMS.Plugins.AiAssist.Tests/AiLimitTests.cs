@@ -106,7 +106,7 @@ public sealed class AiLimitTests : IClassFixture<AiHost>
     [Fact]
     public async Task ACallerOverTheLimitIsRefusedBeforeTheDraftIsReadOrAnImageDecoded()
     {
-        var site = await _ai.SiteAsync(settings => settings.CallsPerMinute = 1);
+        var site = await _ai.SiteAsync(settings => (settings.CallsPerMinute, settings.AssetAltText) = (1, true));
         using var admin = await _ai.AdminAsync(site);
 
         await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = "Ships are big boats." });

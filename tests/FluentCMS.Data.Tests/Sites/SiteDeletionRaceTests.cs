@@ -33,9 +33,9 @@ public sealed class SiteDeletionRaceTests : IDisposable
         var creating = _database.CreateAsync(Editor, new() { ["title"] = "Hold" }, site: SiteB);
         await _held.Entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
 
-        // The write holds its transaction open after its rows went in; the deletion waits for it.
-        var deleting = Task.Run(() => DeleteAsync(_database.Database.Services.GetRequiredService<IServiceScopeFactory>(), SiteB.Value), Token);
-        await Task.Delay(TimeSpan.FromMilliseconds(300), Token);
+        // The write holds its transaction open after its rows went in; the deletion waits for it. On a server the deletion is
+        // seen waiting for a lock, or ended; SQLite shows nothing of it, but its one writer is the write's until it commits.
+        var deleting = await RowLocks.BesideAsync(_database.Database.ConnectionString, () => DeleteAsync(_database.Database.Services.GetRequiredService<IServiceScopeFactory>(), SiteB.Value), Token);
         deleting.IsCompleted.ShouldBeFalse();
 
         _held.Release.TrySetResult();

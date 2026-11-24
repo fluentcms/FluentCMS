@@ -58,6 +58,27 @@ internal sealed record McpClientState(McpClientStatus Status, DateTimeOffset Reg
         return new McpClientState(McpClientStatus.Pending, DateTimeOffset.MinValue);
     }
 
+    // The same, from the stored JSON of an application's properties, as a query reads it.
+    public static McpClientState? OfStored(string? properties)
+    {
+        if (string.IsNullOrEmpty(properties))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(properties);
+            return document.RootElement.ValueKind == JsonValueKind.Object && document.RootElement.TryGetProperty(AuthorizationServer.McpClientProperty, out var element)
+                ? Of(ImmutableDictionary<string, JsonElement>.Empty.Add(AuthorizationServer.McpClientProperty, element.Clone()))
+                : null;
+        }
+        catch (JsonException)
+        {
+            return new McpClientState(McpClientStatus.Pending, DateTimeOffset.MinValue);
+        }
+    }
+
     public JsonElement ToProperty() => JsonSerializer.SerializeToElement(this, Json);
 
     // What the stored state of a client first used by the user holds, for a query over the stored properties.

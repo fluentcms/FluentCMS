@@ -154,6 +154,58 @@ public sealed partial class SchemaApplyTests : IDisposable
         }
     }
 
+    // The content model cannot declare an index with an expression key, so schema apply keeps one made by hand, as it did
+    // while the PostgreSQL reader did not list it, and still drops one of plain columns that the model lacks (#3530).
+    [Fact]
+    public async Task AnIndexOfAnExpressionMadeByHandIsKeptAndOneOfColumnsIsDropped()
+    {
+        Assert.SkipWhen(TestProvider.IsSqlServer, "SQL Server indexes no expression.");
+        await MigrateAndApplyAsync(ArticleSchemas.Titled);
+        _database.Execute("create index ix_hand_lower on cms_article (lower(title))");
+        _database.Execute("create index ix_hand_title on cms_article (title)");
+
+        var (exitCode, output, error) = await RunAsync(ArticleSchemas.Titled, "schema", "apply");
+
+        exitCode.ShouldBe(0, error);
+        output.ShouldContain("  drop index ix_hand_title from table cms_article");
+        output.ShouldNotContain("ix_hand_lower");
+        (await RunAsync(ArticleSchemas.Titled, "schema", "apply")).Output.ShouldStartWith("Nothing to apply;");
+
+        using var host = Host(ArticleSchemas.Titled);
+        using var scope = host.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        await context.Database.OpenConnectionAsync(Token);
+        var database = await scope.ServiceProvider.GetRequiredService<IDataProvider>().SchemaReader.ReadAsync(context.Database.GetDbConnection(), Token);
+        var indexes = database.Tables["cms_article"].Indexes.Select(index => index.Name).ToList();
+        indexes.ShouldContain("ix_hand_lower");
+        indexes.ShouldNotContain("ix_hand_title");
+    }
+
+    // A content table made before the model gave its text a collation (#2874, #3308) keeps the one it has, which the plan
+    // names; the column's type and nullability are the model's, so nothing is applied (#3476).
+    [Fact]
+    public async Task AContentTextColumnOfAnotherCollationIsListedAndLeftAlone()
+    {
+        Assert.SkipWhen(TestProvider.IsSqlite, "SQLite's model gives content text no collation.");
+        await MigrateAndApplyAsync(ArticleSchemas.Titled);
+        var (model, other, described) = TestProvider.IsPostgreSql
+            ? ("C", "default", "the database's default")
+            : ("Latin1_General_100_BIN2", "Latin1_General_100_CI_AS", "Latin1_General_100_CI_AS");
+        Collation().ShouldBe(model);
+        CollateTitle(other);
+        var leftAlone = $"column title on table cms_article, whose collation is {described} and not {model} as in the content model; schema apply does not change a collation, so a sort and a cursor on the column follow the one it has until it is altered by hand";
+
+        var (exitCode, output, error) = await RunAsync(ArticleSchemas.Titled, "schema", "apply");
+
+        exitCode.ShouldBe(0, error);
+        output.ShouldStartWith($"Left alone:{Environment.NewLine}  {leftAlone}{Environment.NewLine}Nothing to apply; what is listed above was left alone, and the schema history records schema ");
+        Collation().ShouldBe(TestProvider.IsPostgreSql ? null : other);
+        (await RunAsync(ArticleSchemas.Titled, "schema", "apply", "--script")).Output.ShouldContain($"-- Left alone: {leftAlone}{Environment.NewLine}");
+
+        CollateTitle(model);
+        (await RunAsync(ArticleSchemas.Titled, "schema", "apply")).Output.ShouldStartWith("Nothing to apply; the content tables match schema ");
+    }
+
     // The column is renamed and then altered. SQLite's text has no length, so there only its nullability changes.
     [Fact]
     public async Task ARenamedFieldWhoseColumnAlsoChangesKeepsItsValues()
@@ -237,14 +289,14 @@ public sealed partial class SchemaApplyTests : IDisposable
         (exitCode, output, error) = await RunAsync(ArticleSchemas.Titled, "schema", "apply");
 
         exitCode.ShouldBe(0, error);
-        output.ShouldStartWith($"{leftAlone}Nothing to apply;");
+        output.ShouldStartWith($"{leftAlone}Nothing to apply; what is listed above was left alone, and the schema history records schema ");
 
         // A host that registers the plugin again leaves its tables to the plugin's stream and lists nothing.
         using var registered = PluginHost(ArticleSchemas.Titled);
         (exitCode, output, error) = await RunAsync(registered, "schema", "apply");
 
         exitCode.ShouldBe(0, error);
-        output.ShouldStartWith("Nothing to apply;");
+        output.ShouldStartWith("Nothing to apply; the content tables match schema ");
     }
 
     [Fact]
@@ -746,6 +798,23 @@ public sealed partial class SchemaApplyTests : IDisposable
     }
 
     private List<string> History() => _database.ReadStrings("select hash from cms_schema_history");
+
+    private string? Collation() =>
+        _database.ReadStrings("select coalesce(collation_name, '') from information_schema.columns where table_name = 'cms_article' and column_name = 'title'")
+            .ShouldHaveSingleItem() is { Length: > 0 } name ? name : null;
+
+    // With the type and nullability the column has: title is text, and nvarchar(max) on SQL Server.
+    private void CollateTitle(string collation)
+    {
+        if (TestProvider.IsPostgreSql)
+        {
+            _database.Execute($"alter table cms_article alter column title type text collate \"{collation}\"");
+            return;
+        }
+
+        var nullable = _database.ReadStrings("select is_nullable from information_schema.columns where table_name = 'cms_article' and column_name = 'title'").ShouldHaveSingleItem();
+        _database.Execute($"alter table cms_article alter column title nvarchar(max) collate {collation} {(nullable == "YES" ? "null" : "not null")}");
+    }
 
     private void InsertArticle(string value, string column = "title", bool published = false) =>
         _database.Execute($"insert into cms_article (id, document_id, site_id, state, {column}) values ('{Guid.CreateVersion7()}', '{Guid.CreateVersion7()}', '{Guid.Empty}', {(published ? 1 : 0)}, '{value}')");

@@ -17,7 +17,13 @@ internal readonly record struct AccessTarget(SiteId? Site, string? Locale, strin
 // split when the grant is built, which is before it enters EffectiveGrantCache, since every check matches it again.
 internal sealed class EffectiveGrant(string pattern, PermissionConstraints constraints, Guid? roleSite)
 {
+    private const string ContentPrefix = FluentCMS.Authorization.Permission.ContentPrefix + ".";
+
     private readonly string[]? _segments = PermissionPattern.Segments(pattern);
+
+    private readonly bool _matchesContent = PermissionPattern.Intersect(pattern, ContentPrefix + "*.*") is not null;
+
+    private readonly bool _matchesOutsideContent = !pattern.StartsWith(ContentPrefix, StringComparison.Ordinal);
 
     public string Pattern { get; } = pattern;
 
@@ -38,11 +44,23 @@ internal sealed class EffectiveGrant(string pattern, PermissionConstraints const
 
     private bool ReachesInSomeLocale(string permission, AccessTarget target) =>
         PermissionPattern.Matches(_segments, permission)
+        && GivesBesideItsRule(permission.StartsWith(ContentPrefix, StringComparison.Ordinal))
         && (RoleSite is null || target.Site?.Value == RoleSite)
         && (Constraints.Sites is null || (target.Site is { } site && Constraints.Sites.Contains(site)));
 
-    public bool ReachesSite(SiteId site) =>
-        (RoleSite is null || site.Value == RoleSite) && (Constraints.Sites is null || Constraints.Sites.Contains(site));
+    // A row rule limits rows of content, so a grant with one gives no other permission, as one limited to resources gives no
+    // core one. Roles refuse such a grant, so only one stored before that has it.
+    private bool GivesBesideItsRule(bool content) => content || Constraints.RowRule is null;
+
+    // Whether the grant gives some permission in the site as the checks above decide (spec 4.8): one of content, or one
+    // outside it. No check asks content by resource, so a grant limited to resources gives only a permission outside content,
+    // through ResourcesOf, and only when it names a resource.
+    public bool GivesSomethingIn(SiteId site) =>
+        (RoleSite is null || site.Value == RoleSite)
+        && (Constraints.Sites is null || Constraints.Sites.Contains(site))
+        && (Constraints.Resources is null
+            ? _matchesContent || (_matchesOutsideContent && GivesBesideItsRule(content: false))
+            : Constraints.Resources.Count > 0 && _matchesOutsideContent && GivesBesideItsRule(content: false));
 
     // A global entry is shared by every site, so what changes it must come from a grant that no site limits.
     public bool IsInstanceWide => RoleSite is null && Constraints.Sites is null;
@@ -115,12 +133,12 @@ internal sealed class EffectivePermissions(
     public bool Allows(SchemaType type, ContentOperation operation, AccessTarget target) =>
         IsSystem || GrantsOf(type, operation, target).Count > 0;
 
-    // Whether some grant reaches the site, whatever it permits there: through a role of the site or of the instance, within
-    // the grant's own site limit, the binding of a key and the role of the client.
+    // Whether some grant gives a permission in the site: through a role of the site or of the instance, within the grant's
+    // own site limit, the binding of a key and the role of the client. A grant that gives nothing there does not count.
     public bool HoldsGrantIn(SiteId site) =>
         IsSystem
         || ((_binding.Sites is null || _binding.Sites.Contains(site.Value))
-            && grants.Any(grant => grant.ReachesSite(site))
+            && grants.Any(grant => grant.GivesSomethingIn(site))
             && (limit is null || limit.HoldsGrantIn(site)));
 
     // The resources a permission reaches: null when a grant with no resource limit holds it, otherwise the union of the

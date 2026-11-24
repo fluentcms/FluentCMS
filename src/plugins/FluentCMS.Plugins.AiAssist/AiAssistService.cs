@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using FluentCMS.Activity;
 using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Localization;
@@ -49,14 +50,15 @@ internal sealed record AiCall(
     AiReservation? Reservation);
 
 // The actions of spec 5.5, in the site of the current operation. PrepareAsync checks, in this order: ai.use in the site,
-// that the site's settings opt the field in, and that the caller may update that field, since a suggestion is for a field
-// the caller edits. It then checks the body; altText on an asset alone has no field, and is checked here instead by the
-// media service's own check of an update of the asset. It then takes the call from the call limit, asks the slot for the
-// site's client and reserves the call's estimate against the site's daily budget, so that a caller who is over either is
-// refused before any work is done for it, and reads what the action works on as the caller, through the content and media
-// services. A call refused on the way is given back to the limit and the budget. RunAsync sends it and writes its usage row: one for
-// every call that is sent, whether it succeeds, fails, times out or is cancelled. The plugin writes nothing to content, and the text
-// and the suggestion go to the provider and the caller only: never to a row, a log line or a span.
+// that the site's settings opt the field in, for altText that they let images go with assetAltText, and that the caller
+// may update that field, since a suggestion is for a field the caller edits. It then checks the body; altText on an asset
+// alone has no field, so the media service's own check of an update of the asset stands for the right to update. It then
+// takes the call from the call limit, asks the slot for the site's client and reserves the call's estimate against the
+// site's daily budget, so that a caller who is over either is refused before any work is done for it, and reads what the
+// action works on as the caller, through the content and media services. A call refused on the way is given back to the
+// limit and the budget. RunAsync sends it and writes its usage row: one for every call that is sent, whether it succeeds,
+// fails, times out or is cancelled. The plugin writes nothing to content, and the text and the suggestion go to the
+// provider and the caller only: never to a row, a log line or a span.
 internal sealed class AiAssistService(
     IOperationContextAccessor operations,
     IPermissionChecker permissions,
@@ -71,6 +73,7 @@ internal sealed class AiAssistService(
     AiCallLimits limits,
     AiBudgets budgets,
     AiUsageService usage,
+    IActivityLog activity,
     IOptions<AiOptions> options,
     TimeProvider time,
     ILogger<AiAssistService> logger)
@@ -123,7 +126,7 @@ internal sealed class AiAssistService(
             }
         }
 
-        return new AiFields(enabled, operation.Locale, fields, enabled && await MayDescribeAssetsAsync(operation.Site, cancellationToken));
+        return new AiFields(enabled, operation.Locale, fields, enabled && current.AssetAltText && await MayDescribeAssetsAsync(operation.Site, cancellationToken));
     }
 
     public async Task<AiCall> PrepareAsync(string action, AiActionRequest request, CancellationToken cancellationToken)
@@ -155,6 +158,13 @@ internal sealed class AiAssistService(
             {
                 throw new PluginException(AiErrorCodes.FieldNotOptedIn, "The AI settings of the site do not opt this field in. A field that takes AI actions is a text, long text or rich text field of a content type, named under 'fields'.");
             }
+        }
+
+        // altText sends an image of the media library, and only it does, whether for a field or for an asset alone: an
+        // opted-in text field does not opt in the images the caller may read.
+        if (action == AiActions.AltText && !current.AssetAltText)
+        {
+            throw new PluginException(AiErrorCodes.FieldNotOptedIn, "The AI settings of the site do not let images of the media library go to the provider for alt text. An administrator turns it on with 'assetAltText' in the AI settings of the site.");
         }
 
         // The locale comes before the right to update, because a grant may be limited to locales: the right is asked in
@@ -233,15 +243,17 @@ internal sealed class AiAssistService(
             var client = (current.Provider == AiProvider.None ? null : await clients.CreateAsync(site, current, cancellationToken))
                 ?? throw new PluginException(AiErrorCodes.NoProvider, "The site has no AI provider. An administrator names one in the AI settings of the site.");
 
-            // Before the draft is read, a call is reckoned at the most text it may send.
+            // Before the draft is read, a call is reckoned at the most text it may send; one that reads none sends only the
+            // text it was given, if any.
             var image = action == AiActions.AltText;
             var richText = field?.FieldType == RichTextFieldType;
+            var draft = type is not null && field is not null ? request.DocumentId : null;
             var instructions = AiActions.Instructions(action, type?.Name, field?.Name, richText, field?.MaxLength, locale, targetLocale);
             var sent = AiBudgets.Tokens(instructions) + (image ? AiBudgets.ImageTokens : 0);
-            var reckoned = sent + (request.Text is { } given ? AiBudgets.Tokens(given) : (long)options.Value.MaxInputLength * AiBudgets.MaxBytesPerChar);
+            var reckoned = sent + (draft is null ? AiBudgets.Tokens(request.Text) : (long)options.Value.MaxInputLength * AiBudgets.MaxBytesPerChar);
             reservation = await ReserveAsync(site, current, client, reckoned + current.MaxOutputTokens, cancellationToken);
 
-            var text = type is not null && field is not null && request.DocumentId is { } id ? await ReadFieldAsync(type, field, id, locale, richText, cancellationToken) : request.Text;
+            var text = draft is { } id ? await ReadFieldAsync(type!, field!, id, locale, richText, cancellationToken) : request.Text;
             if (action != AiActions.AltText && string.IsNullOrWhiteSpace(text))
             {
                 throw new ValidationException([Invalid("documentId", "The field of the draft holds no text.")]);
@@ -561,15 +573,7 @@ internal sealed class AiAssistService(
             return false;
         }
 
-        foreach (var permission in (string[])[MediaRead, MediaUpdate])
-        {
-            if (await permissions.ResourcesAsync(permission, site, cancellationToken) is { Count: 0 })
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return (await access.HeldAsync([MediaRead, MediaUpdate], cancellationToken)).Count == 2;
     }
 
     // A reduced copy without metadata, as the caller: the media service refuses a caller without media.read there.
@@ -666,7 +670,7 @@ internal sealed class AiAssistService(
                 SiteId = call.Site.Value,
                 PrincipalKind = AiUsageService.KindOf(call.Principal.Kind),
                 PrincipalId = call.Principal.Id,
-                PrincipalName = Limit(call.Principal.Name, AiUsageModel.PrincipalNameMaxLength),
+                PrincipalName = activity.ActorName(call.Principal.Name),
                 Action = call.Action,
                 Type = call.Type,
                 Field = call.Field,

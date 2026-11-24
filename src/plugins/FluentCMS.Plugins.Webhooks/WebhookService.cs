@@ -122,7 +122,7 @@ internal sealed partial class WebhookService(
         valid.ApplyTo(webhook, signing);
 
         database.Add(webhook);
-        await SaveAsync(site, webhook, cancellationToken);
+        await SaveAsync(site, webhook, added: true, cancellationToken);
         await events.PublishAsync(new WebhookCreatedEvent(webhook.Id, webhook.Name), cancellationToken);
         return Info(webhook) with { Secret = generated };
     }
@@ -161,7 +161,7 @@ internal sealed partial class WebhookService(
         webhook.UpdatedAt = now;
         webhook.UpdatedBy = Operation().AuditPrincipal.Id;
 
-        await SaveAsync(site, webhook, cancellationToken);
+        await SaveAsync(site, webhook, added: false, cancellationToken);
         await events.PublishAsync(new WebhookUpdatedEvent(webhook.Id, webhook.Name, request.Secret is not null), cancellationToken);
         return Info(webhook);
     }
@@ -271,7 +271,9 @@ internal sealed partial class WebhookService(
     }
 
     // Two writers that both found the name free meet at the unique index.
-    private async Task SaveAsync(SiteId site, Webhook webhook, CancellationToken cancellationToken)
+    // A new webhook holds its site to its commit, so that the site's deletion waits for it and it goes with
+    // DeletedSiteWebhooks, or it finds the site gone and is refused with FCMS2301 (#3586). A changed one stays in its site.
+    private async Task SaveAsync(SiteId site, Webhook webhook, bool added, CancellationToken cancellationToken)
     {
         if (await NameTakenAsync(site, webhook, cancellationToken))
         {
@@ -280,7 +282,17 @@ internal sealed partial class WebhookService(
 
         try
         {
-            await database.SaveChangesAsync(cancellationToken);
+            if (added)
+            {
+                await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+                await database.HoldSiteAsync(site, cancellationToken);
+                await database.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(CancellationToken.None);
+            }
+            else
+            {
+                await database.SaveChangesAsync(cancellationToken);
+            }
         }
         catch (DbUpdateException)
         {

@@ -120,15 +120,15 @@ internal sealed class StartupReportFactory(
             found.Add(new InsecureDefault { Id = "development-email-sender", Message = "Email is written to the log and not sent, links included. Register an IEmailSender." });
         }
 
-        if (environment?.IsProduction() == true && !proxy.HttpsRedirection.Enabled)
+        if (environment?.IsDevelopment() == false && !proxy.HttpsRedirection.Enabled)
         {
-            found.Add(new InsecureDefault { Id = "https-redirection-off", Message = $"HTTPS redirection is off in Production. Turn on {FluentCmsOptions.Section}:{ReverseProxyOptions.Section}:{nameof(ReverseProxyOptions.HttpsRedirection)}:Enabled unless the proxy in front redirects." });
+            found.Add(new InsecureDefault { Id = "https-redirection-off", Message = $"HTTPS redirection is off outside Development. Turn on {FluentCmsOptions.Section}:{ReverseProxyOptions.Section}:{nameof(ReverseProxyOptions.HttpsRedirection)}:Enabled unless the proxy in front redirects." });
         }
 
-        if (environment?.IsProduction() == true && AllowsAnyHost())
+        if (environment?.IsDevelopment() == false && AllowsAnyHost())
         {
             var links = origin.Base is null ? ", and links in password reset and invitation emails go to the host it names" : "";
-            found.Add(new InsecureDefault { Id = "allowed-hosts-any", Message = $"AllowedHosts is '*' or not set in Production, so the instance answers a request with any Host header{links}. Set AllowedHosts to the host names of the instance." });
+            found.Add(new InsecureDefault { Id = "allowed-hosts-any", Message = $"AllowedHosts is '*' or not set outside Development, so the instance answers a request with any Host header{links}. Set AllowedHosts to the host names of the instance." });
         }
 
         if (environment?.IsDevelopment() == false && origin.Base is null && found.All(item => item.Id != HostErrorCodes.PublicOriginUnsetInProduction))
@@ -146,17 +146,17 @@ internal sealed class StartupReportFactory(
             found.Add(new InsecureDefault { Id = "forwarded-headers-trust-any", Message = "Forwarded headers are trusted from every address, so any caller can choose the scheme and client address the host sees. List the proxies or networks." });
         }
 
-        if (environment?.IsProduction() == true && services.GetService<MemberOptions>() is { AllowDirectLogin: true })
+        if (environment?.IsDevelopment() == false && services.GetService<MemberOptions>() is { AllowDirectLogin: true })
         {
             found.Add(new InsecureDefault { Id = "member-direct-login", Message = $"Members may sign in by sending their password to the token endpoint ({FluentCmsOptions.Section}:{MemberOptions.Section}:{nameof(MemberOptions.AllowDirectLogin)}), so an app sees the password. It is the less secure way in: prefer the hosted pages and the authorization code flow, and keep it to first-party apps." });
         }
 
-        if (environment?.IsProduction() == true && WritesAppleSecrets())
+        if (environment?.IsDevelopment() == false && WritesAppleSecrets())
         {
-            found.Add(new InsecureDefault { Id = "member-apple-logging", Message = $"The log category {AppleLogLevel.Category} is below Information in Production. At Trace the log holds the client secret the Apple member provider signs and the tokens of each sign-in. Keep it at Information or above." });
+            found.Add(new InsecureDefault { Id = "member-apple-logging", Message = $"The log category {AppleLogLevel.Category} is below Information outside Development. At Trace the log holds the client secret the Apple member provider signs and the tokens of each sign-in. Keep it at Information or above." });
         }
 
-        if (environment?.IsProduction() == true && LimitsMemberMailPerInstance())
+        if (environment?.IsDevelopment() == false && LimitsMemberMailPerInstance())
         {
             found.Add(new InsecureDefault { Id = "member-mail-limit-per-instance", Message = $"The limit of one member mail a minute of each kind to an address is kept in the in-memory {nameof(IDistributedCache)}, so it holds per instance. With several instances, register a shared {nameof(IDistributedCache)}, such as RedisCache, with cms.Providers.Use<{nameof(IDistributedCache)}, T>() so that it holds across them; a single instance needs nothing." });
         }

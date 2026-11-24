@@ -63,8 +63,8 @@ internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserMan
     public async Task<UserPreferencesInfo> PreferencesAsync(CancellationToken cancellationToken) =>
         await preferences.GetAsync((await UserAsync()).Id, cancellationToken);
 
-    public async Task<UserPreferencesInfo> SetPreferencesAsync(UserPreferencesInfo wanted, CancellationToken cancellationToken) =>
-        await preferences.SetAsync((await UserAsync()).Id, wanted, cancellationToken);
+    public async Task<UserPreferencesInfo> SetPreferencesAsync(UserPreferencesChange change, string? expectedTag, CancellationToken cancellationToken) =>
+        await preferences.SetAsync((await UserAsync()).Id, change, expectedTag, cancellationToken);
 
     // Turning two-factor on with an authenticator of one's own keeps the owner out, who has no code of it, so a token alone
     // is not enough: the user signed in on the hosted pages a short while ago, which a token that leaked later did not, and

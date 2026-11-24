@@ -31,6 +31,7 @@ internal static class ManagementJson
         ["token"] = issued.Token,
         ["scheme"] = PreviewTokenAuthentication.Scheme,
         ["expiresAt"] = EntryJson.Moment(issued.ExpiresAt),
+        ["expiresIn"] = (int)issued.Lifetime.TotalSeconds,
         ["type"] = issued.Binding.Type,
         ["id"] = issued.Binding.Entry,
         ["site"] = issued.Binding.Site,

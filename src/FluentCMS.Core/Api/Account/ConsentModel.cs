@@ -70,9 +70,14 @@ public sealed class ConsentModel : AccountPageModel
         }
 
         var clientId = Request.Query[Parameters.ClientId].ToString();
-        if (!await Service<ClientConsents>().GrantAsync(user.Id, clientId, RequestedScopes(), HttpContext.RequestAborted))
+        switch (await Service<ClientConsents>().GrantAsync(user.Id, clientId, RequestedScopes(), HttpContext.RequestAborted))
         {
-            return NotAClient();
+            case ConsentGrant.Refused:
+                return NotAClient();
+            case ConsentGrant.LimitReached:
+                return Redirect(Request.PathBase + HostedPagePaths.Error + QueryString.Create(Parameters.Error, ClientConsents.LimitReachedError));
+            case ConsentGrant.Busy:
+                return Redirect(Request.PathBase + HostedPagePaths.Error + QueryString.Create(Parameters.Error, Errors.TemporarilyUnavailable));
         }
 
         // Consent was just given, so the request goes back without the prompt for it.

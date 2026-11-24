@@ -5,20 +5,22 @@ namespace FluentCMS.Core.DependencyInjection;
 
 // FluentCms:PublicOrigin, the address users reach the instance at, such as https://cms.example.com. Links in emails and the
 // issuer of the authorization server are built from it, so a forged Host header cannot change them. Without it they follow
-// the request's scheme, host and path base.
-internal sealed class PublicOrigin
+// the request's scheme, host and path base. A package that serves a surface of its own reads it from the services, as the
+// admin builds its addresses and its config.json from it.
+public sealed class PublicOrigin
 {
     public const string Key = "PublicOrigin";
 
     // The scheme, host, port and FluentCms:ReverseProxy:PathBase, with no trailing slash. Null when it is not set.
     public string? Base { get; private set; }
 
+    // Base as a URI, which is the issuer of the authorization server. Null when it is not set.
     public Uri? Issuer { get; private set; }
 
     // Base with a trailing slash, which relative endpoint paths resolve against.
-    public Uri? BaseUri { get; private set; }
+    internal Uri? BaseUri { get; private set; }
 
-    public Uri Link(HttpRequest request, string path) =>
+    internal Uri Link(HttpRequest request, string path) =>
         new((Base ?? $"{request.Scheme}://{request.Host.ToUriComponent()}{request.PathBase.ToUriComponent()}") + path, UriKind.Absolute);
 
     // The origin may name the path base or leave it out; any other path would send links where the host does not serve.

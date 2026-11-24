@@ -59,4 +59,7 @@ internal static partial class MediaLog
 
     [LoggerMessage(EventId = 9277, Level = LogLevel.Warning, Message = "The check of the image size of the media assets could not be started; it is tried again.")]
     public static partial void DimensionsNotEnqueued(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 9278, Level = LogLevel.Warning, Message = "The file {Key} of the {Storage} storage, left by the media asset {AssetId} when its file was replaced, is still named by another asset, but the row that was to hold it could not be saved, so no row owns it and nothing deletes it; do not remove it by hand while an asset names it.")]
+    public static partial void ReplacedNotHeld(ILogger logger, Guid assetId, string storage, string key, Exception exception);
 }

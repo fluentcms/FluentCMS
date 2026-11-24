@@ -91,6 +91,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         "patch /sites/{id}", "post /sites/{id}/locales", "patch /sites/{id}/locales/{code}", "put /settings/{area}", "put /settings/{area}/defaults",
         "put /plugins/{name}/sites/{site}",
         "post /me/two-factor/verify", "post /me/two-factor/recovery-codes", "post /me/two-factor/disable", "put /me/preferences",
+        "patch /me/preferences",
     ];
 
     private JsonObject Document => fixture.Document;
@@ -274,12 +275,23 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
 
         var schemas = Document["components"]!["schemas"]!;
         schemas["preview-token-request"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["minutes", "locale"]);
-        schemas["preview-token"]!["required"]!.ToJsonString().ShouldBe("""["token","scheme","expiresAt","type","id","site"]""");
+        schemas["preview-token"]!["required"]!.ToJsonString().ShouldBe("""["token","scheme","expiresAt","expiresIn","type","id","site"]""");
+        var lifetime = schemas["preview-token"]!["properties"]!["expiresIn"]!;
+        (lifetime["type"]!.GetValue<string>(), lifetime["format"]!.GetValue<string>()).ShouldBe(("integer", "int32"));
         foreach (var url in new[] { "url", "publishedUrl" })
         {
             var property = schemas["preview-token"]!["properties"]![url]!;
             (property["type"]!.ToJsonString(), property["format"]!.GetValue<string>()).ShouldBe(("""["null","string"]""", "uri"));
         }
+    }
+
+    [Fact]
+    public void ATypeOfTheSchemaSaysWhetherItIsPreviewable()
+    {
+        var types = Resolve(Response(Paths[$"{Management}/schema"]!["get"]!, "200"))["properties"]!["types"]!["items"]!;
+
+        Resolve(types)["properties"]!["previewable"]!["type"]!.GetValue<string>().ShouldBe("boolean");
+        Resolve(Response(Paths[$"{Management}/schema/types/{{type}}"]!["get"]!, "200"))["properties"]!["previewable"].ShouldNotBeNull();
     }
 
     [Fact]
@@ -560,6 +572,44 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         Response(write, "200")["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["culture", "timeZone", "dateFormat", "numberFormat"]);
     }
 
+    // A change of one preference, and the ETag a write may send back as If-Match, which none of them needs (#3450).
+    [Fact]
+    public void TheChangeOfOnePreferenceAndTheETagOfThePreferencesAreDescribed()
+    {
+        var path = Paths[$"{Management}/me/preferences"]!;
+        var change = path["patch"]!;
+        change["operationId"]!.GetValue<string>().ShouldBe("patchMePreferences");
+        change["description"]!.GetValue<string>().ShouldContain("keeps the others");
+        Resolve(change["requestBody"]!["content"]!["application/json"]!["schema"]!)["properties"]!.AsObject().Select(item => item.Key)
+            .ShouldBe(["culture", "timeZone", "dateFormat", "numberFormat"]);
+        Response(change, "200")["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["culture", "timeZone", "dateFormat", "numberFormat"]);
+        path["put"]!["description"]!.GetValue<string>().ShouldContain("Replaces every preference");
+
+        var header = Parameters["preferences-if-match"]!;
+        header["name"]!.GetValue<string>().ShouldBe("If-Match");
+        header["in"]!.GetValue<string>().ShouldBe("header");
+        (header["required"]?.GetValue<bool>() ?? false).ShouldBeFalse();
+        header["description"]!.GetValue<string>().ShouldContain("hash");
+        foreach (var method in new[] { "get", "put", "patch" })
+        {
+            path[method]!["responses"]!["200"]!["headers"]!["ETag"].ShouldNotBeNull(method);
+            path[method]!["parameters"]!.ToJsonString().Contains("#/components/parameters/preferences-if-match\"", StringComparison.Ordinal).ShouldBe(method != "get", method);
+        }
+    }
+
+    // A locale another one names as a fallback is not removed, and no chain changes with a removal (#3517).
+    [Fact]
+    public void TheRemovalOfALocaleSaysWhatRefusesIt()
+    {
+        var removal = Paths[$"{Management}/sites/{{id}}/locales/{{code}}"]!["delete"]!;
+
+        removal["responses"]!["204"].ShouldNotBeNull();
+        var description = removal["description"]!.GetValue<string>();
+        description.ShouldContain("FCMS3136");
+        description.ShouldContain("FCMS3143");
+        description.ShouldContain("locales.{code}.fallbacks");
+    }
+
     [Fact]
     public void ASettingsReadRefersToTheJsonSchemaOfItsArea()
     {
@@ -603,10 +653,12 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     {
         var list = Response(Paths[$"{Management}/settings"]!["get"]!, "200");
         var area = Resolve(list["properties"]!["items"]!["items"]!);
-        area["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["area", "plugin", "site", "defaults"]);
+        area["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["area", "plugin", "site", "defaults", "instanceOnly"]);
         area["properties"]!["plugin"]!["description"]!.GetValue<string>().ShouldContain("null for an area of core");
         area["properties"]!["site"]!["description"]!.GetValue<string>().ShouldContain("/settings/{area}");
         area["properties"]!["defaults"]!["description"]!.GetValue<string>().ShouldContain("/settings/{area}/defaults");
+        area["properties"]!["instanceOnly"]!["type"]!.GetValue<string>().ShouldBe("boolean");
+        area["properties"]!["instanceOnly"]!["description"]!.GetValue<string>().ShouldContain("instance defaults only");
 
         foreach (var path in new[] { $"{Management}/settings/{{area}}", $"{Management}/settings/{{area}}/defaults" })
         {
@@ -614,6 +666,29 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
             reset["operationId"]!.GetValue<string>().ShouldStartWith("deleteSettingsByArea");
             reset["responses"]!["204"].ShouldNotBeNull(path);
             reset["requestBody"].ShouldBeNull(path);
+        }
+    }
+
+    [Fact]
+    public void EveryAnswerOfAKeySaysTheLongestOverlapOfARotation()
+    {
+        var list = Response(Paths[$"{Management}/api-keys"]!["get"]!, "200");
+        JsonNode[] keys =
+        [
+            Resolve(list["properties"]!["items"]!["items"]!),
+            Response(Paths[$"{Management}/api-keys/{{id}}"]!["get"]!, "200"),
+            Response(Paths[$"{Management}/api-keys"]!["post"]!, "201"),
+            Response(Paths[$"{Management}/api-keys/{{id}}/rotate"]!["post"]!, "200"),
+            Response(Paths[$"{Management}/api-keys/{{id}}/expire"]!["post"]!, "200"),
+            Response(Paths[$"{Management}/api-keys/{{id}}/allowed-addresses"]!["put"]!, "200"),
+        ];
+
+        foreach (var key in keys)
+        {
+            var longest = key["properties"]!["maxOverlapSeconds"]!;
+            (longest["type"]!.GetValue<string>(), longest["format"]!.GetValue<string>()).ShouldBe(("integer", "int32"));
+            longest["description"]!.GetValue<string>().ShouldContain("RotationOverlap");
+            key["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldContain("maxOverlapSeconds");
         }
     }
 

@@ -110,7 +110,7 @@ A command runs before any hosted service starts, so nothing migrates on start, l
 | `fluentcms schema snapshot [--output <file>]` | The canonical snapshot of the host's schema, whose SHA-256 is the schema hash. |
 | `fluentcms schema validate [--schema <file>]` | Builds the host's schema, or a schema file, and prints every `FCMS12xx` error; exits with 1 when there is one (`FCMS3320`). A schema file is checked by the tool without a host, with core's field types, unless `--project` or `--assembly` is given. |
 | `fluentcms schema diff --applied \| --schema <file> [--json]` | What differs from the schema in the newest row of the schema history, or from a schema file, to the host's schema, and from the history to a file with both. Destructive changes are marked and possible renames suggested; exits with 1 when anything differs (`FCMS3322`), so CI can gate a deploy. |
-| `fluentcms schema apply [--script [--output <file>]] [--dry-run] [--allow-destructive]` | For a host whose types are data and so have no content migrations, such as the [Docker image](docker.md#apply-a-schema-file) with a schema file: compares the schema with the content tables, applies the difference in one transaction (on SQLite, committed in parts around a table rebuild) and records the schema in the schema history, on every provider. A renamed field with `formerNames` keeps its values and its references, as in a content migration, and a rename whose values are kept in JSON counts as lost; a change that loses data is refused (`FCMS3337`) unless `--allow-destructive` is given. The tables of a plugin the host does not add, whose history table the database has, are left alone and listed. `--dry-run` prints the operations, and `--script` writes their SQL, applying nothing. It refuses a host with content migrations (`FCMS3335`) and runs after `fluentcms migrate` (`FCMS3336`). |
+| `fluentcms schema apply [--script [--output <file>]] [--dry-run] [--allow-destructive]` | For a host whose types are data and so have no content migrations, such as the [Docker image](docker.md#apply-a-schema-file) with a schema file: compares the schema with the content tables, applies the difference in one transaction (on SQLite, committed in parts around a table rebuild) and records the schema in the schema history, on every provider. A renamed field with `formerNames` keeps its values and its references, as in a content migration, and a rename whose values are kept in JSON counts as lost; a change that loses data is refused (`FCMS3337`) unless `--allow-destructive` is given. The tables of a plugin the host does not add, whose history table the database has, are left alone and listed, and so is a content text column whose collation is not the model's (`C` on PostgreSQL, `Latin1_General_100_BIN2` on SQL Server), such as one of a table made before `1.0.0-preview.2` on PostgreSQL: its sort follows the collation it has until it is altered by hand. `--dry-run` prints the operations, and `--script` writes their SQL, applying nothing. It refuses a host with content migrations (`FCMS3335`) and runs after `fluentcms migrate` (`FCMS3336`). |
 | `fluentcms doctor [--json]` | The startup report without starting the host: providers, plugins, assemblies, pending migrations, schema drift and insecure defaults. Exits with 1 when the host would not start (`FCMS3325`) or a migration is pending (`FCMS3303`). |
 
 `schema snapshot`, `schema diff` and `doctor` also take `--url <url>` with a management API key in `--token` or `FLUENTCMS_TOKEN`: the snapshot and the diagnostics of a running instance, and the diff from that instance to the host's schema, or to a schema file with `--schema`. The key needs `schema.read` for the schema and `system.read` for `doctor`.
@@ -137,14 +137,52 @@ One gap remains. Two processes that both read that no row is there before either
 
 ### The migrations lock on SQL Server and PostgreSQL
 
-On SQL Server and PostgreSQL the lock ends with the database session that holds it, so a process that stops releases it and nothing is left behind. A start with `MigrateOnStartup` or a `fluentcms migrate` that finds the lock held waits while another process applies migrations, such as a second init container or a host started beside a `fluentcms migrate`. The wait has the bounds it has on SQLite, and the command timeout does not end it ([#3192](https://github.com/fluentcms/FluentCMS/issues/3192)). After 30 seconds it logs a warning once (event id 9305) that names the stream and the lock. After 15 minutes it fails with a `TimeoutException` that names the lock and says that another process is applying migrations, and nothing of that stream is applied. A start stops there, and `fluentcms migrate` exits with 1 and `FCMS3302`:
+On SQL Server and PostgreSQL the lock ends with the database session that holds it, so a process that stops releases it and nothing is left behind. A start with `MigrateOnStartup` or a `fluentcms migrate` takes the lock before it checks the database against the [baselines](system-migrations.md) and reads what is pending, since those reads would otherwise wait behind what a running migration locks ([#3528](https://github.com/fluentcms/FluentCMS/issues/3528)). It so waits while another process applies migrations, such as a second init container or a host started beside a `fluentcms migrate`, also when it then finds nothing to apply. The wait has the bounds it has on SQLite, and no command timeout ends it, apart from the cases listed below ([#3192](https://github.com/fluentcms/FluentCMS/issues/3192)). After 30 seconds it logs a warning once (event id 9305) that names the lock and the stream it waits to apply, which is `system` for the wait before the checks. After 15 minutes it fails with a `TimeoutException` that names the lock and says that another process is applying migrations. Where it waited before the checks, the error says that the run migrated no stream. Where it waited between two streams, which only SQL Server does, it names the stream that was not migrated, and those before it stay applied. A start stops there, and `fluentcms migrate` exits with 1 and `FCMS3302`:
 
 ```text
-FCMS3302: 'fluentcms migrate' failed: TimeoutException: EF Core's migrations lock, the application lock __EFMigrationsLock that another session holds, was not released within 15 minutes, so the system stream was not migrated; another process is applying migrations: ...
+FCMS3302: 'fluentcms migrate' failed: TimeoutException: EF Core's migrations lock, the application lock __EFMigrationsLock that another session holds, was not released within 15 minutes, so this run migrated no stream; another process is applying migrations: ...
 ```
 
-- On SQL Server the lock is EF's application lock `__EFMigrationsLock`, which each stream takes before it applies its migrations. Its holder is the session in `sys.dm_tran_locks` whose `resource_type` is `APPLICATION` and whose `resource_description` names `__EFMigrationsLock`.
-- On PostgreSQL it is FluentCMS's lock of the whole run, an advisory lock of the session keyed by `hashtext(current_database() || ':fluentcms:migrations')`, which a run takes before it reads what is pending. The error calls it the migrations lock of FluentCMS. Its holder is the session in `pg_locks` whose `locktype` is `advisory`.
+- On SQL Server the lock is EF's application lock `__EFMigrationsLock`. A run takes it around its checks, releases it, and takes it again for each stream, before it reads what that stream has pending.
+- On PostgreSQL it is FluentCMS's lock of the whole run, an advisory lock of the session keyed by `hashtext(current_database() || ':fluentcms:migrations')`, which a run holds from before its checks until it has applied its last stream. The error calls it the migrations lock of FluentCMS.
+
+To find the session that holds the lock, run the query of the provider in the FluentCMS database. It leaves out the sessions that wait for the lock, the same lock of other databases and every other lock.
+
+On SQL Server, as a login that may read the server's state (`VIEW SERVER STATE`, or `VIEW SERVER PERFORMANCE STATE` from SQL Server 2022):
+
+```sql
+SELECT l.request_session_id, s.login_name, s.host_name, s.program_name, s.status
+FROM sys.dm_tran_locks AS l
+JOIN sys.dm_exec_sessions AS s ON s.session_id = l.request_session_id
+WHERE l.resource_type = 'APPLICATION'
+  AND l.request_status = 'GRANT'
+  AND l.resource_database_id = DB_ID()
+  AND CHARINDEX('0:[__EFMigrationsLock]:', l.resource_description) = 1;
+```
+
+On PostgreSQL, where another role's `state` and `query` show only to a member of `pg_read_all_stats`:
+
+```sql
+SELECT l.pid, a.usename, a.application_name, a.client_addr, a.state, a.query
+FROM pg_locks AS l
+JOIN pg_stat_activity AS a ON a.pid = l.pid
+WHERE l.locktype = 'advisory'
+  AND l.granted
+  AND l.database = (SELECT oid FROM pg_database WHERE datname = current_database())
+  AND l.objsubid = 1
+  AND ((l.classid::bigint << 32) | l.objid::bigint) = hashtext(current_database() || ':fluentcms:migrations');
+```
+
+The command timeout, 30 seconds by default, still ends these waits:
+
+- A start without `MigrateOnStartup`, `fluentcms migrate --check`, `migrations list` and `doctor` take no lock, so their reads wait behind a running migration only as long as a command may run. Run them after the migration.
+- On PostgreSQL, a migration applied by something other than FluentCMS, such as `dotnet ef`, an EF bundle or a script, does not take the lock of FluentCMS, so a run meets that migration's own locks. On SQL Server `dotnet ef` and a bundle take the same lock and are waited for; a script takes none.
+- On SQL Server, a run that found no database leaves creating it and taking the lock to EF, whose wait for a second such run has the command timeout.
+- `fluentcms schema apply` changes tables under a lock of its own (`fluentcms:schema-sync`), so a run does not wait for it and meets its changes as it does those of a script.
+
+A run holds the lock on a connection beside the one it reads with, during its checks and, on PostgreSQL, until its last stream, so the connection pool must allow two.
+
+A release of the lock that fails is logged as a warning (event id 9307) and leaves the outcome of the run as it was. The connection is then closed rather than pooled, which ends the lock with its session.
 
 A run that waited applies only what the other left pending. After the error, run again once the other process has finished; the lock needs no clearing. A migration that runs longer than 15 minutes makes the processes that wait for it fail, so apply such a migration from one `fluentcms migrate` before the hosts start.
 

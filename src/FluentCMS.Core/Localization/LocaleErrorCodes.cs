@@ -7,4 +7,5 @@ internal static class LocaleErrorCodes
     public const string LocaleNotFound = "FCMS3135";
     public const string LocaleInUse = "FCMS3136";
     public const string LocaleExists = "FCMS3137";
+    public const string LocaleIsFallback = "FCMS3143";
 }

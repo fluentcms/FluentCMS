@@ -187,6 +187,24 @@ public sealed class SchemaSyncTests : IDisposable
         _database.Tables().ShouldContain("cms_old");
     }
 
+    // The content model cannot declare an index with an expression key, so one made by hand is left alone and not reported
+    // (#3530); one of plain columns that the model lacks is reported as before.
+    [SqliteFact("schema sync, which only SQLite supports")]
+    public async Task AnIndexOfAnExpressionMadeByHandIsLeftAloneAndOneOfColumnsIsReported()
+    {
+        await StartAndStopAsync(ArticleSchemas.Titled);
+        _database.Execute("create index ix_hand_lower on cms_article (lower(title)); create index ix_hand_title on cms_article (title)");
+
+        using var host = DevelopmentHost(ArticleSchemas.Titled);
+        await host.StartAsync(Token);
+
+        var report = await Runner(host).SyncContentSchemaAsync(cancellationToken: Token);
+
+        report.Applied.ShouldBeEmpty();
+        report.NotApplied.ShouldBe(["drop index ix_hand_title from table cms_article"]);
+        _database.ReadStrings("select name from sqlite_master where type = 'index' and name like 'ix_hand_%' order by name").ShouldBe(["ix_hand_lower", "ix_hand_title"]);
+    }
+
     [SqliteFact("schema sync, which only SQLite supports")]
     public async Task AKeyMadeBeforeItHeldTheSiteIsReportedAsChanged()
     {

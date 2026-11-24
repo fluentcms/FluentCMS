@@ -67,4 +67,7 @@ internal static partial class JobLog
 
     [LoggerMessage(EventId = 9521, Level = LogLevel.Warning, Message = "Could not read how long job {JobId} of the unknown type {Type} has waited; it is put back without using an attempt.")]
     public static partial void UnknownTypeDeferred(ILogger logger, Exception exception, Guid jobId, string type);
+
+    [LoggerMessage(EventId = 9522, Level = LogLevel.Warning, Message = "A callback of the job runner's stop threw after the stop had stopped waiting for it.")]
+    public static partial void StopCallbackFailed(ILogger logger, Exception exception);
 }

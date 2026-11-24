@@ -6,7 +6,7 @@ namespace FluentCMS.Core.Storage;
 // Reads tables and columns from the standard views. No standard view lists indexes, so a provider passes the query of its
 // catalog that returns (table, index, unique, partial, column) in key order, and the one that returns (table, check
 // constraint, column) where it keeps a column that a check constraint reads. Startup validation needs only the columns;
-// schema apply compares the rest.
+// schema apply compares the rest, and a column's collation, which PostgreSQL gives as null for the database's default.
 public sealed class InformationSchemaReader(string currentSchemaExpression, string? indexesSql = null, string? checkConstraintsSql = null) : IDatabaseSchemaReader
 {
     public async Task<DatabaseSchema> ReadAsync(DbConnection connection, CancellationToken cancellationToken = default)
@@ -16,10 +16,13 @@ public sealed class InformationSchemaReader(string currentSchemaExpression, stri
         var columns = await ReadRowsAsync(
             connection,
             $"""
-            SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE
+            SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, COLLATION_NAME
             FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = {currentSchemaExpression}
             """,
-            reader => (Table: reader.GetString(0), Column: new DatabaseColumn(reader.GetString(1), StoreType(reader.GetString(2), Number(reader, 4), Number(reader, 5), Number(reader, 6)), reader.GetString(3) == "YES")),
+            reader => (Table: reader.GetString(0), Column: new DatabaseColumn(reader.GetString(1), StoreType(reader.GetString(2), Number(reader, 4), Number(reader, 5), Number(reader, 6)), reader.GetString(3) == "YES")
+            {
+                Collation = reader.IsDBNull(7) ? null : reader.GetString(7),
+            }),
             cancellationToken);
 
         var indexes = (indexesSql is null ? [] : await ReadRowsAsync(

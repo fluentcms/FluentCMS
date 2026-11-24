@@ -26,8 +26,9 @@ public sealed record AiUsageRow(
     bool Succeeded,
     DateTimeOffset CreatedAt);
 
-// The tokens of every row the filter matches, not only of the page, in all and by principal and action.
-public sealed record AiUsageTotals(long Calls, long PromptTokens, long CompletionTokens, IReadOnlyList<AiUsageGroup> Groups);
+// The tokens of every row the filter matches, not only of the page, in all and by principal and action. Groups holds at
+// most MaxGroups of them, those that used the most tokens, and GroupsTruncated says that there were more.
+public sealed record AiUsageTotals(long Calls, long PromptTokens, long CompletionTokens, IReadOnlyList<AiUsageGroup> Groups, bool GroupsTruncated);
 
 public sealed record AiUsageGroup(string PrincipalKind, Guid PrincipalId, string Action, long Calls, long PromptTokens, long CompletionTokens);
 
@@ -42,6 +43,7 @@ internal sealed partial class AiUsageService(
 {
     public const int DefaultPageSize = 50;
     public const int MaxPageSize = 100;
+    public const int MaxGroups = 100;
 
     public static string KindOf(PrincipalKind kind) => JsonNamingPolicy.CamelCase.ConvertName(kind.ToString());
 
@@ -118,15 +120,30 @@ internal sealed partial class AiUsageService(
             rows = rows.Where(usage => usage.CreatedAt < until);
         }
 
-        // One grouping over the rows the filter matches, by the same index, and the totals are its sums. Ordered here, since
-        // the providers order ids differently.
-        var groups = await rows
+        // The totals, one group since every row is of the site, and the groups, by the same index. Only the groups that used
+        // the most tokens are read, one more than are answered to tell that there were more, and they are ordered here by
+        // kind, id and action, since the providers order ids differently. A tie past tokens, calls, kind and action is the
+        // database's.
+        var sums = await rows
+            .GroupBy(usage => usage.SiteId)
+            .Select(group => new { Calls = group.LongCount(), PromptTokens = group.Sum(usage => usage.PromptTokens), CompletionTokens = group.Sum(usage => usage.CompletionTokens) })
+            .SingleOrDefaultAsync(cancellationToken);
+        var heaviest = await rows
             .GroupBy(usage => new { usage.PrincipalKind, usage.PrincipalId, usage.Action })
-            .Select(group => new AiUsageGroup(group.Key.PrincipalKind, group.Key.PrincipalId, group.Key.Action, group.LongCount(), group.Sum(usage => usage.PromptTokens), group.Sum(usage => usage.CompletionTokens)))
+            .Select(group => new { group.Key.PrincipalKind, group.Key.PrincipalId, group.Key.Action, Calls = group.LongCount(), PromptTokens = group.Sum(usage => usage.PromptTokens), CompletionTokens = group.Sum(usage => usage.CompletionTokens) })
+            .OrderByDescending(group => group.PromptTokens + group.CompletionTokens)
+            .ThenByDescending(group => group.Calls)
+            .ThenBy(group => group.PrincipalKind)
+            .ThenBy(group => group.Action)
+            .ThenBy(group => group.PrincipalId)
+            .Take(MaxGroups + 1)
             .ToListAsync(cancellationToken);
-        groups = [.. groups.OrderBy(group => group.PrincipalKind, StringComparer.Ordinal).ThenBy(group => group.PrincipalId).ThenBy(group => group.Action, StringComparer.Ordinal)];
-        var total = groups.Sum(group => group.Calls);
-        var totals = new AiUsageTotals(total, groups.Sum(group => group.PromptTokens), groups.Sum(group => group.CompletionTokens), groups);
+        List<AiUsageGroup> groups = [.. heaviest
+            .Take(MaxGroups)
+            .Select(group => new AiUsageGroup(group.PrincipalKind, group.PrincipalId, group.Action, group.Calls, group.PromptTokens, group.CompletionTokens))
+            .OrderBy(group => group.PrincipalKind, StringComparer.Ordinal).ThenBy(group => group.PrincipalId).ThenBy(group => group.Action, StringComparer.Ordinal)];
+        var total = sums?.Calls ?? 0;
+        var totals = new AiUsageTotals(total, sums?.PromptTokens ?? 0, sums?.CompletionTokens ?? 0, groups, heaviest.Count > MaxGroups);
         var items = await rows
             .OrderByDescending(usage => usage.CreatedAt)
             .ThenByDescending(usage => usage.Id)

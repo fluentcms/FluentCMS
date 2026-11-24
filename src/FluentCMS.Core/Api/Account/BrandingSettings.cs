@@ -6,7 +6,7 @@ namespace FluentCMS.Core.Api.Account;
 
 // The look of the hosted pages, in the settings area "branding" (settings.branding.manage). The pages belong to no site, so
 // they read the instance defaults. The colours go into the pages' style sheet, so they are hex colours and nothing else.
-[Settings("branding")]
+[Settings("branding", InstanceOnly = true)]
 public sealed partial class BrandingSettings : IValidatableObject
 {
     public const string DefaultPrimaryColor = "#2563eb";
