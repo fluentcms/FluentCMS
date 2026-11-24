@@ -82,7 +82,7 @@ The component tests sweep every routable page of each first-party assembly under
    dotnet test --project admin/tests/FluentCMS.Plugins.Media.Admin.Tests -c Release
    ```
 
-   and the same for the webhooks, MCP, AI assist and multi-site halves.
+   and the same for the webhooks, MCP, AI assist, multi-site and search halves (`admin/tests/FluentCMS.Plugins.*.Admin.Tests`). The search half has no menu item, so its tests check the culture's resource file only.
 6. **Run the admin in the culture**, with `FluentCms__Admin__Cultures__Offered__0` and `FluentCms__Admin__Cultures__Default` set to it as above, from a build without the property, and look at the pages a user of the culture uses most.
 7. **Open the pull request** with `Closes #<issue-number>`, as [CONTRIBUTING.md](../CONTRIBUTING.md#pull-requests) says.
 

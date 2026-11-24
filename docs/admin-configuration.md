@@ -68,7 +68,7 @@ The other members are not keys of `FluentCms:Admin`:
 - `clientId` is `FluentCms:Clients:AdminClientId`, `cms.Clients.AdminClientId` in code, `fluentcms-admin` by default.
 - `scopes` are always the five of the table above.
 
-A host may set the same options in code; a value from configuration wins over the one the code sets:
+A host may set the same options in code. A single value from configuration wins over the one the code sets, but a list is not replaced: the items of `PreviewOrigins` and `Cultures:Offered` from configuration are added to those the code adds, so preview origins merge, and a culture named both in code and in configuration is named twice, which stops the host with `FCMS1101`:
 
 ```csharp
 builder.Services.AddFluentCms(cms =>
@@ -105,7 +105,7 @@ An admin served from another origin than the API, such as the prebuilt static bu
 }
 ```
 
-- `FluentCms:Security:Cors:Management:AllowedOrigins` lets the admin's origin call `/api/management/v1` and `/connect`, with the headers the admin sends and reads ([CORS](host-configuration.md#cors)).
+- `FluentCms:Security:Cors:Management:AllowedOrigins` lets the admin's origin call `/api/management/v1`, `/connect` and `/.well-known`, where the admin reads the discovery document, with the headers the admin sends and reads ([CORS](host-configuration.md#cors)).
 - `FluentCms:Clients:Applications:fluentcms-admin` registers the admin's client with the admin's addresses, as the next section says.
 
 Signed asset URLs are relative to the API's origin, so the admin resolves them against `apiBaseUrl`, and the page's `img-src` must allow that origin. The admin's own host sends the page's headers; [hosting the admin](admin-hosting.md#what-any-host-must-do) has the policy for a static host.
@@ -150,7 +150,8 @@ An admin served by the API host at `/admin` counts against the host's rate limit
 
 - **The app's files**, those under `_framework/` and `_content/` with their compressed copies and fingerprinted paths, and the other files of the build, are marked as static files and count under `FluentCms:RateLimits:StaticFiles:PermitLimit`, 15000 a minute, instead of the coarse limit. A cold load is some 230 files, so the default holds about forty cold loads a minute from one address.
 - **The page and its configuration**, `/admin/`, `index.html`, every client route that answers the page and `config.json`, count under the coarse limit, `FluentCms:RateLimits:PreAuth:PermitLimit`, 6000 a minute, with every call the admin makes to the API and the sign-in. The calls of the Management API count under `FluentCms:RateLimits:Management:PermitLimit` per user as well.
+- **The sign-in**, every request to `/connect` and `/account`: the token exchange after the login page, each refresh of the access token, the sign-out and the hosted pages themselves, count under `FluentCms:RateLimits:Auth:PermitLimit`, 20 a minute per address, besides the coarse limit. It is the strict limit that guards passwords and tokens, so it is the one an office behind one address meets first, when many users sign in at once or their tabs refresh their tokens.
 
-Behind one address, such as an office behind a proxy without forwarded headers, every user of the admin shares these. Turn on `FluentCms:ReverseProxy:ForwardedHeaders` with the proxies you trust, so that each caller is counted by its own address ([reverse proxy](reverse-proxy.md)). Raise `StaticFiles:PermitLimit` only when more people than that load the admin behind one address after a deploy, and `PreAuth:PermitLimit` when they work at once through it. A refusal is a 429 with `Retry-After`. A call of the API that is refused waits its `Retry-After`, up to 30 seconds, and is sent once more; a second refusal shows a notice.
+Behind one address, such as an office behind a proxy without forwarded headers, every user of the admin shares these. Turn on `FluentCms:ReverseProxy:ForwardedHeaders` with the proxies you trust, so that each caller is counted by its own address ([reverse proxy](reverse-proxy.md)); that is the fix for each of the three. Without it, raise `Auth:PermitLimit` when sign-ins and refreshes behind one address are refused, knowing that it also lets more password guesses through from that address; `StaticFiles:PermitLimit` only when more people than that load the admin behind one address after a deploy; and `PreAuth:PermitLimit` when they work at once through it. A refusal is a 429 with `Retry-After`. A call of the API that is refused waits its `Retry-After`, up to 30 seconds, and is sent once more; a second refusal shows a notice.
 
 An admin on a static host loads its files from that host, so only its calls to the API and the sign-in count against the API host's limits.

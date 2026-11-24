@@ -163,6 +163,8 @@ A field editor edits a field of a field type the server half registers, in the g
 
 `FieldEditorBase` of `FluentCMS.Admin.Fields` gives the editor the field's description (`Field`), its value as JSON (`Value`), its errors, `ReadOnly`, `Required`, the content locale and its text direction (`ContentLocale`, `TextDirection`), the values of the other fields (`Document`) and `OnBlur`. The editor raises a change with `ChangeAsync`. It may override `FocusAsync`, which the form calls for the first field with an error, and `FlushAsync`, which the form calls before a save, for an editor that holds a change back. The manifest names it in `fieldEditors`, with `fieldType`. A field type without an editor shows its JSON read-only.
 
+A `[FieldEditor]` for a core field type, such as `text` or `date`, replaces the admin's own editor of that type in every form, not only beside it. While the plugin is disabled in a site, that type then has no editor there, and its fields show their JSON read-only, even though the core editor exists. A `[ListCell]` for a core field type replaces the core cell in the same way. Declare editors and cells for the plugin's own field types unless the half means to take a core type over in every site where the plugin is enabled.
+
 A list cell shows the value of such a field in a list. `RatingCell.razor` of the sample derives from `ListCellBase` of `FluentCMS.Admin.Lists`, which gives it `Field` and `Entry`, and `Value`; `[ListCell(fieldType, Populate = true)]` asks the list to read the field populated, for a type the server populates as a reference. The filter operators of the type are registered in `Configure`, as `ReviewsAdminPlugin.cs` of the sample does:
 
 ```csharp
