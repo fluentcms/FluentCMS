@@ -286,8 +286,9 @@ public sealed class EndToEndHost : IAsyncLifetime
     // suite cannot reach (no case is about the limiter, whose tests are the host's own); and an access token lasts five
     // seconds, so that the admin refreshes it on demand, two and a half seconds after it was issued, at the next call of a
     // test's action; the preview origin of PreviewTests, which no server holds; a mail server of the run's own (SmtpSink),
-    // which takes the invitations the users page sends and keeps none; and an AI provider of the run's own (AiProviderStub),
-    // the one endpoint a site may name in its AI settings.
+    // which takes the invitations the users page sends and keeps none; an AI provider of the run's own (AiProviderStub),
+    // the one endpoint a site may name in its AI settings; and webhooks that may deliver to private networks, so that the
+    // receiver of WebhooksTests on the loopback address is reached.
     private void Configure()
     {
         var certificates = _certificates!;
@@ -322,6 +323,7 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["FluentCms__Email__Smtp__Security"] = "None",
             ["FluentCms__Email__Smtp__From"] = "cms@example.com",
             ["FluentCms__Ai__AllowedEndpoints__0"] = _ai.Endpoint,
+            ["FluentCms__Webhooks__AllowPrivateNetworks"] = "true",
             ["Kestrel__Endpoints__Https__Url"] = origin,
             ["Kestrel__Endpoints__Https__Certificate__Path"] = certificates.ServerPath,
             ["Kestrel__Endpoints__Https__Certificate__Password"] = certificates.Password,
