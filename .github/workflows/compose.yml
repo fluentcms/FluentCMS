@@ -407,7 +407,9 @@ jobs:
           path: artifacts/test-results
           retention-days: 14
 
-      # The harness removes them itself; this step covers a test process that was killed, as a cancelled run may be.
+      # The harness removes them itself; this step covers a test process that was killed, as a cancelled run may be. It removes
+      # every labelled container and volume of the engine and every run folder, which is right only on a runner of this one
+      # run: on a machine that others share, leave the clean-up to the harness.
       - name: Remove the containers, the volume and the certificates of the run
         if: always()
         run: |

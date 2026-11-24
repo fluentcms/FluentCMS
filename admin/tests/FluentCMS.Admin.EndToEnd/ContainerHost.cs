@@ -12,11 +12,14 @@ namespace FluentCMS.Admin.EndToEnd;
 // same volume. Values reach a container from the docker command's environment, never its arguments. The host reaches the
 // run's own servers as host.docker.internal: where Docker's engine runs on this machine, as on Linux, they listen on the
 // gateway of its bridge, and where it runs in a virtual machine, as with Docker Desktop, the engine forwards that name to
-// the loopback address they listen on. The containers and the volume carry the run's label and are removed at its end, or
-// by a later run once the run's folder is gone.
+// the loopback address they listen on. The containers and the volume carry the run's label and the folder its runs live
+// under, and are removed at its end, or by a later run under the same folder once the run's folder is gone; a run under
+// another folder, as from another user or another system on the same engine, is never touched.
 internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProcess
 {
     public const string Label = "org.fluentcms.e2e";
+
+    private const string RootLabel = "org.fluentcms.e2e.root";
 
     private const string Docker = "docker";
     private const string CertificateMount = "/certificates";
@@ -26,6 +29,7 @@ internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProc
     private static readonly TimeSpan DockerTimeout = TimeSpan.FromMinutes(1);
 
     private readonly string _run = root.Name;
+    private readonly string _runs = root.Parent!.FullName;
     private int _commands;
     private IPAddress _serverAddress = IPAddress.Loopback;
     private bool _removed;
@@ -67,7 +71,7 @@ internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProc
                 + $"(docker build -f src/FluentCMS.Host/Dockerfile -t {image} .) or pull it.{Environment.NewLine}{missing}");
         }
 
-        var (created, _, refused) = await DockerAsync(["volume", "create", "--label", $"{Label}={_run}", _run], cancellationToken);
+        var (created, _, refused) = await DockerAsync(["volume", "create", "--label", $"{Label}={_run}", "--label", $"{RootLabel}={_runs}", _run], cancellationToken);
         if (created != 0)
         {
             throw new InvalidOperationException($"Creating the volume {_run} exited with {created}.{Environment.NewLine}{refused}");
@@ -116,7 +120,7 @@ internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProc
     {
         List<string> arguments =
         [
-            "run", "--rm", "--name", name, "--label", $"{Label}={_run}",
+            "run", "--rm", "--name", name, "--label", $"{Label}={_run}", "--label", $"{RootLabel}={_runs}",
             "--add-host", $"{TestMachine}:host-gateway",
             "--mount", $"type=volume,source={_run},target=/data",
             "--mount", $"type=bind,source={CertificateDirectory},target={CertificateMount},readonly",
@@ -156,7 +160,19 @@ internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProc
     private Task<(int ExitCode, string Output, string Tail)> DockerAsync(IEnumerable<string> arguments, CancellationToken cancellationToken) =>
         ChildProcess.RunAsync(Docker, arguments, root.FullName, new Dictionary<string, string?>(), DockerTimeout, input: null, cancellationToken);
 
-    private void OnTestProcessExit(object? sender, EventArgs e) => Remove();
+    // The run's folder goes with the host at the end of a run; at an exit without that end, the certificates go here, once
+    // the containers that mount them are removed.
+    private void OnTestProcessExit(object? sender, EventArgs e)
+    {
+        Remove();
+        try
+        {
+            Directory.Delete(CertificateDirectory, recursive: true);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
 
     private void Remove()
     {
@@ -169,20 +185,21 @@ internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProc
         RemoveRun(_run);
     }
 
-    // The containers and volumes of a run whose folder is gone, as one killed outright leaves them.
+    // The containers and volumes of a run under the same folder as this one whose own folder is gone, as one killed outright
+    // leaves them.
     private void RemoveLeftovers()
     {
-        var runs = Quietly("ps", "--all", "--filter", $"label={Label}", "--format", $"{{{{.Label \"{Label}\"}}}}")
-            .Concat(Quietly("volume", "ls", "--filter", $"label={Label}", "--format", $"{{{{.Label \"{Label}\"}}}}"));
-        foreach (var run in runs.Distinct().Where(run => run.Length > 0 && !Directory.Exists(Path.Combine(root.Parent!.FullName, run))))
+        var runs = Quietly("ps", "--all", "--filter", $"label={RootLabel}={_runs}", "--format", $"{{{{.Label \"{Label}\"}}}}")
+            .Concat(Quietly("volume", "ls", "--filter", $"label={RootLabel}={_runs}", "--format", $"{{{{.Label \"{Label}\"}}}}"));
+        foreach (var run in runs.Distinct().Where(run => run.Length > 0 && !Directory.Exists(Path.Combine(_runs, run))))
         {
             RemoveRun(run);
         }
     }
 
-    private static void RemoveRun(string run)
+    private void RemoveRun(string run)
     {
-        var containers = Quietly("ps", "--all", "--quiet", "--filter", $"label={Label}={run}");
+        var containers = Quietly("ps", "--all", "--quiet", "--filter", $"label={Label}={run}", "--filter", $"label={RootLabel}={_runs}");
         if (containers.Count > 0)
         {
             Quietly(["rm", "--force", .. containers]);
