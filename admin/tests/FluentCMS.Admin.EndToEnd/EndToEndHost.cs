@@ -383,6 +383,12 @@ public sealed partial class EndToEndHost : IAsyncLifetime
             ["Logging__LogLevel__Microsoft.AspNetCore.Routing.EndpointMiddleware"] = "Warning",
             ["Logging__LogLevel__Microsoft.AspNetCore.StaticAssets"] = "Warning",
             ["Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command"] = "Warning",
+            // A line for each connection's start and end and for a connection or a stream the server closed or the client reset,
+            // with the reason, so that an answer the browser lost shows whether its connection went (#3635). Debug leaves out
+            // the frames of HTTP/2, which are Trace.
+            ["Logging__LogLevel__Microsoft.AspNetCore.Server.Kestrel.Connections"] = "Debug",
+            ["Logging__LogLevel__Microsoft.AspNetCore.Server.Kestrel.Http2"] = "Debug",
+            ["Logging__LogLevel__Microsoft.AspNetCore.Server.Kestrel.BadRequests"] = "Debug",
             // Named, or the console logger reads the formatter's options from elsewhere.
             ["Logging__Console__FormatterName"] = "simple",
             ["Logging__Console__FormatterOptions__SingleLine"] = "true",
