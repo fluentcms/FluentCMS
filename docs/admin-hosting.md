@@ -1,8 +1,8 @@
 # Hosting the admin
 
-The admin is a Blazor WebAssembly app that runs in the browser and calls the Management API. The reference host serves it at `/admin` ([host configuration](host-configuration.md#admin)). This page is for the other way: the prebuilt static build, served by any static host or CDN from an origin of its own (admin spec 6.3 and 6.4).
+The admin is a Blazor WebAssembly app that runs in the browser and calls the Management API. The reference host, and any host with the `FluentCMS.Admin.Hosting` package, serves it at `/admin` ([host configuration](host-configuration.md#admin)). This page is for the other way: the prebuilt static build, served by any static host or CDN from an origin of its own (admin spec 6.3 and 6.4).
 
-Each GitHub release attaches the build as `fluentcms-admin-{version}.zip`. It holds the published files of `FluentCMS.Admin.App` with the first-party admin halves, trimmed, with a Brotli (`.br`) and a gzip (`.gz`) copy beside the files the browser downloads but `index.html` and `config.json`, which an operator edits, the sample `config.json`, `LICENSE`, `THIRD-PARTY-NOTICES.md` and a `README.txt` that points here. Every name under `_framework/` carries a fingerprint, such as `FluentCMS.Admin.App.5kku02qygn.wasm`, but `blazor.webassembly.js` and `dotnet.js`, which name the others.
+Each GitHub release attaches the build as `fluentcms-admin-{version}.zip`. It holds the published files of `FluentCMS.Admin.App` with the first-party admin halves, trimmed, with a Brotli (`.br`) and a gzip (`.gz`) copy beside the files the browser downloads but `index.html` and `config.json`, which an operator edits, the sample `config.json`, `LICENSE`, `THIRD-PARTY-NOTICES.md` and a `README.txt` that points here. Every name under `_framework/` carries a fingerprint, such as `FluentCMS.Admin.App.5kku02qygn.wasm`, but `blazor.webassembly.js` and `dotnet.js`, which name the others. The `FluentCMS.Admin.Hosting` package carries the same files, from the same publish, for an ASP.NET Core host that serves the admin itself at `/admin` with no edit ([host configuration](host-configuration.md#admin)).
 
 ## Edit the build
 

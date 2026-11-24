@@ -41,6 +41,7 @@ public static class ErrorCodeRegistry
         Startup(HostErrorCodes.PipelineMissing, "FluentCMS pipeline missing"),
         Startup(HostErrorCodes.PublicOriginUnsetInProduction, "Public origin unset outside Development"),
         Startup(HostErrorCodes.UnencryptedKeyRingInProduction, "Unencrypted key ring outside Development"),
+        Startup(HostErrorCodes.MalformedFile, "Served file malformed"),
 
         // 12xx schema, found when the host starts
         Startup(SchemaErrorCodes.DuplicateType, "Duplicate content type"),

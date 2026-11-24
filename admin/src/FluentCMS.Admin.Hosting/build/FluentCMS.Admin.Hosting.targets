@@ -1,0 +1,34 @@
+<Project>
+
+  <!-- What the package's build folder gives a host, and what the reference host imports beside its project reference (admin
+       spec 6.1). -->
+
+  <!-- A host that references an admin app's project, such as one of `dotnet new fluentcms-admin` (spec 6.2), serves that app:
+       its files are static web assets of the host at the paths of the package's first-party build, which then leaves the
+       host's assets with its endpoints. An app's project is told by the files under _framework/ it brings. -->
+  <PropertyGroup>
+    <_FluentCmsAdminBuild>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', 'staticwebassets'))</_FluentCmsAdminBuild>
+  </PropertyGroup>
+
+  <Target Name="FluentCmsPreferTheHostsAdminApp" AfterTargets="ResolveReferencedProjectsStaticWebAssets">
+    <ItemGroup>
+      <_FluentCmsHostsAdminApp Include="@(StaticWebAsset)" Condition="'%(StaticWebAsset.SourceType)' == 'Project' And $([System.String]::Copy('%(StaticWebAsset.RelativePath)').StartsWith('_framework/'))" />
+    </ItemGroup>
+    <ItemGroup Condition="'@(_FluentCmsHostsAdminApp)' != ''">
+      <StaticWebAsset Remove="@(StaticWebAsset)" Condition="'%(StaticWebAsset.SourceId)' == 'FluentCMS.Admin.Hosting'" />
+      <StaticWebAssetEndpoint Remove="@(StaticWebAssetEndpoint)" Condition="$([System.String]::Copy('%(StaticWebAssetEndpoint.AssetFile)').StartsWith('$(_FluentCmsAdminBuild)'))" />
+      <_FluentCmsHostsAdminApp Remove="@(_FluentCmsHostsAdminApp)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- An admin app the host references comes with the packages of its browser assemblies, which reach the host as NuGet
+       runtime assets: the component library's icon assemblies are 22.6 MB that no server code loads. They leave the host's
+       copy-local items before its deps.json is written, which drops a library left without assets (#3178); the app's own
+       build and publish keep them. -->
+  <Target Name="FluentCmsLeaveOutAdminIcons" AfterTargets="ResolvePackageAssets" Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' != 'true'">
+    <ItemGroup>
+      <RuntimeCopyLocalItems Remove="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'Microsoft.FluentUI.AspNetCore.Components.Icons'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

@@ -1,10 +1,12 @@
 using System.Buffers.Text;
 using System.Net;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.Hosting;
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Data.Sqlite;
 using Microsoft.AspNetCore.Builder;
@@ -150,6 +152,31 @@ public sealed class AdminHostingTests : IAsyncDisposable
             using var missing = await client.GetAsync(new Uri(path, UriKind.Relative), Token);
             missing.StatusCode.ShouldBe(HttpStatusCode.NotFound, path);
         }
+    }
+
+    // The component library's icon assemblies run in the browser only: the host's output and its deps.json leave them out,
+    // and the app's files keep them, as the app needs (#3178).
+    [Fact]
+    public async Task TheHostLeavesOutTheIconAssembliesOfTheComponentLibraryAndServesTheAppsCopies()
+    {
+        const string Icons = "Microsoft.FluentUI.AspNetCore.Components.Icons";
+        var configuration = typeof(AdminHostingTests).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()!.Configuration;
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!File.Exists(Path.Combine(root.FullName, "FluentCMS.slnx")))
+        {
+            root = root.Parent!;
+        }
+
+        var output = Path.Combine(root.FullName, "src", "FluentCMS.Host", "bin", configuration, "net10.0");
+        Directory.EnumerateFiles(output, Icons + "*").ShouldBeEmpty();
+        (await File.ReadAllTextAsync(Path.Combine(output, "FluentCMS.Host.deps.json"), Token)).ShouldNotContain(Icons);
+
+        await _host.StartAsync(AdminSettings());
+        using var client = _host.Client();
+        var icons = FrameworkRoute(".wasm", immutable: true, prefix: $"_framework/{Icons}.Regular.");
+        using var file = await client.GetAsync(new Uri("/admin/" + icons, UriKind.Relative), Token);
+        file.StatusCode.ShouldBe(HttpStatusCode.OK, icons);
+        file.Content.Headers.ContentType!.MediaType.ShouldBe("application/wasm");
     }
 
     // Forty cold loads of the app's files from one address stay under the static files limit and leave the coarse limit to the
@@ -444,13 +471,14 @@ public sealed class AdminHostingTests : IAsyncDisposable
         refusal.Message.ShouldContain(named);
     }
 
-    // The app's index.html is checked when the admin is mapped, and so is the manifest of its files.
+    // The app's index.html is checked when the admin is mapped, and so is the manifest of its files. A page whose base the
+    // package cannot set is a file it cannot serve, with a code and a title of its own, not a missing registration (#3178).
     [Theory]
-    [InlineData("<html><head><title>No base</title></head></html>", true, "0 <base href> elements")]
-    [InlineData("<html><head><base href=\"/\" /><base href=\"/x/\" /></head></html>", true, "2 <base href> elements")]
-    [InlineData("<html><head><base href=\"/\" /></head></html>", false, "no manifest of static web assets")]
-    [InlineData(null, true, "found no index.html")]
-    public async Task AnAppTheHostCannotServeStopsItWhenTheAdminIsMapped(string? index, bool manifest, string message)
+    [InlineData("<html><head><title>No base</title></head></html>", true, "FCMS1107", "0 <base href> elements")]
+    [InlineData("<html><head><base href=\"/\" /><base href=\"/x/\" /></head></html>", true, "FCMS1107", "2 <base href> elements")]
+    [InlineData("<html><head><base href=\"/\" /></head></html>", false, "FCMS1103", "no manifest of static web assets")]
+    [InlineData(null, true, "FCMS1103", "found no index.html")]
+    public async Task AnAppTheHostCannotServeStopsItWhenTheAdminIsMapped(string? index, bool manifest, string code, string message)
     {
         var root = Directory.CreateTempSubdirectory("fluentcms-admin-bare-");
         try
@@ -475,8 +503,9 @@ public sealed class AdminHostingTests : IAsyncDisposable
 
             var refusal = Should.Throw<FluentCmsConfigurationException>(() => app.MapFluentCmsAdmin(path));
 
-            refusal.Code.ShouldBe("FCMS1103");
+            refusal.Code.ShouldBe(code);
             refusal.Message.ShouldContain(message);
+            ErrorCodeRegistry.Find(code).ShouldNotBeNull().Title.ShouldBe(code == "FCMS1107" ? "Served file malformed" : "FluentCMS not registered");
         }
         finally
         {
@@ -540,11 +569,11 @@ public sealed class AdminHostingTests : IAsyncDisposable
     }
 
     // A route of the app's _framework folder from the host's manifest of static web assets.
-    private static string FrameworkRoute(string extension, bool immutable)
+    private static string FrameworkRoute(string extension, bool immutable, string prefix = "_framework/")
     {
         using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "FluentCMS.Host.staticwebassets.endpoints.json")));
         return manifest.RootElement.GetProperty("Endpoints").EnumerateArray()
-            .Where(endpoint => endpoint.GetProperty("Route").GetString() is { } route && route.StartsWith("_framework/", StringComparison.Ordinal) && route.EndsWith(extension, StringComparison.Ordinal))
+            .Where(endpoint => endpoint.GetProperty("Route").GetString() is { } route && route.StartsWith(prefix, StringComparison.Ordinal) && route.EndsWith(extension, StringComparison.Ordinal))
             .Where(endpoint => endpoint.GetProperty("ResponseHeaders").EnumerateArray()
                 .Any(header => header.GetProperty("Name").GetString() == "Cache-Control" && header.GetProperty("Value").GetString()!.Contains("immutable", StringComparison.Ordinal)) == immutable)
             .Select(endpoint => endpoint.GetProperty("Route").GetString()!)

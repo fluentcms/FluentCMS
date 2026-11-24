@@ -40,6 +40,10 @@
     <ProjectReference Include="../../admin/src/FluentCMS.Admin.Hosting/FluentCMS.Admin.Hosting.csproj" />
   </ItemGroup>
 
+  <!-- What the hosting package's build folder gives a host that references it as a package. The image's restore stage copies
+       the project files alone, and the targets play no part in a restore. -->
+  <Import Project="../../admin/src/FluentCMS.Admin.Hosting/build/FluentCMS.Admin.Hosting.targets" Condition="Exists('../../admin/src/FluentCMS.Admin.Hosting/build/FluentCMS.Admin.Hosting.targets')" />
+
   <!-- The source generator emits the typed filter and sort builders of the types a host declares, and the analyzers check the schema attributes in the build. -->
   <ItemGroup>
     <ProjectReference Include="../FluentCMS.Generators/FluentCMS.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

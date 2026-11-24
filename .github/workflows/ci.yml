@@ -526,7 +526,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.scope != 'docs'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -559,12 +559,13 @@ jobs:
             echo "::warning::Deprecated NuGet packages found. See the Check deprecated packages step."
           fi
 
-      - name: Pack
-        run: dotnet pack -c Release --no-build -o artifacts/packages
-
       # The admin app is the prebuilt static build, not a package. A trim warning in a FluentCMS assembly fails the publish.
       - name: Publish the admin trimmed
         run: dotnet publish admin/src/FluentCMS.Admin.App -c Release --no-build -o artifacts/admin
+
+      # FluentCMS.Admin.Hosting carries the wwwroot of that publish, the files of the static build below (admin spec 6.1, AQ8).
+      - name: Pack
+        run: dotnet pack -c Release --no-build -o artifacts/packages -p:FluentCmsAdminPublishDir="$PWD/artifacts/admin"
 
       # The licence and the third-party notices travel with the compiled code (#3215).
       - name: Check that the admin app holds the Blazor script and the notices
@@ -668,6 +669,42 @@ jobs:
             grep -q "misses ${expected[$part]}" "$broken.log" || { cat "$broken.log"; echo "::error::The check did not name the missing $part."; exit 1; }
             echo "Without its $part, FluentCMS.Sdk fails the check, as expected."
           done
+
+      # A copy of FluentCMS.Admin.Hosting without the page or the Blazor script of its build, and one with a resource of a
+      # pseudo-culture, which the check must refuse and name.
+      - name: Check that the hosting package without the admin's build fails the check
+        shell: bash
+        run: |
+          package="FluentCMS.Admin.Hosting.$PACKAGE_VERSION"
+          for name in staticwebassets/index.html staticwebassets/_framework/blazor.webassembly.js staticwebassets/_framework/ar-XB/FluentCMS.Admin.resources.wasm; do
+            broken="$RUNNER_TEMP/broken-hosting/$(basename "$name")"
+            mkdir -p "$broken"
+            cp "artifacts/packages/$package.nupkg" "artifacts/packages/$package.snupkg" "$broken/"
+            case "$name" in
+              */ar-XB/*)
+                (cd "$broken" && mkdir -p "$(dirname "$name")" && echo stale > "$name" && zip -q "$package.nupkg" "$name" && rm -r staticwebassets)
+                expected="holds $name" ;;
+              *) zip -q -d "$broken/$package.nupkg" "$name"; expected="misses the first-party build's $name" ;;
+            esac
+            if dotnet run eng/check-packages.cs -- "$broken" "$PACKAGE_VERSION" > "$broken.log"; then
+              cat "$broken.log"
+              echo "::error::The check passed FluentCMS.Admin.Hosting where it $expected."
+              exit 1
+            fi
+            grep -qF "$expected" "$broken.log" || { cat "$broken.log"; echo "::error::The check did not say that FluentCMS.Admin.Hosting $expected."; exit 1; }
+            echo "FluentCMS.Admin.Hosting fails the check where it $expected, as expected."
+          done
+
+      # A host made of these packages, outside the repository: it serves the package's build at /admin, and an app project of its
+      # own when it references one, here the gather fixture with a half the first-party build does not have.
+      - name: Serve the admin from a host made of packages
+        shell: bash
+        env:
+          NUGET_PACKAGES: ${{ runner.temp }}/admin-host-packages
+        run: |
+          dotnet run eng/admin-package-host.cs -- artifacts/packages "$PACKAGE_VERSION" "$RUNNER_TEMP/admin-package-host"
+          dotnet run eng/admin-package-host.cs -- artifacts/packages "$PACKAGE_VERSION" "$RUNNER_TEMP/admin-app-host" \
+            admin/tests/FluentCMS.Admin.GatherFixture/FluentCMS.Admin.GatherFixture.csproj FluentCMS.Admin.Plugins.Sample
 
       - name: Upload packages
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
