@@ -33,6 +33,7 @@ public class AdminRulesTests
     private const string Library = "Microsoft.FluentUI.AspNetCore.Components";
     private const string LibraryNamespace = "Microsoft.FluentUI";
     private const string TemplateHalf = "templates/fluentcms-plugin/src/FluentCms-Plugin1.Admin/FluentCms-Plugin1.Admin.csproj";
+    private const string TemplateApp = "templates/fluentcms-admin/FluentCms-AdminApp.csproj";
 
     // The packages of admin/src/ itself; any other project there, or elsewhere, may be a half.
     private static readonly string[] AdminPackages = [Admin, AdminAbstractions, AdminComponents, AdminAdministration, AdminRichText, AdminApp, AdminHosting];
@@ -383,6 +384,20 @@ public class AdminRulesTests
 
         Reachable(ProjectFile.RepositoryProjects.Single(project => project.Name == Admin), ProjectFile.RepositoryProjects).ShouldNotContain(AdminAdministration);
         ProjectFile.Load(AdminFolder + $"{AdminAdministration}/{AdminAdministration}.csproj").ProjectReferences.ShouldBe([Admin]);
+    }
+
+    // Spec 6.2: the app of the fluentcms-admin template is FluentCMS.Admin.App made of packages, so a half added to the one and
+    // not the other fails here.
+    [Fact]
+    public void TheAdminTemplatesAppReferencesAsPackagesWhatTheAdminAppReferences()
+    {
+        var app = AdminFolder + $"{AdminApp}/{AdminApp}.csproj";
+        var template = ProjectFile.Load(TemplateApp);
+
+        template.ProjectReferences.ShouldBeEmpty();
+        template.PackageReferences.Select(package => package.Name).ShouldBe(ProjectFile.Load(app).ProjectReferences, ignoreOrder: true);
+        LazyAssemblies(TemplateApp).ShouldBe(LazyAssemblies(app), ignoreOrder: true);
+        Halves(ProjectFile.RepositoryProjects).Select(project => project.Location).ShouldNotContain(TemplateApp);
     }
 
     // An admin project or half under admin/src/ that the test project does not reference would escape the scans of the

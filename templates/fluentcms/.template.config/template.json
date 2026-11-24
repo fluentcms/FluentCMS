@@ -5,7 +5,7 @@
   "identity": "FluentCMS.Templates.Host",
   "groupIdentity": "FluentCMS.Templates.Host",
   "name": "FluentCMS host",
-  "description": "An API host for FluentCMS: the content types, the data provider, the media and webhooks plugins and the fluentcms tool.",
+  "description": "An API host for FluentCMS: the content types, the data provider, the media, search and webhooks plugins, the admin at /admin and the fluentcms tool.",
   "shortName": "fluentcms",
   "sourceName": "FluentCms-App",
   "preferNameDirectory": true,
@@ -35,6 +35,12 @@
         { "choice": "blog", "description": "The Blog types (articles, authors, tags, blocks) with seed content." }
       ],
       "defaultValue": "none"
+    },
+    "admin": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "true",
+      "description": "Serves the admin at /admin with the prebuilt build of FluentCMS.Admin.Hosting; --admin false makes an API host only."
     },
     "sqlite": {
       "type": "computed",
