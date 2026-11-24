@@ -118,7 +118,7 @@ public static class Ui
         }
         catch (Exception exception) when (exception is TimeoutException || (exception is PlaywrightException && refused.Count > 0))
         {
-            throw refused.Explained(exception, tab.CallsSince(from));
+            throw refused.Explained(exception, tab, from);
         }
     }
 
@@ -136,7 +136,7 @@ public static class Ui
         }
         catch (Exception exception) when (exception is TimeoutException || (exception is PlaywrightException && refused.Count > 0))
         {
-            throw refused.Explained(exception, tab.CallsSince(from));
+            throw refused.Explained(exception, tab, from);
         }
     }
 
@@ -228,13 +228,16 @@ internal sealed class RefusedCount
         return true;
     };
 
-    // Why the wait ended, with the tab's calls from its start, which show whether the browser sent the call and saw an answer.
-    public Exception Explained(Exception timeout, string calls)
+    // Why the wait ended, with the tab's calls from its start and its last ones before it, which show whether the browser sent
+    // the call and saw an answer.
+    public Exception Explained(Exception timeout, AdminTab tab, long from)
     {
         var why = Count > 0
             ? $"The call was answered 401 {Count} time(s), and the admin did not send it again after a refresh within {AdminBrowser.Wait.TotalSeconds:0} s."
             : $"No answer that matched came within {AdminBrowser.Wait.TotalSeconds:0} s.";
-        return new TimeoutException($"{why}{Environment.NewLine}The tab's calls from the start of the wait:{Environment.NewLine}{calls}", timeout);
+        return new TimeoutException(
+            string.Join(Environment.NewLine, why, "The tab's calls from the start of the wait:", tab.CallsSince(from), "Its last calls before the wait:", tab.CallsBefore(from)),
+            timeout);
     }
 }
 

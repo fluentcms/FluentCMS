@@ -377,6 +377,7 @@ public sealed class AdminTab
 {
     private const int CallsKept = 200;
     private const int CallsShown = 40;
+    private const int CallsBeforeShown = 5;
 
     private readonly EndToEndHost _host;
     private readonly Func<string, string> _masked;
@@ -463,7 +464,7 @@ public sealed class AdminTab
         }
 
         List<string> lines = calls[0].Number > mark + 1 ? [$"(the first {calls[0].Number - mark - 1} are not kept)"] : [];
-        lines.AddRange(calls.Take(CallsShown).Select(call => $"{call.Time} {call.Request.Method} {AdminBrowser.WithoutQuery(call.Request.Url)} {call.Outcome ?? "no answer seen"}"));
+        lines.AddRange(calls.Take(CallsShown).Select(Line));
         if (calls.Count > CallsShown)
         {
             lines.Add($"(and {calls.Count - CallsShown} later)");
@@ -471,6 +472,15 @@ public sealed class AdminTab
 
         return _masked(string.Join(Environment.NewLine, lines));
     }
+
+    // The last calls up to the mark, in the same form, which show whether the call a wait is for was sent before it began.
+    internal string CallsBefore(long mark)
+    {
+        var calls = _calls.Where(call => call.Number <= mark).TakeLast(CallsBeforeShown).ToList();
+        return calls.Count == 0 ? "none" : _masked(string.Join(Environment.NewLine, calls.Select(Line)));
+    }
+
+    private static string Line(Call call) => $"{call.Time} {call.Request.Method} {AdminBrowser.WithoutQuery(call.Request.Url)} {call.Outcome ?? "no answer seen"}";
 
     internal void Answered(IResponse response)
     {
