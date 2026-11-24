@@ -3,7 +3,7 @@
 # summary and as a warning, and the run passes; a case that fails twice fails it. Nothing is run again when the first run
 # ended for another reason than failed cases (a timeout, a crash), when a case was skipped (--fail-skips reports it as a
 # failure), or when more than MaxRetried cases failed, which is a broken suite, not a flake. The second run takes the host the
-# first one published.
+# first one published, or with FLUENTCMS_E2E_IMAGE the same image.
 #
 #   pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results [-- <test options>]
 param(
