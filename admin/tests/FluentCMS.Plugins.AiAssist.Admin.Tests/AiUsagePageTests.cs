@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Nodes;
 using Bunit;
 using FluentCMS.Admin.Api;
@@ -23,7 +24,9 @@ public sealed class AiUsagePageTests : AiTestContext
         page.WaitForAssertion(() => page.Find(".ai-usage-totals").TextContent.ShouldBe("2 calls, 130 prompt tokens and 30 completion tokens."));
         page.Find("h1").TextContent.ShouldBe("AI usage");
         var calls = page.FindAll(".ai-usage-table")[1].QuerySelectorAll("tbody tr").Select(row => row.QuerySelectorAll("th, td").Select(cell => cell.TextContent).ToArray()).ToList();
-        calls[0].ShouldBe(["11/20/2026 9:30 AM UTC", "Ada", "Rewrite", "article.title", "m", "30", "10", "1,200 ms", "Succeeded"]);
+        // Written by the runtime as the page writes it: for en the space before AM is a narrow no-break one on Linux.
+        var at = new DateTime(2026, 11, 20, 9, 30, 0, DateTimeKind.Utc).ToString("g", CultureInfo.CurrentCulture);
+        calls[0].ShouldBe([$"{at} UTC", "Ada", "Rewrite", "article.title", "m", "30", "10", "1,200 ms", "Succeeded"]);
         calls[1][1].ShouldBe($"API key {Key:D}");
         calls[1][2].ShouldBe("Suggest alt text of an image");
         calls[1][3].ShouldBe("An asset of the media library");
