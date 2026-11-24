@@ -1,8 +1,20 @@
 <Project>
 
-  <!-- The thread pool floor and the wait of bUnit, the same for every admin component test project (spec 7). -->
+  <!-- The thread pool floor and the wait of bUnit, the same for every admin component test project (spec 7), and the checks
+       of the pseudo-cultures with the marking the build of the pseudo-cultures shares (admin/eng/PseudoCulture.cs). -->
   <ItemGroup Condition="'@(PackageReference->WithMetadataValue('Identity', 'bunit'))' != ''">
     <Compile Include="$(MSBuildThisFileDirectory)Shared/ComponentTestSetup.cs" Link="ComponentTestSetup.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/PseudoLocalization.cs" Link="PseudoLocalization.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../eng/PseudoCulture.cs" Link="PseudoCulture.cs" />
   </ItemGroup>
+
+  <!-- The end-to-end cases mark the neutral texts as the build of the pseudo-cultures does. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'FluentCMS.Admin.EndToEnd'">
+    <Compile Include="$(MSBuildThisFileDirectory)../eng/PseudoCulture.cs" Link="PseudoCulture.cs" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);PSEUDO_CULTURE_MARKING_ONLY</DefineConstants>
+  </PropertyGroup>
 
 </Project>

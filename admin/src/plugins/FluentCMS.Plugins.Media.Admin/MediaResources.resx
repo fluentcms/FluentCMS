@@ -54,6 +54,22 @@
   <data name="Media.Column.Size" xml:space="preserve">
     <value>Size</value>
   </data>
+  <data name="Media.Size.Bytes" xml:space="preserve">
+    <value>{0} B</value>
+    <comment>A size; {0} is the number.</comment>
+  </data>
+  <data name="Media.Size.Kilobytes" xml:space="preserve">
+    <value>{0} KB</value>
+    <comment>A size; {0} is the number.</comment>
+  </data>
+  <data name="Media.Size.Megabytes" xml:space="preserve">
+    <value>{0} MB</value>
+    <comment>A size; {0} is the number.</comment>
+  </data>
+  <data name="Media.Size.Gigabytes" xml:space="preserve">
+    <value>{0} GB</value>
+    <comment>A size; {0} is the number.</comment>
+  </data>
   <data name="Media.Column.Type" xml:space="preserve">
     <value>Type</value>
   </data>

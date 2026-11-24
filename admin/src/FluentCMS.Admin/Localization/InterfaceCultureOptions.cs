@@ -1,3 +1,4 @@
+using System.Reflection;
 using FluentCMS.Admin.Configuration;
 
 namespace FluentCMS.Admin.Localization;
@@ -6,8 +7,8 @@ namespace FluentCMS.Admin.Localization;
 // the admin ships, since config.json checks a culture name by its shape only.
 internal sealed class InterfaceCultureOptions
 {
-    // The cultures with resources: English (AQ14).
-    public static readonly IReadOnlyList<string> Shipped = ["en"];
+    // English and the cultures of the admin's resource files, which the build names (AQ14): English alone in a release.
+    public static readonly IReadOnlyList<string> Shipped = ReadShipped();
 
     public IReadOnlyList<string> Offered { get; init; } = Shipped;
 
@@ -31,5 +32,15 @@ internal sealed class InterfaceCultureOptions
 
         var preferred = offered.FirstOrDefault(name => string.Equals(name, cultures.Default, StringComparison.OrdinalIgnoreCase));
         return new InterfaceCultureOptions { Offered = offered, Default = preferred ?? offered[0] };
+    }
+
+    private static List<string> ReadShipped()
+    {
+        var names = typeof(InterfaceCultureOptions).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attribute => attribute.Key == "FluentCMS.Admin.Cultures")?.Value;
+        var cultures = (names ?? "en").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return cultures.Count == 0 ? ["en"] : cultures;
     }
 }

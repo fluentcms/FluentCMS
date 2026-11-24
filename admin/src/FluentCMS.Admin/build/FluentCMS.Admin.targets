@@ -10,7 +10,7 @@
     </ResolveStaticWebAssetsInputsDependsOn>
   </PropertyGroup>
 
-  <Target Name="FluentCmsGatherAdminPlugins" DependsOnTargets="ResolveCoreStaticWebAssets" Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
+  <Target Name="FluentCmsWriteAdminPlugins" DependsOnTargets="ResolveCoreStaticWebAssets" Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
     <PropertyGroup>
       <_FluentCmsAdminPluginsRoot>$(IntermediateOutputPath)fluentcms-admin\</_FluentCmsAdminPluginsRoot>
       <_FluentCmsAdminPluginsPath>$(_FluentCmsAdminPluginsRoot)fluentcms-admin.plugins.json</_FluentCmsAdminPluginsPath>
@@ -46,6 +46,9 @@
     </PropertyGroup>
 
     <WriteLinesToFile File="$(_FluentCmsAdminPluginsPath)" Lines="$(_FluentCmsAdminPluginsText)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+
+  <Target Name="FluentCmsGatherAdminPlugins" DependsOnTargets="FluentCmsWriteAdminPlugins" Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
 
     <ItemGroup>
       <_FluentCmsAdminPluginsCandidate Include="$(_FluentCmsAdminPluginsPath)">

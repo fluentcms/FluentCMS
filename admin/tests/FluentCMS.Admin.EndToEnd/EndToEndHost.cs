@@ -253,6 +253,17 @@ public sealed class EndToEndHost : IAsyncLifetime
         return ((IPEndPoint)listener.LocalEndpoint).Port;
     }
 
+    // The culture of the run, FluentCms:Admin:Cultures:Default: FLUENTCMS_E2E_CULTURE, else ar-XB in a publish with the
+    // pseudo-cultures (spec 4.17). The browsers of the harness are in en-US, which the admin offers, so a case gets it only
+    // in a browser whose language the admin does not offer.
+    public const string CultureVariable = "FLUENTCMS_E2E_CULTURE";
+
+    public static string? Culture { get; } =
+        Environment.GetEnvironmentVariable(CultureVariable) is { Length: > 0 } culture ? culture : Repository.PseudoCultures ? "ar-XB" : null;
+
+    // A publish with no build takes the satellite assemblies the build made, so it is given the property the build had.
+    private static string[] PseudoCulturesProperty => Repository.PseudoCultures ? ["-p:FluentCmsAdminPseudoCultures=true"] : [];
+
     // As the Dockerfile publishes it, with the SDK alone: where the wasm-tools workload is installed, as on the Windows
     // runners, the publish would otherwise relink the WebAssembly runtime, which no image does.
     private async Task PublishAsync()
@@ -265,7 +276,7 @@ public sealed class EndToEndHost : IAsyncLifetime
 
         var (exitCode, _, tail) = await ChildProcess.RunAsync(
             "dotnet",
-            ["publish", Repository.HostProject, "-c", Repository.Configuration, "--no-build", "-o", PublishDirectory, "-p:UseAppHost=false", "-p:WasmBuildNative=false", "-nologo", "-nodeReuse:false"],
+            ["publish", Repository.HostProject, "-c", Repository.Configuration, "--no-build", "-o", PublishDirectory, "-p:UseAppHost=false", "-p:WasmBuildNative=false", .. PseudoCulturesProperty, "-nologo", "-nodeReuse:false"],
             Repository.Root,
             new Dictionary<string, string?> { ["MSBUILDDISABLENODEREUSE"] = "1" },
             PublishTimeout,
@@ -307,6 +318,7 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["AllowedHosts"] = IPAddress.Loopback.ToString(),
             ["FluentCms__Admin__Enabled"] = "true",
             ["FluentCms__Admin__PreviewOrigins__0"] = PreviewOrigin,
+            ["FluentCms__Admin__Cultures__Default"] = Culture,
             ["FluentCms__Security__SigningCertificate__Path"] = certificates.SigningPath,
             ["FluentCms__Security__SigningCertificate__Password"] = certificates.Password,
             ["FluentCms__DataProtection__Certificate__Path"] = certificates.SigningPath,

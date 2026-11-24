@@ -108,6 +108,7 @@ public sealed class AdminPluginCatalogTests
             "menu item 'Reviews.Menu' of FluentCMS.Admin.Plugins.Sample.ReviewsPage: labels has no text for 'en', which the sidebar shows when it has none of the interface culture",
             "menu item 'Reviews.Menu' of FluentCMS.Admin.Plugins.Sample.ReviewsPage: the label for 'fr' is empty",
             "menu item 'Reviews.Menu' of FluentCMS.Admin.Plugins.Sample.ReviewsPage: labels names 'xx-nowhere', which is not a culture",
+            "menu item 'Reviews.Menu' of FluentCMS.Admin.Plugins.Sample.ReviewsPage: labels has no text for 'fr', a culture the half has resources in",
         ]);
     }
 
