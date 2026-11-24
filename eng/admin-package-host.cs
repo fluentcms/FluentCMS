@@ -1,12 +1,21 @@
 // The check of FluentCMS.Admin.Hosting as a package (admin spec 6.1, AQ8), for the Pack job: a host made of packages from a
-// folder feed, in a work folder outside the repository, published and started in Production on SQLite with the admin on. With
-// no app project it serves the package's first-party build at /admin: the page with its base, config.json from configuration,
-// a fingerprinted file of the framework cached for good and in Brotli, a client route, and the first-party halves. With an app
-// project, which the host then references, it serves that app, whose halves the check names. Either way the publish root holds
-// no icon assembly of the component library and deps.json names none. It names each check that fails and exits with 1. The
-// work folder is outside the repository, whose Directory.Packages.props would pin the packages, and it restores into it.
+// folder feed, in a work folder outside the repository, published and started in Production on SQLite with the admin on.
 //
-//   dotnet run eng/admin-package-host.cs -- <folder feed> <version> <work folder> [<app project> <half the app holds>]
+// - package: no app project; it serves the package's first-party build at /admin: the page with its base, config.json from
+//   configuration, a fingerprinted file of the framework cached for good and in Brotli, a client route and a first-party half.
+// - app <project> <half>: the host references an admin app's project and serves that app, which holds the half.
+// - icons <project> <half>: as app, with a package reference of the host's own to the component library's icons, which then
+//   stay in its publish.
+// - client: the host references a WebAssembly project that is no admin app, which the package's build does not take for one:
+//   both claim _framework/, so the build stops on conflicting assets, where taking it for an admin app would leave the host
+//   with no admin to serve.
+//
+// In every mode but icons and client the publish root holds no icon assembly of the component library and deps.json names none. It names each
+// check that fails and exits with 1. The work folder is outside the repository, whose Directory.Packages.props would pin the
+// packages. Packages restore into admin-host-packages beside it, shared by the runs, with every FluentCMS package removed first,
+// so that one is never taken from an earlier pack of the same version.
+//
+//   dotnet run eng/admin-package-host.cs -- <folder feed> <version> <work folder> [package | app|icons <project> <half> | client]
 
 // A file-based app publishes with Native AOT by default, which would restore the ILCompiler package for nothing.
 #:property PublishAot=false
@@ -15,36 +24,41 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 const string Icons = "Microsoft.FluentUI.AspNetCore.Components.Icons";
 const string FirstPartyHalf = "FluentCMS.Plugins.Media.Admin";
 const string Branding = "Packaged admin";
 
-if (args.Length is not (3 or 5) || !Directory.Exists(args[0]))
+var mode = args.Length > 3 ? args[3] : "package";
+if (!((args.Length == 3 || (args.Length == 4 && mode is "package" or "client") || (args.Length == 6 && mode is "app" or "icons")) && Directory.Exists(args[0])))
 {
-    Console.Error.WriteLine("usage: dotnet run eng/admin-package-host.cs -- <folder feed> <version> <work folder> [<app project> <half the app holds>]");
+    Console.Error.WriteLine("usage: dotnet run eng/admin-package-host.cs -- <folder feed> <version> <work folder> [package | app|icons <project> <half> | client]");
     return 2;
 }
 
 var feed = Path.GetFullPath(args[0]);
 var version = args[1];
 var work = Path.GetFullPath(args[2]);
-var app = args.Length == 5 ? Path.GetFullPath(args[3]) : null;
-var half = args.Length == 5 ? args[4] : null;
+var app = args.Length == 6 ? Path.GetFullPath(args[4]) : null;
+var half = args.Length == 6 ? args[5] : null;
 var host = Path.Combine(work, "host");
 var publish = Path.Combine(work, "publish");
+var packages = Path.Combine(Path.GetDirectoryName(work)!, "admin-host-packages");
 if (Directory.Exists(work))
 {
     Directory.Delete(work, recursive: true);
+}
+
+foreach (var cached in Directory.Exists(packages) ? Directory.GetDirectories(packages, "fluentcms.*") : [])
+{
+    Directory.Delete(cached, recursive: true);
 }
 
 Directory.CreateDirectory(host);
 File.WriteAllText(Path.Combine(host, "nuget.config"), $"""
     <?xml version="1.0" encoding="utf-8"?>
     <configuration>
-      <config>
-        <add key="globalPackagesFolder" value="{Path.Combine(work, "packages")}" />
-      </config>
       <packageSources>
         <clear />
         <add key="feed" value="{feed}" />
@@ -52,6 +66,38 @@ File.WriteAllText(Path.Combine(host, "nuget.config"), $"""
       </packageSources>
     </configuration>
     """);
+
+var references = new List<string>();
+if (app is not null)
+{
+    references.Add($"<ProjectReference Include=\"{app}\" />");
+}
+
+if (mode == "icons")
+{
+    references.Add($"<PackageReference Include=\"{Icons}\" Version=\"{Pinned(Icons)}\" />");
+}
+
+if (mode == "client")
+{
+    var client = Path.Combine(work, "client");
+    Directory.CreateDirectory(client);
+    File.WriteAllText(Path.Combine(client, "Client.csproj"), $$"""
+        <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+          <PropertyGroup>
+            <TargetFramework>net10.0</TargetFramework>
+            <ImplicitUsings>enable</ImplicitUsings>
+          </PropertyGroup>
+          <ItemGroup>
+            <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="{{Pinned("Microsoft.AspNetCore.Components.WebAssembly")}}" />
+          </ItemGroup>
+        </Project>
+        """);
+    File.WriteAllText(Path.Combine(client, "Program.cs"), "await Microsoft.AspNetCore.Components.WebAssembly.Hosting.WebAssemblyHostBuilder.CreateDefault(args).Build().RunAsync();\n");
+    File.Copy(Path.Combine(host, "nuget.config"), Path.Combine(client, "nuget.config"));
+    references.Add($"<ProjectReference Include=\"{Path.Combine(client, "Client.csproj")}\" />");
+}
+
 File.WriteAllText(Path.Combine(host, "Host.csproj"), $"""
     <Project Sdk="Microsoft.NET.Sdk.Web">
       <PropertyGroup>
@@ -62,7 +108,7 @@ File.WriteAllText(Path.Combine(host, "Host.csproj"), $"""
       <ItemGroup>
         <PackageReference Include="FluentCMS.Admin.Hosting" Version="{version}" />
         <PackageReference Include="FluentCMS.Data.Sqlite" Version="{version}" />
-        {(app is null ? "" : $"<ProjectReference Include=\"{app}\" />")}
+        {string.Join("\n    ", references)}
       </ItemGroup>
     </Project>
     """);
@@ -82,20 +128,43 @@ File.WriteAllText(Path.Combine(host, "Program.cs"), """
     """);
 
 var problems = new List<string>();
-var what = app is null ? "the package's build" : $"the app {Path.GetFileNameWithoutExtension(app)}";
-if (Run("dotnet", "publish", host, "-c", "Release", "-o", publish, "-nologo") != 0)
+var what = mode switch
 {
+    "app" => $"the app {Path.GetFileNameWithoutExtension(app)}",
+    "icons" => $"the app {Path.GetFileNameWithoutExtension(app)} beside a reference of the host's own to the icons",
+    "client" => "the package's build beside a WebAssembly project that is no admin app",
+    _ => "the package's build",
+};
+
+var (exitCode, output) = Run("dotnet", "publish", host, "-c", "Release", "-o", publish, "-nologo", $"-p:RestorePackagesPath={packages}");
+if (mode == "client")
+{
+    Expect(exitCode != 0 && output.Contains("Conflicting assets with the same target path '_framework/", StringComparison.Ordinal),
+        "the publish stops on the conflicting _framework/ files and does not take the project for an admin app");
+    if (problems.Count > 0)
+    {
+        Console.WriteLine(output);
+    }
+
+    return Report(problems);
+}
+
+if (exitCode != 0)
+{
+    Console.WriteLine(output);
     return Report([$"The host of {what} did not publish."]);
 }
 
-foreach (var file in Directory.EnumerateFiles(publish).Select(Path.GetFileName).Where(name => name!.StartsWith(Icons, StringComparison.Ordinal)))
+var iconFiles = Directory.EnumerateFiles(publish).Select(Path.GetFileName).Where(name => name!.StartsWith(Icons, StringComparison.Ordinal)).ToList();
+var namesIcons = File.ReadAllText(Path.Combine(publish, "Host.deps.json")).Contains(Icons, StringComparison.Ordinal);
+if (mode == "icons")
 {
-    problems.Add($"The publish root of the host holds {file}.");
+    Expect(iconFiles.Count > 0 && namesIcons, "the publish root and deps.json keep the icon assemblies the host references itself");
 }
-
-if (File.ReadAllText(Path.Combine(publish, "Host.deps.json")).Contains(Icons, StringComparison.Ordinal))
+else
 {
-    problems.Add($"The deps.json of the host names {Icons}.");
+    Expect(iconFiles.Count == 0, $"the publish root holds no {Icons} assembly");
+    Expect(!namesIcons, $"deps.json names no {Icons}");
 }
 
 var fingerprinted = FingerprintedFile(Path.Combine(publish, "Host.staticwebassets.endpoints.json"));
@@ -225,12 +294,19 @@ async Task<bool> ReadyAsync()
     return false;
 }
 
-static int Run(string file, params string[] arguments)
+// Runs a command and returns its exit code and what it wrote, which is printed only when a check needs it.
+static (int ExitCode, string Output) Run(string file, params string[] arguments)
 {
-    using var process = Process.Start(new ProcessStartInfo(file, arguments))!;
+    using var process = Process.Start(new ProcessStartInfo(file, arguments) { RedirectStandardOutput = true, RedirectStandardError = true })!;
+    var error = process.StandardError.ReadToEndAsync();
+    var output = process.StandardOutput.ReadToEnd();
     process.WaitForExit();
-    return process.ExitCode;
+    return (process.ExitCode, output + error.Result);
 }
+
+// The version of a package that the repository the check runs in pins, as the admin's own projects use it.
+static string Pinned(string id) =>
+    Regex.Match(File.ReadAllText("Directory.Packages.props"), $"""<PackageVersion Include="{Regex.Escape(id)}" Version="(?<version>[^"]+)" />""").Groups["version"].Value;
 
 static int FreePort()
 {

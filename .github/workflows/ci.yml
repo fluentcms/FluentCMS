@@ -696,15 +696,16 @@ jobs:
           done
 
       # A host made of these packages, outside the repository: it serves the package's build at /admin, and an app project of its
-      # own when it references one, here the gather fixture with a half the first-party build does not have.
+      # own when it references one, here the gather fixture with a half the first-party build does not have; it keeps the icon
+      # assemblies it references itself, and does not take a WebAssembly project that is no admin app for one.
       - name: Serve the admin from a host made of packages
         shell: bash
-        env:
-          NUGET_PACKAGES: ${{ runner.temp }}/admin-host-packages
         run: |
-          dotnet run eng/admin-package-host.cs -- artifacts/packages "$PACKAGE_VERSION" "$RUNNER_TEMP/admin-package-host"
-          dotnet run eng/admin-package-host.cs -- artifacts/packages "$PACKAGE_VERSION" "$RUNNER_TEMP/admin-app-host" \
-            admin/tests/FluentCMS.Admin.GatherFixture/FluentCMS.Admin.GatherFixture.csproj FluentCMS.Admin.Plugins.Sample
+          fixture=admin/tests/FluentCMS.Admin.GatherFixture/FluentCMS.Admin.GatherFixture.csproj
+          dotnet run eng/admin-package-host.cs -- artifacts/packages "$PACKAGE_VERSION" "$RUNNER_TEMP/admin-host/package"
+          dotnet run eng/admin-package-host.cs -- artifacts/packages "$PACKAGE_VERSION" "$RUNNER_TEMP/admin-host/app" app "$fixture" FluentCMS.Admin.Plugins.Sample
+          dotnet run eng/admin-package-host.cs -- artifacts/packages "$PACKAGE_VERSION" "$RUNNER_TEMP/admin-host/icons" icons "$fixture" FluentCMS.Admin.Plugins.Sample
+          dotnet run eng/admin-package-host.cs -- artifacts/packages "$PACKAGE_VERSION" "$RUNNER_TEMP/admin-host/client" client
 
       - name: Upload packages
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
