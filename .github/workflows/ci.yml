@@ -146,7 +146,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.scope != 'docs'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -170,11 +170,13 @@ jobs:
       # A skipped test fails here, so that a browser that did not install cannot pass the job. A failed case is run once more,
       # and one that passes then is named as flaky in the job summary (spec 7). A manual run with traces on keeps the masked
       # trace of each failed test in the uploaded results. The first run took 13 min 45 s with 85 cases before the static build's
-      # (#3455), which builds and publishes the admin beside the publish of the host.
+      # (#3455), which builds and publishes the admin beside the publish of the host. The accessibility sweep (admin spec 4.18,
+      # #3458) adds about 4 min, so the first run has 30 min and the retry 12 min, which holds two failed sweeps, each of which
+      # starts a host and makes its data again; the job's 50 min hold the build, Chromium, the first run and the retry.
       - name: Test
         env:
           FLUENTCMS_E2E_TRACES: ${{ inputs.traces && format('{0}/artifacts/test-results/traces', github.workspace) || '' }}
-        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 25m -RetryTimeout 6m
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 30m -RetryTimeout 12m
 
       - name: Name the tests that were running
         if: failure() || cancelled()

@@ -25,7 +25,7 @@ public static class AccessibilityViews
     [
         new("home", ["/"], s => s.GoAsync("", s.Heading(s.Admin("Home.Page.Heading")))),
         new("not found", ["/not-found"], s => s.GoAsync("not-found", s.Heading(s.Admin("Shell.NotFound.Heading")))),
-        new("account", ["/account"], s => s.GoAsync("account", s.Heading(s.Admin("Account.Page.Heading")))),
+        new("account", ["/account"], s => s.GoAsync("account", s.Heading(s.AreaText("Account", "Account.Page.Heading")))),
 
         new("content list", ["/content/{Type}"], async s =>
         {
@@ -76,9 +76,14 @@ public static class AccessibilityViews
             await Ui.PressAsync(Ui.ButtonIn(s.Page.Locator(".content-form-history"), s.Admin("Content.Versions.Open")), "Enter");
             await Expect(s.Page.Locator($"fluent-drawer[aria-label=\"{s.Admin("Content.Versions.Title")}\"] .version-list tbody tr").First).ToBeVisibleAsync();
         }),
+        // The test's showcase type has the field types the Blog sample has not: integer, boolean, date, email, long text and json.
+        new("showcase form", [], async s =>
+        {
+            await s.GoAsync($"content/showcase/{s.Data.Showcase:D}", s.Page.Locator("main [data-field='extra']"));
+            await Expect(s.Page.Locator("main [data-field='rating'] input")).Not.ToHaveValueAsync("");
+        }),
         new("preview pane", [], async s =>
         {
-            await s.GoAsync($"content/showcase/{s.Data.Showcase:D}", s.Page.Locator("main .content-form-toolbar"));
             await Ui.PressAsync(Ui.ButtonIn(s.Page.Locator(".content-form-history"), s.Admin("Content.Preview.Open")), "Enter");
             await Expect(s.Page.Locator(".content-preview iframe")).ToHaveAttributeAsync("src", new Regex($@"/showcase/{s.Data.Showcase:D}\?preview="));
         }),
@@ -93,7 +98,11 @@ public static class AccessibilityViews
             await s.Page.Locator("main .media-tile-open").First.ClickAsync();
             await Expect(s.Page.Locator(".cms-drawer").GetByLabel(s.Text(Media, "Media.Form.Title"), new LocatorGetByLabelOptions { Exact = true })).ToBeVisibleAsync();
         }),
-        new("media presets", ["/media/presets"], s => s.GoAsync("media/presets", s.Heading(s.Text(Media, "Media.Presets.Heading")))),
+        new("media presets", ["/media/presets"], async s =>
+        {
+            await s.GoAsync("media/presets", s.Heading(s.Text(Media, "Media.Presets.Heading")));
+            await Expect(s.Page.Locator("main .media-presets-table tbody tr").First).ToBeVisibleAsync();
+        }),
 
         new("users", ["/users"], async s =>
         {
@@ -124,7 +133,11 @@ public static class AccessibilityViews
             await s.GoAsync("members", s.Heading(s.Area("Members")));
             await Expect(s.Page.Locator("main table tbody tr").First).ToBeVisibleAsync();
         }),
-        new("member groups", ["/members/groups"], s => s.GoAsync("members/groups", s.Heading(s.AreaText("Members", "Members.GroupsPage.Heading")))),
+        new("member groups", ["/members/groups"], async s =>
+        {
+            await s.GoAsync("members/groups", s.Heading(s.AreaText("Members", "Members.GroupsPage.Heading")));
+            await Expect(s.Page.Locator("main li").Filter(new LocatorFilterOptions { HasText = s.Data.MemberGroupName }).First).ToBeVisibleAsync();
+        }),
         new("member", ["/members/{Id:guid}"], s => s.GoAsync($"members/{s.Data.Member:D}", s.Heading(s.Data.MemberName))),
         new("sites", ["/sites"], async s =>
         {
@@ -147,7 +160,11 @@ public static class AccessibilityViews
             await s.GoAsync("system/diagnostics", s.Heading(s.Area("Diagnostics")));
             await Expect(s.Page.GetByRole(AriaRole.Region, new PageGetByRoleOptions { Name = s.AreaText("Diagnostics", "Diagnostics.Health.Heading"), Exact = true }).Locator("tbody tr").First).ToBeVisibleAsync();
         }),
-        new("settings", ["/settings"], s => s.GoAsync("settings", s.Heading(s.Area("Settings")))),
+        new("settings", ["/settings"], async s =>
+        {
+            await s.GoAsync("settings", s.Heading(s.Area("Settings")));
+            await Expect(s.Page.Locator("main ul.settings-areas li").First).ToBeVisibleAsync();
+        }),
         new("settings area", ["/settings/{Area}"], async s =>
         {
             await s.GoAsync("settings/blog", s.Scope(s.AreaText("Settings", "Settings.Area.Site")));
@@ -159,8 +176,16 @@ public static class AccessibilityViews
             await Expect(s.Page.Locator("main .settings-source").First).ToBeVisibleAsync();
         }),
 
-        new("webhooks", ["/webhooks"], s => s.GoAsync("webhooks", s.Heading(s.Text(Webhooks, "Webhooks.Page.Heading")))),
-        new("webhook", ["/webhooks/{Id:guid}"], s => s.GoAsync($"webhooks/{s.Data.Webhook:D}", s.Heading(s.Data.WebhookName))),
+        new("webhooks", ["/webhooks"], async s =>
+        {
+            await s.GoAsync("webhooks", s.Heading(s.Text(Webhooks, "Webhooks.Page.Heading")));
+            await Expect(s.Page.Locator("main table.webhooks-table tbody tr").First).ToBeVisibleAsync();
+        }),
+        new("webhook", ["/webhooks/{Id:guid}"], async s =>
+        {
+            await s.GoAsync($"webhooks/{s.Data.Webhook:D}", s.Heading(s.Data.WebhookName));
+            await Expect(s.Page.Locator("main table.webhooks-log tbody tr").First).ToBeVisibleAsync();
+        }),
         new("mcp clients", ["/mcp/clients"], async s =>
         {
             await s.GoAsync("mcp/clients", s.Heading(s.Text(Mcp, "Mcp.Clients.Page.Heading")));
@@ -174,7 +199,11 @@ public static class AccessibilityViews
         }),
         new("mcp activity", ["/mcp/activity"], s => s.GoAsync("mcp/activity", s.Heading(s.Text(Mcp, "Mcp.Activity.Page.Heading")))),
         new("ai usage", ["/ai/usage"], s => s.GoAsync("ai/usage", s.Heading(s.Text(Ai, "Ai.Usage.Page.Heading")))),
-        new("multi-site sites", ["/multi-site/sites"], s => s.GoAsync("multi-site/sites", s.Heading(s.Text(MultiSite, "MultiSite.Sites.Page.Heading")))),
+        new("multi-site sites", ["/multi-site/sites"], async s =>
+        {
+            await s.GoAsync("multi-site/sites", s.Heading(s.Text(MultiSite, "MultiSite.Sites.Page.Heading")));
+            await Expect(s.Page.Locator("main table.multi-site-table tbody tr").First).ToBeVisibleAsync();
+        }),
         new("multi-site hosts", ["/multi-site/sites/{Id:guid}/hosts"], s =>
             s.GoAsync($"multi-site/sites/{s.Data.Site}/hosts", s.Heading(Ui.Format(s.Text(MultiSite, "MultiSite.Hosts.HeadingOf"), s.Data.SiteName)))),
         new("search", ["/search"], s => s.GoAsync("search", s.Heading(s.Text(Search, "Search.Page.Heading")))),
@@ -229,6 +258,12 @@ public sealed class Sweep(AdminTab tab, SweepData data, string? culture, Func<st
         await Expect(ready).ToBeVisibleAsync();
     }
 
+    // Once no text the admin shows while it waits for the API is left on the page, in a dialog either.
+    public async Task LoadedAsync(IPage page) => await Expect(page.Locator("body").GetByText(loading).Filter(new LocatorFilterOptions { Visible = true })).ToHaveCountAsync(0);
+
+    private readonly Regex loading = new(
+        $@"^\s*({string.Join('|', Repository.LoadingTexts.Select(text => Regex.Escape(culture is null ? text : PseudoCulture.Transform(text, culture))))})\s*$");
+
     // The dialog of the library that has just opened, once it shows; its controls are the light children of its host.
     public async Task DialogAsync() => await Expect(Page.GetByRole(AriaRole.Dialog).Last).ToBeVisibleAsync();
 
@@ -257,6 +292,7 @@ public sealed record SweepData(
     string ApiKeyName,
     Guid Member,
     string MemberName,
+    string MemberGroupName,
     Guid Job,
     string JobType,
     Guid Webhook,

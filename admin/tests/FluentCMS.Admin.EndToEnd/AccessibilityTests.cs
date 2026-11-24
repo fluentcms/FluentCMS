@@ -23,6 +23,10 @@ public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
     private static readonly SemaphoreSlim Made = new(1, 1);
     private static (EndToEndHost Host, SweepData Data, Editor Administrator, Editor WithoutSite)? made;
 
+    // The browsers of the users of no access and no site, signed in once a run and kept for its sweeps, which open a tab of
+    // their own in them; the host's browser closes them at the end of the run.
+    private static readonly Dictionary<string, (EndToEndHost Host, AdminBrowser Browser)> Others = new(StringComparer.Ordinal);
+
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -180,22 +184,8 @@ public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
             tab,
             data,
             culture,
-            asEditor: async (route, heading) =>
-            {
-                var other = await OpenBrowserAsync();
-                var editor = await PreparedTabAsync(other, theme, culture, route);
-                await other.SignInOnTheHostedPageAsync(editor, await EditorAsync());
-                await Expect(Sweep.HeadingOf(editor.Page, heading)).ToBeVisibleAsync();
-                return editor.Page;
-            },
-            asUserWithoutSite: async heading =>
-            {
-                var other = await OpenBrowserAsync();
-                var user = await PreparedTabAsync(other, theme, culture, "");
-                await other.SignInOnTheHostedPageAsync(user, withoutSite);
-                await Expect(Sweep.HeadingOf(user.Page, heading)).ToBeVisibleAsync();
-                return user.Page;
-            },
+            asEditor: async (route, heading) => await OtherUserAsync("no access", await EditorAsync(), theme, culture, route, heading),
+            asUserWithoutSite: heading => OtherUserAsync("no site", withoutSite, theme, culture, "", heading),
             withBrokenConfiguration: async heading =>
             {
                 var broken = await browser.NewTabAsync();
@@ -213,6 +203,7 @@ public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
             try
             {
                 await view.OpenAsync(sweep);
+                await sweep.LoadedAsync(sweep.Checked);
             }
             catch (PlaywrightException exception)
             {
@@ -224,7 +215,11 @@ public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
             }
 
             violations.AddRange(await Axe.ViolationsAsync(sweep.Checked, view.Name));
-            if (sweep.Checked == tab.Page && view.Routes.Count == 0)
+            if (sweep.Checked != tab.Page)
+            {
+                await sweep.Checked.CloseAsync();
+            }
+            else if (view.Routes.Count == 0)
             {
                 await CloseOverlaysAsync(tab.Page);
             }
@@ -232,6 +227,24 @@ public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
 
         violations.ShouldBeEmpty($"{violations.Count} violations in the {theme} theme{(culture is null ? "" : $" under {culture}")}:{Environment.NewLine}{string.Join(Environment.NewLine, violations)}");
         browser.PolicyViolations.ShouldBeEmpty();
+        Others.Values.SelectMany(other => other.Browser.PolicyViolations).ShouldBeEmpty();
+    }
+
+    // A tab of the user's browser in the sweep's theme and culture at the route, once its heading reads so. The browser is
+    // made and signed in on the hosted page the first time a run asks for it; later tabs sign in silently on its session.
+    private async Task<IPage> OtherUserAsync(string state, Editor user, string theme, string? culture, string route, string heading)
+    {
+        var known = Others.TryGetValue(state, out var other) && other.Host == Host;
+        var browser = known ? other.Browser : await Host.OpenBrowserAsync();
+        Others[state] = (Host, browser);
+        var tab = await PreparedTabAsync(browser, theme, culture, route);
+        if (!known)
+        {
+            await browser.SignInOnTheHostedPageAsync(tab, user);
+        }
+
+        await Expect(Sweep.HeadingOf(tab.Page, heading)).ToBeVisibleAsync();
+        return tab.Page;
     }
 
     // A dialog, a drawer or a panel the view opened closes on Escape, as a keyboard user closes it.
@@ -301,8 +314,9 @@ public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
         }
     }
 
-    // The data the views show: the Blog sample's welcome entry, a showcase entry with a preview template, the Super Admin the
-    // sweep signs in as, a role, a key, a member, a webhook with the job of its first delivery, an MCP client and prompt.
+    // The data the views show: the Blog sample's welcome entry, a showcase entry with a value in each field and a preview
+    // template, the Super Admin the sweep signs in as, a role, a key, a member and a member group, an image preset, a webhook
+    // with the job of its first delivery, an MCP client and prompt.
     private async Task<(SweepData Data, Editor Administrator)> MakeAsync()
     {
         using var api = await Host.ManagementClientAsync();
@@ -313,7 +327,16 @@ public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
             .First(entry => ((string?)entry["fields"]?["title"] ?? (string?)entry["title"]) == "Welcome to FluentCMS");
 
         await SetPreviewTemplateAsync(api);
-        var showcase = await PostAsync(api, "content/showcase", new JsonObject { ["title"] = $"Showcase {mark}" });
+        var showcase = await PostAsync(api, "content/showcase", new JsonObject
+        {
+            ["title"] = $"Showcase {mark}",
+            ["rating"] = 4,
+            ["featured"] = true,
+            ["opensOn"] = "2026-12-01",
+            ["contact"] = $"{mark}@showcase.test",
+            ["notes"] = "Two lines," + Environment.NewLine + "of notes.",
+            ["extra"] = new JsonObject { ["campaign"] = "winter", ["weight"] = 2 },
+        });
 
         var administrator = await Host.CreateEditorAsync("Super Admin");
         var users = await GetAsync(api, $"users?search={Uri.EscapeDataString(administrator.Email)}");
@@ -323,6 +346,13 @@ public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
         var key = (await GetAsync(api, "api-keys"))["items"]!.AsArray().OfType<JsonObject>().First();
         var memberName = $"Member {mark}";
         var member = await PostAsync(api, "members", new JsonObject { ["email"] = $"{mark}@members.test", ["displayName"] = memberName });
+        var reader = (await GetAsync(api, "roles"))["items"]!.AsArray().OfType<JsonObject>().First(item => (string?)item["name"] == "Reader");
+        var groupName = $"group-{mark}";
+        await PostAsync(api, "member-groups", new JsonObject { ["name"] = groupName, ["description"] = "A group of the accessibility sweep.", ["roleId"] = Id(reader).ToString("D") });
+        using (var preset = await api.PutAsJsonAsync(new Uri($"api/management/v1/media/presets/sweep-{mark}", UriKind.Relative), new JsonObject { ["width"] = 320 }, Token))
+        {
+            preset.IsSuccessStatusCode.ShouldBeTrue(await preset.Content.ReadAsStringAsync(Token));
+        }
 
         var webhookName = $"Sweep {mark}";
         var webhook = await PostAsync(api, "webhooks", new JsonObject
@@ -363,6 +393,7 @@ public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
             ApiKeyName: (string)key["name"]!,
             Member: Id(member),
             MemberName: memberName,
+            MemberGroupName: groupName,
             Job: Id(job!),
             JobType: (string)job!["type"]!,
             Webhook: Id(webhook),
