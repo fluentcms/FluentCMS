@@ -1,0 +1,383 @@
+@* The stored prompts of the site (spec 5.4), for a caller who holds mcp.manage there: listed by name, created, changed whole
+   and deleted after a question. A prompt is a template whose arguments are written {{name}}; the server checks it, and its
+   refusals are put on the member they name. A prompt deleted meanwhile says so and the list is read again. *@
+@page "/mcp/prompts"
+@attribute [AdminPage("/mcp/prompts", Permission = "mcp.manage")]
+@attribute [AdminMenuItem("Mcp.Prompts.Menu", Section = AdminSection.Administration, Order = 82)]
+@using System.Globalization
+@implements IDisposable
+@inject IManagementApi Api
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<McpResources> L
+
+<h1 tabindex="-1">@L["Mcp.Prompts.Page.Heading"]</h1>
+<p>@L["Mcp.Prompts.Intro"]</p>
+<McpLinks Current="mcp/prompts" />
+
+@if (prompts is null)
+{
+    @if (failed)
+    {
+        <p role="alert">@L["Mcp.Prompts.Failed"] <CmsButton OnClick="ReadAsync">@L["Mcp.TryAgain"]</CmsButton></p>
+    }
+    else
+    {
+        <p role="status">@L["Mcp.Prompts.Loading"]</p>
+    }
+}
+else if (prompts.Count == 0)
+{
+    <p>@L["Mcp.Prompts.None"]</p>
+}
+else
+{
+    <table class="mcp-table mcp-prompts">
+        <caption class="cms-visually-hidden">@L["Mcp.Prompts.Page.Heading"]</caption>
+        <thead>
+            <tr>
+                <th scope="col">@L["Mcp.Prompts.Name"]</th>
+                <th scope="col">@L["Mcp.Prompts.Title"]</th>
+                <th scope="col">@L["Mcp.Prompts.Arguments"]</th>
+                <th scope="col">@L["Mcp.Prompts.Updated"]</th>
+                <th scope="col"><span class="cms-visually-hidden">@L["Mcp.Prompts.Actions"]</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var prompt in prompts)
+            {
+                <tr @key="prompt.Id">
+                    <th scope="row"><code>@prompt.Name</code></th>
+                    <td>@prompt.Title</td>
+                    <td>@string.Join(", ", prompt.Arguments.Select(argument => argument.Name))</td>
+                    <td>@prompt.UpdatedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</td>
+                    <td>
+                        <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                            <CmsButton Disabled="@busy" OnClick="@(() => Edit(prompt))">
+                                @L["Mcp.Prompts.Edit"]<span class="cms-visually-hidden">@L["Mcp.Prompts.Which", prompt.Name]</span>
+                            </CmsButton>
+                            <CmsButton Disabled="@busy" OnClick="@(() => AskDelete(prompt))">
+                                @L["Mcp.Prompts.Delete"]<span class="cms-visually-hidden">@L["Mcp.Prompts.Which", prompt.Name]</span>
+                            </CmsButton>
+                        </CmsStack>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<p class="mcp-message mcp-list-message" tabindex="-1" @ref="listElement">@listMessage</p>
+
+<CmsCard Title="@(editing is { } edited ? L["Mcp.Prompt.EditHeading", edited.Name] : L["Mcp.Prompt.NewHeading"])">
+    <form @onsubmit="SaveAsync">
+        <CmsStack>
+            <CmsTextInput Label="@L["Mcp.Prompt.Name"]"
+                          Help="@L["Mcp.Prompt.NameHelp"]"
+                          Required="true"
+                          MaxLength="64"
+                          Autocomplete="off"
+                          Value="@draft.Name"
+                          ValueChanged="@(value => draft.Name = value)"
+                          Error="@Error("name")" />
+            <CmsTextInput Label="@L["Mcp.Prompt.Title"]"
+                          MaxLength="100"
+                          Autocomplete="off"
+                          Value="@draft.Title"
+                          ValueChanged="@(value => draft.Title = value)"
+                          Error="@Error("title")" />
+            <CmsTextInput Label="@L["Mcp.Prompt.Description"]"
+                          MaxLength="500"
+                          Autocomplete="off"
+                          Value="@draft.Description"
+                          ValueChanged="@(value => draft.Description = value)"
+                          Error="@Error("description")" />
+            <fieldset class="mcp-arguments">
+                <legend>@L["Mcp.Prompt.Arguments"]</legend>
+                @for (var index = 0; index < draft.Arguments.Count; index++)
+                {
+                    var position = index;
+                    var argument = draft.Arguments[position];
+                    <CmsStack @key="argument">
+                        <CmsTextInput Label="@L["Mcp.Prompt.ArgumentName", position + 1]"
+                                      Help="@L["Mcp.Prompt.ArgumentNameHelp"]"
+                                      Required="true"
+                                      MaxLength="64"
+                                      Autocomplete="off"
+                                      Value="@argument.Name"
+                                      ValueChanged="@(value => argument.Name = value)"
+                                      Error="@Error($"arguments[{position}].name")" />
+                        <CmsTextInput Label="@L["Mcp.Prompt.ArgumentDescription", position + 1]"
+                                      MaxLength="500"
+                                      Autocomplete="off"
+                                      Value="@argument.Description"
+                                      ValueChanged="@(value => argument.Description = value)"
+                                      Error="@Error($"arguments[{position}].description")" />
+                        <CmsCheckbox Label="@L["Mcp.Prompt.ArgumentRequired", position + 1]" Value="@argument.Required" ValueChanged="@(value => argument.Required = value)" />
+                        <div>
+                            <CmsButton OnClick="@(() => draft.Arguments.Remove(argument))">@L["Mcp.Prompt.RemoveArgument", position + 1]</CmsButton>
+                        </div>
+                    </CmsStack>
+                }
+                <div>
+                    <CmsButton OnClick="@(() => draft.Arguments.Add(new McpArgumentDraft()))">@L["Mcp.Prompt.AddArgument"]</CmsButton>
+                </div>
+            </fieldset>
+            <CmsTextArea Label="@L["Mcp.Prompt.Template"]"
+                         Help="@L["Mcp.Prompt.TemplateHelp"]"
+                         Required="true"
+                         Rows="8"
+                         MaxLength="16000"
+                         Value="@draft.Template"
+                         ValueChanged="@(value => draft.Template = value)"
+                         Error="@Error("template")" />
+            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                <CmsButton Submit="true" Appearance="CmsButtonAppearance.Primary" Disabled="@busy">@L[editing is null ? "Mcp.Prompt.Create" : "Mcp.Prompt.Save"]</CmsButton>
+                @if (editing is not null)
+                {
+                    <CmsButton Disabled="@busy" OnClick="New">@L["Mcp.Prompt.Discard"]</CmsButton>
+                }
+            </CmsStack>
+        </CmsStack>
+    </form>
+    <p class="mcp-message mcp-form-message" tabindex="-1" @ref="formElement">@formMessage</p>
+</CmsCard>
+
+<CmsDialog Title="@L["Mcp.Prompts.DeleteTitle"]" Open="@(deleting is not null)" OpenChanged="@(open => { if (!open) CancelDelete(); })">
+    <ChildContent>
+        @if (deleting is { } prompt)
+        {
+            <p>@L["Mcp.Prompts.DeleteText", prompt.Name]</p>
+            @if (dialogError is { } error)
+            {
+                <p role="alert">@error</p>
+            }
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="DeleteAsync">@L["Mcp.Prompts.DeleteConfirm"]</CmsButton>
+        <CmsButton Disabled="@busy" OnClick="CancelDelete">@L["Mcp.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    private List<McpPrompt>? prompts;
+    private bool failed;
+    private bool busy;
+    private string? listMessage;
+    private McpPrompt? editing;
+    private McpPromptDraft draft = new();
+    private Dictionary<string, string> errors = new(StringComparer.Ordinal);
+    private string? formMessage;
+    private McpPrompt? deleting;
+    private string? dialogError;
+    private ElementReference listElement;
+    private ElementReference formElement;
+    private ElementReference? focusAfterRender;
+    private readonly CancellationTokenSource closing = new();
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    protected override Task OnInitializedAsync() => ReadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender is { } element)
+        {
+            focusAfterRender = null;
+            await element.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        failed = false;
+        try
+        {
+            prompts = [.. await Api.GetPromptsAsync(Closing)];
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (McpProblems.IsFailure(exception))
+        {
+            (prompts, failed) = (null, true);
+        }
+    }
+
+    private string? Error(string path) => errors.GetValueOrDefault(path);
+
+    private void Edit(McpPrompt prompt)
+    {
+        (editing, draft, errors, formMessage) = (prompt, McpPromptDraft.From(prompt), new(StringComparer.Ordinal), null);
+        focusAfterRender = formElement;
+    }
+
+    private void New() => (editing, draft, errors, formMessage) = (null, new(), new(StringComparer.Ordinal), null);
+
+    private async Task SaveAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        errors = new(StringComparer.Ordinal);
+        if (string.IsNullOrWhiteSpace(draft.Name))
+        {
+            errors["name"] = L["Mcp.Prompt.NameRequired"];
+        }
+
+        if (string.IsNullOrWhiteSpace(draft.Template))
+        {
+            errors["template"] = L["Mcp.Prompt.TemplateRequired"];
+        }
+
+        if (errors.Count > 0)
+        {
+            return;
+        }
+
+        var (id, saved, gone) = (editing?.Id, (McpPrompt?)null, false);
+        busy = true;
+        try
+        {
+            saved = await Api.SavePromptAsync(id, draft, Closing);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (McpProblems.Has(exception, McpProblems.PromptNotFound))
+        {
+            gone = true;
+        }
+        catch (Exception exception) when (McpProblems.Has(exception, McpProblems.PromptNameTaken))
+        {
+            (errors["name"], formMessage) = (L["Mcp.Prompt.NameTaken"], L["Mcp.Prompt.Refused"]);
+        }
+        catch (Exception exception) when (McpProblems.Has(exception, McpProblems.PromptNameReserved))
+        {
+            (errors["name"], formMessage) = (L["Mcp.Prompt.NameReserved"], L["Mcp.Prompt.Refused"]);
+        }
+        catch (Exception exception) when (McpProblems.Has(exception, McpProblems.InvalidPrompt) || McpProblems.Has(exception, McpProblems.UndeclaredPromptArgument))
+        {
+            Refused(exception);
+        }
+        catch (Exception exception) when (McpProblems.IsFailure(exception))
+        {
+            formMessage = L["Mcp.Prompt.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (saved is not null)
+        {
+            listMessage = L[id is null ? "Mcp.Prompt.Created" : "Mcp.Prompt.Saved", saved.Name];
+            New();
+            Announcer.Announce(listMessage!);
+            await ReadAsync();
+            focusAfterRender = listElement;
+        }
+        else if (gone)
+        {
+            listMessage = L["Mcp.Prompts.Gone", editing!.Name];
+            New();
+            Announcer.Announce(listMessage!);
+            await ReadAsync();
+            focusAfterRender = listElement;
+        }
+        else
+        {
+            focusAfterRender = formElement;
+        }
+    }
+
+    // Each refusal on the member it names; one of the prompt as a whole, as the most prompts of a site, on the form.
+    private void Refused(Exception exception)
+    {
+        foreach (var (path, code) in McpProblems.Errors(exception))
+        {
+            var text = code == McpProblems.UndeclaredPromptArgument ? L["Mcp.Prompt.UndeclaredArgument"]
+                : path == "name" ? L["Mcp.Prompt.NameInvalid"]
+                : path is "title" or "description" || path.EndsWith(".description", StringComparison.Ordinal) ? L["Mcp.Prompt.LineInvalid"]
+                : path == "template" ? L["Mcp.Prompt.TemplateInvalid"]
+                : path.EndsWith(".name", StringComparison.Ordinal) ? L["Mcp.Prompt.ArgumentNameInvalid"]
+                : null;
+            if (text is null)
+            {
+                formMessage = L["Mcp.Prompt.TooMany"];
+            }
+            else
+            {
+                errors.TryAdd(path, text);
+            }
+        }
+
+        formMessage ??= L["Mcp.Prompt.Refused"];
+    }
+
+    private void AskDelete(McpPrompt prompt) => (deleting, dialogError) = (prompt, null);
+
+    private void CancelDelete()
+    {
+        if (deleting is not null && !busy)
+        {
+            (deleting, dialogError, listMessage) = (null, null, L["Mcp.Prompts.Kept"]);
+            focusAfterRender = listElement;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (busy || deleting is not { } prompt)
+        {
+            return;
+        }
+
+        (busy, dialogError) = (true, null);
+        var done = false;
+        try
+        {
+            await Api.DeletePromptAsync(prompt.Id, Closing);
+            (listMessage, done) = (L["Mcp.Prompts.Deleted", prompt.Name], true);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (McpProblems.Has(exception, McpProblems.PromptNotFound))
+        {
+            (listMessage, done) = (L["Mcp.Prompts.Gone", prompt.Name], true);
+        }
+        catch (Exception exception) when (McpProblems.IsFailure(exception))
+        {
+            dialogError = L["Mcp.Prompts.DeleteFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (!done)
+        {
+            return;
+        }
+
+        deleting = null;
+        if (editing?.Id == prompt.Id)
+        {
+            New();
+        }
+
+        Announcer.Announce(listMessage!);
+        await ReadAsync();
+        focusAfterRender = listElement;
+    }
+}

@@ -1,7 +1,462 @@
-@* The first page of the half (spec 5.4), which shows its heading until its issue writes it. *@
+@* The MCP clients of the instance (spec 5.4), for a caller who holds mcp.manage for the instance: each with its status, role
+   and last activity. A pending client is approved with a role or rejected, an approved one gets another role or is revoked,
+   and a rejected one is removed; a client is also registered here, approved at once with its role. The answer of a
+   registration holds no secret, since the client is public, so the client id the agent is set up with is what it shows once.
+   The server's cleanup removes clients nobody approved or uses, so an action on a client that is gone says so and the list
+   is read again, as after a client that changed meanwhile. Service accounts come from configuration and are not listed. *@
 @page "/mcp/clients"
 @attribute [AdminPage("/mcp/clients", Permission = "mcp.manage", InstanceOnly = true)]
 @attribute [AdminMenuItem("Mcp.Clients.Menu", Section = AdminSection.Administration, Order = 80)]
+@using System.Globalization
+@implements IDisposable
+@inject IManagementApi Api
+@inject IAdminContext Admin
+@inject IAnnouncer Announcer
 @inject IStringLocalizer<McpResources> L
 
 <h1 tabindex="-1">@L["Mcp.Clients.Page.Heading"]</h1>
+<p>@L["Mcp.Clients.Intro"]</p>
+<p>@L["Mcp.Clients.ServiceAccounts"] <a href="api-keys">@L["Mcp.Clients.ManagementKeys"]</a></p>
+<McpLinks Current="mcp/clients" />
+@if (Admin.Access.AllowsForInstance("settings.mcp.manage"))
+{
+    <p><a href="settings/mcp/defaults">@L["Mcp.Clients.Settings"]</a></p>
+}
+
+@if (clients is null)
+{
+    @if (failed)
+    {
+        <p role="alert">@L["Mcp.Clients.Failed"] <CmsButton OnClick="ReadAsync">@L["Mcp.TryAgain"]</CmsButton></p>
+    }
+    else
+    {
+        <p role="status">@L["Mcp.Clients.Loading"]</p>
+    }
+}
+else if (clients.Count == 0)
+{
+    <p>@L["Mcp.Clients.None"]</p>
+}
+else
+{
+    <table class="mcp-table mcp-clients">
+        <caption class="cms-visually-hidden">@L["Mcp.Clients.Page.Heading"]</caption>
+        <thead>
+            <tr>
+                <th scope="col">@L["Mcp.Clients.Name"]</th>
+                <th scope="col">@L["Mcp.Clients.Status"]</th>
+                <th scope="col">@L["Mcp.Clients.Role"]</th>
+                <th scope="col">@L["Mcp.Clients.Registered"]</th>
+                <th scope="col">@L["Mcp.Clients.LastActivity"]</th>
+                <th scope="col"><span class="cms-visually-hidden">@L["Mcp.Clients.Actions"]</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var client in clients)
+            {
+                <tr @key="client.Id">
+                    <th scope="row">
+                        @client.Name
+                        <br /><code>@client.ClientId</code>
+                    </th>
+                    <td>@StatusText(client.Status)</td>
+                    <td>@RoleText(client)</td>
+                    <td>@Time(client.RegisteredAt)</td>
+                    <td>@(client.LastActivityAt is { } last ? Time(last) : L["Mcp.Clients.Never"])</td>
+                    <td>
+                        <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                            @switch (client.Status)
+                            {
+                                case Pending:
+                                    <CmsButton Disabled="@(busy || roles is null)" OnClick="@(() => AskRole(client, approve: true))">
+                                        @L["Mcp.Clients.Approve"]<span class="cms-visually-hidden">@L["Mcp.Clients.Which", client.Name]</span>
+                                    </CmsButton>
+                                    <CmsButton Disabled="@busy" OnClick="@(() => AskConfirm(client, ClientAction.Reject))">
+                                        @L["Mcp.Clients.Reject"]<span class="cms-visually-hidden">@L["Mcp.Clients.Which", client.Name]</span>
+                                    </CmsButton>
+                                    break;
+                                case Approved:
+                                    <CmsButton Disabled="@(busy || roles is null)" OnClick="@(() => AskRole(client, approve: false))">
+                                        @L["Mcp.Clients.ChangeRole"]<span class="cms-visually-hidden">@L["Mcp.Clients.OfWhich", client.Name]</span>
+                                    </CmsButton>
+                                    <CmsButton Disabled="@busy" OnClick="@(() => AskConfirm(client, ClientAction.Revoke))">
+                                        @L["Mcp.Clients.Revoke"]<span class="cms-visually-hidden">@L["Mcp.Clients.Which", client.Name]</span>
+                                    </CmsButton>
+                                    break;
+                                default:
+                                    <CmsButton Disabled="@busy" OnClick="@(() => AskConfirm(client, ClientAction.Remove))">
+                                        @L["Mcp.Clients.Remove"]<span class="cms-visually-hidden">@L["Mcp.Clients.Which", client.Name]</span>
+                                    </CmsButton>
+                                    break;
+                            }
+                        </CmsStack>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<p class="mcp-message mcp-list-message" tabindex="-1" @ref="listElement">@listMessage</p>
+
+<CmsCard Title="@L["Mcp.Register.Heading"]">
+    <p>@L["Mcp.Register.Intro"]</p>
+    <form @onsubmit="RegisterAsync">
+        <CmsStack>
+            <CmsTextInput Label="@L["Mcp.Register.Name"]"
+                          Help="@L["Mcp.Register.NameHelp"]"
+                          MaxLength="128"
+                          Autocomplete="off"
+                          Value="@name"
+                          ValueChanged="@(value => name = value)" />
+            <CmsTextArea Label="@L["Mcp.Register.RedirectUris"]"
+                         Help="@L["Mcp.Register.RedirectUrisHelp"]"
+                         Required="true"
+                         Spellcheck="false"
+                         Rows="3"
+                         Value="@redirectUris"
+                         ValueChanged="@(value => redirectUris = value)"
+                         Error="@redirectError" />
+            @if (roles is null)
+            {
+                <p role="@(rolesFailed ? "alert" : "status")">@L[rolesFailed ? "Mcp.Roles.Failed" : "Mcp.Roles.Loading"]</p>
+            }
+            else
+            {
+                <CmsSelect Label="@L["Mcp.Register.Role"]"
+                           Help="@L["Mcp.Roles.Help"]"
+                           Required="true"
+                           Options="@roles"
+                           Value="@registerRole"
+                           ValueChanged="@(value => registerRole = value)"
+                           Placeholder="@L["Mcp.Roles.Choose"]"
+                           Error="@registerRoleError" />
+            }
+            <div>
+                <CmsButton Submit="true" Appearance="CmsButtonAppearance.Primary" Disabled="@(busy || roles is null)">@L["Mcp.Register.Register"]</CmsButton>
+            </div>
+        </CmsStack>
+    </form>
+    <p class="mcp-message mcp-register-message" tabindex="-1" @ref="registerElement">@registerMessage</p>
+</CmsCard>
+
+<CmsDialog Title="@L[approving ? "Mcp.Role.ApproveTitle" : "Mcp.Role.ChangeTitle"]" Open="@(roleFor is not null)" OpenChanged="@(open => { if (!open) Cancel(); })">
+    <ChildContent>
+        @if (roleFor is { } client)
+        {
+            <p>@L[approving ? "Mcp.Role.ApproveText" : "Mcp.Role.ChangeText", client.Name]</p>
+            <CmsSelect Label="@L["Mcp.Role.Role"]"
+                       Help="@L["Mcp.Roles.Help"]"
+                       Required="true"
+                       Options="@(roles ?? [])"
+                       Value="@chosenRole"
+                       ValueChanged="@(value => chosenRole = value)"
+                       Placeholder="@L["Mcp.Roles.Choose"]"
+                       Error="@roleError" />
+            @if (dialogError is { } error)
+            {
+                <p role="alert">@error</p>
+            }
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(busy || !CanSetRole)" OnClick="SetRoleAsync">@L[approving ? "Mcp.Role.Approve" : "Mcp.Role.Change"]</CmsButton>
+        <CmsButton Disabled="@busy" OnClick="Cancel">@L["Mcp.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+<CmsDialog Title="@L[$"Mcp.Confirm.{confirming}.Title"]" Open="@(confirmFor is not null)" OpenChanged="@(open => { if (!open) Cancel(); })">
+    <ChildContent>
+        @if (confirmFor is { } client)
+        {
+            <p>@L[$"Mcp.Confirm.{confirming}.Text", client.Name]</p>
+            @if (dialogError is { } error)
+            {
+                <p role="alert">@error</p>
+            }
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="ConfirmAsync">@L[$"Mcp.Confirm.{confirming}.Confirm"]</CmsButton>
+        <CmsButton Disabled="@busy" OnClick="Cancel">@L["Mcp.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+<CmsSecretDialog Title="@L["Mcp.Registered.Title"]" Label="@L["Mcp.Registered.Label"]" @bind-Secret="registeredId" OnClosed="FocusRegister">
+    <p>@L["Mcp.Registered.Text"]</p>
+</CmsSecretDialog>
+
+@code {
+    private const string Pending = "pending";
+    private const string Approved = "approved";
+
+    private enum ClientAction
+    {
+        Reject,
+        Revoke,
+        Remove,
+    }
+
+    private IReadOnlyList<McpClient>? clients;
+    private IReadOnlyList<CmsOption>? roles;
+    private bool failed;
+    private bool rolesFailed;
+    private bool busy;
+    private string? listMessage;
+    private string? name;
+    private string? redirectUris;
+    private string? registerRole;
+    private string? redirectError;
+    private string? registerRoleError;
+    private string? registerMessage;
+    private string? registeredId;
+    private McpClient? roleFor;
+    private bool approving;
+    private string? chosenRole;
+    private string? roleError;
+    private McpClient? confirmFor;
+    private ClientAction confirming;
+    private string? dialogError;
+    private ElementReference listElement;
+    private ElementReference registerElement;
+    private ElementReference? focusAfterRender;
+    private readonly CancellationTokenSource closing = new();
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(ReadAsync(), ReadRolesAsync());
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender is { } element)
+        {
+            focusAfterRender = null;
+            await element.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        failed = false;
+        try
+        {
+            clients = await Api.GetClientsAsync(Closing);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (McpProblems.IsFailure(exception))
+        {
+            (clients, failed) = (null, true);
+        }
+    }
+
+    // A client belongs to the instance, so it is offered the roles of every site; a role is sent by its id.
+    private async Task ReadRolesAsync()
+    {
+        try
+        {
+            var read = await Api.GetRolesAsync(Closing);
+            roles = [.. read.Where(role => role.SiteId is null).Select(role => new CmsOption(role.Id.ToString("D"), role.Name))];
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (McpProblems.IsFailure(exception))
+        {
+            rolesFailed = true;
+        }
+    }
+
+    private string StatusText(string status) => L[$"Mcp.Clients.Status.{status}"] is { ResourceNotFound: false } text ? text : status;
+
+    private string RoleText(McpClient client) =>
+        client.RoleName ?? (client.RoleId is null ? L["Mcp.Clients.NoRole"] : L["Mcp.Clients.RoleGone"]);
+
+    private static string Time(DateTimeOffset value) => value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+
+    // A change starts from the client's role when it is offered, and is off until another is chosen, since the server changes
+    // nothing for the same role. A role of one site is not offered, so the select then starts empty.
+    private void AskRole(McpClient client, bool approve)
+    {
+        var current = client.RoleId?.ToString("D");
+        var offered = !approve && roles?.Any(role => role.Value == current) == true;
+        (roleFor, approving, chosenRole, roleError, dialogError) = (client, approve, offered ? current : null, null, null);
+    }
+
+    private bool CanSetRole =>
+        approving || (!string.IsNullOrEmpty(chosenRole) && chosenRole != roleFor?.RoleId?.ToString("D"));
+
+    private void AskConfirm(McpClient client, ClientAction action) => (confirmFor, confirming, dialogError) = (client, action, null);
+
+    private void Cancel()
+    {
+        if ((roleFor is not null || confirmFor is not null) && !busy)
+        {
+            (roleFor, confirmFor, dialogError, listMessage) = (null, null, null, L["Mcp.Clients.Kept"]);
+            focusAfterRender = listElement;
+        }
+    }
+
+    private async Task SetRoleAsync()
+    {
+        if (busy || roleFor is not { } client || !CanSetRole)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(chosenRole))
+        {
+            roleError = L["Mcp.Roles.Required"];
+            return;
+        }
+
+        var approve = approving;
+        await ActAsync(client, async () =>
+        {
+            var changed = approve
+                ? await Api.ApproveClientAsync(client.Id, chosenRole, Closing)
+                : await Api.ChangeClientRoleAsync(client.Id, chosenRole, Closing);
+            return L[approve ? "Mcp.Clients.Approved" : "Mcp.Clients.RoleChanged", changed.Name, changed.RoleName ?? string.Empty];
+        });
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (busy || confirmFor is not { } client)
+        {
+            return;
+        }
+
+        var action = confirming;
+        await ActAsync(client, async () =>
+        {
+            if (action == ClientAction.Reject)
+            {
+                await Api.RejectClientAsync(client.Id, Closing);
+            }
+            else
+            {
+                await Api.RevokeClientAsync(client.Id, Closing);
+            }
+
+            return L[$"Mcp.Clients.Done.{action}", client.Name];
+        });
+    }
+
+    // A refusal of the role stays in the dialog; a client that is gone, or that changed meanwhile, closes it and the list is
+    // read again, since what the page shows of the client is no longer so.
+    private async Task ActAsync(McpClient client, Func<Task<string>> act)
+    {
+        (busy, dialogError, roleError) = (true, null, null);
+        var done = false;
+        try
+        {
+            listMessage = await act();
+            done = true;
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (McpProblems.Has(exception, McpProblems.ClientRoleRequired) || McpProblems.Has(exception, McpProblems.ClientRoleUnknown))
+        {
+            roleError = L["Mcp.Roles.Unknown"];
+        }
+        catch (Exception exception) when (McpProblems.Has(exception, McpProblems.ClientNotFound))
+        {
+            (listMessage, done) = (L["Mcp.Clients.Gone", client.Name], true);
+        }
+        catch (Exception exception) when (McpProblems.Has(exception, McpProblems.ClientNotPending)
+                                          || McpProblems.Has(exception, McpProblems.ClientNotApproved)
+                                          || McpProblems.Has(exception, McpProblems.ClientChangedMeanwhile))
+        {
+            (listMessage, done) = (L["Mcp.Clients.Changed", client.Name], true);
+        }
+        catch (Exception exception) when (McpProblems.IsFailure(exception))
+        {
+            dialogError = L["Mcp.Clients.ActionFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (!done)
+        {
+            return;
+        }
+
+        (roleFor, confirmFor) = (null, null);
+        Announcer.Announce(listMessage!);
+        await ReadAsync();
+        focusAfterRender = listElement;
+    }
+
+    private async Task RegisterAsync()
+    {
+        if (busy || roles is null)
+        {
+            return;
+        }
+
+        var uris = (redirectUris ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        (redirectError, registerRoleError) = (
+            uris.Length == 0 ? L["Mcp.Register.RedirectUrisRequired"].Value : null,
+            string.IsNullOrEmpty(registerRole) ? L["Mcp.Roles.Required"].Value : null);
+        if (redirectError is not null || registerRoleError is not null)
+        {
+            return;
+        }
+
+        busy = true;
+        var registered = false;
+        try
+        {
+            var client = await Api.RegisterClientAsync(string.IsNullOrWhiteSpace(name) ? null : name.Trim(), uris, registerRole!, Closing);
+            (registerMessage, name, redirectUris, registerRole, registered) = (L["Mcp.Register.Registered", client.Name], null, null, null, true);
+            registeredId = client.ClientId;
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (McpProblems.Has(exception, McpProblems.ClientRegistrationInvalid))
+        {
+            (redirectError, registerMessage) = (L["Mcp.Register.Invalid"], L["Mcp.Register.Refused"]);
+        }
+        catch (Exception exception) when (McpProblems.Has(exception, McpProblems.ClientRoleRequired) || McpProblems.Has(exception, McpProblems.ClientRoleUnknown))
+        {
+            (registerRoleError, registerMessage) = (L["Mcp.Roles.Unknown"], L["Mcp.Register.Refused"]);
+        }
+        catch (Exception exception) when (McpProblems.IsFailure(exception))
+        {
+            registerMessage = L["Mcp.Register.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (registered)
+        {
+            Announcer.Announce(registerMessage!);
+            await ReadAsync();
+        }
+        else
+        {
+            focusAfterRender = registerElement;
+        }
+    }
+
+    private void FocusRegister() => focusAfterRender = registerElement;
+}

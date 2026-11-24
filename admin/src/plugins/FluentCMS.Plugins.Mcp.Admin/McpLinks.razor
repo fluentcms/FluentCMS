@@ -1,0 +1,36 @@
+@* The other pages of the half that the caller may open, the agent writes among them, which have no menu item of their own. *@
+@inject IAdminContext Admin
+@inject IStringLocalizer<McpResources> L
+
+@if (Links.Count > 0)
+{
+    <nav aria-label="@L["Mcp.Links.Label"]">
+        <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+            @foreach (var (route, text) in Links)
+            {
+                <a href="@route">@L[text]</a>
+            }
+        </CmsStack>
+    </nav>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string Current { get; set; } = string.Empty;
+
+    private List<(string Route, string Text)> Links
+    {
+        get
+        {
+            var access = Admin.Access;
+            List<(string, string, bool)> all =
+            [
+                ("mcp/clients", "Mcp.Clients.Menu", access.AllowsForInstance("mcp.manage")),
+                ("mcp/instructions", "Mcp.Instructions.Menu", access.Allows("mcp.manage")),
+                ("mcp/prompts", "Mcp.Prompts.Menu", access.Allows("mcp.manage")),
+                ("mcp/activity", "Mcp.Activity.Link", access.Allows("activity.read")),
+            ];
+            return [.. all.Where(link => link.Item3 && link.Item1 != Current).Select(link => (link.Item1, link.Item2))];
+        }
+    }
+}
