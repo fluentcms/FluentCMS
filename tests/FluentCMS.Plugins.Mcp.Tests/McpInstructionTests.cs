@@ -119,6 +119,41 @@ public sealed class McpInstructionTests(McpSiteFixture fixture) : IClassFixture<
         (await reader.ListToolsAsync(cancellationToken: Token)).Select(tool => tool.Name).ShouldContain("article_list");
     }
 
+    // #3595: a grant makes its holder an agent of the site only when it gives a permission there. A stored row rule beside a
+    // permission outside content, content limited to resources and an empty resource list give none.
+    [Fact]
+    public async Task OnlyAGrantThatGivesAPermissionInTheSiteMakesAnAgentOfIt()
+    {
+        var host = fixture.Host;
+        var site = await CreateSiteAsync(host);
+        using var admin = await KeyInAsync(host, site);
+        await SendAsync(admin, HttpMethod.Put, Instructions, new { text = "Titles are sentence case." });
+        await SendAsync(admin, HttpMethod.Post, Prompts, new { name = "sum-up", template = "Sum it up." }, HttpStatusCode.Created);
+        var ownEntries = new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule };
+        var folder = new PermissionConstraints { Resources = ["folder"] };
+
+        foreach (var (permission, constraints, agent) in ((string, PermissionConstraints?, bool)[])[
+            ("content.*.read", ownEntries, true),
+            ("*", ownEntries, true),
+            ("media.read", folder, true),
+            (CorePermissions.UsersManage, ownEntries, false),
+            ("content.*.read", folder, false),
+            ("media.read", new PermissionConstraints { Resources = [] }, false)])
+        {
+            using var http = await KeyInAsync(host, site, await CreateRoleAsync(host, (permission, constraints)));
+            await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+            var shape = $"{permission} {constraints?.ToJson()}";
+
+            client.ServerInstructions.ShouldBe(agent ? "Titles are sentence case." : null, shape);
+            (await client.ListPromptsAsync(cancellationToken: Token)).Any(prompt => prompt.Name == "sum-up").ShouldBe(agent, shape);
+            if (!agent)
+            {
+                (await RefusalAsync(client, McpSiteResources.Guidelines(site))).ShouldContain(McpErrorCodes.UnknownResource, customMessage: shape);
+                (await Should.ThrowAsync<McpProtocolException>(async () => await client.GetPromptAsync("sum-up", cancellationToken: Token))).Message.ShouldContain(McpErrorCodes.UnknownPrompt, customMessage: shape);
+            }
+        }
+    }
+
     [Fact]
     public async Task InstructionsOfATypeThatNoLongerExistsAreLeftOutOfTheResourcesAndListedToBeRemoved()
     {
