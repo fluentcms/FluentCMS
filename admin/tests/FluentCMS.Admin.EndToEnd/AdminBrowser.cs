@@ -121,6 +121,13 @@ public sealed class AdminBrowser
     // A secret the test read from the page, as from the clipboard, so that a kept trace is masked of it and checked for it.
     public void Mask(string secret) => Keep(secret);
 
+    // The address of each page of the context, masked, for the output of a failed test.
+    internal IEnumerable<string> Addresses => _context.Pages.Select(page => Masked(page.Url));
+
+    // The text with every secret this context has seen replaced.
+    internal string Masked(string text) =>
+        _secrets.Keys.OrderByDescending(secret => secret.Length).Aggregate(text, (masked, secret) => masked.Replace(secret, "[masked]", StringComparison.Ordinal));
+
     // Lets the pages of the host read and write the clipboard, as a user who allows it does.
     public Task GrantClipboardAsync() =>
         _context.GrantPermissionsAsync(["clipboard-read", "clipboard-write"], new BrowserContextGrantPermissionsOptions { Origin = _host.Origin.GetLeftPart(UriPartial.Authority) });
