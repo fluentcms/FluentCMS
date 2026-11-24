@@ -63,6 +63,30 @@ public sealed class WebhooksPageTests : WebhooksTestContext
         Server.Headers[id]["Authorization"].ShouldBe("Bearer old");
     }
 
+    // The form open on the webhook is read again from the toggle's answer, so its save keeps the toggle.
+    [Fact]
+    public void ASaveOfTheFormAfterTheSameWebhookWasDisabledDoesNotEnableItAgain()
+    {
+        var id = Server.Add("Receiver", "https://hooks.example.com/in", ["content.published"]);
+        var cut = Render<WebhooksPage>();
+        cut.WaitForAssertion(() => Row(cut).ShouldContain("Enabled"));
+
+        Button(cut, "Edit the webhook Receiver").Click();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Edit Receiver"));
+        Button(cut, "Disable the webhook Receiver").Click();
+        cut.WaitForAssertion(() => Row(cut).ShouldContain("Disabled"));
+        cut.WaitForAssertion(() => cut.FindComponents<CmsCheckbox>().Single(box => box.Instance.Label == "Enabled").Instance.Value.ShouldBeFalse());
+
+        Field(cut, "Name").Input("Receiver two");
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => Server.Requests.Count(request => request.Method == HttpMethod.Put).ShouldBe(2));
+        var saved = Server.Requests.Last(request => request.Method == HttpMethod.Put).Body!;
+        (saved["name"]!.GetValue<string>(), saved["enabled"]!.GetValue<bool>()).ShouldBe(("Receiver two", false));
+        cut.WaitForAssertion(() => Row(cut).ShouldContain("Disabled"));
+        Server.Webhooks[id]["enabled"]!.GetValue<bool>().ShouldBeFalse();
+    }
+
     [Fact]
     public void AnEditThatRotatesTheSecretShowsTheNewOneOnceAndUntilWhenTheOldOneSigns()
     {

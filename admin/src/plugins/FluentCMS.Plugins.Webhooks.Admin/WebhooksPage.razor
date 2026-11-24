@@ -202,8 +202,14 @@ else
         var on = !webhook.Enabled;
         try
         {
-            await Api.UpdateWebhookAsync(webhook.Id, WebhooksApi.Toggled(webhook, on), Closing);
+            var toggled = await Api.UpdateWebhookAsync(webhook.Id, WebhooksApi.Toggled(webhook, on), Closing);
             listMessage = L[on ? "Webhooks.List.TurnedOn" : "Webhooks.List.TurnedOff", webhook.Name];
+
+            // A form open on the same webhook is read again from the answer, so that its next save does not undo the toggle.
+            if (editing?.Id == webhook.Id)
+            {
+                editing = toggled;
+            }
         }
         catch (OperationCanceledException) when (closing.IsCancellationRequested)
         {

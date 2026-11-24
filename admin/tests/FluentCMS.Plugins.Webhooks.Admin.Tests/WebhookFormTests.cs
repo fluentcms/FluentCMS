@@ -95,7 +95,7 @@ public sealed class WebhookFormTests : WebhooksTestContext
 
         Field(cut, "Address").Input("https://elsewhere.example.com/in");
 
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("The address now goes to another host, so each header needs its value again."));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("The address now has another scheme, host or port, so each header needs its value again."));
         Message(cut, "Value of header 1").ShouldBe("Enter the value again: the stored one is not sent to another host.");
         cut.Find($"label[for='{Field(cut, "Value of header 2").Id}'] .cms-field-required").ShouldNotBeNull();
 

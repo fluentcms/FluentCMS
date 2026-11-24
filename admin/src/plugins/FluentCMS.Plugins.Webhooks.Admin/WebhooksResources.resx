@@ -133,7 +133,7 @@
     <value>Sent with every delivery, such as the receiver's credentials. Their values are kept secret and never shown again.</value>
   </data>
   <data name="Webhooks.Form.HeadersMoved" xml:space="preserve">
-    <value>The address now goes to another host, so each header needs its value again.</value>
+    <value>The address now has another scheme, host or port, so each header needs its value again.</value>
   </data>
   <data name="Webhooks.Form.HeaderGroup" xml:space="preserve">
     <value>Header {0}</value>
