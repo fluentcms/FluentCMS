@@ -353,6 +353,36 @@ public sealed class AdminPluginManifestTests
     [Fact]
     public void TheSampleHalfIsValid() => File.IsValid.ShouldBeTrue();
 
+    // The sample half has resources in fr (ReviewsResources.fr.resx), so a menu item of its manifest needs a text in fr.
+    [Fact]
+    public void AMenuItemWithoutATextOfACultureTheHalfHasResourcesInIsNamed()
+    {
+        var json = System.IO.File.ReadAllText(ManifestPath).Replace("""{ "en": "Reviews", "fr": "Avis" }""", """{ "en": "Reviews" }""", StringComparison.Ordinal);
+
+        AdminPluginManifestCheck.Differences(Half, json).ShouldBe(
+        [
+            "menu item 'Reviews.Menu' of FluentCMS.Admin.Plugins.Sample.ReviewsPage: labels has no text for 'fr', a culture the half has resources in",
+        ]);
+    }
+
+    [Theory]
+    [InlineData("fr", "fr", true)]
+    [InlineData("fr-CA", "fr", true)]
+    [InlineData("fr", "fr-CA", false)]
+    [InlineData("en-GB", "en", false)]
+    public void ATextOfACultureOrOfAParentOtherThanEnglishCovers(string resources, string label, bool covered)
+    {
+        var declared = Labelled(AdminPluginManifestCheck.FromAssembly(Half));
+        var manifest = declared with
+        {
+            MenuItems = [.. declared.MenuItems.Select(item => item with { Labels = new Dictionary<string, string> { ["en"] = item.Label, [label] = "Avis" } })],
+        };
+
+        var differences = AdminPluginManifestCheck.Compare(manifest, declared, [resources]);
+
+        differences.Any(difference => difference.EndsWith($"labels has no text for '{resources}', a culture the half has resources in", StringComparison.Ordinal)).ShouldBe(!covered);
+    }
+
     // The texts of the menu items, which only the file has.
     private static AdminPluginManifest Labelled(AdminPluginManifest manifest) => manifest with
     {

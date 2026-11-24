@@ -61,7 +61,8 @@ internal sealed class PublishedHost(DirectoryInfo root) : HostProcess
             return;
         }
 
-        string[] properties = ["-p:UseAppHost=false", "-p:WasmBuildNative=false"];
+        // A publish with no build takes the satellite assemblies the build made, so it is given the build's pseudo-cultures.
+        string[] properties = ["-p:UseAppHost=false", "-p:WasmBuildNative=false", .. Repository.PseudoCultures ? ["-p:FluentCmsAdminPseudoCultures=true"] : Array.Empty<string>()];
         var (exitCode, _, tail) = await ChildProcess.RunAsync(
             "dotnet",
             ["publish", Repository.HostProject, "-c", Repository.Configuration, "--no-build", "-o", PublishDirectory, .. properties, "-nologo", "-nodeReuse:false"],

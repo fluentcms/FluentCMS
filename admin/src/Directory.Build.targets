@@ -1,0 +1,65 @@
+<Project>
+
+  <!-- The pseudo-cultures in the browser (spec 4.17, AQ14), for the end-to-end and accessibility checks only. With
+       -p:FluentCmsAdminPseudoCultures=true on the build and the publish, each neutral resource file of an admin project gets
+       an en-XA and an ar-XB file in obj, marked as admin/eng/PseudoCulture.cs marks them, which become satellite assemblies.
+       The items are static, so that a publish with no build finds the satellite assemblies of the build. A pack with the
+       property stops, and eng/check-admin-size.cs fails a publish that has them, so no release carries them. -->
+  <PropertyGroup Condition="'$(FluentCmsAdminPseudoCultures)' == 'true'">
+    <!-- The pseudo-cultures are not cultures of the runtime's list, so a file's culture is set, not read from its name. -->
+    <RespectAlreadyAssignedItemCulture>true</RespectAlreadyAssignedItemCulture>
+    <_FluentCmsPseudoResourcesRoot>$(IntermediateOutputPath)pseudo-cultures\</_FluentCmsPseudoResourcesRoot>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(FluentCmsAdminPseudoCultures)' == 'true'">
+    <!-- The name the SDK gives a neutral file of the admin: the project's namespace and the folders of the file. -->
+    <_FluentCmsNeutralResource Include="**/*.resx" Exclude="**/*.*.resx;$(BaseIntermediateOutputPath)**;$(BaseOutputPath)**">
+      <PseudoName>$(RootNamespace).$([System.String]::Copy('%(RecursiveDir)').Replace('\', '.').Replace('/', '.'))%(Filename)</PseudoName>
+    </_FluentCmsNeutralResource>
+    <EmbeddedResource Include="@(_FluentCmsNeutralResource->'$(_FluentCmsPseudoResourcesRoot)en-XA\%(PseudoName).resx')" Culture="en-XA" WithCulture="true" Type="Resx" LogicalName="%(PseudoName).en-XA.resources" />
+    <EmbeddedResource Include="@(_FluentCmsNeutralResource->'$(_FluentCmsPseudoResourcesRoot)ar-XB\%(PseudoName).resx')" Culture="ar-XB" WithCulture="true" Type="Resx" LogicalName="%(PseudoName).ar-XB.resources" />
+  </ItemGroup>
+
+  <UsingTask TaskName="WritePseudoResources" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll" Condition="'$(FluentCmsAdminPseudoCultures)' == 'true'">
+    <Task>
+      <Code Type="Class" Language="cs" Source="$(MSBuildThisFileDirectory)../eng/PseudoCulture.cs" />
+    </Task>
+  </UsingTask>
+
+  <UsingTask TaskName="MarkPseudoManifestLabels" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll" Condition="'$(FluentCmsAdminPseudoCultures)' == 'true'">
+    <Task>
+      <Code Type="Class" Language="cs" Source="$(MSBuildThisFileDirectory)../eng/PseudoCulture.cs" />
+    </Task>
+  </UsingTask>
+
+  <Target Name="FluentCmsWritePseudoResources" BeforeTargets="CoreResGen" Condition="'$(FluentCmsAdminPseudoCultures)' == 'true' And '@(_FluentCmsNeutralResource)' != ''"
+    Inputs="@(_FluentCmsNeutralResource);$(MSBuildThisFileDirectory)../eng/PseudoCulture.cs" Outputs="@(_FluentCmsNeutralResource->'$(_FluentCmsPseudoResourcesRoot)ar-XB\%(PseudoName).resx')">
+    <WritePseudoResources Sources="@(_FluentCmsNeutralResource)" OutputDirectory="$(_FluentCmsPseudoResourcesRoot)" />
+    <ItemGroup>
+      <FileWrites Include="$(_FluentCmsPseudoResourcesRoot)**\*.resx" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The resolution of references finds a satellite assembly in a folder named for a culture of the runtime's list only, so
+       the app takes those of the pseudo-cultures beside its references itself, as the boot configuration's satellites. -->
+  <Target Name="FluentCmsReferencePseudoSatellites" AfterTargets="ResolveAssemblyReferences" Condition="'$(FluentCmsAdminPseudoCultures)' == 'true' And '$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
+    <ItemGroup>
+      <_FluentCmsPseudoSatellite Include="@(ReferencePath->'%(RootDir)%(Directory)en-XA\%(Filename).resources.dll')" Culture="en-XA" DestinationSubDirectory="en-XA\" CopyLocal="true" />
+      <_FluentCmsPseudoSatellite Include="@(ReferencePath->'%(RootDir)%(Directory)ar-XB\%(Filename).resources.dll')" Culture="ar-XB" DestinationSubDirectory="ar-XB\" CopyLocal="true" />
+      <_FluentCmsPseudoSatellite Remove="@(_FluentCmsPseudoSatellite)" Condition="!Exists('%(Identity)')" />
+      <ReferenceSatellitePaths Include="@(_FluentCmsPseudoSatellite)" />
+      <ReferenceCopyLocalPaths Include="@(_FluentCmsPseudoSatellite)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The sidebar shows a half's menu item from its manifest before the half loads, so the gathered manifests get the
+       pseudo-cultures' texts of each item too. -->
+  <Target Name="FluentCmsMarkPseudoManifestLabels" AfterTargets="FluentCmsWriteAdminPlugins" Condition="'$(FluentCmsAdminPseudoCultures)' == 'true'">
+    <MarkPseudoManifestLabels File="$(_FluentCmsAdminPluginsPath)" />
+  </Target>
+
+  <Target Name="FluentCmsRefusePseudoCulturesInPack" BeforeTargets="GenerateNuspec" Condition="'$(FluentCmsAdminPseudoCultures)' == 'true'">
+    <Error Text="FluentCmsAdminPseudoCultures is set: the pseudo-cultures are for the end-to-end checks and are in no package." />
+  </Target>
+
+</Project>

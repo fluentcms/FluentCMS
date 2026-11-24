@@ -17,6 +17,14 @@ namespace FluentCMS.Admin;
 
 public static class AdminHostBuilderExtensions
 {
+    // The app's own resources name its content types: ContentType.{name} is read from TResources before the admin's.
+    public static Task AddFluentCmsAdmin<TResources>(this WebAssemblyHostBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Services.AddSingleton(new AdminAppResources(typeof(TResources)));
+        return builder.AddFluentCmsAdmin();
+    }
+
     // Asynchronous because it reads config.json before anything else registers (spec 2.5).
     public static async Task AddFluentCmsAdmin(this WebAssemblyHostBuilder builder)
     {

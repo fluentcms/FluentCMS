@@ -22,6 +22,15 @@
     <None Include="landing.schema.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Built with -p:FluentCmsAdminPseudoCultures=true, the host is built with the pseudo-cultures too, and the run publishes
+       it with them (spec 4.17). -->
+  <ItemGroup Condition="'$(FluentCmsAdminPseudoCultures)' == 'true'">
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>FluentCmsAdminPseudoCultures</_Parameter1>
+      <_Parameter2>true</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <!-- The tests publish the reference host with no build and run it in a process of its own, as the image does, so the host is
        built first in the same configuration; nothing of it is copied or compiled against. -->
   <ItemGroup>

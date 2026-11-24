@@ -156,8 +156,10 @@ jobs:
         with:
           global-json-file: global.json
 
+      # With the pseudo-cultures, which the run publishes the host with for its right-to-left case (admin spec 4.17); no
+      # release builds them, and the size check of the Pack job fails a publish that has them.
       - name: Build
-        run: dotnet build admin/tests/FluentCMS.Admin.EndToEnd -c Release -warnaserror
+        run: dotnet build admin/tests/FluentCMS.Admin.EndToEnd -c Release -warnaserror -p:FluentCmsAdminPseudoCultures=true
 
       # The headless shell is what headless Chromium runs. The runner's image holds every system library it needs, so
       # --with-deps is left out: all it added through apt was fonts the tests do not read, and the mirror took up to seven

@@ -77,6 +77,19 @@ public sealed class ShellTests : AdminTestContext
         sidebar.QuerySelectorAll("a.cms-nav-link").Select(link => link.TextContent.Trim()).ShouldBe(["Home", "Article", "Tag Global", "Writers", "Site settings"]);
     }
 
+    // AddFluentCmsAdmin<TResources> gives the app's resources, which name a type before the admin's resources and the schema.
+    [Fact]
+    public void TheAppsOwnResourcesNameAContentType()
+    {
+        Services.AddSingleton(new AdminAppResources(typeof(TeamResources)));
+        Management.SetTypes(MainSite, Type("article", displayName: "Articles"), Type("author", displayName: "Writers"));
+
+        var app = Load();
+
+        app.Find(".shell-sidebar nav[aria-label='Main']").QuerySelectorAll("a.cms-nav-link").Select(link => link.TextContent.Trim())
+            .ShouldBe(["Home", "Stories", "Writers"]);
+    }
+
     [Fact]
     public void ATypeTheAccessDoesNotListIsLeftOut()
     {
