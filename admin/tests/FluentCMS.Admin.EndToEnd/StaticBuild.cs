@@ -11,7 +11,8 @@ internal static class StaticBuild
     // The build and publish of the app beside the publish of the host, under the load of the other test apps of a full run.
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(15);
 
-    private static readonly string[] NoServers = ["-p:UseSharedCompilation=false", "-p:UseRazorBuildServer=false", "-nodeReuse:false"];
+    // MSBUILDDISABLENODEREUSE keeps the build nodes from staying, also for dotnet run, which hands -nodeReuse to the app.
+    private static readonly string[] NoServers = ["-p:UseSharedCompilation=false", "-p:UseRazorBuildServer=false"];
 
     // The zip, made in the folder unless an earlier run made it there whole.
     public static async Task<string> MakeAsync(DirectoryInfo folder, CancellationToken cancellationToken)
