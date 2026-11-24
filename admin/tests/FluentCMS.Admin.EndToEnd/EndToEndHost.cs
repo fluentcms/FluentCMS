@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using FluentCMS.Admin.EndToEnd;
 using Microsoft.Playwright;
 using Xunit;
@@ -18,7 +19,7 @@ namespace FluentCMS.Admin.EndToEnd;
 // and the admin at /admin. It is migrated and its editor made with the host's own commands before it starts, and it
 // listens on https on a free port of the loopback address with a certificate the run makes. Everything is deleted at the
 // end, and the host is stopped whatever ends the run.
-public sealed class EndToEndHost : IAsyncLifetime
+public sealed partial class EndToEndHost : IAsyncLifetime
 {
     public const string AdminPath = "/admin/";
 
@@ -90,8 +91,9 @@ public sealed class EndToEndHost : IAsyncLifetime
 
     internal string ServerHost => _host!.ServerHost;
 
-    // The last lines the host logged, for the output of a failed case.
-    internal string HostLog => _host?.Tail ?? "";
+    // The last lines the host logged, for the output of a failed case, with the query of each address cut: a request line
+    // holds it, and it can hold what the browser never saw, such as an authorization code, which no mask then knows.
+    internal string HostLog => AddressQuery().Replace(_host?.Tail ?? "", "$1?[query]");
 
     // Why the browser tests are skipped: Chromium is not installed for this version of Playwright.
     public string? BrowserMissing { get; private set; }
@@ -374,6 +376,18 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["Kestrel__Endpoints__Https__Certificate__Password"] = certificates.Password,
             // As the compose file sets it: a command's output is its result alone.
             ["Logging__Console__LogToStandardErrorThreshold"] = "Trace",
+            // For the host's log in the output of a failed case (HostLog): a line, with its time, for the start and the end of
+            // each request, and none for the commands the background jobs send the database every few seconds, nor for the
+            // endpoint and the file of each request, which say again what its start says.
+            ["Logging__LogLevel__Microsoft.AspNetCore.Hosting.Diagnostics"] = "Information",
+            ["Logging__LogLevel__Microsoft.AspNetCore.Routing.EndpointMiddleware"] = "Warning",
+            ["Logging__LogLevel__Microsoft.AspNetCore.StaticAssets"] = "Warning",
+            ["Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command"] = "Warning",
+            // Named, or the console logger reads the formatter's options from elsewhere.
+            ["Logging__Console__FormatterName"] = "simple",
+            ["Logging__Console__FormatterOptions__SingleLine"] = "true",
+            ["Logging__Console__FormatterOptions__TimestampFormat"] = "HH:mm:ss.fff ",
+            ["Logging__Console__FormatterOptions__UseUtcTimestamp"] = "true",
         })
         {
             _environment[name] = value;
@@ -384,6 +398,10 @@ public sealed class EndToEndHost : IAsyncLifetime
             _environment[$"{Client}Scopes__{index}"] = scopes[index];
         }
     }
+
+    // An absolute address, or a path at the start of a word, such as that of a redirect.
+    [GeneratedRegex(@"((?:\b[a-z][a-z0-9+.-]*://|(?<![^\s'""(=])/)[^\s?'""]*)\?[^\s'""]*")]
+    private static partial Regex AddressQuery();
 
     // The certificate of the host with its key, for a server of a case on another origin, which the browser accepts by the same key.
     internal X509Certificate2 LoadServerCertificate() => X509CertificateLoader.LoadPkcs12FromFile(_certificates!.ServerPath, _certificates.Password);
