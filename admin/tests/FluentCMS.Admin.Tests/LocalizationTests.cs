@@ -35,12 +35,6 @@ public sealed class LocalizationTests : AdminTestContext
     public void EveryTextOfEveryPageComesFromTheResources(string culture, string route)
     {
         UseInterfaceCulture(culture);
-        if (route == "/account")
-        {
-            // Dates of no word in the examples of the preferences, whose zones and cultures are data (AccountLocalizationTests).
-            Management.Preferences["dateFormat"] = "de-DE";
-        }
-
         Start();
         Services.GetRequiredService<NavigationManager>().NavigateTo(Concrete(route, culture));
 
@@ -48,16 +42,6 @@ public sealed class LocalizationTests : AdminTestContext
         if (route == ListRoute)
         {
             app.WaitForAssertion(() => app.Find(".cms-data-grid-message"));
-        }
-
-        if (route == "/account")
-        {
-            app.WaitForAssertion(() => app.FindAll("section.cms-card select").Count.ShouldBeGreaterThan(1));
-            var theme = app.FindAll("section.cms-card select")[0];
-            foreach (var option in app.FindAll("section.cms-card select option[value]:not([value=''])").Where(option => option.ParentElement != theme))
-            {
-                option.Remove();
-            }
         }
 
         // FocusOnNavigate does nothing on a page without a heading.

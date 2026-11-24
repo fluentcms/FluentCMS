@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json.Nodes;
 using Bunit;
 using FluentCMS.Admin.Account;
+using FluentCMS.Admin.Administration.Account;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Admin.Tests.Shell.FakeManagementServer;

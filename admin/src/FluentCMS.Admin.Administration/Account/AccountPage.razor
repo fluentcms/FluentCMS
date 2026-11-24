@@ -1,5 +1,6 @@
 @* The account page of the signed-in user (spec 4.3, A-09): its sessions, two-factor sign-in, external logins, the hosted page
-   that changes the password, and the theme and interface language. *@
+   that changes the password, and the preferences. It loads with this assembly on its first visit, as an open route, so that
+   it is not part of the first download (A-41). *@
 @page "/account"
 @implements IDisposable
 @using FluentCMS.Admin.Configuration

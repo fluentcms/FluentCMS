@@ -50,7 +50,7 @@ public sealed class PreferencesTests(EndToEndHost host) : BrowserTest(host)
         await Field(tab, "Account.Preferences.Language", PseudoCulture.RightToLeft).SelectOptionAsync("en");
         await Field(tab, "Account.Preferences.TimeZone", PseudoCulture.RightToLeft).SelectOptionAsync(Zone);
         var loads = Loads(tab);
-        var save = tab.Page.Locator("fluent-button").Filter(Ui.Exactly(PseudoCulture.Transform(Repository.AdminText("Account.Preferences.Save"), PseudoCulture.RightToLeft)));
+        var save = tab.Page.Locator("fluent-button").Filter(Ui.Exactly(PseudoCulture.Transform(Repository.AdministrationText("Account", "Account.Preferences.Save"), PseudoCulture.RightToLeft)));
         var saved = await tab.AnswerAsync(() => Ui.PressAsync(save, "Enter"), "PATCH", tab.ManagementUrl("me/preferences"));
 
         saved.Status.ShouldBe(200);
@@ -84,7 +84,7 @@ public sealed class PreferencesTests(EndToEndHost host) : BrowserTest(host)
     // A field of the preferences card by its label, in the culture the app runs in.
     private static ILocator Field(AdminTab tab, string key, string? culture = null)
     {
-        var label = Repository.AdminText(key);
+        var label = Repository.AdministrationText("Account", key);
         return tab.Page.GetByLabel(culture is null ? label : PseudoCulture.Transform(label, culture), new PageGetByLabelOptions { Exact = true });
     }
 

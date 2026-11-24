@@ -1,6 +1,6 @@
 # FluentCMS.Admin.Administration
 
-The administration pages of the [FluentCMS](https://github.com/fluentcms/FluentCMS) admin: users, roles, API keys, members, sites and locales, settings, plugins, jobs and diagnostics. An app built on `FluentCMS.Admin` references it and lists it as lazy, so that it is fetched on the first visit of one of these pages and not with the first download; the build stops when it is referenced and not lazy:
+The administration pages of the [FluentCMS](https://github.com/fluentcms/FluentCMS) admin: users, roles, API keys, members, sites and locales, settings, plugins, jobs and diagnostics, with the component gallery and the account page. An app built on `FluentCMS.Admin` references it and lists it as lazy, so that it is fetched on the first visit of one of these pages and not with the first download; the build stops when it is referenced and not lazy:
 
 ```xml
 <ItemGroup>
@@ -23,7 +23,7 @@ Each area is a folder of its own: `Users/`, `Roles/`, `ApiKeys/`, `Members/`, `S
 - its resource file, `{Area}Resources.resx`, read through `IStringLocalizer<{Area}Resources>`, with keys `{Area}.{View}.{Text}`;
 - a `_Imports.razor` of its own for the namespaces only it needs.
 
-`Gallery/` holds the component gallery at `/system/components`, which is in no area: any signed-in user may open it, it has no sidebar entry, and it is here only so that it is not in the first download. Its route is one of `OpenRoutes` of `AdministrationAreas`, and its texts are in `GalleryResources.resx`.
+`Gallery/` holds the component gallery at `/system/components`, and `Account/` the account page of the signed-in user at `/account`, which are in no area: any signed-in user may open them, they have no sidebar entry, and they are here only so that they are not in the first download. Their routes are `OpenRoutes` of `AdministrationAreas`, and their texts are in `GalleryResources.resx` and `AccountResources.resx`. The account page's QR code encoder stays in `FluentCMS.Admin`, whose package carries its third-party notice.
 
 `Common/` holds what several areas use: `RoleReads` and `RoleSelect`, and `RecordList`, the frame of a list of records. A list with filters of its own names their query parameters in `Filters` (any but `q` and `page`), draws their controls itself, sets one with `SetFilter` and reads them from the `RecordQuery` its `Read` is given.
 

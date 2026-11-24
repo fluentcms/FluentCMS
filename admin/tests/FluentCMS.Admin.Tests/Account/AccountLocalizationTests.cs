@@ -1,7 +1,9 @@
 using System.Net;
 using System.Text.Json.Nodes;
 using Bunit;
-using FluentCMS.Admin.Account;
+using FluentCMS.Admin.Administration.Account;
+using FluentCMS.Admin.Plugins;
+using FluentCMS.Admin.Tests.Administration;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -85,6 +87,7 @@ public sealed class AccountLocalizationTests : AdminTestContext
         }
 
         Management.Preferences["dateFormat"] = "de-DE";
+        Services.AddScoped<IAdminAssemblyLoader>(_ => new AdministrationTestContext.AdministrationLoader());
         Start();
         if (state == "SignInFailed")
         {

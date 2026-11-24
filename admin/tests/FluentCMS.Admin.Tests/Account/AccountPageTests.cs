@@ -3,10 +3,11 @@ using System.Net;
 using System.Text.Json.Nodes;
 using AngleSharp.Dom;
 using Bunit;
-using FluentCMS.Admin.Account;
+using FluentCMS.Admin.Administration.Account;
 using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Interop;
 using FluentCMS.Admin.Localization;
+using FluentCMS.Admin.Plugins;
 using FluentCMS.Admin.Shell;
 using FluentCMS.Admin.Tests.Authentication;
 using Microsoft.Extensions.DependencyInjection;
@@ -419,6 +420,25 @@ public sealed class AccountPageTests : AccountTestContext
 
         Section(app, Card).TextContent.ShouldContain("Only a user has this.");
         Section(app, Card).QuerySelectorAll("select").Length.ShouldBe(1);
+    }
+
+    // The page is in the administration assembly, which its first visit fetches with the shell's loading state (A-41), and
+    // the user menu's link reaches it.
+    [Fact]
+    public void TheFirstVisitLoadsThePageWithTheAdministrationAssemblyAndShowsTheLoadingStateMeanwhile()
+    {
+        var hold = Loader.Hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Services.AddScoped<IAdminAssemblyLoader>(_ => Loader);
+        Start();
+        Navigation.NavigateTo(AccountPage.Route);
+        var app = Render<AdminApp>();
+
+        app.WaitForAssertion(() => app.Find("main .shell-notice[role=status]").TextContent.ShouldBe("Loading the page…"));
+        hold.SetResult();
+
+        app.WaitForAssertion(() => app.Find("main h1").TextContent.ShouldBe("Your account"));
+        app.FindAll("main .shell-notice[role=status]").ShouldBeEmpty();
+        Loader.Loads.ShouldBe(1);
     }
 
     [Fact]
