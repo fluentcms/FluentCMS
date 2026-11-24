@@ -12,7 +12,7 @@ The administration pages of the [FluentCMS](https://github.com/fluentcms/FluentC
 
 The shell of `FluentCMS.Admin` knows the areas before this assembly is loaded: their sidebar entries, and the permission each needs, for the instance where every call of the area is instance-only. A route the user may not open answers the no-access state, and the assembly is not fetched for it.
 
-This preview holds each page with its heading only, the read of the roles with a role select, and the frame of a list of records. Sections 2.6, 4.15 and 4.16 of the [admin technical specification](https://github.com/fluentcms/FluentCMS/blob/main/docs/planning/admin-technical-spec.md) have the design.
+This preview holds each page with its heading only, the read of the roles with a role select, and the frame of a list of records. Sections 2.6, 4.15 and 4.16 of the [admin technical specification](https://github.com/fluentcms/FluentCMS/blob/main/docs/planning/admin-technical-spec.md) have the design, and the [admin overview](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin.md) the guides.
 
 ## Where an area's files go
 
