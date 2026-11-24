@@ -588,6 +588,34 @@ jobs:
           grep -q "over the budget" "$RUNNER_TEMP/admin-size.log" || { cat "$RUNNER_TEMP/admin-size.log"; echo "::error::The size check did not say by how much the admin is over."; exit 1; }
           echo "Above the budget, the admin fails the check, as expected."
 
+      # The prebuilt static build of the admin (admin spec 6.3), made and checked as the Publish workflow makes it for a release,
+      # and uploaded with the packages.
+      - name: Make the static build of the admin
+        run: dotnet run eng/admin-zip.cs -- pack artifacts/admin "$PACKAGE_VERSION" artifacts/packages
+
+      # A copy of the zip without each file the check asks for, and one with a compressed copy of index.html or config.json,
+      # which the check must refuse and name.
+      - name: Check that a static build without a file or with a compressed document fails the check
+        shell: bash
+        run: |
+          built="$PWD/artifacts/packages/fluentcms-admin-$PACKAGE_VERSION.zip"
+          broken="$RUNNER_TEMP/broken-admin"
+          mkdir -p "$broken"
+          for name in index.html config.json _framework/blazor.webassembly.js LICENSE THIRD-PARTY-NOTICES.md README.txt index.html.br config.json.gz; do
+            cp "$built" "$broken/build.zip"
+            case "$name" in
+              *.br | *.gz) (cd "$broken" && echo stale > "$name" && zip -q build.zip "$name" && rm "$name"); expected="holds $name" ;;
+              *) zip -q -d "$broken/build.zip" "$name"; expected="misses $name" ;;
+            esac
+            if dotnet run eng/admin-zip.cs -- check "$broken/build.zip" > "$broken/build.log"; then
+              cat "$broken/build.log"
+              echo "::error::The check passed a static build that $expected."
+              exit 1
+            fi
+            grep -qF "$expected" "$broken/build.log" || { cat "$broken/build.log"; echo "::error::The check did not say that the static build $expected."; exit 1; }
+            echo "A static build that $expected fails the check, as expected."
+          done
+
       # Packed beside the NuGet packages at their version. CI publishes neither; the Publish workflow does, from a tag.
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

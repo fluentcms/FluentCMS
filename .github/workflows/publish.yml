@@ -4,8 +4,9 @@ name: Publish
 # its symbols to nuget.org; the image of the reference host for linux/amd64 and linux/arm64, pushed to ghcr.io/fluentcms/fluentcms
 # with the version and preview (latest for a release that is not a preview); @fluentcms/client on npm when the repository
 # variable NPM_SCOPE_OWNED is true, attached to the GitHub release otherwise; and the GitHub release, a pre-release for a
-# preview. It refuses a tag that is not on main, a commit without a successful CI and Fresh machine, and a version that the
-# version prefix of Directory.Build.props does not lead to. The image is built once, into an archive of the run that the
+# preview, with the prebuilt static build of the admin attached as fluentcms-admin-{version}.zip. It refuses a tag that is not
+# on main, a commit without a successful CI and Fresh machine, and a version that the version prefix of Directory.Build.props
+# does not lead to. The image is built once, into an archive of the run that the
 # Compose smoke test loads and runs, and the publish job pushes that archive and checks that the registry holds the digest the
 # smoke test ran. Only the publish job holds credentials: it runs in the release environment, after its reviewer approves, and
 # signs in to nuget.org with trusted publishing.
@@ -27,6 +28,7 @@ on:
       - Directory.Build.props
       - eng/check-packages.cs
       - eng/check-dependencies.cs
+      - eng/admin-zip.cs
       - "src/**/*.csproj"
       - "admin/src/**/*.csproj"
       - src/FluentCMS.Host/Dockerfile
@@ -218,6 +220,12 @@ jobs:
       - name: Check that no package depends on one left out
         run: dotnet run eng/check-dependencies.cs -- artifacts/packages
 
+      # The prebuilt static build of the admin (admin spec 6.3) at the version of the release, which the GitHub release attaches.
+      - name: Make the static build of the admin
+        run: |
+          dotnet publish admin/src/FluentCMS.Admin.App -c Release -o artifacts/admin -p:Version="$VERSION"
+          dotnet run eng/admin-zip.cs -- pack artifacts/admin "$VERSION" artifacts/packages
+
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -342,6 +350,9 @@ jobs:
               else
                 echo "The GitHub release: $(basename "$client"), since NPM_SCOPE_OWNED is not true"
               fi
+            done
+            for build in artifacts/packages/fluentcms-admin-*.zip; do
+              echo "The GitHub release: $(basename "$build"), the prebuilt static build of the admin"
             done
             echo
             echo "ghcr.io, for $PLATFORMS, the image the Compose smoke test ran, $TESTED:"
@@ -550,7 +561,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          options=(--verify-tag --title "FluentCMS $VERSION" --notes-file "docs/releases/$VERSION.md")
+          options=(--verify-tag --title "FluentCMS $VERSION" --notes-file "docs/releases/$VERSION.md" "artifacts/packages/fluentcms-admin-$VERSION.zip")
           if [ "$PREVIEW" = true ]; then options+=(--prerelease); fi
           if [ "$NPM" != true ]; then options+=("artifacts/packages/fluentcms-client-$VERSION.tgz"); fi
           gh release create "$TAG" "${options[@]}"
