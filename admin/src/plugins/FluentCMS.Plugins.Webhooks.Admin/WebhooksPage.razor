@@ -1,7 +1,292 @@
-@* The first page of the half (spec 5.3), which shows its heading until its issue writes it. *@
+@* The webhooks of the site (spec 5.3), for a caller who holds webhooks.manage there: each with its address, events and state,
+   a link to its deliveries, and edit, enable or disable, and delete after a question that names it. The form below makes a
+   new webhook, or changes the one chosen with Edit. The secret a create or a rotation answers is shown once by
+   CmsSecretDialog and held in one field until the dialog closes; it is in no draft, log, storage or address. *@
 @page "/webhooks"
 @attribute [AdminPage("/webhooks", Permission = "webhooks.manage")]
 @attribute [AdminMenuItem("Webhooks.Menu", Section = AdminSection.Settings, Order = 30)]
+@using System.Globalization
+@using FluentCMS.Plugins.Webhooks.Admin.Api
+@implements IDisposable
+@inject IManagementApi Api
+@inject IAnnouncer Announcer
 @inject IStringLocalizer<WebhooksResources> L
 
 <h1 tabindex="-1">@L["Webhooks.Page.Heading"]</h1>
+
+@if (webhooks is null)
+{
+    @if (failed is { } failure)
+    {
+        <p role="alert">@failure <CmsButton OnClick="ReadAsync">@L["Webhooks.List.TryAgain"]</CmsButton></p>
+    }
+    else
+    {
+        <p role="status">@L["Webhooks.List.Loading"]</p>
+    }
+}
+else if (webhooks.Count == 0)
+{
+    <p>@L["Webhooks.List.None"]</p>
+}
+else
+{
+    <table class="webhooks-table">
+        <caption class="cms-visually-hidden">@L["Webhooks.Page.Heading"]</caption>
+        <thead>
+            <tr>
+                <th scope="col">@L["Webhooks.List.Name"]</th>
+                <th scope="col">@L["Webhooks.List.Url"]</th>
+                <th scope="col">@L["Webhooks.List.Events"]</th>
+                <th scope="col">@L["Webhooks.List.State"]</th>
+                <th scope="col"><span class="cms-visually-hidden">@L["Webhooks.List.Actions"]</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var webhook in webhooks)
+            {
+                <tr @key="webhook.Id">
+                    <th scope="row"><a href="@WebhookRoutes.Webhook(webhook.Id)">@webhook.Name</a></th>
+                    <td><code>@webhook.Url</code></td>
+                    <td>@string.Join(", ", webhook.Events)</td>
+                    <td>
+                        @L[webhook.Enabled ? "Webhooks.List.Enabled" : "Webhooks.List.Disabled"]
+                        @if (webhook.PreviousSecretExpiresAt is { } until)
+                        {
+                            <br />@L["Webhooks.List.PreviousSecret", Time(until)]
+                        }
+                    </td>
+                    <td>
+                        <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                            <CmsButton Disabled="@busy" OnClick="@(() => Edit(webhook))">
+                                @L["Webhooks.List.Edit"]<span class="cms-visually-hidden">@L["Webhooks.List.Which", webhook.Name]</span>
+                            </CmsButton>
+                            <CmsButton Disabled="@busy" OnClick="@(() => ToggleAsync(webhook))">
+                                @L[webhook.Enabled ? "Webhooks.List.Disable" : "Webhooks.List.Enable"]<span class="cms-visually-hidden">@L["Webhooks.List.Which", webhook.Name]</span>
+                            </CmsButton>
+                            <CmsButton Disabled="@busy" OnClick="@(() => AskDelete(webhook))">
+                                @L["Webhooks.List.Delete"]<span class="cms-visually-hidden">@L["Webhooks.List.Which", webhook.Name]</span>
+                            </CmsButton>
+                        </CmsStack>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<p class="webhooks-message" tabindex="-1" @ref="listElement">@listMessage</p>
+
+<CmsCard Title="@(editing is { } changed ? L["Webhooks.Form.EditHeading", changed.Name] : L["Webhooks.Form.NewHeading"])">
+    <div tabindex="-1" @ref="formElement">
+        <WebhookForm Webhook="@editing" OnSaved="SavedAsync" OnCancel="CancelEdit" OnGone="GoneAsync" />
+    </div>
+</CmsCard>
+
+<CmsDialog Title="@L["Webhooks.Delete.Title"]" Open="@(deleting is not null)" OpenChanged="@(open => { if (!open) CancelDelete(); })">
+    <ChildContent>
+        @if (deleting is { } webhook)
+        {
+            <p>@L["Webhooks.Delete.Text", webhook.Name]</p>
+            @if (dialogError is { } error)
+            {
+                <p role="alert">@error</p>
+            }
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="DeleteAsync">@L["Webhooks.Delete.Confirm"]</CmsButton>
+        <CmsButton Disabled="@busy" OnClick="CancelDelete">@L["Webhooks.Delete.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+<CmsSecretDialog Title="@L[secretRotated ? "Webhooks.Secret.RotatedTitle" : "Webhooks.Secret.CreatedTitle"]" Label="@L["Webhooks.Secret.Label"]" @bind-Secret="secret" OnClosed="@(() => focusAfterRender = listElement)">
+    <p>@L["Webhooks.Secret.Text"]</p>
+</CmsSecretDialog>
+
+@code {
+    private IReadOnlyList<WebhookRecord>? webhooks;
+    private string? failed;
+    private bool busy;
+    private string? listMessage;
+    private WebhookRecord? editing;
+    private WebhookRecord? deleting;
+    private string? dialogError;
+    private string? secret;
+    private bool secretRotated;
+    private ElementReference listElement;
+    private ElementReference formElement;
+    private ElementReference? focusAfterRender;
+    private readonly CancellationTokenSource closing = new();
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    protected override Task OnInitializedAsync() => ReadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender is { } element)
+        {
+            focusAfterRender = null;
+            await element.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private static string Time(DateTimeOffset value) => value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+
+    private async Task ReadAsync()
+    {
+        failed = null;
+        try
+        {
+            webhooks = await Api.GetWebhooksAsync(Closing);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (WebhookProblems.IsFailure(exception))
+        {
+            (webhooks, failed) = (null, L[WebhookProblems.IsForbidden(exception) ? "Webhooks.List.Forbidden" : "Webhooks.List.Failed"]);
+        }
+    }
+
+    private void Edit(WebhookRecord webhook)
+    {
+        (editing, listMessage) = (webhook, null);
+        focusAfterRender = formElement;
+    }
+
+    private void CancelEdit()
+    {
+        editing = null;
+        focusAfterRender = listElement;
+    }
+
+    private async Task SavedAsync(WebhookSaved saved)
+    {
+        listMessage = L[saved.Created ? "Webhooks.List.Created" : "Webhooks.List.Saved", saved.Webhook.Name];
+        Announcer.Announce(listMessage);
+        editing = null;
+        if (saved.Secret is { } made)
+        {
+            (secret, secretRotated) = (made, !saved.Created);
+        }
+        else
+        {
+            focusAfterRender = listElement;
+        }
+
+        await ReadAsync();
+    }
+
+    private async Task GoneAsync()
+    {
+        editing = null;
+        await ReadAsync();
+    }
+
+    // The whole webhook is sent again with Enabled changed; its headers keep their values, since the address is the same.
+    private async Task ToggleAsync(WebhookRecord webhook)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        var on = !webhook.Enabled;
+        try
+        {
+            var toggled = await Api.UpdateWebhookAsync(webhook.Id, WebhooksApi.Toggled(webhook, on), Closing);
+            listMessage = L[on ? "Webhooks.List.TurnedOn" : "Webhooks.List.TurnedOff", webhook.Name];
+
+            // A form open on the same webhook is read again from the answer, so that its next save does not undo the toggle.
+            if (editing?.Id == webhook.Id)
+            {
+                editing = toggled;
+            }
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (WebhookProblems.IsGone(exception))
+        {
+            listMessage = L["Webhooks.List.Gone", webhook.Name];
+        }
+        catch (Exception exception) when (WebhookProblems.IsFailure(exception))
+        {
+            listMessage = L[WebhookProblems.IsForbidden(exception) ? "Webhooks.List.Forbidden" : "Webhooks.List.ToggleFailed", webhook.Name];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        Announcer.Announce(listMessage!);
+        await ReadAsync();
+        focusAfterRender = listElement;
+    }
+
+    private void AskDelete(WebhookRecord webhook) => (deleting, dialogError) = (webhook, null);
+
+    private void CancelDelete()
+    {
+        if (deleting is not null && !busy)
+        {
+            (deleting, dialogError, listMessage) = (null, null, L["Webhooks.Delete.Kept"]);
+            focusAfterRender = listElement;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (busy || deleting is not { } webhook)
+        {
+            return;
+        }
+
+        (busy, dialogError) = (true, null);
+        var deleted = false;
+        try
+        {
+            await Api.DeleteWebhookAsync(webhook.Id, Closing);
+            (deleting, listMessage, deleted) = (null, L["Webhooks.Delete.Deleted", webhook.Name], true);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (WebhookProblems.IsGone(exception))
+        {
+            (deleting, listMessage, deleted) = (null, L["Webhooks.List.Gone", webhook.Name], true);
+        }
+        catch (Exception exception) when (WebhookProblems.IsFailure(exception))
+        {
+            dialogError = L[WebhookProblems.IsForbidden(exception) ? "Webhooks.List.Forbidden" : "Webhooks.Delete.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (!deleted)
+        {
+            return;
+        }
+
+        if (editing?.Id == webhook.Id)
+        {
+            editing = null;
+        }
+
+        Announcer.Announce(listMessage!);
+        await ReadAsync();
+        focusAfterRender = listElement;
+    }
+}

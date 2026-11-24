@@ -1,0 +1,352 @@
+@* The form of a webhook (spec 5.3): a new one when Webhook is null, else the whole of that one, which a save replaces. The
+   events are the half's own list. Header values are secrets the server never gives back: a stored header shows no value and
+   sends the redacted value, which keeps the stored one while the address keeps its scheme, host and port; once the address
+   moves elsewhere the form asks for each value again, and a save without them shows the server's refusal on the header. A
+   create lets the server make the secret, and a rotation makes one here; either is handed to OnSaved, to be shown once, and
+   kept nowhere else. *@
+@using System.Security.Cryptography
+@using FluentCMS.Plugins.Webhooks.Admin.Api
+@inject IManagementApi Api
+@inject IAdminSchema Schema
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<WebhooksResources> L
+
+<form class="webhooks-form" @onsubmit="SaveAsync">
+    <CmsStack>
+        <CmsTextInput Label="@L["Webhooks.Form.Name"]" Required="true" MaxLength="100" Autocomplete="off"
+                      Error="@(nameError ?? FieldText("name"))" Value="@name" ValueChanged="@(value => (name, nameError) = (value, null))" />
+        <CmsTextInput Label="@L["Webhooks.Form.Url"]" Help="@L["Webhooks.Form.UrlHelp"]" Type="CmsTextInputType.Url" Required="true" MaxLength="2048" Autocomplete="off"
+                      Error="@(urlError ?? FieldText("url"))" Value="@url" ValueChanged="@(value => (url, urlError) = (value, null))" />
+
+        <fieldset>
+            <legend>@L["Webhooks.Form.Events"]</legend>
+            @foreach (var (group, names) in WebhookEvents.Groups)
+            {
+                <fieldset class="webhooks-events">
+                    <legend>@L[$"Webhooks.Form.Group.{group}"]</legend>
+                    @foreach (var item in names)
+                    {
+                        <CmsCheckbox @key="item" Label="@L["Webhooks.Form.Event", L[$"Webhooks.Event.{item}"], item]" Value="@events.Contains(item)" ValueChanged="@(on => Choose(events, item, on))" />
+                    }
+                </fieldset>
+            }
+            @if ((eventsError ?? FieldText("events")) is { } eventError)
+            {
+                <p class="cms-field-message cms-field-message-error" role="alert">@eventError</p>
+            }
+        </fieldset>
+
+        @if (schemaTypes.Count > 0)
+        {
+            <fieldset>
+                <legend>@L["Webhooks.Form.Types"]</legend>
+                <p class="cms-field-message">@L["Webhooks.Form.TypesHelp"]</p>
+                @foreach (var type in schemaTypes)
+                {
+                    <CmsCheckbox @key="type.Name" Label="@(type.DisplayName ?? type.Name)" Value="@types.Contains(type.Name)" ValueChanged="@(on => Choose(types, type.Name, on))" />
+                }
+                @if (FieldText("types") is { } typeError)
+                {
+                    <p class="cms-field-message cms-field-message-error">@typeError</p>
+                }
+            </fieldset>
+        }
+
+        <fieldset class="webhooks-headers">
+            <legend>@L["Webhooks.Form.Headers"]</legend>
+            <p class="cms-field-message">@L["Webhooks.Form.HeadersHelp"]</p>
+            @if (Moved)
+            {
+                <p class="cms-field-message" role="status">@L["Webhooks.Form.HeadersMoved"]</p>
+            }
+            @for (var index = 0; index < headers.Count; index++)
+            {
+                var row = headers[index];
+                var number = index + 1;
+                <div @key="row" class="webhooks-header" role="group" aria-label="@L["Webhooks.Form.HeaderGroup", number]">
+                    <CmsTextInput Label="@L["Webhooks.Form.HeaderName", number]" Required="true" MaxLength="100" Autocomplete="off" ReadOnly="@row.Stored"
+                                  Value="@row.Name" ValueChanged="@(value => (row.Name, row.Error) = (value ?? "", null))" />
+                    <CmsTextInput Label="@L["Webhooks.Form.HeaderValue", number]" Type="CmsTextInputType.Password" Autocomplete="new-password" MaxLength="1024"
+                                  Required="@(row.Stored && Moved)" Help="@ValueHelp(row)" Error="@(row.Error ?? HeaderText(row))"
+                                  Value="@row.Value" ValueChanged="@(value => (row.Value, row.Error) = (value, null))" />
+                    <CmsButton OnClick="@(() => RemoveHeader(row))">@L["Webhooks.Form.HeaderRemove"]<span class="cms-visually-hidden">@L["Webhooks.Form.HeaderWhich", number]</span></CmsButton>
+                </div>
+            }
+            @if (FieldError("headers") is { Path: "headers" })
+            {
+                <p class="cms-field-message cms-field-message-error">@L["Webhooks.Form.HeadersTooMany"]</p>
+            }
+            <div>
+                <CmsButton Disabled="@(headers.Count >= MaxHeaders)" OnClick="AddHeader">@L["Webhooks.Form.HeaderAdd"]</CmsButton>
+            </div>
+        </fieldset>
+
+        <CmsCheckbox Label="@L["Webhooks.Form.Enabled"]" Help="@L["Webhooks.Form.EnabledHelp"]" Value="@enabled" ValueChanged="@(on => enabled = on)" />
+        @if (Webhook is null)
+        {
+            <p class="cms-field-message">@L["Webhooks.Form.SecretMade"]</p>
+        }
+        else
+        {
+            <CmsCheckbox Label="@L["Webhooks.Form.Rotate"]" Help="@L["Webhooks.Form.RotateHelp"]" Error="@FieldText("secret")" Value="@rotate" ValueChanged="@(on => rotate = on)" />
+        }
+
+        @if (formError is { } refusal)
+        {
+            <p class="webhooks-problem" role="alert">@refusal</p>
+        }
+        <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+            <CmsButton Appearance="CmsButtonAppearance.Primary" Submit="true" Disabled="@busy">@L[Webhook is null ? "Webhooks.Form.Create" : "Webhooks.Form.Save"]</CmsButton>
+            @if (Webhook is not null)
+            {
+                <CmsButton Disabled="@busy" OnClick="OnCancel">@L["Webhooks.Form.Cancel"]</CmsButton>
+            }
+        </CmsStack>
+    </CmsStack>
+</form>
+
+@code {
+    private const int MaxHeaders = 20;
+
+    private WebhookRecord? loaded;
+    private bool reset = true;
+    private string? name;
+    private string? url;
+    private readonly HashSet<string> events = new(StringComparer.Ordinal);
+    private readonly HashSet<string> types = new(StringComparer.Ordinal);
+    private IReadOnlyList<SchemaTypeDescription> schemaTypes = [];
+    private List<HeaderRow> headers = [];
+    private bool enabled = true;
+    private bool rotate;
+    private string? nameError;
+    private string? urlError;
+    private string? eventsError;
+    private string? formError;
+    private ApiProblem? problem;
+    private bool busy;
+
+    // The webhook to change, or null for a new one.
+    [Parameter]
+    public WebhookRecord? Webhook { get; set; }
+
+    // Raised after a save, with the secret to show once: the server's on a create, the new one on a rotation, else null.
+    [Parameter]
+    public EventCallback<WebhookSaved> OnSaved { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    // Raised when the webhook being changed is gone, as one deleted in another tab.
+    [Parameter]
+    public EventCallback OnGone { get; set; }
+
+    // Whether the address now goes to another scheme, host or port than the stored one, where no stored header value is kept.
+    private bool Moved => Webhook is { } stored && headers.Any(row => row.Stored) && !SameOrigin(stored.Url, url);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            schemaTypes = (await Schema.GetSchemaAsync()).Types;
+        }
+        catch (Exception exception) when (WebhookProblems.IsFailure(exception))
+        {
+            // Without the schema the form offers no types, and a save keeps the ones stored.
+        }
+    }
+
+    // The form is read again from Webhook when another one, or a new answer of the same one, is given.
+    protected override void OnParametersSet()
+    {
+        if (reset || !ReferenceEquals(loaded, Webhook))
+        {
+            Load(Webhook);
+        }
+    }
+
+    private void Load(WebhookRecord? webhook)
+    {
+        (loaded, reset) = (webhook, false);
+        (name, url, enabled, rotate) = (webhook?.Name, webhook?.Url, webhook?.Enabled ?? true, false);
+        events.Clear();
+        events.UnionWith(webhook?.Events ?? []);
+        types.Clear();
+        types.UnionWith(webhook?.Types ?? []);
+        headers = [.. (webhook?.Headers.Keys ?? []).Select(header => new HeaderRow { Name = header, Stored = true })];
+        (nameError, urlError, eventsError, formError, problem) = (null, null, null, null, null);
+    }
+
+    private static bool SameOrigin(string stored, string? url) =>
+        Uri.TryCreate(stored, UriKind.Absolute, out var before)
+        && Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var after)
+        && string.Equals(before.Scheme, after.Scheme, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(before.IdnHost, after.IdnHost, StringComparison.OrdinalIgnoreCase)
+        && before.Port == after.Port;
+
+    private string? ValueHelp(HeaderRow row) =>
+        !row.Stored ? null : L[Moved ? "Webhooks.Form.HeaderValueAgainHelp" : "Webhooks.Form.HeaderValueKept"].Value;
+
+    private ApiProblemError? FieldError(string member) => WebhookProblems.FieldError(problem, member);
+
+    // The half's text for a code it knows on the member, the server's message for any other.
+    private string? FieldText(string member) => FieldError(member) is not { } error ? null : (member, error.Code) switch
+    {
+        ("name", WebhookProblems.InvalidField) => L["Webhooks.Form.NameInvalid"].Value,
+        ("url", WebhookProblems.InvalidUrl) => L["Webhooks.Form.UrlInvalid"].Value,
+        ("url", WebhookProblems.PrivateAddress) => L["Webhooks.Form.UrlPrivate"].Value,
+        ("events", WebhookProblems.UnknownEvent) => L["Webhooks.Form.EventsInvalid"].Value,
+        ("types", WebhookProblems.InvalidField) => L["Webhooks.Form.TypesInvalid"].Value,
+        ("secret", WebhookProblems.InvalidField) => L["Webhooks.Form.SecretInvalid"].Value,
+        ("headers", _) => null,
+        _ => error.Message,
+    };
+
+    // A header sent with the redacted value was refused for want of its value; any other refusal is of its name or value.
+    private string? HeaderText(HeaderRow row) => WebhookProblems.HeaderError(problem, row.Sent ?? row.Name) is null
+        ? null
+        : L[row.SentRedacted ? "Webhooks.Form.HeaderValueAgain" : "Webhooks.Form.HeaderInvalid"].Value;
+
+    private static void Choose(HashSet<string> chosen, string value, bool on)
+    {
+        if (on)
+        {
+            chosen.Add(value);
+        }
+        else
+        {
+            chosen.Remove(value);
+        }
+    }
+
+    private void AddHeader()
+    {
+        if (headers.Count < MaxHeaders)
+        {
+            headers.Add(new HeaderRow());
+        }
+    }
+
+    private void RemoveHeader(HeaderRow row) => headers.Remove(row);
+
+    private async Task SaveAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        (formError, problem) = (null, null);
+        nameError = string.IsNullOrWhiteSpace(name) ? L["Webhooks.Form.NameRequired"].Value : null;
+        urlError = string.IsNullOrWhiteSpace(url) ? L["Webhooks.Form.UrlRequired"].Value : null;
+        eventsError = events.Count == 0 ? L["Webhooks.Form.EventsRequired"].Value : null;
+        var named = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in headers)
+        {
+            row.Error = row.Name.Trim() is not { Length: > 0 } header ? L["Webhooks.Form.HeaderNameRequired"].Value
+                : !named.Add(header) ? L["Webhooks.Form.HeaderTwice"].Value
+                : null;
+        }
+
+        if ((nameError ?? urlError ?? eventsError ?? headers.Select(row => row.Error).FirstOrDefault(error => error is not null)) is { } first)
+        {
+            Announcer.Announce(first, AnnouncementPoliteness.Assertive);
+            return;
+        }
+
+        var sent = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var row in headers)
+        {
+            row.Sent = row.Name.Trim();
+            row.SentRedacted = row.Stored && string.IsNullOrEmpty(row.Value);
+            sent[row.Sent] = row.SentRedacted ? WebhooksApi.RedactedValue : row.Value ?? "";
+        }
+
+        var stored = Webhook;
+        var secret = stored is not null && rotate ? "whsec_" + Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32)) : null;
+        var draft = new WebhookDraft(
+            name!.Trim(),
+            url!.Trim(),
+            [.. WebhookEvents.Groups.SelectMany(group => group.Names).Where(events.Contains), .. events.Where(item => !WebhookEvents.All.Contains(item))],
+            [.. schemaTypes.Select(type => type.Name).Where(types.Contains), .. types.Where(type => schemaTypes.All(known => known.Name != type))],
+            sent,
+            enabled,
+            secret);
+
+        busy = true;
+        WebhookSaved? saved = null;
+        var gone = false;
+        try
+        {
+            var answer = stored is null
+                ? await Api.CreateWebhookAsync(draft, CancellationToken.None)
+                : await Api.UpdateWebhookAsync(stored.Id, draft, CancellationToken.None);
+            saved = new WebhookSaved(answer, stored is null ? answer.Secret : secret, stored is null);
+        }
+        catch (Exception failure) when (WebhookProblems.IsForbidden(failure))
+        {
+            Refuse(L["Webhooks.Form.Forbidden"]);
+        }
+        catch (Exception failure) when (stored is not null && WebhookProblems.IsGone(failure))
+        {
+            Refuse(L["Webhooks.Form.Gone"]);
+            gone = true;
+        }
+        catch (Exception failure) when (WebhookProblems.Has(failure, WebhookProblems.NameTaken))
+        {
+            nameError = L["Webhooks.Form.NameTaken"];
+            Announcer.Announce(L["Webhooks.Form.Refused"], AnnouncementPoliteness.Assertive);
+        }
+        catch (ApiProblemException failure) when (failure.Problem.Errors.Count > 0)
+        {
+            problem = failure.Problem;
+            Announcer.Announce(L["Webhooks.Form.Refused"], AnnouncementPoliteness.Assertive);
+        }
+        catch (Exception failure) when (WebhookProblems.IsFailure(failure))
+        {
+            Refuse(L["Webhooks.Form.Failed"]);
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (gone)
+        {
+            await OnGone.InvokeAsync();
+        }
+        else if (saved is not null)
+        {
+            // A new webhook leaves the form empty for the next; a changed one is read again from what the page gives.
+            reset = true;
+            if (stored is null)
+            {
+                Load(null);
+            }
+
+            await OnSaved.InvokeAsync(saved);
+        }
+    }
+
+    private void Refuse(string text)
+    {
+        formError = text;
+        Announcer.Announce(text, AnnouncementPoliteness.Assertive);
+    }
+
+    private sealed class HeaderRow
+    {
+        public string Name { get; set; } = "";
+
+        public string? Value { get; set; }
+
+        // Stored on the server, whose value the form does not know.
+        public bool Stored { get; init; }
+
+        // The name and whether the redacted value was sent, as of the last save, to match the server's refusal.
+        public string? Sent { get; set; }
+
+        public bool SentRedacted { get; set; }
+
+        public string? Error { get; set; }
+    }
+}

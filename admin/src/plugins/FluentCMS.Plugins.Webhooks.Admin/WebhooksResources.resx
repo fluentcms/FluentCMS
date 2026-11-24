@@ -18,4 +18,460 @@
   <data name="Webhooks.Menu" xml:space="preserve">
     <value>Webhooks</value>
   </data>
+  <data name="Webhooks.List.Loading" xml:space="preserve">
+    <value>Reading the webhooks…</value>
+  </data>
+  <data name="Webhooks.List.Failed" xml:space="preserve">
+    <value>The webhooks could not be read.</value>
+  </data>
+  <data name="Webhooks.List.Forbidden" xml:space="preserve">
+    <value>You may not manage the webhooks of this site.</value>
+  </data>
+  <data name="Webhooks.List.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Webhooks.List.None" xml:space="preserve">
+    <value>The site has no webhooks yet.</value>
+  </data>
+  <data name="Webhooks.List.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Webhooks.List.Url" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="Webhooks.List.Events" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="Webhooks.List.State" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="Webhooks.List.Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Webhooks.List.Enabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="Webhooks.List.Disabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="Webhooks.List.PreviousSecret" xml:space="preserve">
+    <value>The previous secret signs too until {0}.</value>
+  </data>
+  <data name="Webhooks.List.Which" xml:space="preserve">
+    <value> the webhook {0}</value>
+  </data>
+  <data name="Webhooks.List.Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Webhooks.List.Enable" xml:space="preserve">
+    <value>Enable</value>
+  </data>
+  <data name="Webhooks.List.Disable" xml:space="preserve">
+    <value>Disable</value>
+  </data>
+  <data name="Webhooks.List.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Webhooks.List.Created" xml:space="preserve">
+    <value>The webhook {0} was created.</value>
+  </data>
+  <data name="Webhooks.List.Saved" xml:space="preserve">
+    <value>The webhook {0} was saved.</value>
+  </data>
+  <data name="Webhooks.List.TurnedOn" xml:space="preserve">
+    <value>The webhook {0} is enabled.</value>
+  </data>
+  <data name="Webhooks.List.TurnedOff" xml:space="preserve">
+    <value>The webhook {0} is disabled.</value>
+  </data>
+  <data name="Webhooks.List.ToggleFailed" xml:space="preserve">
+    <value>The webhook {0} could not be changed.</value>
+  </data>
+  <data name="Webhooks.List.Gone" xml:space="preserve">
+    <value>The webhook {0} was deleted meanwhile.</value>
+  </data>
+  <data name="Webhooks.Form.NewHeading" xml:space="preserve">
+    <value>New webhook</value>
+  </data>
+  <data name="Webhooks.Form.EditHeading" xml:space="preserve">
+    <value>Edit {0}</value>
+  </data>
+  <data name="Webhooks.Form.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Webhooks.Form.Url" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="Webhooks.Form.UrlHelp" xml:space="preserve">
+    <value>The https address the deliveries are posted to.</value>
+  </data>
+  <data name="Webhooks.Form.Events" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="Webhooks.Form.Group.Content" xml:space="preserve">
+    <value>Content</value>
+  </data>
+  <data name="Webhooks.Form.Group.Media" xml:space="preserve">
+    <value>Media</value>
+  </data>
+  <data name="Webhooks.Form.Group.Cache" xml:space="preserve">
+    <value>Cache</value>
+  </data>
+  <data name="Webhooks.Form.Event" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="Webhooks.Form.Types" xml:space="preserve">
+    <value>Content types</value>
+  </data>
+  <data name="Webhooks.Form.TypesHelp" xml:space="preserve">
+    <value>The content events of these types only. With none chosen, every type.</value>
+  </data>
+  <data name="Webhooks.Form.Headers" xml:space="preserve">
+    <value>Headers</value>
+  </data>
+  <data name="Webhooks.Form.HeadersHelp" xml:space="preserve">
+    <value>Sent with every delivery, such as the receiver's credentials. Their values are kept secret and never shown again.</value>
+  </data>
+  <data name="Webhooks.Form.HeadersMoved" xml:space="preserve">
+    <value>The address now has another scheme, host or port, so each header needs its value again.</value>
+  </data>
+  <data name="Webhooks.Form.HeaderGroup" xml:space="preserve">
+    <value>Header {0}</value>
+  </data>
+  <data name="Webhooks.Form.HeaderName" xml:space="preserve">
+    <value>Name of header {0}</value>
+  </data>
+  <data name="Webhooks.Form.HeaderValue" xml:space="preserve">
+    <value>Value of header {0}</value>
+  </data>
+  <data name="Webhooks.Form.HeaderValueKept" xml:space="preserve">
+    <value>Leave it empty to keep the stored value.</value>
+  </data>
+  <data name="Webhooks.Form.HeaderValueAgainHelp" xml:space="preserve">
+    <value>Enter the value again: the stored one is not sent to another host.</value>
+  </data>
+  <data name="Webhooks.Form.HeaderRemove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Webhooks.Form.HeaderWhich" xml:space="preserve">
+    <value> header {0}</value>
+  </data>
+  <data name="Webhooks.Form.HeaderAdd" xml:space="preserve">
+    <value>Add a header</value>
+  </data>
+  <data name="Webhooks.Form.HeaderNameRequired" xml:space="preserve">
+    <value>Enter the header's name.</value>
+  </data>
+  <data name="Webhooks.Form.HeaderTwice" xml:space="preserve">
+    <value>Another header has this name.</value>
+  </data>
+  <data name="Webhooks.Form.HeaderValueAgain" xml:space="preserve">
+    <value>Enter this header's value again: its stored value is kept only while the address keeps its scheme, host and port.</value>
+  </data>
+  <data name="Webhooks.Form.HeaderInvalid" xml:space="preserve">
+    <value>Use a header name of letters, digits and dashes that the delivery does not set itself, and a value of at most 1,024 characters on one line.</value>
+  </data>
+  <data name="Webhooks.Form.HeadersTooMany" xml:space="preserve">
+    <value>A webhook has at most 20 headers.</value>
+  </data>
+  <data name="Webhooks.Form.Enabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="Webhooks.Form.EnabledHelp" xml:space="preserve">
+    <value>A disabled webhook gets no deliveries.</value>
+  </data>
+  <data name="Webhooks.Form.SecretMade" xml:space="preserve">
+    <value>The server makes the signing secret, which is shown once after the webhook is created.</value>
+  </data>
+  <data name="Webhooks.Form.Rotate" xml:space="preserve">
+    <value>Make a new secret</value>
+  </data>
+  <data name="Webhooks.Form.RotateHelp" xml:space="preserve">
+    <value>The new secret is shown once. The current one signs beside it for a while, so that the receiver can change over.</value>
+  </data>
+  <data name="Webhooks.Form.Create" xml:space="preserve">
+    <value>Create</value>
+  </data>
+  <data name="Webhooks.Form.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Webhooks.Form.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Webhooks.Form.NameRequired" xml:space="preserve">
+    <value>Enter a name.</value>
+  </data>
+  <data name="Webhooks.Form.NameInvalid" xml:space="preserve">
+    <value>Enter a name of at most 100 characters.</value>
+  </data>
+  <data name="Webhooks.Form.NameTaken" xml:space="preserve">
+    <value>The site has a webhook of this name already.</value>
+  </data>
+  <data name="Webhooks.Form.UrlRequired" xml:space="preserve">
+    <value>Enter the address.</value>
+  </data>
+  <data name="Webhooks.Form.UrlInvalid" xml:space="preserve">
+    <value>Enter an absolute https address of at most 2,048 characters, without a user name or password.</value>
+  </data>
+  <data name="Webhooks.Form.UrlPrivate" xml:space="preserve">
+    <value>The address is not a public one, and the server does not deliver to private networks.</value>
+  </data>
+  <data name="Webhooks.Form.EventsRequired" xml:space="preserve">
+    <value>Choose one or more events.</value>
+  </data>
+  <data name="Webhooks.Form.EventsInvalid" xml:space="preserve">
+    <value>Choose one or more of the events listed.</value>
+  </data>
+  <data name="Webhooks.Form.TypesInvalid" xml:space="preserve">
+    <value>A content type chosen is not in the schema.</value>
+  </data>
+  <data name="Webhooks.Form.SecretInvalid" xml:space="preserve">
+    <value>The new secret was refused.</value>
+  </data>
+  <data name="Webhooks.Form.Refused" xml:space="preserve">
+    <value>The webhook was not saved. The fields say why.</value>
+  </data>
+  <data name="Webhooks.Form.Forbidden" xml:space="preserve">
+    <value>You may not manage the webhooks of this site.</value>
+  </data>
+  <data name="Webhooks.Form.Gone" xml:space="preserve">
+    <value>The webhook was deleted meanwhile.</value>
+  </data>
+  <data name="Webhooks.Form.Failed" xml:space="preserve">
+    <value>The webhook could not be saved. Try again.</value>
+  </data>
+  <data name="Webhooks.Delete.Title" xml:space="preserve">
+    <value>Delete the webhook?</value>
+  </data>
+  <data name="Webhooks.Delete.Text" xml:space="preserve">
+    <value>The webhook {0} and its delivery log are deleted, and no delivery is sent to it again.</value>
+  </data>
+  <data name="Webhooks.Delete.Confirm" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Webhooks.Delete.Cancel" xml:space="preserve">
+    <value>Keep</value>
+  </data>
+  <data name="Webhooks.Delete.Kept" xml:space="preserve">
+    <value>The webhook was kept.</value>
+  </data>
+  <data name="Webhooks.Delete.Deleted" xml:space="preserve">
+    <value>The webhook {0} was deleted.</value>
+  </data>
+  <data name="Webhooks.Delete.Failed" xml:space="preserve">
+    <value>The webhook could not be deleted.</value>
+  </data>
+  <data name="Webhooks.Secret.CreatedTitle" xml:space="preserve">
+    <value>Copy the signing secret</value>
+  </data>
+  <data name="Webhooks.Secret.RotatedTitle" xml:space="preserve">
+    <value>Copy the new signing secret</value>
+  </data>
+  <data name="Webhooks.Secret.Label" xml:space="preserve">
+    <value>Signing secret</value>
+  </data>
+  <data name="Webhooks.Secret.Text" xml:space="preserve">
+    <value>The receiver checks the X-FluentCMS-Signature of each delivery with it.</value>
+  </data>
+  <data name="Webhooks.Webhook.Heading" xml:space="preserve">
+    <value>Webhook</value>
+  </data>
+  <data name="Webhooks.Webhook.NotFound" xml:space="preserve">
+    <value>The webhook was not found</value>
+  </data>
+  <data name="Webhooks.Webhook.BackToList" xml:space="preserve">
+    <value>All webhooks</value>
+  </data>
+  <data name="Webhooks.Webhook.Loading" xml:space="preserve">
+    <value>Reading the webhook…</value>
+  </data>
+  <data name="Webhooks.Webhook.Failed" xml:space="preserve">
+    <value>The webhook could not be read.</value>
+  </data>
+  <data name="Webhooks.Webhook.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Webhooks.Webhook.Headers" xml:space="preserve">
+    <value>Headers</value>
+  </data>
+  <data name="Webhooks.Webhook.NoHeaders" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Webhooks.Webhook.PreviousSecret" xml:space="preserve">
+    <value>Previous secret</value>
+  </data>
+  <data name="Webhooks.Webhook.PreviousSecretUntil" xml:space="preserve">
+    <value>Signs beside the new one until {0}</value>
+  </data>
+  <data name="Webhooks.Log.Heading" xml:space="preserve">
+    <value>Deliveries</value>
+  </data>
+  <data name="Webhooks.Log.Loading" xml:space="preserve">
+    <value>Reading the deliveries…</value>
+  </data>
+  <data name="Webhooks.Log.Failed" xml:space="preserve">
+    <value>The deliveries could not be read.</value>
+  </data>
+  <data name="Webhooks.Log.None" xml:space="preserve">
+    <value>Nothing was delivered yet.</value>
+  </data>
+  <data name="Webhooks.Log.Ping" xml:space="preserve">
+    <value>Ping</value>
+  </data>
+  <data name="Webhooks.Log.Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="Webhooks.Log.Time" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="Webhooks.Log.Event" xml:space="preserve">
+    <value>Event</value>
+  </data>
+  <data name="Webhooks.Log.Attempt" xml:space="preserve">
+    <value>Attempt</value>
+  </data>
+  <data name="Webhooks.Log.State" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="Webhooks.Log.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Webhooks.Log.Duration" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="Webhooks.Log.NoStatus" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Webhooks.Log.Milliseconds" xml:space="preserve">
+    <value>{0} ms</value>
+  </data>
+  <data name="Webhooks.Log.Details" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="Webhooks.Log.Redeliver" xml:space="preserve">
+    <value>Send again</value>
+  </data>
+  <data name="Webhooks.Log.OfAttempt" xml:space="preserve">
+    <value> of {0}, attempt {1}</value>
+  </data>
+  <data name="Webhooks.Log.Delivery" xml:space="preserve">
+    <value>Delivery</value>
+  </data>
+  <data name="Webhooks.Log.Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Webhooks.Log.NextRetry" xml:space="preserve">
+    <value>Next attempt</value>
+  </data>
+  <data name="Webhooks.Log.Body" xml:space="preserve">
+    <value>Body</value>
+  </data>
+  <data name="Webhooks.Log.Answer" xml:space="preserve">
+    <value>Answer</value>
+  </data>
+  <data name="Webhooks.Log.NoAnswer" xml:space="preserve">
+    <value>No answer</value>
+  </data>
+  <data name="Webhooks.Log.Previous" xml:space="preserve">
+    <value>Previous</value>
+  </data>
+  <data name="Webhooks.Log.Next" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="Webhooks.Log.Page" xml:space="preserve">
+    <value>Page {0} of {1}</value>
+  </data>
+  <data name="Webhooks.Log.PingQueued" xml:space="preserve">
+    <value>The ping is queued. Its result follows here.</value>
+  </data>
+  <data name="Webhooks.Log.RedeliverQueued" xml:space="preserve">
+    <value>The delivery is queued again. Its result follows here.</value>
+  </data>
+  <data name="Webhooks.Log.PingFailedToQueue" xml:space="preserve">
+    <value>The ping could not be queued.</value>
+  </data>
+  <data name="Webhooks.Log.RedeliverFailedToQueue" xml:space="preserve">
+    <value>The delivery could not be queued again.</value>
+  </data>
+  <data name="Webhooks.Log.StillQueued" xml:space="preserve">
+    <value>It has no result yet. Refresh reads the deliveries again.</value>
+  </data>
+  <data name="Webhooks.Log.ThePing" xml:space="preserve">
+    <value>The ping</value>
+  </data>
+  <data name="Webhooks.Log.TheRedelivery" xml:space="preserve">
+    <value>The delivery</value>
+  </data>
+  <data name="Webhooks.Log.ResultSucceeded" xml:space="preserve">
+    <value>{0} was answered {1} in {2} ms.</value>
+  </data>
+  <data name="Webhooks.Log.ResultFailed" xml:space="preserve">
+    <value>{0} failed: {1}</value>
+  </data>
+  <data name="Webhooks.Log.ResultStatus" xml:space="preserve">
+    <value>the receiver answered {0}.</value>
+  </data>
+  <data name="Webhooks.State.queued" xml:space="preserve">
+    <value>Queued</value>
+  </data>
+  <data name="Webhooks.State.pending" xml:space="preserve">
+    <value>Sending</value>
+  </data>
+  <data name="Webhooks.State.succeeded" xml:space="preserve">
+    <value>Delivered</value>
+  </data>
+  <data name="Webhooks.State.failed" xml:space="preserve">
+    <value>Failed, to be tried again</value>
+  </data>
+  <data name="Webhooks.State.dead" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Webhooks.Event.content.draft_saved" xml:space="preserve">
+    <value>Draft saved</value>
+  </data>
+  <data name="Webhooks.Event.content.published" xml:space="preserve">
+    <value>Published</value>
+  </data>
+  <data name="Webhooks.Event.content.unpublished" xml:space="preserve">
+    <value>Unpublished</value>
+  </data>
+  <data name="Webhooks.Event.content.draft_discarded" xml:space="preserve">
+    <value>Draft discarded</value>
+  </data>
+  <data name="Webhooks.Event.content.version_restored" xml:space="preserve">
+    <value>Version restored</value>
+  </data>
+  <data name="Webhooks.Event.content.scheduled" xml:space="preserve">
+    <value>Scheduled</value>
+  </data>
+  <data name="Webhooks.Event.content.schedule_cancelled" xml:space="preserve">
+    <value>Schedule cancelled</value>
+  </data>
+  <data name="Webhooks.Event.content.trashed" xml:space="preserve">
+    <value>Moved to the trash</value>
+  </data>
+  <data name="Webhooks.Event.content.restored" xml:space="preserve">
+    <value>Restored from the trash</value>
+  </data>
+  <data name="Webhooks.Event.content.purged" xml:space="preserve">
+    <value>Purged</value>
+  </data>
+  <data name="Webhooks.Event.media.uploaded" xml:space="preserve">
+    <value>Uploaded</value>
+  </data>
+  <data name="Webhooks.Event.media.updated" xml:space="preserve">
+    <value>Updated</value>
+  </data>
+  <data name="Webhooks.Event.media.replaced" xml:space="preserve">
+    <value>Replaced</value>
+  </data>
+  <data name="Webhooks.Event.media.moved" xml:space="preserve">
+    <value>Moved</value>
+  </data>
+  <data name="Webhooks.Event.media.deleted" xml:space="preserve">
+    <value>Deleted</value>
+  </data>
+  <data name="Webhooks.Event.cache.invalidated" xml:space="preserve">
+    <value>Cache invalidated</value>
+  </data>
 </root>
