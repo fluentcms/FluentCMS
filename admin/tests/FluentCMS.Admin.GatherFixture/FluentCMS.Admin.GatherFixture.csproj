@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
-  <!-- An app with two admin halves, for the test of the build target that gathers their manifests. It is built, never run. -->
+  <!-- An app with two admin halves, for the test of the build target that gathers their manifests, and the app of its own that
+       a host made of packages serves in the check of the hosting package, with a half the first-party build does not have.
+       It never runs in a browser. -->
   <ItemGroup>
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj" />
     <ProjectReference Include="../FluentCMS.Admin.Plugins.Sample/FluentCMS.Admin.Plugins.Sample.csproj" />

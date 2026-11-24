@@ -19,16 +19,18 @@ internal enum ShellStatus
     Failed,
 }
 
-// What the shell reads after sign-in (spec 4.1): GET /me, /me/sites and /me/preferences, whose formats apply from then on,
-// then for the chosen site /me/access, /schema and /plugins. The site chosen last is kept for the tab, so that a reload stays
-// in it. The content locale is the site's default until an address names another (spec 4.17), and stays until one names
-// another again; /me/access and /schema are read again in it, since the server narrows both by the locale, and a site switch
-// resets it. A read that a later switch overtook is dropped.
+// What the shell reads after sign-in (spec 4.1): GET /me, /me/sites and /me/preferences, whose formats apply from then on and
+// whose interface culture reloads the app when it started in another (spec 4.17), then for the chosen site /me/access, /schema
+// and /plugins. The site chosen last is kept for the tab, so that a reload stays in it. The content locale is the site's
+// default until an address names another (spec 4.17), and stays until one names another again; /me/access and /schema are
+// read again in it, since the server narrows both by the locale, and a site switch resets it. A read that a later switch
+// overtook is dropped.
 internal sealed class AdminContext(
     ManagementClient client,
     SiteMetadata metadata,
     ShellSite site,
     FormatService formats,
+    IInterfaceLanguage language,
     ISessionStorage storage,
     TimeProvider time,
     ILogger<AdminContext> logger) : IAdminContext, IAdminAccess
@@ -374,9 +376,14 @@ internal sealed class AdminContext(
             return;
         }
 
+        // A reload in the saved interface culture leaves the shell loading.
         if (chosen is not null)
         {
             formats.Apply(chosen.DateFormat, chosen.NumberFormat, chosen.TimeZone);
+            if (await language.FollowAsync(chosen.Culture, atStart: true) || generation != _generation)
+            {
+                return;
+            }
         }
 
         (User, Sites) = (user, mine);

@@ -141,7 +141,7 @@ public sealed class ShellTests
     }
 
     // The shell's services over the test server, for a user signed in with the token.
-    private sealed class ShellOfUser : IAccessTokenSource, IRateLimitNotice, IDisposable
+    private sealed class ShellOfUser : IAccessTokenSource, IRateLimitNotice, IInterfaceLanguage, IDisposable
     {
         private readonly string _accessToken;
         private readonly ServiceProvider _provider;
@@ -157,6 +157,7 @@ public sealed class ShellTests
             services.AddSingleton<ISessionStorage>(new TabStorage());
             // The app registers it at start, before the shell, which applies the user's preferences to it.
             services.AddSingleton(new FormatService(CultureInfo.InvariantCulture, TimeZoneInfo.Utc));
+            services.AddSingleton<IInterfaceLanguage>(this);
             services.AddAdminShell();
             services.AddManagementApi();
             services.Configure<ManagementApiOptions>(options =>
@@ -180,6 +181,9 @@ public sealed class ShellTests
         public void TooManyRequests(TimeSpan? retryAfter)
         {
         }
+
+        // The app is not reloaded here: the shell goes on in the culture it has.
+        public Task<bool> FollowAsync(string? preferred, bool atStart) => Task.FromResult(false);
 
         public void Dispose()
         {

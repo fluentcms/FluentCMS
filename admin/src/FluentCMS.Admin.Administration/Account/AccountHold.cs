@@ -1,4 +1,4 @@
-namespace FluentCMS.Admin.Account;
+namespace FluentCMS.Admin.Administration.Account;
 
 // Set while the once-shown recovery codes are open and while the sign-in that follows them is on its way. The verify has
 // revoked the tab's access and refresh tokens by then, so any call of the page could find it refused and take the page, and the codes, away:

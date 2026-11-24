@@ -53,7 +53,7 @@ internal sealed record MyLogin
     public string? DisplayName { get; init; }
 }
 
-// A null member is one the user has not chosen. A write replaces them all.
+// A null member is one the user has not chosen. PUT replaces them all; the account page changes one with PATCH.
 internal sealed record MyPreferences
 {
     public string? Culture { get; init; }

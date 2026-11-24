@@ -64,6 +64,82 @@ public sealed class ShellTests : AdminTestContext
         Services.GetRequiredService<FormatService>().TimeZone.ShouldBe(TimeZoneInfo.Utc);
     }
 
+    // A new device, or a language saved elsewhere: the start had no copy of it, so the browser keeps the saved one and the
+    // app reloads once in it, the shell loading until then.
+    [Fact]
+    public void ASavedLanguageTheAppDidNotStartInIsKeptInTheBrowserAndReloadsTheAppOnce()
+    {
+        OfferCultures();
+        Management.Preferences["culture"] = "fr";
+        Start();
+        Navigation.NavigateTo("content/article?locale=en");
+        var app = Render<AdminApp>();
+
+        app.WaitForAssertion(() => Reloads().ShouldHaveSingleItem().ShouldEndWith("content/article?locale=en"));
+        Context.Status.ShouldBe(ShellStatus.Loading);
+        CopyWrites().ShouldBe(["fr"]);
+        Storage.Items[TabStorageKeys.CultureReload].ShouldBe("fr");
+        Management.Count("me/access").ShouldBe(0);
+    }
+
+    // The start read the browser's copy, so the first paint was in the saved language already.
+    [Fact]
+    public void ASavedLanguageTheAppStartedInNeedsNoReload()
+    {
+        OfferCultures();
+        UseCultureCopy("fr");
+        Management.Preferences["culture"] = "fr";
+
+        Load();
+
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Reloads().ShouldBeEmpty();
+        CopyWrites().ShouldBeEmpty();
+    }
+
+    // A language no longer chosen takes the copy out, and the app goes back to the browser's.
+    [Fact]
+    public void ACopyOfALanguageNoLongerChosenIsTakenOutAndTheAppReloads()
+    {
+        OfferCultures();
+        UseCultureCopy("fr");
+        Start();
+        Navigation.NavigateTo("");
+        var app = Render<AdminApp>();
+
+        app.WaitForAssertion(() => Reloads().ShouldHaveSingleItem());
+        JSInterop.Invocations.Where(call => call.Identifier == "localStorage.removeItem").Select(call => call.Arguments.Single()).ShouldBe([CultureStorageInterop.Key]);
+    }
+
+    // A browser that gives back no copy would start in the browser's language each time: the tab reloads for a language once.
+    [Fact]
+    public async Task TheStartReloadsTheTabForALanguageOnce()
+    {
+        OfferCultures();
+        Management.Preferences["culture"] = "fr";
+        await Storage.SetAsync(TabStorageKeys.CultureReload, "fr");
+
+        Load();
+
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Reloads().ShouldBeEmpty();
+    }
+
+    // A key or a service account has no preferences, so nothing is kept in the browser for it.
+    [Fact]
+    public void WithoutPreferencesTheLanguageIsTheOneTheAppStartedIn()
+    {
+        OfferCultures();
+        UseCultureCopy("fr");
+        Management.Answer = (method, path) => path == "me/preferences" ? Problem(HttpStatusCode.Forbidden, "FCMS2001") : null;
+
+        Load();
+
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Reloads().ShouldBeEmpty();
+        CopyWrites().ShouldBeEmpty();
+    }
+
     [Fact]
     public void TheSidebarListsTheCollectionsAndThenTheSingletonsInSchemaOrderWithGlobalTypesMarked()
     {
@@ -504,6 +580,16 @@ public sealed class ShellTests : AdminTestContext
 
     private static string[] Sections(IElement sidebar) =>
         [.. sidebar.QuerySelectorAll(".cms-nav-section-title").Select(title => title.TextContent)];
+
+    // A second culture, as config.json may offer once one ships.
+    private void OfferCultures() => Services.AddSingleton(new InterfaceCultureOptions { Offered = ["en", "fr"], Default = "en" });
+
+    // The addresses the whole page was loaded again at.
+    private List<string> Reloads() => [.. Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>().History.Where(entry => entry.Options.ForceLoad).Select(entry => entry.Uri)];
+
+    // The cultures written to the browser's copy.
+    private List<string?> CopyWrites() =>
+        [.. JSInterop.Invocations.Where(call => call.Identifier == "localStorage.setItem" && Equals(call.Arguments[0], CultureStorageInterop.Key)).Select(call => call.Arguments[1] as string)];
 
     private IRenderedComponent<AdminApp> Load(string route = "")
     {

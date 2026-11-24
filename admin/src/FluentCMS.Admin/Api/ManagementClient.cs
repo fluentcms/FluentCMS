@@ -72,6 +72,20 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
     public async Task<MyPreferences> SetMyPreferencesAsync(MyPreferences preferences, CancellationToken cancellationToken) =>
         (await api.SendAsync(Me(HttpMethod.Put, "me/preferences", JsonSerializer.SerializeToNode(preferences, Json.MyPreferences)), Json.MyPreferences, cancellationToken)).Value;
 
+    // Changes the members named, such as timeZone, with null for none chosen, and keeps the others as they are stored, whatever
+    // another tab changed meanwhile (#3450). The answer is every preference as stored after it.
+    public async Task<MyPreferences> ChangeMyPreferencesAsync(IReadOnlyDictionary<string, string?> members, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(members);
+        var body = new JsonObject();
+        foreach (var (member, value) in members)
+        {
+            body[member] = value;
+        }
+
+        return (await api.SendAsync(Me(HttpMethod.Patch, "me/preferences", body), Json.MyPreferences, cancellationToken)).Value;
+    }
+
     // What the caller may do in the site, in the locale named or else the site's default: a grant limited to locales counts
     // only in them, so the server narrows both reads by the locale.
     public async Task<MyAccessInfo> GetMyAccessAsync(string? site, string? locale, CancellationToken cancellationToken) =>

@@ -1,7 +1,9 @@
 using System.Net;
 using System.Text.Json.Nodes;
 using Bunit;
-using FluentCMS.Admin.Account;
+using FluentCMS.Admin.Administration.Account;
+using FluentCMS.Admin.Plugins;
+using FluentCMS.Admin.Tests.Administration;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -11,8 +13,9 @@ using static FluentCMS.Admin.Tests.Shell.FakeManagementServer;
 namespace FluentCMS.Admin.Tests.Account;
 
 // The account page in each state that shows texts of its own, under both pseudo-cultures. The data the fake serves is marked
-// as a resource is, or holds no letter, so that only the page's own texts are checked. The language select is left out: with
-// one shipped culture it is not shown, and another culture's name is data.
+// as a resource is, or holds no letter, so that only the page's own texts are checked: the formats of the preferences are
+// those of a culture whose dates have no word. The language select is left out: with one shipped culture it is not shown,
+// and another culture's name is data, as the time zones and the cultures of the format selects are, whose options are.
 public sealed class AccountLocalizationTests : AdminTestContext
 {
     private static readonly string[] StateNames =
@@ -83,6 +86,8 @@ public sealed class AccountLocalizationTests : AdminTestContext
             Management.TwoFactor["pending"] = state == "RequiredAndPending";
         }
 
+        Management.Preferences["dateFormat"] = "de-DE";
+        Services.AddScoped<IAdminAssemblyLoader>(_ => new AdministrationTestContext.AdministrationLoader());
         Start();
         if (state == "SignInFailed")
         {
@@ -148,6 +153,12 @@ public sealed class AccountLocalizationTests : AdminTestContext
                 Click(app, 2, 0);
                 app.WaitForAssertion(() => app.FindAll("section.cms-card")[2].QuerySelector(".account-message:not(:empty)").ShouldNotBeNull());
                 break;
+        }
+
+        var theme = app.FindAll("section.cms-card select")[0];
+        foreach (var option in app.FindAll("section.cms-card select option[value]:not([value=''])").Where(option => option.ParentElement != theme))
+        {
+            option.Remove();
         }
 
         PseudoCulture.Unlocalized(app.Nodes).ShouldBeEmpty();

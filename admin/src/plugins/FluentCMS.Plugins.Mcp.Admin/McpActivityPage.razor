@@ -5,6 +5,7 @@
 @attribute [AdminPage("/mcp/activity", Permission = "activity.read")]
 @using System.Globalization
 @inject IManagementApi Api
+@inject IAdminFormats Formats
 @inject IStringLocalizer<McpResources> L
 
 <h1 tabindex="-1">@L["Mcp.Activity.Page.Heading"]</h1>
@@ -41,7 +42,7 @@ else
             @foreach (var row in page.Items)
             {
                 <tr @key="row.Id">
-                    <th scope="row">@row.OccurredAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</th>
+                    <th scope="row">@Formats.FormatDateTime(row.OccurredAt)</th>
                     <td>@row.ActorName</td>
                     <td>@if (row.ClientId is { } client) {<code>@client</code>}</td>
                     <td><code>@row.Action</code></td>

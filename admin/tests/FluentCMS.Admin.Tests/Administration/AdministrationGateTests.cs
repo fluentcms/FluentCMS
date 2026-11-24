@@ -368,8 +368,8 @@ public sealed class AdministrationGateTests : AdministrationTestContext
 
         Navigation.NavigateTo("users");
         app.WaitForAssertion(() => Loader.Loads.ShouldBe(1));
-        Navigation.NavigateTo("account");
-        app.WaitForAssertion(() => app.FindComponent<RouteView>().Instance.RouteData.PageType.Name.ShouldBe("AccountPage"));
+        Navigation.NavigateTo("");
+        app.WaitForAssertion(() => app.FindComponent<RouteView>().Instance.RouteData.PageType.Name.ShouldBe("HomePage"));
         hold.SetResult();
 
         // Nothing renders when the load ends, so the wait is on the load itself and not on a render.

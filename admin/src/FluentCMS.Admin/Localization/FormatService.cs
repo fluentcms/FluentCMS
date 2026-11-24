@@ -3,11 +3,15 @@ using System.Globalization;
 namespace FluentCMS.Admin.Localization;
 
 // Dates, times and numbers in the user's cultures and time zone (spec 4.17): those of GET /me/preferences once the shell has
-// read them, the browser's for any the user has not chosen or the platform does not know.
-internal sealed class FormatService(CultureInfo culture, TimeZoneInfo timeZone)
+// read them, the browser's for any the user has not chosen or the platform does not know. The app's current culture follows
+// them through useCulture, which the tests leave out, since it sets the process's default.
+internal sealed class FormatService(CultureInfo culture, TimeZoneInfo timeZone, Action<CultureInfo>? useCulture = null) : IAdminFormats
 {
     private readonly CultureInfo browserCulture = culture;
     private readonly TimeZoneInfo browserTimeZone = timeZone;
+
+    // Raised once the formats have changed.
+    public event Action? Changed;
 
     // The culture of dates and times.
     public CultureInfo Culture { get; private set; } = culture;
@@ -18,6 +22,32 @@ internal sealed class FormatService(CultureInfo culture, TimeZoneInfo timeZone)
 
     // The IANA id of the zone, which the server takes and every view names.
     public string ZoneId => IanaId(TimeZone);
+
+    string IAdminFormats.TimeZoneId => ZoneId;
+
+    string IAdminFormats.FormatDate(DateTimeOffset value) => Date(value);
+
+    string IAdminFormats.FormatTime(DateTimeOffset value) => Time(value);
+
+    string IAdminFormats.FormatDateTime(DateTimeOffset value) => DateTime(value);
+
+    string IAdminFormats.FormatNumber(decimal value, int? decimals) => Number(value, decimals);
+
+    // The culture of dates with the number format of the culture of numbers, which the app's current culture becomes.
+    public CultureInfo Current
+    {
+        get
+        {
+            if (Culture.Name == NumberCulture.Name)
+            {
+                return Culture;
+            }
+
+            var combined = (CultureInfo)Culture.Clone();
+            combined.NumberFormat = NumberCulture.NumberFormat;
+            return CultureInfo.ReadOnly(combined);
+        }
+    }
 
     public string Date(DateTimeOffset value) => Local(value).ToString("d", Culture);
 
@@ -46,6 +76,16 @@ internal sealed class FormatService(CultureInfo culture, TimeZoneInfo timeZone)
         Culture = Find(dateCulture) ?? browserCulture;
         NumberCulture = Find(numberCulture) ?? browserCulture;
         TimeZone = FindZone(timeZone) ?? browserTimeZone;
+        useCulture?.Invoke(Current);
+        Changed?.Invoke();
+    }
+
+    // The formats of a choice not saved yet, over the same browser's, for the examples of the account page.
+    public FormatService Preview(string? dateCulture, string? numberCulture, string? timeZone)
+    {
+        var preview = new FormatService(browserCulture, browserTimeZone);
+        preview.Apply(dateCulture, numberCulture, timeZone);
+        return preview;
     }
 
     private static CultureInfo? Find(string? name)

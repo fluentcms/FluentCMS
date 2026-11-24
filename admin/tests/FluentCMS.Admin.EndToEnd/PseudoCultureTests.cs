@@ -19,23 +19,29 @@ namespace FluentCMS.Admin.EndToEnd;
 [Trait("Host", "Publish")]
 public sealed partial class PseudoCultureTests(EndToEndHost host) : BrowserTest(host)
 {
-    // The texts of the page, shadow roots included, and the text attributes, as the component tests' check reads them: a text
-    // is marked when no letter is left once its marked segments are taken out.
+    // The texts of the page, shadow roots included, and the text attributes, as the component tests' check reads them, each
+    // with the element it is in: a text is marked when no letter is left once its marked segments are taken out.
     private const string Texts = """
         root => {
             const attributes = ['aria-label', 'aria-description', 'aria-valuetext', 'aria-roledescription', 'title', 'placeholder', 'alt', 'label'];
             const found = [];
+            const describe = element => {
+                if (!element) return '';
+                const classes = typeof element.className === 'string' && element.className.trim() ? '.' + element.className.trim().split(' ').filter(name => name).join('.') : '';
+                const parent = element.parentElement ? element.parentElement.localName + ' > ' : '';
+                return parent + element.localName + classes;
+            };
             const visit = (node, owner) => {
                 if (node.nodeType === Node.TEXT_NODE) {
                     const text = node.data.trim();
-                    if (text) found.push({ text, attribute: '', owner });
+                    if (text) found.push({ text, attribute: '', owner, element: describe(node.parentElement) });
                     return;
                 }
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     if (node.localName === 'style' || node.localName === 'script') return;
                     for (const name of attributes) {
                         const value = node.getAttribute(name);
-                        if (value && value.trim()) found.push({ text: value.trim(), attribute: name, owner });
+                        if (value && value.trim()) found.push({ text: value.trim(), attribute: name, owner, element: describe(node) });
                     }
                     if (node.shadowRoot) visit(node.shadowRoot, node.localName);
                 }
@@ -68,6 +74,9 @@ public sealed partial class PseudoCultureTests(EndToEndHost host) : BrowserTest(
         satellites.ShouldContain(culture => culture == PseudoCulture.RightToLeft);
         satellites.ShouldNotContain(culture => culture == PseudoCulture.LeftToRight);
         var data = await DataAsync();
+
+        // The badge of a pending schedule names the user's time zone by its id, the browser's for a user who chose none.
+        data.Add(await tab.Page.EvaluateAsync<string>("() => Intl.DateTimeFormat().resolvedOptions().timeZone"));
 
         await sidebar.Locator("a[href$='content/article']").ClickAsync();
         var grid = tab.Page.Locator("main table");
@@ -135,7 +144,9 @@ public sealed partial class PseudoCultureTests(EndToEndHost host) : BrowserTest(
     }
 
     // What the server holds that a page shows as it is: the names of the sites, every string of the schema as it is and as
-    // the admin labels a name, the entries' titles, the sites' locales by code and name, and the user's address; and ids.
+    // the admin labels a name, every string of the entries of each collection and of the media library, which the form shows
+    // as the labels of its relation and media fields once it has read them, the sites' locales by code and name, and the
+    // user's address; and ids.
     private async Task<List<string>> DataAsync()
     {
         using var client = await Host.ManagementClientAsync();
@@ -147,8 +158,12 @@ public sealed partial class PseudoCultureTests(EndToEndHost host) : BrowserTest(
             data.AddRange([text, Readable(text), Words(text)]);
         }
 
-        var entries = await client.GetFromJsonAsync<JsonObject>(new Uri("api/management/v1/content/article?pageSize=100", UriKind.Relative), TestContext.Current.CancellationToken);
-        data.AddRange(entries!["items"]!.AsArray().OfType<JsonObject>().Select(entry => (string?)entry["fields"]?["title"] ?? (string?)entry["title"]).OfType<string>());
+        var collections = schema!["types"]!.AsArray().OfType<JsonObject>().Where(type => (string?)type["kind"] == "collection").Select(type => (string)type["name"]!);
+        foreach (var path in collections.Select(name => $"content/{name}?pageSize=100").Append("media?pageSize=100"))
+        {
+            var page = await client.GetFromJsonAsync<JsonObject>(new Uri($"api/management/v1/{path}", UriKind.Relative), TestContext.Current.CancellationToken);
+            data.AddRange(Strings(page!["items"]!));
+        }
         foreach (var site in Host.Sites)
         {
             var locales = await client.GetFromJsonAsync<JsonObject>(new Uri($"api/management/v1/sites/{site.Id}/locales", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -162,8 +177,8 @@ public sealed partial class PseudoCultureTests(EndToEndHost host) : BrowserTest(
         return [.. data.Where(text => text.Length > 0).Distinct(StringComparer.Ordinal).OrderByDescending(text => text.Length)];
     }
 
-    // The texts of the document that are not marked once the server's data is taken out of them, with the element whose
-    // shadow root holds each, for a text the library draws in script.
+    // The texts of the document that are not marked once the server's data is taken out of them, each with the element it is
+    // in and the element whose shadow root holds it, for a text the library draws in script.
     private static async Task<List<string>> UnmarkedAsync(AdminTab tab, List<string> data)
     {
         var found = await tab.Page.EvaluateAsync<Found[]>(Texts, "body");
@@ -172,7 +187,7 @@ public sealed partial class PseudoCultureTests(EndToEndHost host) : BrowserTest(
         static string Describe(Found item)
         {
             var text = item.Attribute.Length == 0 ? item.Text : $"{item.Attribute}=\"{item.Text}\"";
-            return item.Owner == "document" ? text : $"{item.Owner}: {text}";
+            return $"{(item.Owner == "document" ? "" : item.Owner + ": ")}{text} (in {item.Element})";
         }
     }
 
@@ -229,5 +244,7 @@ public sealed partial class PseudoCultureTests(EndToEndHost host) : BrowserTest(
         public string Attribute { get; set; } = "";
 
         public string Owner { get; set; } = "";
+
+        public string Element { get; set; } = "";
     }
 }

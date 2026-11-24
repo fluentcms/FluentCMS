@@ -403,6 +403,21 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"));
     }
 
+    // A half has the user's formats through the contract (spec 4.17): the moment of the page in the time zone and the culture
+    // of dates of the preferences.
+    [Fact]
+    public void APageOfAHalfShowsAMomentInTheUsersTimeZoneThroughTheContract()
+    {
+        Management.Preferences = new JsonObject { ["culture"] = null, ["timeZone"] = "Pacific/Kiritimati", ["dateFormat"] = "de-DE", ["numberFormat"] = null };
+
+        var app = Load(enabled: true, route: "reviews/0193a1b2-0000-7000-8000-00000000a001");
+
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("Pacific/Kiritimati");
+        var expected = TimeZoneInfo.ConvertTime(ReviewPage.Written, zone).DateTime.ToString("g", System.Globalization.CultureInfo.GetCultureInfo("de-DE"));
+        app.WaitForAssertion(() => app.Find("main .review-written time").TextContent.ShouldBe(expected));
+        app.Find("main .review-written").TextContent.ShouldEndWith("Pacific/Kiritimati");
+    }
+
     [Fact]
     public void AFieldEditorTheRendererCannotCreateGivesWayToTheReadOnlyValueAndTheOtherFieldsAreEdited()
     {
