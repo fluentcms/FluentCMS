@@ -16,7 +16,10 @@ namespace FluentCMS.Admin.EndToEnd;
 // run's folder lives in, a GUID kept in a file of the folder the runs live under, so that two filesystems whose paths read
 // the same have two ids. They are removed at the end of the run, and a later run removes those of a run of the same place
 // whose folder is gone; one of another place, as from another user, container or system on the same engine, is never
-// touched. Where the id cannot be read or made, the run's own are labelled without it and nothing is swept.
+// touched. Where the id cannot be read or made, the run's own are labelled without it and nothing is swept. Unlike that
+// page, a command's container has no network (--network none): it needs the volume only, and one on a network adds an
+// interface to the machine the engine runs on and removes it as it ends, which makes Chromium on Linux close its
+// connections and give up the requests in flight (#3635).
 internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProcess
 {
     public const string Label = "org.fluentcms.e2e";
@@ -101,7 +104,7 @@ internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProc
         var name = $"{_run}-command-{Interlocked.Increment(ref _commands)}";
         try
         {
-            return await ChildProcess.RunAsync(Docker, [.. Run(name, environment), "--interactive", image, "fluentcms", .. command], root.FullName, environment, timeout, input, cancellationToken, secretOutput);
+            return await ChildProcess.RunAsync(Docker, [.. Run(name, environment), "--network", "none", "--interactive", image, "fluentcms", .. command], root.FullName, environment, timeout, input, cancellationToken, secretOutput);
         }
         catch
         {
