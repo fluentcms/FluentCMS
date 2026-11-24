@@ -201,6 +201,21 @@ public sealed class CmsWiringTests : ComponentTestContext
         resources.ShouldAllBe(entry => library[(string)entry.Key] == (string)entry.Value!);
     }
 
+    // The keys of the library that the library's components under the set read (FluentTabs, FluentTreeItem, and the input
+    // base, field and label of FluentCheckbox and FluentSwitch), found in the library's code: a translation reaches each.
+    [Fact]
+    public void TheResourcesHoldEveryTextOfTheLibraryThatAWrappedComponentCanShow()
+    {
+        string[] reachable =
+        [
+            "Tabs_MoreItems", "TreeItem_LoadingMessage", "FluentInputBase_Required", "FluentInputBase_RequiredMessage",
+            "Field_ErrorMessage", "Field_WarningMessage", "LabelInfo_InfoText", "LabelInfo_InfoActionText",
+        ];
+        var resources = new ResourceManager("FluentCMS.Admin.Components.Resources.CmsStrings", typeof(ICmsTextSource).Assembly);
+
+        reachable.Where(key => resources.GetString(key, CultureInfo.InvariantCulture) is null).ShouldBeEmpty();
+    }
+
     [Fact]
     public void ALibraryTextWithoutArgumentsIsNotFormatted()
     {

@@ -15,6 +15,10 @@ internal static class Repository
     public static string Configuration { get; } =
         typeof(Repository).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()?.Configuration ?? "Debug";
 
+    // Whether this test assembly, and so the host, was built with the pseudo-cultures of the admin (spec 4.17).
+    public static bool PseudoCultures { get; } =
+        typeof(Repository).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>().Any(attribute => attribute is { Key: "FluentCmsAdminPseudoCultures", Value: "true" });
+
     public static IReadOnlyDictionary<string, string> AdminTexts { get; } = ReadTexts(Path.Combine(Root, "admin", "src", "FluentCMS.Admin", "Localization", "AdminResources.resx"));
 
     public static string AdminText(string key) =>

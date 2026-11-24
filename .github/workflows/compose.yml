@@ -392,8 +392,9 @@ jobs:
       - name: Install Chromium
         run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/bin/Release/net10.0/playwright.ps1 install --only-shell chromium
 
+      # The image ships without the pseudo-cultures, so the cases on them, which the run on a publish has, are left out here.
       - name: Test
-        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 20m -RetryTimeout 8m
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 20m -RetryTimeout 8m -ExcludeTrait Host=Publish
 
       - name: Name the tests that were running
         if: failure() || cancelled()

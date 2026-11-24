@@ -59,7 +59,7 @@ public static class AdminPluginManifestCheck
                     problems.Add($"manifestVersion is 0 in the manifest and this contract reads {AdminPluginManifest.CurrentManifestVersion}");
                 }
 
-                problems.AddRange(Compare(manifest, declared));
+                problems.AddRange(Compare(manifest, declared, ResourceCultures(assembly)));
             }
             catch (JsonException unreadable)
             {
@@ -74,10 +74,25 @@ public static class AdminPluginManifestCheck
     /// <param name="manifest">The manifest of the file.</param>
     /// <param name="declared">The manifest of the assembly, from <see cref="FromAssembly"/>.</param>
     /// <returns>One sentence per difference; none when the two agree.</returns>
-    public static IReadOnlyList<string> Compare(AdminPluginManifest manifest, AdminPluginManifest declared)
+    public static IReadOnlyList<string> Compare(AdminPluginManifest manifest, AdminPluginManifest declared) => Compare(manifest, declared, []);
+
+    /// <summary>
+    /// The differences between a manifest file and the manifest the attributes of its assembly declare, and each menu item
+    /// whose <c>labels</c> has no text for a culture the half has resources in, since the sidebar shows the item before the
+    /// half loads.
+    /// </summary>
+    /// <param name="manifest">The manifest of the file.</param>
+    /// <param name="declared">The manifest of the assembly, from <see cref="FromAssembly"/>.</param>
+    /// <param name="resourceCultures">
+    /// The cultures the half has resources in; <see cref="Differences"/> takes those of the satellite assemblies beside the
+    /// half's assembly.
+    /// </param>
+    /// <returns>One sentence per difference; none when the two agree.</returns>
+    public static IReadOnlyList<string> Compare(AdminPluginManifest manifest, AdminPluginManifest declared, IReadOnlyCollection<string> resourceCultures)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(declared);
+        ArgumentNullException.ThrowIfNull(resourceCultures);
         var differences = new List<string>();
 
         if (manifest.ManifestVersion != AdminPluginManifest.CurrentManifestVersion)
@@ -92,6 +107,7 @@ public static class AdminPluginManifestCheck
         NullEntries(differences, "pages", manifest.Pages);
         NullEntries(differences, "menuItems", manifest.MenuItems);
         LabelTexts(differences, manifest.MenuItems);
+        LabelCultures(differences, manifest.MenuItems, resourceCultures);
         NullEntries(differences, "settingsPages", manifest.SettingsPages);
         NullEntries(differences, "fieldEditors", manifest.FieldEditors);
         NullEntries(differences, "listCells", manifest.ListCells);
@@ -413,6 +429,44 @@ public static class AdminPluginManifestCheck
                 }
             }
         }
+    }
+
+    // A text of the culture or of a parent of it other than the neutral culture, which the sidebar would show in its place.
+    private static void LabelCultures(List<string> differences, IReadOnlyList<AdminManifestMenuItem> items, IReadOnlyCollection<string> cultures)
+    {
+        foreach (var item in Present(items))
+        {
+            foreach (var culture in cultures.Where(IsCulture).Order(StringComparer.Ordinal))
+            {
+                var covered = false;
+                for (var current = System.Globalization.CultureInfo.GetCultureInfo(culture); !covered && current.Name.Length > 0; current = current.Parent)
+                {
+                    covered = current.Name != AdminManifestMenuItem.NeutralCulture
+                        && item.Labels.Any(label => string.Equals(label.Key, current.Name, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(label.Value));
+                }
+
+                if (!covered)
+                {
+                    differences.Add($"menu item '{item.Label}' of {item.Type}: labels has no text for '{culture}', a culture the half has resources in");
+                }
+            }
+        }
+    }
+
+    // The cultures of the satellite assemblies beside the half's assembly, as a build or a test's output holds them.
+    private static List<string> ResourceCultures(Assembly assembly)
+    {
+        var location = assembly.Location;
+        var directory = string.IsNullOrEmpty(location) ? null : Path.GetDirectoryName(location);
+        if (directory is null || !Directory.Exists(directory))
+        {
+            return [];
+        }
+
+        var satellite = $"{assembly.GetName().Name}.resources.dll";
+        return [.. Directory.EnumerateDirectories(directory)
+            .Where(culture => File.Exists(Path.Combine(culture, satellite)))
+            .Select(culture => Path.GetFileName(culture))];
     }
 
     private static bool IsCulture(string name)

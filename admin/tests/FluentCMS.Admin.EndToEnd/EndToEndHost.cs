@@ -258,6 +258,15 @@ public sealed class EndToEndHost : IAsyncLifetime
         return ((IPEndPoint)listener.LocalEndpoint).Port;
     }
 
+    // The culture of the run, FluentCms:Admin:Cultures:Default: FLUENTCMS_E2E_CULTURE, else ar-XB when the host is published
+    // with the pseudo-cultures (PublishedHost), and none, so English, on the image or a publish without them (spec 4.17). The
+    // browsers of the harness are in en-US, which the admin offers, so a case gets it only in a browser whose language the
+    // admin does not offer.
+    public const string CultureVariable = "FLUENTCMS_E2E_CULTURE";
+
+    public static string? Culture { get; } =
+        Environment.GetEnvironmentVariable(CultureVariable) is { Length: > 0 } culture ? culture : Repository.PseudoCultures ? "ar-XB" : null;
+
     // The settings of a production deployment, as few as the image needs, with six that only a test host has: its address
     // is a port of the loopback address; its certificates are the run's own; every browser of the tests calls from that one
     // address, one case after another for minutes, so the request limits per address and per user are raised to what such a
@@ -286,6 +295,7 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["AllowedHosts"] = IPAddress.Loopback.ToString(),
             ["FluentCms__Admin__Enabled"] = "true",
             ["FluentCms__Admin__PreviewOrigins__0"] = PreviewOrigin,
+            ["FluentCms__Admin__Cultures__Default"] = Culture,
             ["FluentCms__Security__SigningCertificate__Path"] = _host.CertificatePath(certificates.SigningPath),
             ["FluentCms__Security__SigningCertificate__Password"] = certificates.Password,
             ["FluentCms__DataProtection__Certificate__Path"] = _host.CertificatePath(certificates.SigningPath),

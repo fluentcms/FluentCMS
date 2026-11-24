@@ -7,12 +7,14 @@ namespace FluentCMS.Plugins.Media.Admin;
 // How the library shows an asset's type, size and dimensions, in the user's culture.
 internal static class MediaFormat
 {
-    private static readonly string[] Units = ["B", "KB", "MB", "GB"];
+    // The resources of the units, a number in each: a translation writes the unit as its language does.
+    private static readonly string[] Units = ["Media.Size.Bytes", "Media.Size.Kilobytes", "Media.Size.Megabytes", "Media.Size.Gigabytes"];
 
     public static string Number(long value) => value.ToString("N0", CultureInfo.CurrentCulture);
 
-    public static string Size(long bytes)
+    public static string Size(long bytes, IStringLocalizer localizer)
     {
+        ArgumentNullException.ThrowIfNull(localizer);
         double size = bytes;
         var unit = 0;
         while (size >= 1024 && unit < Units.Length - 1)
@@ -21,7 +23,7 @@ internal static class MediaFormat
             unit++;
         }
 
-        return unit == 0 ? $"{Number(bytes)} {Units[0]}" : $"{size.ToString("0.#", CultureInfo.CurrentCulture)} {Units[unit]}";
+        return localizer[Units[unit], unit == 0 ? Number(bytes) : size.ToString("0.#", CultureInfo.CurrentCulture)];
     }
 
     // The subtype in capitals, such as PNG for image/png, which is what a file's type is known by.

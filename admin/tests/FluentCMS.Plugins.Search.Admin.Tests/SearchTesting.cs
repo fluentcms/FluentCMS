@@ -51,6 +51,9 @@ internal sealed class FakeSchema : IAdminSchema
 {
     public bool Fails { get; set; }
 
+    // Applied to the names of the types, which the sweep of the pseudo-cultures marks as a resource is.
+    public Func<string, string> Label { get; set; } = name => name;
+
     public Task<SchemaDescription> GetSchemaAsync(CancellationToken cancellationToken = default) => Fails
         ? Task.FromException<SchemaDescription>(new HttpRequestException("The server did not answer."))
         : Task.FromResult(new SchemaDescription
@@ -65,11 +68,11 @@ internal sealed class FakeSchema : IAdminSchema
             Blocks = [],
         });
 
-    private static SchemaTypeDescription Type(string name, string? displayName, bool searchable) => new()
+    private SchemaTypeDescription Type(string name, string? displayName, bool searchable) => new()
     {
-        Name = name,
+        Name = Label(name),
         Kind = "collection",
-        DisplayName = displayName,
+        DisplayName = displayName is null ? null : Label(displayName),
         Fields = [new SchemaFieldDescription { Name = "title", Type = "text", Validation = new FieldValidationDescription(), Searchable = searchable }],
     };
 }
