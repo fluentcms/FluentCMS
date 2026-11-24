@@ -76,8 +76,11 @@ internal sealed class FakeAnnouncer : IAnnouncer
     public void Announce(string message, AnnouncementPoliteness politeness = AnnouncementPoliteness.Polite) => Messages.Add(message);
 }
 
-internal sealed class FakeSchema : IAdminSchema
+// The label marks the names of the types, as the sweep of the pseudo-cultures does with data.
+internal sealed class FakeSchema(Func<string, string>? label = null) : IAdminSchema
 {
+    private readonly Func<string, string> label = label ?? (name => name);
+
     public Task<SchemaDescription> GetSchemaAsync(CancellationToken cancellationToken = default) => Task.FromResult(new SchemaDescription
     {
         Types = [Type("article", "Article"), Type("page", null)],
@@ -85,8 +88,8 @@ internal sealed class FakeSchema : IAdminSchema
         Blocks = [],
     });
 
-    private static SchemaTypeDescription Type(string name, string? displayName) =>
-        new() { Name = name, Kind = "collection", DisplayName = displayName, Fields = [] };
+    private SchemaTypeDescription Type(string name, string? displayName) =>
+        new() { Name = label(name), Kind = "collection", DisplayName = displayName is null ? null : label(displayName), Fields = [] };
 }
 
 // The webhooks routes as the server answers them, over webhooks in memory. A header's value never comes back: an answer gives

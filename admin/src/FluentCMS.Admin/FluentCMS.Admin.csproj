@@ -31,6 +31,23 @@
     <None Include="../../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="" Visible="false" />
   </ItemGroup>
 
+  <!-- The interface cultures the admin ships are English and the cultures of its resource files (spec 4.17), which
+       InterfaceCultureOptions reads from this attribute: a translation is a set of resource files and nothing else. -->
+  <Target Name="FluentCmsAdminCultures" BeforeTargets="GetAssemblyAttributes" DependsOnTargets="PrepareResourceNames">
+    <ItemGroup>
+      <_FluentCmsAdminCulture Include="@(EmbeddedResource->'%(Culture)')" Condition="'%(EmbeddedResource.WithCulture)' == 'true'" />
+    </ItemGroup>
+    <RemoveDuplicates Inputs="@(_FluentCmsAdminCulture)">
+      <Output TaskParameter="Filtered" ItemName="_FluentCmsAdminShippedCulture" />
+    </RemoveDuplicates>
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>FluentCMS.Admin.Cultures</_Parameter1>
+        <_Parameter2>en;@(_FluentCmsAdminShippedCulture)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <!-- Core's administration pages, the part of the admin that an app loads lazily (spec 2.6). -->
     <InternalsVisibleTo Include="FluentCMS.Admin.Administration" />

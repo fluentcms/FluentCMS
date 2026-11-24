@@ -9,6 +9,8 @@ await builder.AddFluentCmsAdmin();
 await builder.Build().RunAsync();
 ```
 
+A team's app names its content types in its own resources, read before the admin's for `ContentType.{name}` (such as `ContentType.article`), with `await builder.AddFluentCmsAdmin<AppResources>();` in place of the call above.
+
 The app's project file must load all globalization data. The admin sets the interface culture at start, `en` for a browser in `en-US`, and with only the culture data of the browser's language the runtime then stops the app with a blank page:
 
 ```xml
