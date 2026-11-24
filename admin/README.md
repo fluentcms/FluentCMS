@@ -1,6 +1,6 @@
 # Admin
 
-The Blazor WebAssembly admin of FluentCMS, a pure client of the Management API. The [admin technical specification](../docs/planning/admin-technical-spec.md) has the design.
+The Blazor WebAssembly admin of FluentCMS, a pure client of the Management API. The [admin technical specification](../docs/planning/admin-technical-spec.md) has the design. The guides for its users are in `docs/`: the [overview](../docs/admin.md), [configuration](../docs/admin-configuration.md), [hosting](../docs/admin-hosting.md), [writing an admin half](../docs/admin-plugins.md) and [translating](../docs/admin-translating.md).
 
 | Path | Role |
 | --- | --- |

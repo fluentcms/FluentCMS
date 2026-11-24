@@ -8,7 +8,7 @@ Each GitHub release attaches the build as `fluentcms-admin-{version}.zip`. It ho
 
 Unzip it into the folder the host serves, and edit two files:
 
-- **`config.json`**: `apiBaseUrl`, the origin and path base of the API host, such as `https://cms.example.com`, and `authority`, the issuer exactly as the API host's discovery document writes it, which for the reference host is `apiBaseUrl` with a trailing slash (`https://cms.example.com/`). `clientId`, `branding`, `cultures` and `previewOrigins` are as in section 2.5 of the [admin technical specification](planning/admin-technical-spec.md#25-runtime-configuration-configjson).
+- **`config.json`**: `apiBaseUrl`, the origin and path base of the API host, such as `https://cms.example.com`, and `authority`, the issuer exactly as the API host's discovery document writes it, which for the reference host is `apiBaseUrl` with a trailing slash (`https://cms.example.com/`). `clientId`, `branding`, `cultures` and `previewOrigins` are as in [admin configuration](admin-configuration.md#configjson).
 - **`index.html`**: the `href` of its one `<base>` element, the path the admin is served from with a trailing slash: `/` at the root of its own host name, `/admin/` under `https://example.com/admin/`. Every address of the app resolves under it.
 
 Edit nothing else: the names of the other files and their copies are fixed by the build. The admin reads `config.json` from its own base with `cache: no-store`, and shows a page that names a missing or wrong member before it calls the API.

@@ -307,6 +307,8 @@ The instance keeps at least one active user with every permission, such as a Sup
 
 ## Admin
 
+The guides of the admin are the [overview](admin.md), [admin configuration](admin-configuration.md), [hosting the admin](admin-hosting.md), [writing an admin half](admin-plugins.md) and [translating the admin](admin-translating.md). This section has the keys and what the host serves.
+
 `FluentCMS.Admin.Hosting` serves the admin, a Blazor WebAssembly app, from the host at `/admin`, under `FluentCms:ReverseProxy:PathBase` when it is set. The app's files are the host's static web assets, from one of two places. A host that references the package and no admin app's project gets the package's first-party build: the publish of `FluentCMS.Admin.App` with the first-party admin halves, the files of `fluentcms-admin-{version}.zip` ([hosting the admin](admin-hosting.md)), carried with their fingerprints, their compressed copies and their endpoints. A host that references an admin app's project, as the reference host references `FluentCMS.Admin.App` and as a team's host references the app of `dotnet new fluentcms-admin` with its own admin halves, serves that app, which its build and its publish compile; the package's build then stays out of the host. An admin app is told by `fluentcms-admin.plugins.json`, the manifest its build gathers from its halves, so another WebAssembly project, such as the `.Client` project of a Blazor Web App, is not taken for one. In a host that references an admin app's project, the component library's icon assemblies, which only the browser loads, stay out of the host's output and its `deps.json`, unless the host references the library or its icons with a package reference of its own. The host adds two calls:
 
 ```csharp
