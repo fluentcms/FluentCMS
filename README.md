@@ -44,6 +44,7 @@ docker compose up -d --no-build
 ## Documentation
 
 - [Host configuration](docs/host-configuration.md), [Run with Docker](docs/docker.md) and [Reverse proxy](docs/reverse-proxy.md)
+- The admin: [overview](docs/admin.md), [configuration](docs/admin-configuration.md), [hosting](docs/admin-hosting.md), [writing an admin half](docs/admin-plugins.md) and [translating](docs/admin-translating.md)
 - [Content migrations](docs/content-migrations.md), [System migrations](docs/system-migrations.md), [Plugin migrations](docs/plugin-migrations.md) and [Backups](docs/backups.md)
 - [The `fluentcms` tool](src/FluentCMS.Cli/README.md), [the templates](templates/README.md) and [analyzer rules](docs/analyzers.md)
 - Each package's README beside its project, under [`src`](src) and [`src/plugins`](src/plugins), and the [TypeScript client](clients/typescript/README.md)

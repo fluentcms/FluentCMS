@@ -14,3 +14,5 @@ dotnet new fluentcms-admin -n MyAdmin
 ```
 
 A project made by a template references the FluentCMS packages at the version of the templates.
+
+The admin's guides are the [admin overview](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin.md), with the three ways to run the admin, [admin configuration](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin-configuration.md), [writing an admin half](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin-plugins.md) and [translating the admin](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin-translating.md).

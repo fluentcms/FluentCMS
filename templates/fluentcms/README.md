@@ -120,6 +120,8 @@ dotnet add reference ../MyAdmin/MyAdmin.csproj
 The host then serves that app at `/admin` in place of the prebuilt build, with the same `config.json`; remove the reference and it serves the prebuilt build again. The `Dockerfile` builds from this folder alone, so with a reference to an app outside it, build the image from a folder that holds both and copy both projects.
 
 Serve nothing of other parties on this host's origin: the admin keeps its refresh token and unsaved drafts in `sessionStorage`, which every page of the same origin in the same tab can read.
+
+The [admin overview](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin.md) has the other ways to run the admin, and [admin configuration](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin-configuration.md) what the `FluentCms:Admin` settings put in `config.json`, the client `fluentcms-admin` and the rate limits the admin's files count against.
 <!--#endif -->
 
 ## A front end
