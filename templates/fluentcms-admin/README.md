@@ -90,6 +90,10 @@ On Windows a restore leaves out a file of a package whose path passes 260 charac
 
 ## More
 
+- [Admin overview](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin.md): the distributions and the first sign-in
+- [Admin configuration](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin-configuration.md): every member of `config.json`, an admin on another origin and the client `fluentcms-admin`
+- [Writing an admin half](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin-plugins.md): a half of your own, from `dotnet new fluentcms-plugin`
+- [Translating the admin](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin-translating.md): the resource files of a translation and the pseudo-cultures
 - [Host configuration](https://github.com/fluentcms/FluentCMS/blob/main/docs/host-configuration.md#admin): the `FluentCms:Admin` settings and what the host serves at `/admin`
 - [Hosting the admin](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin-hosting.md): the static build on another origin
 - [Admin technical specification](https://github.com/fluentcms/FluentCMS/blob/main/docs/planning/admin-technical-spec.md): the plugin contract of an admin half (section 5) and the distributions (section 6)
