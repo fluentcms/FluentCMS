@@ -33,9 +33,13 @@ internal static class AdministrationAreas
         new("sites", "Administration.Menu.Sites", AdminMenuSection.Settings, 20, "sites.manage"),
     ];
 
+    // The account page of the signed-in user (spec 4.3), which the user menu links to.
+    public const string AccountRoute = "account";
+
     // The routes of the assembly's pages that are in no area: any signed-in user may open them, they have no sidebar entry, and
-    // the assembly loads on their first visit as it does for an area's (#3354).
-    public static IReadOnlyList<string> OpenRoutes { get; } = ["system/components"];
+    // the assembly loads on their first visit as it does for an area's: the component gallery (#3354) and the account page
+    // (A-41, #3457).
+    public static IReadOnlyList<string> OpenRoutes { get; } = ["system/components", AccountRoute];
 
     private static readonly ConcurrentDictionary<Type, AdministrationArea?> Pages = new();
 

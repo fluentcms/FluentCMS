@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Installs FluentCMS.Templates from a folder feed that holds it and the FluentCMS packages of the same version, creates every
 # combination of the templates, builds each with warnings as errors and runs the plugin's tests, with its admin half and
-# without, and checks that the half's manifest test fails on a manifest that disagrees. Then it starts the SQLite hosts in
-# Development and reads their sample type through the Delivery API, and, when FLUENTCMS_TEMPLATES_POSTGRES holds a connection
-# string, brings up a PostgreSQL host with `fluentcms migrations add Initial` and `fluentcms migrate`.
+# without, and checks that the half's manifest test fails on a manifest that disagrees. It publishes the admin app trimmed, adds
+# the plugin's admin half to it and checks that the build stops without the half's lazy line. Then it starts the SQLite hosts in
+# Development, reads their sample type through the Delivery API and the admin at /admin, or a 404 there for a host made with
+# --admin false, and starts one with a reference to the admin app, which it then serves with the plugin's half. When
+# FLUENTCMS_TEMPLATES_POSTGRES holds a connection string, it brings up a PostgreSQL host with `fluentcms migrations add Initial`
+# and `fluentcms migrate`.
 #
 #   templates/test-templates.sh <feed> <version> <work directory>
 #
@@ -76,6 +79,33 @@ for provider in sqlite postgresql sqlserver; do
   done
 done
 
+# Two hosts without the admin, so that each conditional of the settings is made both ways: with no reference to the admin left
+# anywhere in what the template writes.
+apis=()
+for variant in "sqlite none" "sqlserver blog"; do
+  read -r provider sample <<< "$variant"
+  name="Api${provider^}${sample^}"
+  step "dotnet new fluentcms --provider $provider --sample $sample --admin false"
+  new fluentcms -n "$name" -o "$work/$name" --provider "$provider" --sample "$sample" --admin false
+  if grep -rnE 'FluentCMS\.Admin|AddAdmin|MapFluentCmsAdmin|"Admin"|/admin' "$work/$name"; then
+    fail "$name, made with --admin false, refers to the admin"
+  fi
+  dotnet build "$work/$name/$name.csproj" -c Release -warnaserror
+  apis+=("$name")
+  end
+done
+
+for host in "${hosts[@]}"; do
+  grep -q '<PackageReference Include="FluentCMS.Admin.Hosting" ' "$work/$host/$host.csproj" || fail "$host does not reference FluentCMS.Admin.Hosting"
+  grep -q 'cms.AddAdmin();' "$work/$host/Program.cs" && grep -q 'app.MapFluentCmsAdmin();' "$work/$host/Program.cs" \
+    || fail "the Program.cs of $host does not add and map the admin"
+done
+for host in "${hosts[@]}" "${apis[@]}"; do
+  if grep -l '<!--#\|^#if\|^#else\|^#endif\|//#' "$work/$host/README.md" "$work/$host/Program.cs" "$work/$host/appsettings.json" "$work/$host/$host.csproj"; then
+    fail "$host kept a template conditional"
+  fi
+done
+
 plugin=Acme.ReviewNotes
 step "dotnet new fluentcms-plugin -n $plugin"
 new fluentcms-plugin -n "$plugin" -o "$work/$plugin"
@@ -114,14 +144,48 @@ dotnet build "$work/$server/$server.slnx" -c Release -warnaserror
 (cd "$work/$server" && dotnet test -c Release --no-build)
 end
 
+# The one trimmed publish of the jobs: the app as the template makes it, with the six first-party halves.
+admin=AcmeAdmin
+halves=(Media Webhooks Mcp AiAssist MultiSite Search)
+step "dotnet new fluentcms-admin -n $admin, built and published trimmed"
+new fluentcms-admin -n "$admin" -o "$work/$admin"
+dotnet build "$work/$admin/$admin.csproj" -c Release -warnaserror
+dotnet publish "$work/$admin/$admin.csproj" -c Release --no-build -o "$work/$admin-publish" > "$work/$admin-publish.log" 2>&1 \
+  || { cat "$work/$admin-publish.log"; fail "the trimmed publish of $admin failed"; }
+# A trim warning of the app or its project references fails the publish; one of a package is an IL2104 that names it, which
+# the framework's Blazor assemblies report and no FluentCMS package may.
+if grep -E "warning IL[0-9]+: Assembly '(FluentCMS\.|$admin)" "$work/$admin-publish.log"; then
+  fail "the trimmed publish of $admin reports a trim warning of FluentCMS"
+fi
+gathered="$work/$admin-publish/wwwroot/fluentcms-admin.plugins.json"
+for half in "${halves[@]}"; do
+  grep -q "\"assembly\": \"FluentCMS.Plugins.$half.Admin\"" "$gathered" || fail "the published $admin does not list the manifest of FluentCMS.Plugins.$half.Admin"
+done
+ls "$work/$admin-publish/wwwroot/_framework/" | grep -q "^$admin\.[a-z0-9]*\.wasm$" || fail "the publish of $admin holds no $admin.wasm"
+end
+
+# The plugin's half goes into the app as its README says: the build stops on the reference alone, and passes with the lazy line.
+step "The admin half of $plugin in $admin"
+dotnet add "$work/$admin/$admin.csproj" reference "$work/$plugin/src/$plugin.Admin/$plugin.Admin.csproj"
+if dotnet build "$work/$admin/$admin.csproj" -c Release -warnaserror > "$work/$admin-eager.log" 2>&1; then
+  fail "$admin built with the half $plugin.Admin not loaded lazily"
+fi
+grep -q "The admin half $plugin.Admin is referenced but not loaded lazily" "$work/$admin-eager.log" || { cat "$work/$admin-eager.log"; fail "the build of $admin did not name the half to load lazily"; }
+sed -i "s|^\(\s*\)<ProjectReference Include=\"\(.*\)$plugin.Admin.csproj\" />|&\n\1<BlazorWebAssemblyLazyLoad Include=\"$plugin.Admin.wasm\" />|" "$work/$admin/$admin.csproj"
+grep -q "<BlazorWebAssemblyLazyLoad Include=\"$plugin.Admin.wasm\" />" "$work/$admin/$admin.csproj" || fail "the lazy line of $plugin.Admin was not added"
+dotnet build "$work/$admin/$admin.csproj" -c Release -warnaserror
+grep -q "\"assembly\": \"$plugin.Admin\"" "$work/$admin/obj/Release/net10.0/fluentcms-admin/fluentcms-admin.plugins.json" \
+  || fail "the gathered manifests of $admin do not list $plugin.Admin"
+end
+
 step "The FluentCMS packages and the tool of every project are version $version"
-if grep -rl "{{version:" "$work"/Host* "$work/$plugin" "$work/$server" --include=*.csproj --include=*.json; then
+if grep -rl "{{version:" "$work"/Host* "$work"/Api* "$work/$admin" "$work/$plugin" "$work/$server" --include=*.csproj --include=*.json; then
   fail "a version token was left in a created project"
 fi
-versions=$( (grep -rhoE 'Include="FluentCMS\.[A-Za-z.]+" Version="[^"]+"' "$work"/Host* "$work/$plugin" "$work/$server" --include=*.csproj || true) \
+versions=$( (grep -rhoE 'Include="FluentCMS\.[A-Za-z.]+" Version="[^"]+"' "$work"/Host* "$work"/Api* "$work/$admin" "$work/$plugin" "$work/$server" --include=*.csproj || true) \
   | sed -E 's/.*Version="([^"]+)"/\1/' | sort -u)
 [ "$versions" = "$version" ] || fail "the FluentCMS packages of the created projects are '$versions', not $version"
-for host in "${hosts[@]}"; do
+for host in "${hosts[@]}" "${apis[@]}"; do
   grep -q "\"version\": \"$version\"" "$work/$host/.config/dotnet-tools.json" || fail "$host does not pin fluentcms $version"
 done
 grep -q '\[FluentCmsPlugin(Name, ' "$work/$plugin/src/$plugin/ReviewNotesPlugin.cs" || fail "the plugin class is not ReviewNotesPlugin"
@@ -131,10 +195,10 @@ grep -q '"name": "review-notes"' "$work/$plugin/src/$plugin.Admin/wwwroot/fluent
 end
 
 step "The Dockerfile of each provider"
-for host in "${hosts[@]}"; do
+for host in "${hosts[@]}" "${apis[@]}"; do
   grep -q "^COPY $host.csproj ./" "$work/$host/Dockerfile" || fail "the Dockerfile of $host does not copy its project"
   grep -q "^ENTRYPOINT \[\"dotnet\", \"/app/$host.dll\"\]" "$work/$host/Dockerfile" || fail "the Dockerfile of $host does not start its assembly"
-  if [[ $host == HostSqlite* ]]; then
+  if [[ $host == HostSqlite* || $host == ApiSqlite* ]]; then
     grep -q '^ENV ConnectionStrings__FluentCms="Data Source=/data/fluentcms.db"' "$work/$host/Dockerfile" || fail "the Dockerfile of $host has no SQLite database in /data"
   elif grep -q '^ENV ConnectionStrings__FluentCms' "$work/$host/Dockerfile"; then
     fail "the Dockerfile of $host sets a connection string"
@@ -236,6 +300,28 @@ check_delivery() {
   fi
 }
 
+# GET with no token; prints the body and fails on another status than the one expected.
+fetch() {
+  local expected=$1 url=$2
+  local response status
+  response=$(curl -ksS -w '\n%{http_code}' "$origin$url")
+  status=${response##*$'\n'}
+  [ "$status" = "$expected" ] || fail "GET $url answered $status, not $expected: ${response%$'\n'*}"
+  printf '%s' "${response%$'\n'*}"
+}
+
+# The admin at /admin: the page with its base set, and config.json with the host's origin, which in Development without a
+# public origin is the request's, and the admin's client.
+check_admin() {
+  local page config
+  page=$(fetch 200 /admin/)
+  grep -qF '<base href="/admin/" />' <<< "$page" || fail "/admin/ did not answer the page with its base set: $page"
+  config=$(fetch 200 /admin/config.json)
+  grep -qE "\"apiBaseUrl\": *\"$origin\"" <<< "$config" && grep -qE "\"authority\": *\"$origin/\"" <<< "$config" \
+    && grep -qE '"clientId": *"fluentcms-admin"' <<< "$config" \
+    || fail "/admin/config.json does not name $origin and the client fluentcms-admin: $config"
+}
+
 step "Development certificate"
 dotnet dev-certs https
 end
@@ -243,13 +329,40 @@ end
 port=5443
 for sample in none blog; do
   host="HostSqlite${sample^}"
-  step "$host starts on SQLite in Development and serves its sample type through the Delivery API"
+  step "$host starts on SQLite in Development and serves its sample type through the Delivery API and the admin at /admin"
   start "$host" "$port"
   check_delivery "$sample"
+  check_admin
   stop
   port=$((port + 1))
   end
 done
+
+host=ApiSqliteNone
+step "$host, made with --admin false, answers 404 at /admin"
+start "$host" "$port"
+check_delivery none
+for path in /admin /admin/ /admin/config.json; do
+  fetch 404 "$path" > /dev/null
+done
+stop
+port=$((port + 1))
+end
+
+# The template's own host with a reference to the app of fluentcms-admin, which FluentCMS.Admin.Hosting then serves in place of
+# its prebuilt build: the gathered manifests hold the plugin's half, which the prebuilt build has not.
+host=HostSqliteNone
+step "$host with a reference to $admin serves that app, with the half of $plugin"
+dotnet add "$work/$host/$host.csproj" reference "$work/$admin/$admin.csproj"
+dotnet build "$work/$host/$host.csproj" -c Release -warnaserror
+start "$host" "$port"
+check_admin
+served=$(fetch 200 /admin/fluentcms-admin.plugins.json)
+grep -q "\"assembly\": \"$plugin.Admin\"" <<< "$served" || fail "$host does not serve the manifests of $admin"
+fetch 200 "/admin/$admin.styles.css" > /dev/null
+stop
+port=$((port + 1))
+end
 
 if [ -n "${FLUENTCMS_TEMPLATES_POSTGRES:-}" ]; then
   host=HostPostgresqlNone

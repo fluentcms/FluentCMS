@@ -24,6 +24,11 @@ public sealed class AdminBrowser
     // The fields of the sign-in's forms and of the token endpoint's answer whose values are secrets.
     private static readonly string[] SecretFields = ["code", "code_verifier", "refresh_token", "access_token", "id_token", "token", "__RequestVerificationToken"];
 
+    // How many of the requests the browser gave up, and of the answers it could not give, are kept, the last ones.
+    private const int Kept = 20;
+
+    internal const string CancelledError = "net::ERR_ABORTED";
+
     private readonly EndToEndHost _host;
     private readonly IBrowserContext _context;
     private readonly string? _traces;
@@ -32,6 +37,9 @@ public sealed class AdminBrowser
     private readonly ConcurrentQueue<string> _violations = new();
     private readonly ConcurrentDictionary<string, bool> _secrets = new(StringComparer.Ordinal);
     private readonly ConcurrentBag<Task> _reads = [];
+    private readonly ConcurrentQueue<string> _givenUp = new();
+    private readonly ConcurrentQueue<string> _unread = new();
+    private int _cancelled;
     private bool _tracing;
 
     private AdminBrowser(EndToEndHost host, IBrowserContext context, string? traces)
@@ -43,6 +51,7 @@ public sealed class AdminBrowser
         _slow = SlowMode.For(context);
         context.Request += (_, request) => OnRequest(request);
         context.Response += (_, response) => OnResponse(response);
+        context.RequestFailed += (_, request) => OnRequestFailed(request);
         context.Console += (_, message) =>
         {
             if (message.Text.Contains("Content Security Policy", StringComparison.OrdinalIgnoreCase))
@@ -54,6 +63,17 @@ public sealed class AdminBrowser
 
     // The console messages of a Content-Security-Policy violation, in any tab.
     public IReadOnlyCollection<string> PolicyViolations => _violations;
+
+    // The last requests of any tab the browser gave up, each with the time in UTC, as the host's log has it, the browser's
+    // error, the method and the address with its query cut, as the host's log cuts it. Not masked: the output masks them.
+    // A request a page cancels as it navigates away (net::ERR_ABORTED) is only counted, since most cases have some.
+    internal IReadOnlyCollection<string> RequestsGivenUp => _givenUp;
+
+    internal int RequestsCancelled => Volatile.Read(ref _cancelled);
+
+    // The last answers of the host whose headers or body the browser could not give for the mask (ReadAsync), each with the
+    // method, the address with its query cut, the status, the time in UTC and the exception as Playwright gave it. Not masked.
+    internal IReadOnlyCollection<string> AnswersUnread => _unread;
 
     internal static async Task<AdminBrowser> OpenAsync(EndToEndHost host, IBrowser browser, string? traces)
     {
@@ -235,6 +255,32 @@ public sealed class AdminBrowser
         _reads.Add(ReadAsync(response, token ? tab : null, IsSecretAnswer(response)));
     }
 
+    private void OnRequestFailed(IRequest request)
+    {
+        var error = request.Failure ?? "no error";
+        if (error == CancelledError)
+        {
+            Interlocked.Increment(ref _cancelled);
+            return;
+        }
+
+        KeepLast(_givenUp, $"{Now()} {error} {request.Method} {WithoutQuery(request.Url)}");
+    }
+
+    private static void KeepLast(ConcurrentQueue<string> queue, string entry)
+    {
+        queue.Enqueue(entry);
+        while (queue.Count > Kept)
+        {
+            queue.TryDequeue(out _);
+        }
+    }
+
+    private static string Now() => DateTime.UtcNow.ToString("HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string WithoutQuery(string address) =>
+        address.IndexOf('?', StringComparison.Ordinal) is var query and >= 0 ? address[..query] + "?[query]" : address;
+
     // A Management call that may answer a secret shown once, as making or rotating an API key: a POST whose answer is JSON.
     private bool IsSecretAnswer(IResponse response) =>
         response.Request.Method == "POST" && response.Status is 200 or 201
@@ -245,6 +291,7 @@ public sealed class AdminBrowser
     // the requests that carry it, and a test keeps a secret it read from the page with Mask.
     private async Task ReadAsync(IResponse response, AdminTab? tab, bool secretAnswer)
     {
+        var step = "its headers";
         try
         {
             foreach (var cookie in await response.HeaderValuesAsync("set-cookie"))
@@ -256,26 +303,36 @@ public sealed class AdminBrowser
                 }
             }
 
-            if (tab is not null && response.Status == 200 && JsonNode.Parse(await response.TextAsync()) is JsonObject answer)
+            if (tab is not null && response.Status == 200)
             {
-                foreach (var field in SecretFields)
+                step = "its body, for the tokens";
+                if (JsonNode.Parse(await response.TextAsync()) is JsonObject answer)
                 {
-                    if (answer[field] is JsonValue value && value.TryGetValue<string>(out var text))
+                    foreach (var field in SecretFields)
                     {
-                        Keep(text);
+                        if (answer[field] is JsonValue value && value.TryGetValue<string>(out var text))
+                        {
+                            Keep(text);
+                        }
                     }
                 }
-
             }
 
-            if (secretAnswer && JsonNode.Parse(await response.TextAsync()) is JsonObject created && created["secret"] is JsonValue secret
-                && secret.TryGetValue<string>(out var shownOnce))
+            if (secretAnswer)
             {
-                Keep(shownOnce);
+                step = "its body, for the secret";
+                if (JsonNode.Parse(await response.TextAsync()) is JsonObject created && created["secret"] is JsonValue secret && secret.TryGetValue<string>(out var shownOnce))
+                {
+                    Keep(shownOnce);
+                }
             }
         }
         catch (Exception exception) when (exception is PlaywrightException or System.Text.Json.JsonException)
         {
+            // Still skipped, but why is kept for the output of a failed case, since it tells a body Chromium no longer had from
+            // one that was not JSON or a page that was gone (#3635).
+            var reason = exception.Message.ReplaceLineEndings(" ").Trim();
+            KeepLast(_unread, $"{response.Request.Method} {WithoutQuery(response.Url)} ({response.Status}) at {Now()}, {step}: {exception.GetType().Name}: {reason}");
         }
     }
 

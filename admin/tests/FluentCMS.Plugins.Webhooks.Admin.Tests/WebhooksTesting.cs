@@ -28,6 +28,7 @@ public abstract class WebhooksTestContext : BunitContext
         Services.AddSingleton<IManagementApi>(Server);
         Services.AddSingleton<IAdminSchema>(new FakeSchema());
         Services.AddSingleton<IAnnouncer>(Announcer);
+        Services.AddSingleton<IAdminFormats>(new UtcFormats());
         Services.AddSingleton(TimeProvider.System);
     }
 
@@ -338,4 +339,19 @@ internal sealed class FakeWebhooks : IManagementApi
     private static bool SameOrigin(string stored, string url) =>
         Uri.TryCreate(stored, UriKind.Absolute, out var before) && Uri.TryCreate(url, UriKind.Absolute, out var after)
         && before.Scheme == after.Scheme && string.Equals(before.IdnHost, after.IdnHost, StringComparison.OrdinalIgnoreCase) && before.Port == after.Port;
+}
+
+// The user's formats as the shell gives them, in UTC and a pattern of no culture, so that a test tells a moment the page
+// wrote through the contract from one it wrote by itself.
+internal sealed class UtcFormats : IAdminFormats
+{
+    public string TimeZoneId => "UTC";
+
+    public string FormatDate(DateTimeOffset value) => value.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    public string FormatTime(DateTimeOffset value) => value.UtcDateTime.ToString("HH:mm", CultureInfo.InvariantCulture);
+
+    public string FormatDateTime(DateTimeOffset value) => value.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+
+    public string FormatNumber(decimal value, int? decimals = null) => value.ToString(CultureInfo.InvariantCulture);
 }

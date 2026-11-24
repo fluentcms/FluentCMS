@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "FluentCMS",
+  "classifications": ["Web", "CMS", "Blazor", "WebAssembly"],
+  "identity": "FluentCMS.Templates.Admin",
+  "groupIdentity": "FluentCMS.Templates.Admin",
+  "name": "FluentCMS admin",
+  "description": "The FluentCMS admin as a Blazor WebAssembly app of your own: the shell, the administration pages, the rich text editor and the first-party admin halves, to which you add the halves of your own plugins.",
+  "shortName": "fluentcms-admin",
+  "sourceName": "FluentCms-AdminApp",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}

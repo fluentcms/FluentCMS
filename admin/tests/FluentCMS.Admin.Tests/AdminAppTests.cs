@@ -98,7 +98,8 @@ public sealed class AdminAppTests : AdminTestContext
 
         head.Find("title").TextContent.ShouldBe("Acme");
         head.Find("link[rel='icon']").GetAttribute("href").ShouldBe("favicon.png");
-        Document.Invocations["setProperty"].Select(call => call.Arguments.ToArray()).ShouldBe([[BrandingHead.AccentProperty, "#0f6cbd"]]);
+        Document.Invocations["setProperty"].Select(call => call.Arguments.ToArray())
+            .ShouldBe([[BrandingHead.AccentProperty, "#0f6cbd"], [AccentColors.OnAccentProperty, "#ffffff"], [AccentColors.ShadeProperty, "#000000"]]);
         var logo = app.Find(".cms-root header a.shell-home img.cms-logo");
         logo.GetAttribute("src").ShouldBe("img/logo.svg");
         logo.GetAttribute("alt").ShouldBe("Acme, home");

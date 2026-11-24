@@ -26,6 +26,8 @@ public abstract class AdminTestContext : BunitContext
     private CultureInfo culture = CultureInfo.GetCultureInfo(PseudoCulture.LeftToRight);
     private bool pseudo = true;
     private bool signInFlow;
+    private bool appCulture;
+    private string? cultureCopy;
     private bool started;
 
     protected AdminTestContext()
@@ -66,6 +68,13 @@ public abstract class AdminTestContext : BunitContext
     // Call before Start: the real session, which signs in against Authority.
     protected void UseSignInFlow() => signInFlow = true;
 
+    // Call before Start: the copy of the interface culture the start read from the browser.
+    protected void UseCultureCopy(string? copy) => cultureCopy = copy;
+
+    // Call before Start: the user's formats become the process's current culture, as in the browser. A test that calls it runs
+    // in the ProcessCulture collection and resets the default culture at its end.
+    protected void UseAppCulture() => appCulture = true;
+
     protected void Start(string json = ValidConfiguration) => Start(AdminConfigurationReader.Read(json));
 
     private protected void Start(AdminStartup startup)
@@ -76,7 +85,10 @@ public abstract class AdminTestContext : BunitContext
         }
 
         started = true;
-        Services.AddAdminStartup(startup, new InterfaceCulture(culture), new FormatService(culture, TimeZoneInfo.Utc));
+        Services.AddAdminStartup(
+            startup,
+            new InterfaceCulture(culture, copy: cultureCopy),
+            new FormatService(culture, TimeZoneInfo.Utc, appCulture ? InterfaceCulture.UseFormats : null));
         if (startup.Configuration is not null)
         {
             Services.Replace(ServiceDescriptor.Scoped<ISessionStorage>(_ => Storage));

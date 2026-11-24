@@ -364,7 +364,7 @@ jobs:
     name: End-to-end on the image (admin)
     if: ${{ !inputs.archive }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     concurrency:
       group: compose-end-to-end-${{ github.event_name }}-${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && github.run_id || github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' }}
@@ -400,8 +400,10 @@ jobs:
         run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/bin/Release/net10.0/playwright.ps1 install --only-shell chromium
 
       # The image ships without the pseudo-cultures, so the cases on them, which the run on a publish has, are left out here.
+      # The accessibility sweep (admin spec 4.18, #3458) adds about 3 min, so the first run has 30 min and the retry 12 min, which
+      # holds two failed sweeps; the job's 60 min hold the image's build, the tests' build, the first run and the retry.
       - name: Test
-        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 20m -RetryTimeout 8m -ExcludeTrait Host=Publish
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 30m -RetryTimeout 12m -ExcludeTrait Host=Publish
 
       - name: Name the tests that were running
         if: failure() || cancelled()

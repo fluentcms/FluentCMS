@@ -7,6 +7,7 @@
                 Label="@Label"
                 Required="@Required"
                 Disabled="@(Disabled || ReadOnly)"
+                aria-disabled="@(Disabled || ReadOnly ? "true" : null)"
                 ReadOnly="@ReadOnly"
                 Value="@Value"
                 ValueChanged="@SetValueAsync"

@@ -33,6 +33,7 @@ public class AdminRulesTests
     private const string Library = "Microsoft.FluentUI.AspNetCore.Components";
     private const string LibraryNamespace = "Microsoft.FluentUI";
     private const string TemplateHalf = "templates/fluentcms-plugin/src/FluentCms-Plugin1.Admin/FluentCms-Plugin1.Admin.csproj";
+    private const string TemplateApp = "templates/fluentcms-admin/FluentCms-AdminApp.csproj";
 
     // The packages of admin/src/ itself; any other project there, or elsewhere, may be a half.
     private static readonly string[] AdminPackages = [Admin, AdminAbstractions, AdminComponents, AdminAdministration, AdminRichText, AdminApp, AdminHosting];
@@ -41,15 +42,17 @@ public class AdminRulesTests
     private static readonly string[] CompilerPackages = ["FluentCMS.Analyzers", "FluentCMS.Generators"];
 
     // Spec 3.1: the types that may use JavaScript interop, the document module, the tab's sessionStorage of the sign-in,
-    // localStorage for the theme's one key and for the column names of the lists, the drop and paste of the media library,
-    // in the media half (A-21), the rich text editor's bundle (A-24), the messages of the preview frame (A-29), and the
-    // clipboard that the secret shown once writes to (A-33), in the wrapped set since the halves that show a secret reach no
-    // other admin package. The component library's script is loaded by the library's own types, which are not the set's.
+    // localStorage for the theme's one key, the copy of the interface culture (A-41) and the column names of the lists, the
+    // drop and paste of the media library, in the media half (A-21), the rich text editor's bundle (A-24), the messages of
+    // the preview frame (A-29), and the clipboard that the secret shown once writes to (A-33), in the wrapped set since the
+    // halves that show a secret reach no other admin package. The component library's script is loaded by the library's own
+    // types, which are not the set's.
     // Each type with the one assembly it is in, so that a type moved to another assembly fails the rule below.
     private static readonly (string Type, string Assembly)[] InteropTypesByAssembly =
     [
         ("FluentCMS.Admin.Components.CmsClipboard", AdminComponents),
         ("FluentCMS.Admin.Interop.ColumnStorageInterop", Admin),
+        ("FluentCMS.Admin.Interop.CultureStorageInterop", Admin),
         ("FluentCMS.Admin.Interop.DocumentInterop", Admin),
         ("FluentCMS.Admin.Interop.PreviewInterop", Admin),
         ("FluentCMS.Admin.Interop.SessionStorageInterop", Admin),
@@ -383,6 +386,20 @@ public class AdminRulesTests
 
         Reachable(ProjectFile.RepositoryProjects.Single(project => project.Name == Admin), ProjectFile.RepositoryProjects).ShouldNotContain(AdminAdministration);
         ProjectFile.Load(AdminFolder + $"{AdminAdministration}/{AdminAdministration}.csproj").ProjectReferences.ShouldBe([Admin]);
+    }
+
+    // Spec 6.2: the app of the fluentcms-admin template is FluentCMS.Admin.App made of packages, so a half added to the one and
+    // not the other fails here.
+    [Fact]
+    public void TheAdminTemplatesAppReferencesAsPackagesWhatTheAdminAppReferences()
+    {
+        var app = AdminFolder + $"{AdminApp}/{AdminApp}.csproj";
+        var template = ProjectFile.Load(TemplateApp);
+
+        template.ProjectReferences.ShouldBeEmpty();
+        template.PackageReferences.Select(package => package.Name).ShouldBe(ProjectFile.Load(app).ProjectReferences, ignoreOrder: true);
+        LazyAssemblies(TemplateApp).ShouldBe(LazyAssemblies(app), ignoreOrder: true);
+        Halves(ProjectFile.RepositoryProjects).Select(project => project.Location).ShouldNotContain(TemplateApp);
     }
 
     // An admin project or half under admin/src/ that the test project does not reference would escape the scans of the

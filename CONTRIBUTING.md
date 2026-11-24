@@ -193,15 +193,16 @@ CI runs the full suite, so there is no need to run it locally for an issue pull 
 ```bash
 dotnet build -c Release -warnaserror
 dotnet test -c Release --no-build
-dotnet pack -c Release --no-build -o artifacts/packages
-dotnet run eng/check-packages.cs -- artifacts/packages 1.0.0-dev
 dotnet publish admin/src/FluentCMS.Admin.App -c Release --no-build -o artifacts/admin
+dotnet pack -c Release --no-build -o artifacts/packages -p:FluentCmsAdminPublishDir="$PWD/artifacts/admin"
+dotnet run eng/check-packages.cs -- artifacts/packages 1.0.0-dev
 dotnet run eng/check-admin-size.cs -- artifacts/admin 3600000
 dotnet run eng/admin-zip.cs -- pack artifacts/admin 1.0.0-dev artifacts/packages
+dotnet run eng/admin-package-host.cs -- artifacts/packages 1.0.0-dev "$(mktemp -d)/host"
 npx --yes markdownlint-cli2 "**/*.md"
 ```
 
-Publish the admin into an empty folder: files left from an earlier publish count toward the size check. The budget is the one of the `Pack` job in `.github/workflows/ci.yml`.
+Publish the admin into an empty folder: files left from an earlier publish count toward the size check, and `FluentCMS.Admin.Hosting` packs that publish; without `FluentCmsAdminPublishDir` its pack publishes the app itself. `eng/admin-package-host.cs` makes its host in a folder outside the repository, whose packages would otherwise come from the repository's `Directory.Packages.props`, and restores with `RestorePackagesPath` into `admin-host-packages` beside it, from which it removes every FluentCMS package first, so that the packages of `1.0.0-dev` are never taken from an earlier pack, whatever `NUGET_PACKAGES` says. Its other modes, `app`, `icons` and `client`, are the cases the `Pack` job runs. On Windows keep the folder's path short: some paths of the admin's files under it pass 200 characters, and a restore leaves out a file whose path passes 260. The budget is the one of the `Pack` job in `.github/workflows/ci.yml`.
 
 A test that hangs is named in the diagnostic log of its test app: xUnit.net reports each test that runs longer than two minutes (`tests/xunit.runner.json`), and `--timeout` fails the tests still running with the stack of the call they wait in, if they wait on the test's cancellation token. CI writes the log for every test project and prints these lines when a test job fails or is cancelled. A hang outside a test body, such as a class or collection fixture whose `InitializeAsync` never returns, is not named: it gets no long-running report, and `--timeout` ends the run without a name or a stack. To get the lines locally:
 

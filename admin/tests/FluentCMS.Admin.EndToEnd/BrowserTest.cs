@@ -33,8 +33,9 @@ public abstract class BrowserTest(EndToEndHost host) : IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 
-    // The output of a failed case: the address of each page its browsers had open and the last lines of the host's log, which
-    // nothing keeps once the run ends. Both are masked of the secrets the browsers saw.
+    // The output of a failed case: the address of each page its browsers had open, the last requests they gave up and answers
+    // they could not give, and the last lines of the host's log, which nothing keeps once the run ends. All are masked of the
+    // secrets the browsers saw.
     private void WriteWhereItStopped()
     {
         if (TestContext.Current.TestOutputHelper is not { } output)
@@ -47,6 +48,21 @@ public abstract class BrowserTest(EndToEndHost host) : IAsyncDisposable
             foreach (var address in browser.Addresses)
             {
                 output.WriteLine($"A page was at {address}");
+            }
+
+            foreach (var request in browser.RequestsGivenUp)
+            {
+                output.WriteLine($"The browser gave up a request: {browser.Masked(request)}");
+            }
+
+            foreach (var answer in browser.AnswersUnread)
+            {
+                output.WriteLine($"The browser could not give the answer of {browser.Masked(answer)}");
+            }
+
+            if (browser.RequestsCancelled > 0)
+            {
+                output.WriteLine($"Its pages cancelled {browser.RequestsCancelled} request(s) as they navigated ({AdminBrowser.CancelledError}), not listed");
             }
         }
 
