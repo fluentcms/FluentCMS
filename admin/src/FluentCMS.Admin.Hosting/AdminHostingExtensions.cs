@@ -40,7 +40,7 @@ public static class AdminHostingExtensions
     }
 
     // Serves the admin at /admin, under FluentCms:ReverseProxy:PathBase: the host's static web assets, which are the admin
-    // app's when the host references its project, through MapStaticAssets (fingerprinted files cached for good, compressed
+    // app's when the host references its project and the package's first-party build otherwise, through MapStaticAssets (fingerprinted files cached for good, compressed
     // copies by Accept-Encoding); index.html with its <base href> set, for /admin/ and every client route; and config.json
     // built from FluentCms:Admin. index.html and config.json are never cached. With FluentCms:Admin:Enabled false nothing is
     // mapped, and /admin is a 404 like any unknown path. staticAssetsManifestPath is that of MapStaticAssets.
@@ -67,7 +67,7 @@ public static class AdminHostingExtensions
         if (!File.Exists(manifest))
         {
             throw FluentCmsConfigurationException.NotRegistered(
-                $"MapFluentCmsAdmin found no manifest of static web assets at {manifest}. The host references the admin app's project, such as FluentCMS.Admin.App, whose files become its static web assets.");
+                $"MapFluentCmsAdmin found no manifest of static web assets at {manifest}. A host that references FluentCMS.Admin.Hosting as a package gets the first-party build as its static web assets; one that references an admin app's project, such as FluentCMS.Admin.App, gets that app's files.");
         }
 
         site.LoadIndex();

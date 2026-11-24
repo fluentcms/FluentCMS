@@ -84,6 +84,13 @@
     </ItemGroup>
   </Target>
 
+  <!-- The project of an admin app, for a host that asks its references which of them is one (FluentCMS.Admin.Hosting). -->
+  <Target Name="FluentCmsAdminApp" Returns="@(_FluentCmsAdminAppProject)">
+    <ItemGroup Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
+      <_FluentCmsAdminAppProject Include="$(MSBuildProjectFullPath)" />
+    </ItemGroup>
+  </Target>
+
   <!-- Core's administration pages are in FluentCMS.Admin.Administration, which the shell loads on the first visit of one of
        their routes, so an app that references it without listing it as BlazorWebAssemblyLazyLoad stops the build, as for a
        half: it would be in the first download, and the shell's load of it would fail. -->

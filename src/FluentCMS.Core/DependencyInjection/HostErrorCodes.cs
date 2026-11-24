@@ -8,4 +8,5 @@ internal static class HostErrorCodes
     public const string PipelineMissing = "FCMS1104";
     public const string PublicOriginUnsetInProduction = "FCMS1105";
     public const string UnencryptedKeyRingInProduction = "FCMS1106";
+    public const string MalformedFile = "FCMS1107";
 }

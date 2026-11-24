@@ -1,0 +1,50 @@
+<Project>
+
+  <!-- What the package's build folder gives a host, and what the reference host imports beside its project reference (admin
+       spec 6.1). -->
+
+  <!-- A host that references an admin app's project, such as one of `dotnet new fluentcms-admin` (spec 6.2), serves that app:
+       its files are static web assets of the host at the paths of the package's first-party build, which then leaves the
+       host's assets with its endpoints. An admin app is told by fluentcms-admin.plugins.json, the manifest its build gathers
+       from its halves (spec 2.6), which no other WebAssembly project has. -->
+  <PropertyGroup>
+    <_FluentCmsAdminBuild>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', 'staticwebassets'))</_FluentCmsAdminBuild>
+  </PropertyGroup>
+
+  <Target Name="FluentCmsPreferTheHostsAdminApp" AfterTargets="ResolveReferencedProjectsStaticWebAssets">
+    <ItemGroup>
+      <_FluentCmsHostsAdminApp Include="@(StaticWebAsset)" Condition="'%(StaticWebAsset.SourceType)' == 'Project' And '%(StaticWebAsset.RelativePath)' == 'fluentcms-admin.plugins.json'" />
+    </ItemGroup>
+    <ItemGroup Condition="'@(_FluentCmsHostsAdminApp)' != ''">
+      <StaticWebAsset Remove="@(StaticWebAsset)" Condition="'%(StaticWebAsset.SourceId)' == 'FluentCMS.Admin.Hosting'" />
+      <StaticWebAssetEndpoint Remove="@(StaticWebAssetEndpoint)" Condition="$([System.String]::Copy('%(StaticWebAssetEndpoint.AssetFile)').StartsWith('$(_FluentCmsAdminBuild)'))" />
+      <_FluentCmsHostsAdminApp Remove="@(_FluentCmsHostsAdminApp)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- An admin app the host references comes with the packages of its browser assemblies, which reach the host as NuGet
+       runtime assets: the component library's icon assemblies are 22.6 MB that no server code of FluentCMS loads. In a host
+       that references an admin app's project they leave the host's copy-local items before its deps.json is written, which
+       drops a library left without assets (#3178); the app's own build and publish keep them. A host that references the
+       component library or its icons with a package reference of its own, as one that renders them on the server does, keeps
+       them. An admin app answers the target below, which its build targets define. -->
+  <Target Name="FluentCmsLeaveOutAdminIcons" AfterTargets="ResolvePackageAssets" Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' != 'true' And '@(ProjectReference)' != ''">
+    <ItemGroup>
+      <_FluentCmsOwnComponentLibrary Include="@(PackageReference)" Condition="'%(Identity)' == 'Microsoft.FluentUI.AspNetCore.Components' Or '%(Identity)' == 'Microsoft.FluentUI.AspNetCore.Components.Icons'" />
+    </ItemGroup>
+
+    <MSBuild Projects="@(ProjectReference)" Targets="FluentCmsAdminApp" SkipNonexistentTargets="true" RemoveProperties="RuntimeIdentifier;SelfContained;TargetFramework" Condition="'@(_FluentCmsOwnComponentLibrary)' == ''">
+      <Output TaskParameter="TargetOutputs" ItemName="_FluentCmsReferencedAdminApp" />
+    </MSBuild>
+
+    <ItemGroup Condition="'@(_FluentCmsReferencedAdminApp)' != ''">
+      <RuntimeCopyLocalItems Remove="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'Microsoft.FluentUI.AspNetCore.Components.Icons'" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_FluentCmsOwnComponentLibrary Remove="@(_FluentCmsOwnComponentLibrary)" />
+      <_FluentCmsReferencedAdminApp Remove="@(_FluentCmsReferencedAdminApp)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

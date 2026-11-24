@@ -31,6 +31,8 @@ on:
       - eng/admin-zip.cs
       - "src/**/*.csproj"
       - "admin/src/**/*.csproj"
+      - admin/eng/PrebuiltAdmin.cs
+      - admin/src/FluentCMS.Admin.Hosting/build/**
       - src/FluentCMS.Host/Dockerfile
       - .dockerignore
       - .github/workflows/compose.yml
@@ -206,8 +208,15 @@ jobs:
             Directory.Packages.props
             **/*.csproj
 
+      # The prebuilt static build of the admin (admin spec 6.3) at the version of the release, which the GitHub release attaches.
+      # FluentCMS.Admin.Hosting carries the same publish (6.1, AQ8).
+      - name: Make the static build of the admin
+        run: |
+          dotnet publish admin/src/FluentCMS.Admin.App -c Release -o artifacts/admin -p:Version="$VERSION"
+          dotnet run eng/admin-zip.cs -- pack artifacts/admin "$VERSION" artifacts/packages
+
       - name: Pack
-        run: dotnet pack FluentCMS.slnx -c Release -o artifacts/packages -p:Version="$VERSION"
+        run: dotnet pack FluentCMS.slnx -c Release -o artifacts/packages -p:Version="$VERSION" -p:FluentCmsAdminPublishDir="$PWD/artifacts/admin"
 
       # The admin is not part of a release yet, so its packages and the admin halves of the plugins, which depend on them, are
       # packed but never pushed. A-47 removes this step.
@@ -219,12 +228,6 @@ jobs:
 
       - name: Check that no package depends on one left out
         run: dotnet run eng/check-dependencies.cs -- artifacts/packages
-
-      # The prebuilt static build of the admin (admin spec 6.3) at the version of the release, which the GitHub release attaches.
-      - name: Make the static build of the admin
-        run: |
-          dotnet publish admin/src/FluentCMS.Admin.App -c Release -o artifacts/admin -p:Version="$VERSION"
-          dotnet run eng/admin-zip.cs -- pack artifacts/admin "$VERSION" artifacts/packages
 
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

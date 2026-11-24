@@ -156,7 +156,7 @@ internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origi
         return file.Exists
             ? file
             : throw FluentCmsConfigurationException.NotRegistered(
-                $"MapFluentCmsAdmin found no {IndexFile} among the host's static web assets. The host references the admin app's project, such as FluentCMS.Admin.App.");
+                $"MapFluentCmsAdmin found no {IndexFile} among the host's static web assets. A host that references FluentCMS.Admin.Hosting as a package gets the first-party build with it; one that references an admin app's project, such as FluentCMS.Admin.App, gets that app's files.");
     }
 
     private string Rewrite(string html)
@@ -164,7 +164,7 @@ internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origi
         var bases = BaseElement().Matches(html);
         if (bases.Count != 1)
         {
-            throw FluentCmsConfigurationException.NotRegistered(
+            throw FluentCmsConfigurationException.MalformedFile(
                 $"The admin's {IndexFile} has {bases.Count} <base href> elements; MapFluentCmsAdmin needs exactly one, whose href it sets to {BaseHref}.");
         }
 
