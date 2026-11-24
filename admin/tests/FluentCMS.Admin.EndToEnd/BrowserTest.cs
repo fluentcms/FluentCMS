@@ -20,12 +20,38 @@ public abstract class BrowserTest(EndToEndHost host) : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         var failed = TestContext.Current.TestState?.Result == TestResult.Failed;
+        if (failed)
+        {
+            WriteWhereItStopped();
+        }
+
         foreach (var browser in _browsers)
         {
             await browser.CloseAsync(failed);
         }
 
         GC.SuppressFinalize(this);
+    }
+
+    // The output of a failed case: the address of each page its browsers had open and the last lines of the host's log, which
+    // nothing keeps once the run ends. Both are masked of the secrets the browsers saw.
+    private void WriteWhereItStopped()
+    {
+        if (TestContext.Current.TestOutputHelper is not { } output)
+        {
+            return;
+        }
+
+        foreach (var browser in _browsers)
+        {
+            foreach (var address in browser.Addresses)
+            {
+                output.WriteLine($"A page was at {address}");
+            }
+        }
+
+        var log = _browsers.Aggregate(Host.HostLog, (text, browser) => browser.Masked(text));
+        output.WriteLine($"The host's log, its last lines:{Environment.NewLine}{log}");
     }
 
     // The editor of this class, of the built-in role Editor, made the first time a case of the class asks for it. No other
