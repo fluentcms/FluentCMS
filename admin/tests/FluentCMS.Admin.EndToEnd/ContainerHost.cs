@@ -12,14 +12,17 @@ namespace FluentCMS.Admin.EndToEnd;
 // same volume. Values reach a container from the docker command's environment, never its arguments. The host reaches the
 // run's own servers as host.docker.internal: where Docker's engine runs on this machine, as on Linux, they listen on the
 // gateway of its bridge, and where it runs in a virtual machine, as with Docker Desktop, the engine forwards that name to
-// the loopback address they listen on. The containers and the volume carry the run's label and the folder its runs live
-// under, and are removed at its end, or by a later run under the same folder once the run's folder is gone; a run under
-// another folder, as from another user or another system on the same engine, is never touched.
+// the loopback address they listen on. The containers and the volume carry the run's label and the id of the place the
+// run's folder lives in, a GUID kept in a file of the folder the runs live under, so that two filesystems whose paths read
+// the same have two ids. They are removed at the end of the run, and a later run removes those of a run of the same place
+// whose folder is gone; one of another place, as from another user, container or system on the same engine, is never
+// touched. Where the id cannot be read or made, the run's own are labelled without it and nothing is swept.
 internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProcess
 {
     public const string Label = "org.fluentcms.e2e";
 
-    private const string RootLabel = "org.fluentcms.e2e.root";
+    private const string PlaceLabel = "org.fluentcms.e2e.root";
+    private const string PlaceFile = "fluentcms-e2e.place";
 
     private const string Docker = "docker";
     private const string CertificateMount = "/certificates";
@@ -30,6 +33,7 @@ internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProc
 
     private readonly string _run = root.Name;
     private readonly string _runs = root.Parent!.FullName;
+    private string? _place;
     private int _commands;
     private IPAddress _serverAddress = IPAddress.Loopback;
     private bool _removed;
@@ -63,6 +67,7 @@ internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProc
                 + $"fails the job. Start Docker, or unset {ImageVariable} to run them on a publish of the host.{Environment.NewLine}{tail}";
         }
 
+        _place = PlaceId(_runs);
         RemoveLeftovers();
         var (inspected, _, missing) = await DockerAsync(["image", "inspect", "--format", "{{.Id}}", image], cancellationToken);
         if (inspected != 0)
@@ -71,7 +76,7 @@ internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProc
                 + $"(docker build -f src/FluentCMS.Host/Dockerfile -t {image} .) or pull it.{Environment.NewLine}{missing}");
         }
 
-        var (created, _, refused) = await DockerAsync(["volume", "create", "--label", $"{Label}={_run}", "--label", $"{RootLabel}={_runs}", _run], cancellationToken);
+        var (created, _, refused) = await DockerAsync(["volume", "create", .. Labels(), _run], cancellationToken);
         if (created != 0)
         {
             throw new InvalidOperationException($"Creating the volume {_run} exited with {created}.{Environment.NewLine}{refused}");
@@ -120,7 +125,7 @@ internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProc
     {
         List<string> arguments =
         [
-            "run", "--rm", "--name", name, "--label", $"{Label}={_run}", "--label", $"{RootLabel}={_runs}",
+            "run", "--rm", "--name", name, .. Labels(),
             "--add-host", $"{TestMachine}:host-gateway",
             "--mount", $"type=volume,source={_run},target=/data",
             "--mount", $"type=bind,source={CertificateDirectory},target={CertificateMount},readonly",
@@ -135,6 +140,38 @@ internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProc
         }
 
         return arguments;
+    }
+
+    private List<string> Labels() => _place is null ? ["--label", $"{Label}={_run}"] : ["--label", $"{Label}={_run}", "--label", $"{PlaceLabel}={_place}"];
+
+    // The id of the place the runs live in, made once by the first run there; with CreateNew two runs that start at once
+    // agree on the one that was written. Null when the file cannot be read or made, or holds no id yet.
+    private static string? PlaceId(string runs)
+    {
+        var path = Path.Combine(runs, PlaceFile);
+        try
+        {
+            using var made = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            using var writer = new StreamWriter(made);
+            writer.Write(Guid.NewGuid().ToString("N"));
+        }
+        catch (IOException) when (File.Exists(path))
+        {
+            // Made by an earlier run, or by one starting at the same time.
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+
+        try
+        {
+            return Guid.TryParseExact(File.ReadAllText(path).Trim(), "N", out var id) ? id.ToString("N") : null;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     // The gateway of Docker's default bridge when it is an address of this machine, where host-gateway leads; otherwise the
@@ -185,27 +222,39 @@ internal sealed class ContainerHost(DirectoryInfo root, string image) : HostProc
         RemoveRun(_run);
     }
 
-    // The containers and volumes of a run under the same folder as this one whose own folder is gone, as one killed outright
-    // leaves them.
+    // The containers and volumes of a run of this place whose folder is gone, as one killed outright leaves them.
     private void RemoveLeftovers()
     {
-        var runs = Quietly("ps", "--all", "--filter", $"label={RootLabel}={_runs}", "--format", $"{{{{.Label \"{Label}\"}}}}")
-            .Concat(Quietly("volume", "ls", "--filter", $"label={RootLabel}={_runs}", "--format", $"{{{{.Label \"{Label}\"}}}}"));
+        if (_place is null)
+        {
+            return;
+        }
+
+        var runs = Quietly("ps", "--all", "--filter", $"label={PlaceLabel}={_place}", "--format", $"{{{{.Label \"{Label}\"}}}}")
+            .Concat(Quietly("volume", "ls", "--filter", $"label={PlaceLabel}={_place}", "--format", $"{{{{.Label \"{Label}\"}}}}"));
         foreach (var run in runs.Distinct().Where(run => run.Length > 0 && !Directory.Exists(Path.Combine(_runs, run))))
         {
             RemoveRun(run);
         }
     }
 
+    // What carries the run's label and, when the place is known, its id.
     private void RemoveRun(string run)
     {
-        var containers = Quietly("ps", "--all", "--quiet", "--filter", $"label={Label}={run}", "--filter", $"label={RootLabel}={_runs}");
+        string[] filters = _place is null
+            ? ["--filter", $"label={Label}={run}"]
+            : ["--filter", $"label={Label}={run}", "--filter", $"label={PlaceLabel}={_place}"];
+        var containers = Quietly(["ps", "--all", "--quiet", .. filters]);
         if (containers.Count > 0)
         {
             Quietly(["rm", "--force", .. containers]);
         }
 
-        Quietly("volume", "rm", "--force", run);
+        var volumes = Quietly(["volume", "ls", "--quiet", .. filters]);
+        if (volumes.Count > 0)
+        {
+            Quietly(["volume", "rm", "--force", .. volumes]);
+        }
     }
 
     // A docker command whose failure changes nothing for the run, such as a removal of what is already gone; its lines of
