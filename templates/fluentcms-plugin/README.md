@@ -86,7 +86,13 @@ Run the tests: a set behind the model fails them. Do not edit a migration that h
 
 ## Use the admin half in an admin app
 
-The prebuilt admin that `FluentCMS.Admin.Hosting` serves holds the first-party halves only, so a plugin's own half runs in an admin app that you build on `FluentCMS.Admin`. Reference the half's project, or the package that `dotnet pack` makes, from that app, and list its assembly as lazy, so that it is downloaded the first time it is used:
+The prebuilt admin that `FluentCMS.Admin.Hosting` serves holds the first-party halves only, so a plugin's own half runs in an admin app of your own, which `dotnet new fluentcms-admin` makes with the first-party halves:
+
+```bash
+dotnet new fluentcms-admin -n Acme.AdminApp
+```
+
+Reference the half's project, or the package that `dotnet pack` makes, from that app, and list its assembly as lazy, so that it is downloaded the first time it is used:
 
 ```xml
 <ItemGroup>
@@ -95,5 +101,5 @@ The prebuilt admin that `FluentCMS.Admin.Hosting` serves holds the first-party h
 </ItemGroup>
 ```
 
-The app's build writes the `fluentcms-admin.json` of every half it references into `fluentcms-admin.plugins.json`, and stops when a half is not listed as lazy. The admin needs no change to its code for the half: in a site where the plugin is enabled, the sidebar shows the menu item to a user who holds the page's permission, and the page loads the half the first time it is opened. A half the admin cannot use, such as one whose admin range does not hold the running admin, is left out and listed on `/system/plugins`.
+The app's build writes the `fluentcms-admin.json` of every half it references into `fluentcms-admin.plugins.json`, and stops when a half is not listed as lazy. A host with `FluentCMS.Admin.Hosting`, such as one of `dotnet new fluentcms`, serves the app at `/admin` once it references the app's project, and the app's README says how to host it as static files instead. The admin needs no change to its code for the half: in a site where the plugin is enabled, the sidebar shows the menu item to a user who holds the page's permission, and the page loads the half the first time it is opened. A half the admin cannot use, such as one whose admin range does not hold the running admin, is left out and listed on `/system/plugins`.
 <!--#endif -->

@@ -718,8 +718,9 @@ jobs:
           retention-days: 7
 
   # The packages of this build in a folder feed, at the version of the run, and FluentCMS.Templates installed from it: every
-  # combination of the templates is created, built with warnings as errors and the plugin's tests run, the SQLite hosts start
-  # in Development, and a PostgreSQL host is brought up with `fluentcms migrations add Initial` and `fluentcms migrate`.
+  # combination of the templates is created, built with warnings as errors and the plugin's tests run, the admin app is
+  # published trimmed and takes the plugin's half, the SQLite hosts start in Development and serve the admin, one of them the
+  # template's app, and a PostgreSQL host is brought up with `fluentcms migrations add Initial` and `fluentcms migrate`.
   templates:
     name: Templates
     needs: plan

@@ -20,6 +20,15 @@
     <PackageReference Include="FluentCMS.Plugins.Search" Version="{{version:FluentCMS}}" />
     <PackageReference Include="FluentCMS.Plugins.Webhooks" Version="{{version:FluentCMS}}" />
   </ItemGroup>
+<!--#if (admin) -->
+
+  <!-- The admin at /admin: the package carries its prebuilt build, the app with the first-party admin halves, whose files
+       become static web assets of this host. A reference to an admin app's project, such as one of `dotnet new fluentcms-admin`,
+       serves that app instead. -->
+  <ItemGroup>
+    <PackageReference Include="FluentCMS.Admin.Hosting" Version="{{version:FluentCMS}}" />
+  </ItemGroup>
+<!--#endif -->
 
   <!-- The source generator emits typed filter and sort builders, such as ArticleFields, and the analyzers check the schema
        attributes as you type. Both run in the build only. -->
