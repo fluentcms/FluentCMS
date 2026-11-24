@@ -20,13 +20,14 @@ namespace FluentCMS.Admin.EndToEnd;
 // zip with eng/admin-zip.cs as the Publish workflow does, unzips it, edits config.json and the <base href> of index.html, and
 // serves it from another site and under a path with a file server of its own, the framework's static files, with what
 // docs/admin-hosting.md asks of any host. The API host lists that origin and the client's redirect URIs (EndToEndHost, spec
-// 6.4). The run on the image leaves the case out by its trait: it checks the zip, which the image does not hold.
-[Trait("Image", "LeftOut")]
+// 6.4). The run on the image leaves the case out by its trait (run-with-retry.ps1 -ExcludeTrait Host=Publish): it checks the
+// zip, which the image does not hold.
+[Trait("Host", "Publish")]
 public sealed class StaticBuildTests(EndToEndHost host) : BrowserTest(host)
 {
     private const string Icon = "_content/FluentCMS.Admin.Components/favicon.svg";
 
-    // The publish of the app with no build, under the load of the other test apps of a full run.
+    // The build and publish of the app, under the load of the other test apps of a full run.
     private static readonly TimeSpan BuildTimeout = TimeSpan.FromMinutes(10);
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -96,11 +97,14 @@ public sealed class StaticBuildTests(EndToEndHost host) : BrowserTest(host)
         var work = Host.NewDirectory();
         var publish = Path.Combine(work.FullName, "publish");
         var app = Path.Combine(Repository.Root, "admin", "src", "FluentCMS.Admin.App", "FluentCMS.Admin.App.csproj");
-        await DotnetAsync("Publishing the admin app", ["publish", app, "-c", Repository.Configuration, "--no-build", "-o", publish, "-p:WasmBuildNative=false", "-nologo", "-nodeReuse:false"]);
+        // Built apart from the run's own build, which may hold the pseudo-cultures (spec 4.17), as the Publish workflow builds a release.
+        string[] release = ["--artifacts-path", Path.Combine(work.FullName, "build"), "-p:FluentCmsAdminPseudoCultures=false", "-p:WasmBuildNative=false"];
+        await DotnetAsync("Publishing the admin app", ["publish", app, "-c", "Release", "-o", publish, .. release, "-nologo", "-nodeReuse:false"]);
         await DotnetAsync("Making the zip", ["run", Path.Combine(Repository.Root, "eng", "admin-zip.cs"), "--", "pack", publish, "e2e", work.FullName]);
 
         var site = work.CreateSubdirectory("site");
         ZipFile.ExtractToDirectory(Path.Combine(work.FullName, "fluentcms-admin-e2e.zip"), site.FullName);
+        Directory.GetDirectories(Path.Combine(site.FullName, "_framework")).ShouldBeEmpty("a release holds the neutral resources alone");
 
         var configurationFile = Path.Combine(site.FullName, "config.json");
         var configuration = JsonNode.Parse(await File.ReadAllTextAsync(configurationFile, Token))!.AsObject();
