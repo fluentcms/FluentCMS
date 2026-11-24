@@ -90,6 +90,9 @@ public sealed class EndToEndHost : IAsyncLifetime
 
     internal string ServerHost => _host!.ServerHost;
 
+    // The last lines the host logged, for the output of a failed case.
+    internal string HostLog => _host?.Tail ?? "";
+
     // Why the browser tests are skipped: Chromium is not installed for this version of Playwright.
     public string? BrowserMissing { get; private set; }
 

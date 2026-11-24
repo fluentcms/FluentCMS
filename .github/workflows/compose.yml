@@ -16,6 +16,10 @@ on:
         description: A published image to run instead of building one, such as ghcr.io/fluentcms/fluentcms:1.0.0-preview.1.
         type: string
         default: ""
+      traces:
+        description: Keep a masked Playwright trace of each failed end-to-end test on the image in the test results.
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       image:
@@ -352,8 +356,10 @@ jobs:
   # The admin's end-to-end project on the image (admin spec 7): the harness runs the host as a container of it, its commands
   # as one-off containers on a volume of the run, and Chromium against its https port on the loopback address. A case that
   # fails is run once more against the same image (run-with-retry.ps1), and a skipped case fails the job, as one does where
-  # Docker does not answer. A manual run with an image runs the published one instead of building it. With an archive, as
-  # Publish calls this workflow, the job is left out, so that a release waits for the smoke test only.
+  # Docker does not answer. A failed case prints the addresses of its pages and the tail of the host container's log, and a
+  # manual run with traces on keeps its masked trace in the uploaded results. A manual run with an image runs the published
+  # one instead of building it. With an archive, as Publish calls this workflow, the job is left out, so that a release
+  # waits for the smoke test only.
   end-to-end:
     name: End-to-end on the image (admin)
     if: ${{ !inputs.archive }}
@@ -369,6 +375,7 @@ jobs:
       TESTINGPLATFORM_DIAGNOSTIC_VERBOSITY: Information
       TESTINGPLATFORM_DIAGNOSTIC_OUTPUT_DIRECTORY: ${{ github.workspace }}/artifacts/test-results
       TESTINGPLATFORM_DIAGNOSTIC_SYNCHRONOUS_WRITE: 1
+      FLUENTCMS_E2E_TRACES: ${{ inputs.traces && format('{0}/artifacts/test-results/traces', github.workspace) || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
