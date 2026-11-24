@@ -1,0 +1,144 @@
+@* What agents are told in the site (spec 5.4), for a caller who holds mcp.manage there: the guidelines of the site, which go
+   into the handshake, and the instructions of a content type, which go into the descriptions of its tools. Each is written,
+   changed and removed on its own; a type that is no longer in the schema keeps its instructions, which no agent is served,
+   until they are removed. The types are named as the schema names them. *@
+@page "/mcp/instructions"
+@attribute [AdminPage("/mcp/instructions", Permission = "mcp.manage")]
+@attribute [AdminMenuItem("Mcp.Instructions.Menu", Section = AdminSection.Administration, Order = 81)]
+@implements IDisposable
+@inject IManagementApi Api
+@inject IAdminSchema Schema
+@inject IStringLocalizer<McpResources> L
+
+<h1 tabindex="-1">@L["Mcp.Instructions.Page.Heading"]</h1>
+<p>@L["Mcp.Instructions.Intro"]</p>
+<McpLinks Current="mcp/instructions" />
+
+@if (instructions is null)
+{
+    @if (failed)
+    {
+        <p role="alert">@L["Mcp.Instructions.Failed"] <CmsButton OnClick="ReadAsync">@L["Mcp.TryAgain"]</CmsButton></p>
+    }
+    else
+    {
+        <p role="status">@L["Mcp.Instructions.Loading"]</p>
+    }
+}
+else
+{
+    <CmsCard Title="@L["Mcp.Instructions.Guidelines.Heading"]">
+        <McpInstructionEditor Label="@L["Mcp.Instructions.Guidelines"]" SavedText="@Guidelines?.Text" SavedAt="@Guidelines?.UpdatedAt" Changed="ReadAsync" />
+    </CmsCard>
+
+    <CmsCard Title="@L["Mcp.Instructions.Types.Heading"]">
+        @if (TypeRows.Count == 0)
+        {
+            <p>@L["Mcp.Instructions.Types.None"]</p>
+        }
+        @foreach (var row in TypeRows)
+        {
+            <section class="mcp-instruction" @key="row.Type">
+                <h3>@TypeName(row.Type!)</h3>
+                @if (row.Orphaned)
+                {
+                    <p>@L["Mcp.Instructions.Orphaned"]</p>
+                }
+                <McpInstructionEditor Type="@row.Type" Label="@TypeName(row.Type!)" SavedText="@row.Text" SavedAt="@row.UpdatedAt" Changed="ReadAsync" />
+            </section>
+        }
+
+        <section class="mcp-instruction-add">
+            <h3>@L["Mcp.Instructions.Add.Heading"]</h3>
+            @if (types is null)
+            {
+                <p role="@(typesFailed ? "alert" : "status")">@L[typesFailed ? "Mcp.Instructions.TypesFailed" : "Mcp.Instructions.TypesLoading"]</p>
+            }
+            else if (Unwritten.Count == 0)
+            {
+                <p>@L["Mcp.Instructions.Add.EveryType"]</p>
+            }
+            else
+            {
+                <CmsSelect Label="@L["Mcp.Instructions.Add.Type"]"
+                           Options="@Unwritten"
+                           Value="@addType"
+                           ValueChanged="@(value => addType = value)"
+                           Placeholder="@L["Mcp.Instructions.Add.Choose"]" />
+                @if (addType is { } chosen)
+                {
+                    <McpInstructionEditor @key="chosen" Type="@chosen" Label="@TypeName(chosen)" Changed="AddedAsync" />
+                }
+            }
+        </section>
+    </CmsCard>
+}
+
+@code {
+    private IReadOnlyList<McpInstruction>? instructions;
+    private Dictionary<string, string>? types;
+    private bool failed;
+    private bool typesFailed;
+    private string? addType;
+    private readonly CancellationTokenSource closing = new();
+
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    private McpInstruction? Guidelines => instructions?.FirstOrDefault(row => row.Type is null);
+
+    private List<McpInstruction> TypeRows => instructions?.Where(row => row.Type is not null).ToList() ?? [];
+
+    private IReadOnlyList<CmsOption> Unwritten =>
+        types is null ? [] : [.. types.Where(type => TypeRows.All(row => row.Type != type.Key)).Select(type => new CmsOption(type.Key, type.Value))];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(ReadAsync(), ReadTypesAsync());
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        failed = false;
+        try
+        {
+            instructions = await Api.GetInstructionsAsync(Closing);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (McpProblems.IsFailure(exception))
+        {
+            (instructions, failed) = (null, true);
+        }
+    }
+
+    private async Task ReadTypesAsync()
+    {
+        try
+        {
+            var schema = await Schema.GetSchemaAsync(Closing);
+            types = schema.Types.ToDictionary(type => type.Name, type => type.DisplayName ?? type.Name, StringComparer.Ordinal);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (McpProblems.IsFailure(exception))
+        {
+            typesFailed = true;
+        }
+    }
+
+    private string TypeName(string type) => types?.GetValueOrDefault(type) ?? type;
+
+    private Task AddedAsync()
+    {
+        addType = null;
+        return ReadAsync();
+    }
+}

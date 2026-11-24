@@ -21,6 +21,8 @@
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.MultiSite.Admin/FluentCMS.Plugins.MultiSite.Admin.csproj" />
     <!-- The search half's client and record, held to the rebuild route of the search plugin. -->
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Search.Admin/FluentCMS.Plugins.Search.Admin.csproj" />
+    <!-- The MCP half's client and records, held to the routes of the MCP plugin and the activity log. -->
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Mcp.Admin/FluentCMS.Plugins.Mcp.Admin.csproj" />
     <ProjectReference Include="../../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
     <!-- The Blog sample and every first-party plugin, which the test host discovers, as the reference host runs them (spec 7). -->
     <ProjectReference Include="../../../samples/Blog/Blog.csproj" />
