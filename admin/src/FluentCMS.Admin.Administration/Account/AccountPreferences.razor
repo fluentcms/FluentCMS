@@ -15,7 +15,8 @@
 @inject FormatService Formats
 @inject TimeProvider Time
 @inject IAnnouncer Announcer
-@inject IStringLocalizer<AdminResources> L
+@inject IStringLocalizer<AccountResources> L
+@inject IStringLocalizer<AdminResources> Shell
 
 <CmsCard Title="@L["Account.Preferences.Heading"]">
     <CmsStack>
@@ -108,9 +109,9 @@
         Theme.Changed += OnChanged;
         themes =
         [
-            new(nameof(CmsThemeMode.System), L["Shell.UserMenu.ThemeSystem"]),
-            new(nameof(CmsThemeMode.Light), L["Shell.UserMenu.ThemeLight"]),
-            new(nameof(CmsThemeMode.Dark), L["Shell.UserMenu.ThemeDark"]),
+            new(nameof(CmsThemeMode.System), Shell["Shell.UserMenu.ThemeSystem"]),
+            new(nameof(CmsThemeMode.Light), Shell["Shell.UserMenu.ThemeLight"]),
+            new(nameof(CmsThemeMode.Dark), Shell["Shell.UserMenu.ThemeDark"]),
         ];
         languages = [.. Cultures.Offered.Select(name => new CmsOption(name, LanguageName(name)))];
         await LoadAsync();
