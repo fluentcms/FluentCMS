@@ -83,7 +83,7 @@
 @if (ShowsNavigation)
 {
     @* Under 1024 CSS pixels the sidebar is hidden and this drawer holds it. *@
-    <CmsDrawer Side="CmsDrawerSide.Start" Title="@L["Shell.Layout.Navigation"]" Open="@drawerOpen" OpenChanged="@(open => drawerOpen = open)" OnClosed="OnDrawerClosedAsync">
+    <CmsDrawer Side="CmsDrawerSide.Start" Title="@L["Shell.Layout.Navigation"]" Open="@drawerOpen" OpenChanged="OnDrawerOpenChanged" OnClosed="OnDrawerClosedAsync">
         <ShellSidebar />
     </CmsDrawer>
 }
@@ -104,7 +104,6 @@
         Context.Changed += OnContextChanged;
         Progress.Changed += OnContextChanged;
         Drafts.TrackedChanged += OnTrackedChanged;
-        closesDrawer = Navigation.RegisterLocationChangingHandler(CloseDrawer);
         Navigation.LocationChanged += OnLocationChanged;
         if (SignedIn)
         {
@@ -124,7 +123,32 @@
 
     private async Task SkipToMainAsync() => await main.FocusAsync();
 
-    private void OpenNavigation() => (drawerOpen, closedByNavigation) = (true, false);
+    private void OpenNavigation()
+    {
+        (drawerOpen, closedByNavigation) = (true, false);
+        WatchNavigation(true);
+    }
+
+    private void OnDrawerOpenChanged(bool open)
+    {
+        drawerOpen = open;
+        WatchNavigation(open);
+    }
+
+    // Only while the drawer is open: while a location-changing handler is registered, Blazor takes each Back back, asks and
+    // goes again, and a second Back in between lands elsewhere (#3395).
+    private void WatchNavigation(bool watch)
+    {
+        if (watch)
+        {
+            closesDrawer ??= Navigation.RegisterLocationChangingHandler(CloseDrawer);
+        }
+        else
+        {
+            closesDrawer?.Dispose();
+            closesDrawer = null;
+        }
+    }
 
     private Task TryAgainAsync() => StartAsync();
 
@@ -166,6 +190,7 @@
             StateHasChanged();
         }
 
+        WatchNavigation(false);
         return ValueTask.CompletedTask;
     }
 

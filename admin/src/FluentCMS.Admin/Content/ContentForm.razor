@@ -544,8 +544,6 @@
         }
     }
 
-    protected override void OnInitialized() => leaveGuard = Navigation.RegisterLocationChangingHandler(OnLocationChanging);
-
     private void StopOffering()
     {
         offering?.Cancel();
@@ -891,7 +889,7 @@
             if (!IsDirty)
             {
                 tracking?.Dispose();
-                tracking = Drafts.Track(this);
+                TrackUnsaved();
             }
 
             Announce(L["Content.Form.Copied", source]);
@@ -950,7 +948,7 @@
         }
 
         restored = true;
-        tracking = Drafts.Track(this);
+        TrackUnsaved();
     }
 
     private static bool IsFailure(Exception exception) =>
@@ -1005,7 +1003,7 @@
         if (!IsDirty)
         {
             tracking?.Dispose();
-            tracking = Drafts.Track(this);
+            TrackUnsaved();
         }
 
         // A field that shows a finding of the form is checked again as it is typed in, so the finding goes once it is fixed.
@@ -1602,9 +1600,17 @@
     private bool Same(string left, string right) =>
         string.Equals(Navigation.ToAbsoluteUri(left).AbsoluteUri, Navigation.ToAbsoluteUri(right).AbsoluteUri, StringComparison.Ordinal);
 
+    // The guard is registered at the first unsaved change, not as the form starts: while a location-changing handler is
+    // registered, Blazor takes each Back back, asks and goes again, and a second Back in between lands elsewhere (#3395).
+    private void TrackUnsaved()
+    {
+        tracking = Drafts.Track(this);
+        leaveGuard ??= Navigation.RegisterLocationChangingHandler(OnLocationChanging);
+    }
+
     private void NavigateAway(string target, bool replace = false)
     {
-        allowedNavigation = target;
+        allowedNavigation = leaveGuard is null ? null : target;
         Navigation.NavigateTo(target, replace: replace);
     }
 
