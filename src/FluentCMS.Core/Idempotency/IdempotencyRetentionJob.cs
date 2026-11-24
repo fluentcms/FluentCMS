@@ -10,8 +10,9 @@ namespace FluentCMS.Core.Idempotency;
 
 internal sealed record IdempotencyRetentionPayload;
 
-// Removes the keys whose window has passed, held ones included, in batches. A request that finds an expired key removes
-// it on its own, so this only keeps the keys that are never sent again from piling up.
+// Removes the keys whose window has passed, in batches, but not one whose request still holds its lease, which a repeat
+// could then claim afresh and run beside it. A request that finds an expired key removes it on its own, so this only keeps
+// the keys that are never sent again from piling up.
 internal sealed class IdempotencyRetentionJob(SystemDbContext context, TimeProvider time) : IJob<IdempotencyRetentionPayload>, IResumableJob
 {
     public const string Type = "idempotency.retention";
@@ -35,13 +36,13 @@ internal sealed class IdempotencyRetentionJob(SystemDbContext context, TimeProvi
 
         while (true)
         {
-            var ids = await rows.AsNoTracking().Where(row => row.ExpiresAt <= now).OrderBy(row => row.ExpiresAt).Select(row => row.Id).Take(BatchSize).ToListAsync(cancellationToken);
+            var ids = await rows.AsNoTracking().Where(row => row.ExpiresAt <= now && (row.ResponseStatus != null || row.LeaseUntil <= now)).OrderBy(row => row.ExpiresAt).Select(row => row.Id).Take(BatchSize).ToListAsync(cancellationToken);
             if (ids.Count == 0)
             {
                 return;
             }
 
-            await rows.Where(row => ids.Contains(row.Id) && row.ExpiresAt <= now).ExecuteDeleteAsync(cancellationToken);
+            await rows.Where(row => ids.Contains(row.Id) && row.ExpiresAt <= now && (row.ResponseStatus != null || row.LeaseUntil <= now)).ExecuteDeleteAsync(cancellationToken);
             if (ids.Count < BatchSize)
             {
                 return;

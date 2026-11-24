@@ -81,6 +81,7 @@ public partial class ErrorCodeRegistryTests
     [InlineData("FCMS2301", 404)]
     [InlineData("FCMS2808", 412)]
     [InlineData("FCMS2401", 409)]
+    [InlineData("FCMS2411", 503)]
     [InlineData("FCMS2101", 422)]
     [InlineData("FCMS2202", 400)]
     [InlineData("FCMS1201", 500)]

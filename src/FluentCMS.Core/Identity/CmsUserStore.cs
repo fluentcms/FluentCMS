@@ -221,14 +221,15 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
     public bool StagesTokenRow(CmsUser user) =>
         Context.ChangeTracker.Entries<IdentityUserToken<Guid>>().Any(entry => entry.State == EntityState.Added && entry.Entity.UserId == user.Id);
 
-    // Whether the unique key a save broke is the token table's. SQLite names the table with its columns, PostgreSQL and SQL
-    // Server the key, whose name carries the table's.
-    public bool IsTokenKeyViolation(DbUpdateException exception)
+    // Whether the unique key a save broke is the token table's primary key, as the provider reports the key that failed, and
+    // not a part of its message, which may repeat the duplicate value (#3447).
+    public bool IsTokenKeyViolation(IDataProvider provider, DbUpdateException exception)
     {
+        ArgumentNullException.ThrowIfNull(provider);
         ArgumentNullException.ThrowIfNull(exception);
 
-        return Context.Model.FindEntityType(typeof(IdentityUserToken<Guid>))?.GetTableName() is { } table
-            && exception.InnerException?.Message.Contains(table, StringComparison.OrdinalIgnoreCase) == true;
+        return Context.Model.FindEntityType(typeof(IdentityUserToken<Guid>))?.FindPrimaryKey()?.GetMappedConstraints().FirstOrDefault() is { } key
+            && provider.IsUniqueViolation(exception, key);
     }
 
     // A failed save of IdentityChanges clears the context, which leaves the caller's user detached, so that the next save of

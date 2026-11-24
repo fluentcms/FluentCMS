@@ -10,7 +10,7 @@ namespace FluentCMS.Plugins.Mcp;
 // The settings area "mcp" (settings.mcp.manage). How MCP clients register themselves at the authorization server is a
 // matter of the instance, which has one authorization server, so the instance defaults are what is read; what a site
 // sets for itself here changes nothing of it.
-[Settings("mcp")]
+[Settings("mcp", InstanceOnly = true)]
 public sealed class McpSettings
 {
     // Approval: a registration waits for an administrator. Open: it is approved at once with DefaultClientRole. Off: no
@@ -43,8 +43,10 @@ public sealed class McpSettings
     [Range(1, 8760)]
     public int NeverUsedClientHours { get; set; } = 24;
 
-    // How many clients the open policy approved one user may consent to at once. A consent keeps such a client from the
-    // cleanup, so without it one user could fill MaxClients for good.
+    // How many clients the open policy approved one user may keep by consenting. A consent keeps such a client from the
+    // cleanup, so without it one user could fill MaxClients for good. A consent ended by a session or a password change
+    // still counts, until the prune takes it or, for the user who first used the client, while the client is there; the
+    // user frees a place with DELETE /mcp/consents/{id}.
     [Range(1, 10000)]
     public int MaxConsentsPerUser { get; set; } = 20;
 }
@@ -67,14 +69,14 @@ internal sealed class McpClientRegistrationPolicySource(ISettings<McpSettings> s
 }
 
 // Open registration lets anyone on the network make a client that users can sign in through at once, so the startup
-// report lists it in Production. The report is made once per start, so a change of the setting shows at the next one.
+// report lists it outside Development. The report is made once per start, so a change of the setting shows at the next one.
 internal sealed class McpInsecureDefaults(IServiceScopeFactory scopes, IHostEnvironment environment) : IInsecureDefaultSource
 {
     public const string OpenClientRegistration = "mcp-open-client-registration";
 
     public IEnumerable<InsecureDefault> GetInsecureDefaults()
     {
-        if (!environment.IsProduction())
+        if (environment.IsDevelopment())
         {
             yield break;
         }
@@ -86,7 +88,7 @@ internal sealed class McpInsecureDefaults(IServiceScopeFactory scopes, IHostEnvi
             yield return new InsecureDefault
             {
                 Id = OpenClientRegistration,
-                Message = "The setting mcp.clientRegistration is open in Production, so any MCP client that reaches /connect/register is approved at once with the default role. Set it to approval unless every client that can reach the instance is trusted.",
+                Message = "The setting mcp.clientRegistration is open outside Development, so any MCP client that reaches /connect/register is approved at once with the default role. Set it to approval unless every client that can reach the instance is trusted.",
             };
         }
     }

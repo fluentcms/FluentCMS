@@ -6,6 +6,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
 using SQLitePCL;
 
@@ -41,6 +42,16 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
     public bool IsUniqueViolation(Exception exception) =>
         (exception as SqliteException ?? exception.InnerException as SqliteException) is { SqliteExtendedErrorCode: raw.SQLITE_CONSTRAINT_UNIQUE or raw.SQLITE_CONSTRAINT_PRIMARYKEY };
 
+    // SQLite names no key, only its columns, as table.column in the key's order and to the end of its message, and never a
+    // value.
+    public bool IsUniqueViolation(Exception exception, IUniqueConstraint key) =>
+        key is not null
+        && (exception as SqliteException ?? exception.InnerException as SqliteException) is { SqliteExtendedErrorCode: raw.SQLITE_CONSTRAINT_UNIQUE or raw.SQLITE_CONSTRAINT_PRIMARYKEY, Message: var message }
+        && message.EndsWith($"constraint failed: {string.Join(", ", key.Columns.Select(column => $"{key.Table.Name}.{column.Name}"))}'.", StringComparison.Ordinal);
+
+    public bool IsForeignKeyViolation(Exception exception) =>
+        (exception as SqliteException ?? exception.InnerException as SqliteException) is { SqliteExtendedErrorCode: raw.SQLITE_CONSTRAINT_FOREIGNKEY };
+
     // A writer takes the lock at BEGIN IMMEDIATE and holds it to the end, so writers queue and never deadlock.
     public bool IsDeadlock(Exception exception) => false;
 
@@ -49,6 +60,29 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
         (exception as SqliteException ?? exception.InnerException as SqliteException) is { SqliteErrorCode: raw.SQLITE_BUSY or raw.SQLITE_LOCKED };
 
     public bool HasOneWriter => true;
+
+    // SQLite locks the database, not a row, so the wait to bound is the one at BEGIN IMMEDIATE for the one write lock, which
+    // any other connection's write transaction holds, of whatever entry or table. Microsoft.Data.Sqlite tries a busy statement
+    // again until the command timeout, which BEGIN takes from the connection's default, so the default is lowered for it alone,
+    // never raised (0 waits without end); once begun the writer waits for no other writer. On a file each try also waits up to
+    // the busy timeout inside SQLite (SqliteWriteAheadLog), so the wait ends at the first try past the bound.
+    public async Task<IDbContextTransaction> BeginWriteAsync(DbContext context, TimeSpan lockTimeout, CancellationToken cancellationToken)
+    {
+        var connection = (SqliteConnection)context.Database.GetDbConnection();
+        var timeout = connection.DefaultTimeout;
+        var bound = (int)Math.Min(int.MaxValue, Math.Max(1, Math.Ceiling(lockTimeout.TotalSeconds)));
+        connection.DefaultTimeout = timeout > 0 ? Math.Min(timeout, bound) : bound;
+        try
+        {
+            return await context.Database.BeginTransactionAsync(cancellationToken);
+        }
+        finally
+        {
+            connection.DefaultTimeout = timeout;
+        }
+    }
+
+    public bool IsLockTimeout(Exception exception) => IsBusy(exception);
 
     // SQLite's LIKE folds the case of ASCII letters only.
     public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)

@@ -70,7 +70,8 @@ public interface IMcpClients
     /// <summary>
     /// Removes the clients the open policy approved, which no administrator looked at or changed, that have no token or
     /// authorization left: one no user ever consented to when it registered before one time, and any other when it
-    /// registered before another. It raises no event.
+    /// registered before another. It raises no event. A client whose delete a consent or a token arriving meanwhile
+    /// refuses is left for the next call; any other failure of a delete is thrown once the other clients were tried.
     /// </summary>
     /// <param name="neverUsedBefore">The time before which a client no user ever consented to is removed.</param>
     /// <param name="unusedBefore">The time before which a client whose tokens and authorizations are all gone is removed.</param>
@@ -83,7 +84,8 @@ public interface IMcpClients
     /// and tokens as <see cref="RevokeAsync"/> removes one. A client an administrator approved, registered or gave a role
     /// is never removed, nor is a pending or rejected one. Raises <see cref="Events.McpClientRevokedEvent"/> for each.
     /// A call removes <paramref name="limit"/> clients at most, since each is a change of its own, so a caller that gets
-    /// that number back calls again for the rest.
+    /// that number back calls again for the rest. A client whose delete a consent or a token arriving meanwhile refuses is
+    /// left; any other failure of a delete is thrown, and the clients removed before it stay removed.
     /// </summary>
     /// <param name="registeredFrom">The time from which a client registered, or <see langword="null"/> for no start.</param>
     /// <param name="registeredBefore">The time before which a client registered, or <see langword="null"/> for no end.</param>
@@ -91,7 +93,44 @@ public interface IMcpClients
     /// <param name="cancellationToken">Cancels the work; the clients removed before it stay removed.</param>
     /// <returns>The number of clients removed.</returns>
     Task<int> RemoveOpenApprovedAsync(DateTimeOffset? registeredFrom, DateTimeOffset? registeredBefore, int limit, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists the clients the open policy approved that count toward a user's
+    /// <see cref="McpClientRegistrationPolicy.MaxConsentsPerUser"/>: each the user consented to while it is there, and the
+    /// consent ended by a session or a password change included.
+    /// </summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The clients, the newest consent first.</returns>
+    Task<IReadOnlyList<McpClientConsent>> ListConsentsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ends a user's consent to a client the open policy approved and frees its place among those
+    /// <see cref="ListConsentsAsync"/> lists: the user's authorizations of the client are deleted with every token issued
+    /// under them, so its access tokens stop at once, and the client no longer names the user as the one who first used it.
+    /// A client that then holds no grant of anyone is taken for one never used, which the cleanup removes. Nothing of
+    /// another user changes. Raises <see cref="Events.UserSessionsEndedEvent"/> for each consent that was valid, which is
+    /// revoked with its tokens and committed before the delete, so that a refresh of the client that crosses the end gets
+    /// no token that works; a delete that crosses one is <see cref="McpClientChangeOutcome.ChangedMeanwhile"/>, leaves the
+    /// place taken and the consent revoked, and the same call again frees the place. It runs
+    /// one at a time with the consents that take a place, and fails as a service that is unavailable when they keep it
+    /// waiting too long.
+    /// </summary>
+    /// <param name="userId">The user whose consent ends.</param>
+    /// <param name="id">The id of the client.</param>
+    /// <param name="cancellationToken">Cancels the change.</param>
+    /// <returns>
+    /// The outcome, with the client as it is now; <see cref="McpClientChangeOutcome.NotFound"/> when the client does not
+    /// count for the user.
+    /// </returns>
+    Task<McpClientChange> EndConsentAsync(Guid userId, Guid id, CancellationToken cancellationToken = default);
 }
+
+/// <summary>A client that counts toward a user's <see cref="McpClientRegistrationPolicy.MaxConsentsPerUser"/>.</summary>
+/// <param name="Client">The client.</param>
+/// <param name="ConsentedAt">When the user's newest consent to it was given; <see langword="null"/> once only the client's state names the user.</param>
+/// <param name="Active">Whether a consent of the user to it is valid, so that it can sign the user in without asking.</param>
+public sealed record McpClientConsent(McpClient Client, DateTimeOffset? ConsentedAt, bool Active);
 
 /// <summary>A client an administrator registers.</summary>
 /// <param name="Name">The name the consent page shows; <c>MCP client</c> when it is <see langword="null"/>.</param>
@@ -125,6 +164,12 @@ public sealed record McpClient(Guid Id, string ClientId, string Name, McpClientS
 
     /// <summary>When the newest token was issued to it; <see langword="null"/> when it holds none.</summary>
     public DateTimeOffset? LastActivityAt { get; init; }
+
+    /// <summary>When a user first consented to it; <see langword="null"/> while no use is recorded.</summary>
+    public DateTimeOffset? UsedAt { get; init; }
+
+    /// <summary>The user whose consent that was, for whom a client the open policy approved counts while it is there.</summary>
+    public Guid? UsedBy { get; init; }
 }
 
 /// <summary>Where an MCP client stands.</summary>

@@ -7,7 +7,8 @@ namespace FluentCMS.Authorization;
 /// as core's services do: the HTTP layer carries the identity and the service decides. A check needs a current operation:
 /// code that acts as the system, such as a job, a seed or the host's own startup code, runs inside
 /// <see cref="FluentCMS.Content.SystemOperation.Begin"/>, which every check allows. A grant limited to resources, such as
-/// media folders, counts only in <see cref="ResourcesAsync"/>, because the other checks cannot say which resource they act on.
+/// media folders, gives a permission only through <see cref="ResourcesAsync"/>, because the other permission checks cannot say
+/// which resource they act on; <see cref="HoldsGrantInAsync"/> counts it in a site where it gives one that way.
 /// </summary>
 public interface IPermissionChecker
 {
@@ -55,13 +56,15 @@ public interface IPermissionChecker
     ValueTask<bool> CanManageAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Whether some grant of the principal reaches a site, whatever it permits there: through a role of that site or of the
-    /// instance, within the grant's own site limit, the sites a key is bound to and the role of the client a token came
-    /// through. A plugin that serves what belongs to a site, rather than what a permission names, asks this.
+    /// Whether some grant of the principal gives it a permission in a site: through a role of that site or of the instance,
+    /// within the grant's own site limit, the sites a key is bound to and the role of the client a token came through. A
+    /// grant that gives nothing there, such as one with a row rule beside a permission outside content, does not count, and
+    /// one limited to resources counts when it names a resource of a permission outside content. A plugin that serves what
+    /// belongs to a site, rather than what a permission names, asks this.
     /// </summary>
     /// <param name="site">The site.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
-    /// <returns><see langword="true"/> when a grant of the principal reaches the site, or the principal is the system.</returns>
+    /// <returns><see langword="true"/> when a grant gives the principal a permission in the site, or the principal is the system.</returns>
     /// <exception cref="InvalidOperationException">There is no current operation.</exception>
     ValueTask<bool> HoldsGrantInAsync(SiteId site, CancellationToken cancellationToken = default);
 }

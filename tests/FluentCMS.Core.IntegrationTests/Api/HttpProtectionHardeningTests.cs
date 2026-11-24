@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -10,6 +11,7 @@ using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.IntegrationTests.Hosting;
 using FluentCMS.Core.Sites;
+using FluentCMS.Core.Storage;
 using FluentCMS.Sites;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
@@ -17,6 +19,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Shouldly;
@@ -192,6 +196,37 @@ public sealed class HttpProtectionHardeningTests(CmsWebHosts hosts) : IClassFixt
         }
     }
 
+    // A file a surface marks needs no principal, so a key sent with it is never looked up, as on /health, and its own limit
+    // lets no lookup through that the coarse limit would have held back (#3452).
+    [Fact]
+    public async Task AKeySentToAMarkedStaticFileIsNeverLookedUp()
+    {
+        var lookups = new KeyLookups();
+        var client = await Start(
+            authentication: services =>
+            {
+                WithPolicyScheme(services);
+                services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(lookups));
+            },
+            pipeline: app =>
+            {
+                app.UseFluentCms();
+                app.MapGroup("/surface").WithMetadata(FluentCmsEndpointMetadata.Instance, new FluentCmsSurfaceMetadata("surface"))
+                    .MapGet("/app.js", () => "file").WithMetadata(FluentCmsStaticFileMetadata.Instance);
+            });
+        var calls = _app!.Services.GetRequiredService<AuthCalls>();
+        var key = ("X-Api-Key", ApiKeyFormat.Generate(ApiKeyClass.Delivery));
+
+        (await Status(client, "/surface/app.js", key)).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, "/surface/app.js")).ShouldBe(HttpStatusCode.OK);
+        lookups.Count.ShouldBe(0);
+        calls.Count.ShouldBe(0);
+
+        // The same key on an API is looked up, so the count sees a lookup when there is one.
+        await Status(client, DeliveryPath, key);
+        lookups.Count.ShouldBeGreaterThan(0);
+    }
+
     // A flood of probes, with a key each, is cut before authentication runs, and the API from that address is not.
     [Fact]
     public async Task AFloodOfProbesIsCutByTheirOwnLimitBeforeAuthentication()
@@ -327,6 +362,7 @@ public sealed class HttpProtectionHardeningTests(CmsWebHosts hosts) : IClassFixt
     [Fact]
     public async Task TheHostedPageConventionGivesAPageMappedElsewhereTheHeadersAndTheAuthLimit()
     {
+        using var counter = new RefusalCounter();
         var client = await Start(Limits(auth: 2));
 
         using var first = await Send(client, "/page");
@@ -337,6 +373,7 @@ public sealed class HttpProtectionHardeningTests(CmsWebHosts hosts) : IClassFixt
         first.Headers.GetValues("X-Content-Type-Options").ShouldBe(["nosniff"]);
         Header(first, "RateLimit-Limit").ShouldBe("2");
         refused.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        counter.Policies.ShouldContain("auth");
     }
 
     [Theory]
@@ -631,6 +668,33 @@ public sealed class HttpProtectionHardeningTests(CmsWebHosts hosts) : IClassFixt
     }
 
     private sealed record Payload(string Text);
+
+    private sealed class KeyLookups : DbCommandInterceptor
+    {
+        private int _count;
+
+        public int Count => Volatile.Read(ref _count);
+
+        public override InterceptionResult<DbDataReader> ReaderExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
+        {
+            Record(command);
+            return base.ReaderExecuting(command, eventData, result);
+        }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            Record(command);
+            return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
+
+        private void Record(DbCommand command)
+        {
+            if (command.CommandText.Contains("\"cms_api_key\"", StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref _count);
+            }
+        }
+    }
 
     private sealed class BodySizeFeature(long? limit) : IHttpMaxRequestBodySizeFeature
     {

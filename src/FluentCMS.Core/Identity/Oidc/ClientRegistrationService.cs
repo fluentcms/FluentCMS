@@ -61,8 +61,8 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
     // with it; the sessions of a client without explicit consent, which has no consent to lose, stay. The consents go
     // before the client is written: a start that fails between the two leaves the old URIs without consents, which the
     // next start still sees as a client to update, where the other order would leave the new URIs with the old consents
-    // and a client that looks current. The URIs are compared as IsCurrentAsync compares them, so that a host written in
-    // another case is no change here either.
+    // and a client that looks current. The URIs are compared as Uri values, so a host written in another case, which
+    // IsCurrentAsync writes as configured, names the same place and ends no consent.
     private static async Task UpdateAsync(IOpenIddictApplicationManager applications, IOpenIddictAuthorizationManager authorizations, object application, OpenIddictApplicationDescriptor wanted, CancellationToken cancellationToken)
     {
         var stored = new OpenIddictApplicationDescriptor();
@@ -123,7 +123,10 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
     }
 
     // Whether the stored client already is what the options describe, so that a start writes nothing. A secret is stored
-    // salted and hashed, so a confidential client is checked against it, which costs one hash.
+    // salted and hashed, so a confidential client is checked against it, which costs one hash. The authorize and logout
+    // endpoints compare a redirect URI with the stored one as strings, so the URIs are compared as they are written: one
+    // changed only in the case of its host is written as configured, so that a client that sends it is not refused, and
+    // UpdateAsync, which compares them as Uri values, ends no consent for it (#3442).
     private static async Task<bool> IsCurrentAsync(IOpenIddictApplicationManager applications, object existing, OpenIddictApplicationDescriptor wanted, CancellationToken cancellationToken)
     {
         var stored = new OpenIddictApplicationDescriptor();
@@ -134,8 +137,8 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
             && stored.DisplayName == wanted.DisplayName
             && stored.Permissions.SetEquals(wanted.Permissions)
             && stored.Requirements.SetEquals(wanted.Requirements)
-            && stored.RedirectUris.SetEquals(wanted.RedirectUris)
-            && stored.PostLogoutRedirectUris.SetEquals(wanted.PostLogoutRedirectUris)
+            && Written(stored.RedirectUris).SetEquals(Written(wanted.RedirectUris))
+            && Written(stored.PostLogoutRedirectUris).SetEquals(Written(wanted.PostLogoutRedirectUris))
             && stored.Properties.Count == wanted.Properties.Count
             && wanted.Properties.All(property => stored.Properties.TryGetValue(property.Key, out var value) && value.GetRawText() == property.Value.GetRawText());
         if (!same)
@@ -147,6 +150,8 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
             ? stored.ClientSecret is null
             : await applications.ValidateClientSecretAsync(existing, wanted.ClientSecret, cancellationToken);
     }
+
+    private static HashSet<string> Written(IEnumerable<Uri> uris) => uris.Select(uri => uri.OriginalString).ToHashSet(StringComparer.Ordinal);
 
     internal static OpenIddictApplicationDescriptor Describe(string clientId, ClientRegistration client)
     {

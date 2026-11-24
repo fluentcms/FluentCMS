@@ -184,13 +184,72 @@ internal sealed class MemberManager : UserManager<CmsMember>
         return await ClockedLockout.IsLockedOutAsync(MemberStore, user, _time, CancellationToken);
     }
 
+    // Wrong passwords the login page or the direct login grant checks at once all read the member before any of them saved,
+    // so each count that loses its save to another is made again on what is stored then, unless the member is locked out
+    // by then, as a sign-in that came later would find it before its password was checked (#3597).
     public override async Task<IdentityResult> AccessFailedAsync(CmsMember user)
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(user);
 
-        await ClockedLockout.CountFailureAsync(MemberStore, user, Options.Lockout, _time, CancellationToken);
-        return await UpdateUserAsync(user);
+        return (await CountFailureAsync(user, refuseLockedOut: false)).Result;
+    }
+
+    // A wrong current password counts towards the lockout, as a wrong one at sign-in does, so that a token that leaked is no
+    // way to guess it. The new password is checked against the policy first, so that what the policy answers never depends
+    // on the current one, and the current one is checked only once its failure is counted, in a save that went through, so
+    // that guesses sent at once check no more than the lockout's limit, however many they are (#3597). A right one then
+    // takes the new password in a save that gives the count back; one whose save keeps losing to other saves of the member
+    // is answered as a wrong one would be, and stays counted. A member without a password, one of a provider only, has
+    // nothing to guess, so nothing is counted, and a locked-out member gets the answer a wrong password gets, unchecked.
+    public override async Task<IdentityResult> ChangePasswordAsync(CmsMember user, string currentPassword, string newPassword)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+        ArgumentNullException.ThrowIfNull(currentPassword);
+
+        var valid = await ValidatePasswordAsync(user, newPassword);
+        if (!valid.Succeeded)
+        {
+            return valid;
+        }
+
+        if (!await HasPasswordAsync(user))
+        {
+            return IdentityResult.Failed(ErrorDescriber.PasswordMismatch());
+        }
+
+        var (counted, before) = await CountFailureAsync(user, refuseLockedOut: true);
+        if (!counted.Succeeded)
+        {
+            return counted;
+        }
+
+        // The count that reached the limit locked the member out, and a right password lifts that lockout again. Read back
+        // from the store, its end may have lost a part of a second, and one another request set later ends later.
+        var locked = user.LockoutEnd != before ? user.LockoutEnd : null;
+        for (var attempt = 0; attempt < SaveAttempts; attempt++)
+        {
+            if (await VerifyPasswordAsync(MemberStore, user, currentPassword) == PasswordVerificationResult.Failed)
+            {
+                return IdentityResult.Failed(ErrorDescriber.PasswordMismatch());
+            }
+
+            user.AccessFailedCount = 0;
+            if (user.LockoutEnd <= locked)
+            {
+                user.LockoutEnd = before;
+            }
+
+            var result = await UpdatePasswordHash(user, newPassword, validatePassword: false);
+            result = result.Succeeded ? await UpdateUserAsync(user) : result;
+            if (result.Succeeded || !await LostAsync(result, user))
+            {
+                return result;
+            }
+        }
+
+        return IdentityResult.Failed(ErrorDescriber.PasswordMismatch());
     }
 
     public override async Task<bool> CheckPasswordAsync(CmsMember user, string password)
@@ -207,6 +266,39 @@ internal sealed class MemberManager : UserManager<CmsMember>
     }
 
     public Task TouchLastLoginAsync(CmsMember user) => MemberStore.TouchLastLoginAsync(user.Id, CancellationToken);
+
+    // Each lost save is a save of the member by another request that went through, so the tries run out only while more of
+    // them go through than the lockout lets pass before it refuses.
+    private int SaveAttempts => 2 * Math.Max(Options.Lockout.MaxFailedAccessAttempts, 1);
+
+    // A count whose save loses to another save of the member is made again on what is stored then. A request that finds the
+    // member locked out counts nothing more: the password change is refused with its guess unchecked, and a sign-in, whose
+    // password was checked already, is answered as locked out. One whose tries run out answers the concurrency failure.
+    // The end of the lockout comes back with the answer as it was before the count that was saved.
+    private async Task<(IdentityResult Result, DateTimeOffset? LockoutEnd)> CountFailureAsync(CmsMember user, bool refuseLockedOut)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            if ((refuseLockedOut || attempt > 1) && await IsLockedOutAsync(user))
+            {
+                return (refuseLockedOut ? IdentityResult.Failed(ErrorDescriber.PasswordMismatch()) : IdentityResult.Success, user.LockoutEnd);
+            }
+
+            var before = user.LockoutEnd;
+            await ClockedLockout.CountFailureAsync(MemberStore, user, Options.Lockout, _time, CancellationToken);
+            var result = await UpdateUserAsync(user);
+            if (result.Succeeded || !await LostAsync(result, user) || attempt >= SaveAttempts)
+            {
+                return (result, before);
+            }
+        }
+    }
+
+    // Whether the save lost to another save of the member, which reloads it with what is stored so that the save can be made
+    // again on that.
+    private async Task<bool> LostAsync(IdentityResult result, CmsMember user) =>
+        result.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.ConcurrencyFailure))
+        && await MemberStore.ReattachAsync(user, CancellationToken);
 }
 
 // The IdentityOptions of the member pool: the policy and lockout of cms.Members, sign-in with a verified address only,

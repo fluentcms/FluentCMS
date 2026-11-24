@@ -25,12 +25,15 @@ public sealed class AiRetentionTests(AiHost ai) : IClassFixture<AiHost>
             await database.SaveChangesAsync(Token);
         }
 
+        // The media plugin enqueues the check of the image sizes on the same queue once the host has started (#3543).
+        // The clock moves so that the retention is due after it: two jobs due at one time are claimed in the order of
+        // their ids, which is not that of their enqueueing within a millisecond.
+        await ai.MediaStartedAsync();
+        ai.Host.Time.Advance(TimeSpan.FromMilliseconds(1));
         await ai.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<AiUsageRetentionJob, AiUsageRetentionPayload>(new AiUsageRetentionPayload(), cancellationToken: Token);
-        await using (var scope = ai.Services.CreateAsyncScope())
-        {
-            (await scope.ServiceProvider.GetRequiredService<JobExecutor>().RunNextAsync(JobRunnerOptions.DefaultQueue, "test", Token)).ShouldBeTrue();
-        }
+        var ran = await ai.RunJobAsync(AiUsageRetentionJob.Type);
 
+        ran.ShouldBe([AiHost.MediaBackfill, AiUsageRetentionJob.Type]);
         (await ai.UsageAsync(site)).Select(usage => usage.CreatedAt).ShouldBe([now - TimeSpan.FromDays(89), now]);
     }
 

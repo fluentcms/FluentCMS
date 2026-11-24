@@ -77,6 +77,9 @@ public static class TestProvider
     public static string SqliteOnlyReason(string? because) =>
         $"Runs on {Sqlite} only{(because is null ? "" : $", because it tests {because}")}; this run is {Name}.";
 
+    public static string ServerOnlyReason(string because) =>
+        $"Runs on PostgreSQL and SQL Server only, because it tests {because}; this run is {Name}.";
+
     public static string SqlServerOnlyReason(string because) =>
         $"Runs on SQL Server only, because it tests {because}; this run is {Name}.";
 

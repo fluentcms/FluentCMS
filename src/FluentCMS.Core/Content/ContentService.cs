@@ -55,6 +55,7 @@ internal sealed partial class ContentService(
     JobFactory jobs,
     ApiKeyPrincipals keys,
     IDataProvider provider,
+    ContentWriteOptions writeOptions,
     TimeProvider time,
     TransferImportMode importMode,
     IServiceScopeFactory scopes,
@@ -66,6 +67,10 @@ internal sealed partial class ContentService(
     // scope's service runs one write at a time: a hook that calls back runs in the flow of that write and joins it, and a
     // write from any other flow while one runs throws (OneAtATimeAsync) rather than mixing the changes of the two.
     private readonly List<EntryChange> _pending = [];
+
+    // The draft versions moved in the transaction in progress, less what rolled back. A caller's transaction ends unseen,
+    // so a publish looks only from where it began.
+    private readonly List<(Guid Id, string Locale)> _moved = [];
     private readonly AsyncLocal<object?> _writeOfFlow = new();
     private object? _write;
     private bool _ownsTransaction;
@@ -240,6 +245,9 @@ internal sealed partial class ContentService(
                 var working = ContentCopy.Of(stored);
                 var locales = LocalesOf(documents);
                 await hooks.RunAsync(HookKind.BeforeDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
+
+                // One statement marks every row, in whatever order the database takes them, so each is held first in the lock order.
+                await HoldEveryRowAsync(id, documents, () => TrashConflictAsync(write, id, row), cancellationToken);
                 await store.SetTrashedAsync(id, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken);
                 await hooks.RunAsync(HookKind.AfterDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
 
@@ -264,6 +272,7 @@ internal sealed partial class ContentService(
                 var working = ContentCopy.Of(stored);
                 var locales = LocalesOf(documents);
                 await hooks.RunAsync(HookKind.BeforeRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
+                await HoldEveryRowAsync(id, documents, () => TrashConflictAsync(write, id, row), cancellationToken);
                 await store.SetTrashedAsync(id, null, null, cancellationToken);
                 await hooks.RunAsync(HookKind.AfterRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
 
@@ -527,9 +536,18 @@ internal sealed partial class ContentService(
                 tracked.Restore();
                 throw;
             }
+            catch (EntryRowsAddedException added) when (!_ownsTransaction && added.Conflict is { } conflict)
+            {
+                throw conflict;
+            }
+            catch (Exception exception) when (exception is not EntryBusyException && provider.IsLockTimeout(exception))
+            {
+                throw new EntryBusyException(writeOptions.LockTimeout, exception);
+            }
         }
 
         var keyRerun = false;
+        var rowsRerun = false;
         for (var deadlocks = 0; ; )
         {
             try
@@ -542,6 +560,17 @@ internal sealed partial class ContentService(
                 // the context, and so may a caller that goes on after the failure.
                 tracked.Restore();
                 throw;
+            }
+            catch (EntryRowsAddedException added) when (rowsRerun && added.Conflict is { } conflict)
+            {
+                throw conflict;
+            }
+            catch (EntryRowsAddedException) when (!rowsRerun)
+            {
+                // A locale was added to the entry between the read of its rows and their holds. Run once more, on the context
+                // as it was: the rows are then read with it, and its checks, hooks and events run as for the others (#3524).
+                rowsRerun = true;
+                tracked.Restore();
             }
             catch (Exception exception) when (!keyRerun && provider.IsUniqueViolation(exception))
             {
@@ -559,6 +588,11 @@ internal sealed partial class ContentService(
                 tracked.Restore();
                 await PauseAfterDeadlockAsync(++deadlocks, cancellationToken);
             }
+            catch (Exception exception) when (exception is not EntryBusyException && provider.IsLockTimeout(exception))
+            {
+                // Not run again: the holder may hold on for as long as its hooks run, so the caller decides when to try (#3573).
+                throw new EntryBusyException(writeOptions.LockTimeout, exception);
+            }
         }
     }
 
@@ -570,40 +604,57 @@ internal sealed partial class ContentService(
         // On SQLite this takes the write lock at once, so a second writer waits here and then sees the first one's version.
         var committed = false;
         T result;
-        var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var transaction = await provider.BeginWriteAsync(context, writeOptions.LockTimeout, cancellationToken);
         _ownsTransaction = true;
         events.Open();
-        await using (transaction)
+        try
         {
-            try
+            result = await work();
+            await StageAsync([.. _pending], cancellationToken);
+            hooks.ThrowIfLeftRunning();
+            await transaction.CommitAsync(CancellationToken.None);
+            committed = true;
+            _commits++;
+            _committed = result as Document;
+        }
+        finally
+        {
+            _ownsTransaction = false;
+            _moved.Clear();
+            events.Close();
+            if (!committed)
             {
-                result = await work();
-                await StageAsync([.. _pending], cancellationToken);
-                hooks.ThrowIfLeftRunning();
-                await transaction.CommitAsync(CancellationToken.None);
-                committed = true;
-                _commits++;
-                _committed = result as Document;
+                _pending.Clear();
+                events.Clear();
             }
-            finally
-            {
-                _ownsTransaction = false;
-                events.Close();
-                if (!committed)
-                {
-                    _pending.Clear();
-                    events.Clear();
-                }
-            }
+
+            await EndAsync(transaction);
         }
 
         await PublishCommittedAsync();
         return result;
     }
 
+    // A hook that was left may hold the connection in a command, its reader open. SqlClient without MARS then refuses the
+    // rollback and throws it out of the disposal (Npgsql swallows a failed rollback itself). The caller gets what the write
+    // failed with rather than that refusal, but the transaction and its locks stay until the scope disposes the context,
+    // whose closed connection rolls them back; the scope's guard keeps it from committing meanwhile.
+    private async Task EndAsync(IDbContextTransaction transaction)
+    {
+        try
+        {
+            await transaction.DisposeAsync();
+        }
+        catch (Exception exception) when (hooks.LeftRunning)
+        {
+            ContentLog.RollbackLeftToScope(logger, exception);
+        }
+    }
+
     private async Task<T> InSavepointAsync<T>(IDbContextTransaction outer, Func<Task<T>> work, CancellationToken cancellationToken)
     {
         var pending = _pending.Count;
+        var moved = _moved.Count;
         var buffered = events.Mark;
         var savepoint = string.Create(CultureInfo.InvariantCulture, $"cms_content_{++_savepoints}");
         if (outer.SupportsSavepoints)
@@ -629,6 +680,7 @@ internal sealed partial class ContentService(
         catch
         {
             _pending.RemoveRange(pending, _pending.Count - pending);
+            _moved.RemoveRange(moved, _moved.Count - moved);
             events.Truncate(buffered);
 
             // Without a savepoint the failed write's rows cannot be undone alone, and the transaction must not be
@@ -784,20 +836,21 @@ internal sealed partial class ContentService(
 
                 var sharedChanged = SharedChanged(type, fields, stored);
                 var next = expectedVersion + 1;
-                var status = document.Status;
-                if (document.PublishedVersion is not null)
-                {
-                    // A Published entry's draft is what is published, so only a Modified one needs the published state read.
-                    var published = document.Status == EntryStatus.Published ? stored : await store.ReadAsync(type, document, ContentState.Published, cancellationToken);
-                    status = SameFields(type, fields, published) ? EntryStatus.Published : EntryStatus.Modified;
-                }
+                var read = document.Status;
+
+                // A Published entry's draft is what is published. A Modified one is decided once its swap holds the row.
+                var status = document.PublishedVersion is null ? read : read == EntryStatus.Published && SameFields(type, fields, stored) ? EntryStatus.Published : EntryStatus.Modified;
 
                 // Adding a locale writes the shared row as this write read it, so it moves the other locales as a change would.
                 var movesShared = sharedChanged || addsLocale;
-                var advanced = await AdvanceVersionsAsync(write, id, addsLocale ? null : document, expectedVersion, status, movesShared ? documents : [], cancellationToken);
+                var advanced = await AdvanceVersionsAsync(write, id, addsLocale ? null : document, expectedVersion, status, movesShared ? documents : [], cancellationToken, decide: addsLocale ? null : StatusOf(write, fields, cancellationToken));
                 if (addsLocale)
                 {
                     document.DraftVersion = next;
+                }
+                else
+                {
+                    await SettleOwnStatusAsync(write, document, read, fields, cancellationToken);
                 }
 
                 // The write changes a row of its own type, which a row rule on a relation to that type may read.
@@ -1232,6 +1285,16 @@ internal sealed partial class ContentService(
     private static List<string> LocalesOf(List<Document> documents) => [.. documents.Select(document => document.Locale).Order(StringComparer.Ordinal)];
 
     private static string AddedMessage(Document document) => string.Create(CultureInfo.InvariantCulture, $"Added the locale {document.Locale}.");
+
+    private async Task<Exception> TrashConflictAsync(WriteScope write, Guid id, Document row) =>
+        await ConflictAsync(write, id, row.DraftVersion, row.DraftVersion, CancellationToken.None);
+
+    // A row of the entry that appeared between the read of its rows and their holds (HoldEveryRowAsync). Conflict is what a
+    // client is answered where the write cannot run again, none for a job or an import, whose runner tries again.
+    private sealed class EntryRowsAddedException(Exception? conflict) : Exception("A locale was added to the entry while it was written; run it again.")
+    {
+        public Exception? Conflict { get; } = conflict;
+    }
 
     private async Task<VersionConflictException> ConflictAsync(WriteScope write, Guid id, int expected, int current, CancellationToken cancellationToken) =>
         new(expected, current, await ReadDraftOrNullAsync(write, id, write.Locale, LocaleFallback.None, cancellationToken));

@@ -72,7 +72,7 @@ internal static class TransferEndpoints
         response.StatusCode = StatusCodes.Status200OK;
         response.ContentType = ZipType;
         response.Headers.ContentDisposition = $"attachment; filename=\"fluentcms-{run.Site.Slug}-{run.Operation.Timestamp.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture)}.zip\"";
-        await exporter.WriteAsync(run, response.Body, httpContext.RequestAborted);
+        await exporter.WriteAsync(run, response.Body, httpContext.Abort, httpContext.RequestAborted);
     }
 
     private static async Task ImportAsync(HttpContext httpContext, [FromServices] TransferImporter importer)

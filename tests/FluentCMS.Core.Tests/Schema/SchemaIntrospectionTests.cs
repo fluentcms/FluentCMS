@@ -2,8 +2,10 @@ using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Core.Schema;
 using FluentCMS.Schema;
+using FluentCMS.Settings;
 using FluentCMS.Sites;
 using Shouldly;
 using Xunit;
@@ -264,6 +266,49 @@ public class SchemaIntrospectionTests
         (withoutTitle.DisplayName, withoutTitle.TitleField).ShouldBe(("Web page", (string?)null));
     }
 
+    [Fact]
+    public async Task ATypeIsPreviewableWhenTheSiteHasATemplateForIt()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var introspection = Introspection(Conditional, new Dictionary<string, string> { ["page"] = "https://www.example.com/{locale}/{slug}?preview={token}" }, TokenScopes.Management, SchemaRead, Everything);
+
+        var described = await introspection.DescribeAsync(cancellationToken);
+
+        Type(described, "page").Previewable.ShouldBeTrue();
+        Type(described, "secret").Previewable.ShouldBeFalse();
+        described.Components.Concat(described.Blocks).ShouldAllBe(part => !part.Previewable);
+        (await introspection.DescribeTypeAsync("page", cancellationToken))!.Previewable.ShouldBeTrue();
+        (await introspection.DescribeTypeAsync("secret", cancellationToken))!.Previewable.ShouldBeFalse();
+        JsonSerializer.Serialize(Type(described, "page") with { Previewable = false }).ShouldBe(JsonSerializer.Serialize(Type(await DescribeAsync(Conditional, Everything), "page")));
+    }
+
+    // The token's URL is filled from the caller's own read, so a template that reads a field it may not read gives none.
+    [Fact]
+    public async Task ATemplateThatReadsAFieldOutsideTheAllowListIsNone()
+    {
+        var templates = new Dictionary<string, string> { ["page"] = "https://www.example.com/{title}?preview={token}" };
+
+        var all = await Introspection(Conditional, templates, TokenScopes.Management, SchemaRead, Everything).DescribeAsync(TestContext.Current.CancellationToken);
+        var limited = await Introspection(Conditional, templates, TokenScopes.Management, SchemaRead, PageWithoutTitle).DescribeAsync(TestContext.Current.CancellationToken);
+
+        Type(all, "page").Previewable.ShouldBeTrue();
+        Type(limited, "page").Previewable.ShouldBeFalse();
+    }
+
+    // Minting is a route of the Management API, which needs the management scope; an MCP client reads the schema without it.
+    [Fact]
+    public async Task ACallerWhoMayNotMintSeesNoTypePreviewable()
+    {
+        var templates = new Dictionary<string, string> { ["page"] = "https://www.example.com/{slug}?preview={token}" };
+
+        var mcp = await Introspection(Conditional, templates, TokenScopes.Mcp, SchemaRead, Everything).DescribeAsync(TestContext.Current.CancellationToken);
+        var unfit = await Introspection(Conditional, new Dictionary<string, string> { ["page"] = "https://www.example.com/{dropped}?preview={token}" }, TokenScopes.Management, SchemaRead, Everything)
+            .DescribeAsync(TestContext.Current.CancellationToken);
+
+        mcp.Types.ShouldAllBe(type => !type.Previewable);
+        unfit.Types.ShouldAllBe(type => !type.Previewable);
+    }
+
     private static SchemaTypeDescription Type(SchemaDescription described, string name) => Part(described.Types, name);
 
     private static SchemaTypeDescription Part(IReadOnlyList<SchemaTypeDescription> types, string name) => types.Single(type => type.Name == name);
@@ -277,14 +322,35 @@ public class SchemaIntrospectionTests
 
     private static SchemaIntrospection Introspection(params EffectiveGrant[] grants) => Introspection(Model, grants);
 
-    private static SchemaIntrospection Introspection(SchemaModel model, params EffectiveGrant[] grants)
+    private static SchemaIntrospection Introspection(SchemaModel model, params EffectiveGrant[] grants) =>
+        Introspection(model, [], TokenScopes.Management, grants);
+
+    private static SchemaIntrospection Introspection(SchemaModel model, Dictionary<string, string> templates, string scope, params EffectiveGrant[] grants)
     {
-        var principal = new Principal(PrincipalKind.AdminUser, Guid.CreateVersion7(), "admin", new Dictionary<string, string> { [TokenScopes.Claim] = TokenScopes.Management });
-        var operation = new OperationContext(principal, Origin.Admin, new SiteId(Guid.CreateVersion7()), "en", null, "test", DateTimeOffset.UtcNow);
+        var principal = new Principal(PrincipalKind.AdminUser, Guid.CreateVersion7(), "admin", new Dictionary<string, string> { [TokenScopes.Claim] = scope });
+        var origin = scope == TokenScopes.Mcp ? Origin.Mcp : Origin.Admin;
+        var operation = new OperationContext(principal, origin, new SiteId(Guid.CreateVersion7()), "en", null, "test", DateTimeOffset.UtcNow);
         var permissions = new EffectivePermissions(operation, grants, new RowRuleRegistry(model, new ContentQueryOptions(), []));
         var evaluator = new FixedEvaluator(permissions);
         var accessor = new FixedAccessor { Current = operation };
-        return new SchemaIntrospection(model, evaluator, new ManagementAuthority(evaluator, accessor), accessor);
+        return new SchemaIntrospection(model, evaluator, new ManagementAuthority(evaluator, accessor), accessor, new FixedPreviews(new PreviewSettings { Templates = templates }));
+    }
+
+    private sealed class FixedPreviews(PreviewSettings settings) : ISettings<PreviewSettings>
+    {
+        public ValueTask<PreviewSettings> GetAsync(SiteId site, CancellationToken cancellationToken = default) => ValueTask.FromResult(settings);
+
+        public ValueTask<ResolvedSettings<PreviewSettings>> ResolveAsync(SiteId site, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public ValueTask<PreviewSettings> GetDefaultAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public ValueTask SetAsync(SiteId site, PreviewSettings value, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public ValueTask SetDefaultAsync(PreviewSettings value, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public ValueTask ResetAsync(SiteId site, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public ValueTask ResetDefaultAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private sealed class FixedAccessor : IOperationContextAccessor

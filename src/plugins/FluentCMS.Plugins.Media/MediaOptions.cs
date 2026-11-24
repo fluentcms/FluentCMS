@@ -93,7 +93,7 @@ public sealed class LocalStorageOptions
     public string Root { get; set; } = "App_Data/media";
 }
 
-// The local disk is allowed in Production, and listed so that an operator knows the files are on this machine only; so are
+// The local disk is allowed outside Development, and listed so that an operator knows the files are on this machine only; so are
 // unsigned transform URLs, with which anyone can have the instance make any image within the sites' limits.
 internal sealed class MediaInsecureDefaults(IFileStorage storage, IHostEnvironment environment, IOptions<MediaOptions> options) : IInsecureDefaultSource
 {
@@ -102,7 +102,7 @@ internal sealed class MediaInsecureDefaults(IFileStorage storage, IHostEnvironme
 
     public IEnumerable<InsecureDefault> GetInsecureDefaults()
     {
-        if (!environment.IsProduction())
+        if (environment.IsDevelopment())
         {
             yield break;
         }

@@ -8,8 +8,8 @@ namespace FluentCMS.Plugins.Webhooks;
 
 internal sealed record WebhookQueuePayload;
 
-// Wakes each webhook queue that has stalled: its head and its last claim are older than StalledAfter, and no attempt is in
-// flight, or only an abandoned one. The job that should have woken its head was lost, or the claim's job is gone, or the
+// Wakes each webhook queue that has stalled: its head and its last claim are at least StalledAfter old, and no attempt is
+// in flight, or only an abandoned one. The job that should have woken its head was lost, or the claim's job is gone, or the
 // webhook was disabled while nothing was in flight. The wait leaves alone a queue whose head's job is on its way through a
 // busy webhooks queue. A site where the plugin is disabled is skipped, since its jobs send nothing.
 internal sealed class WebhookQueueJob(PluginDbContext<WebhooksPlugin> database, IJobScheduler scheduler, IPluginState plugins, IOptions<WebhooksOptions> options, TimeProvider time, ILogger<WebhookQueueJob> logger)
@@ -20,9 +20,13 @@ internal sealed class WebhookQueueJob(PluginDbContext<WebhooksPlugin> database, 
 
     public static readonly TimeSpan StalledAfter = TimeSpan.FromMinutes(10);
 
-    // Whether the head and the webhook's last claim are both older than StalledAfter. The head's created_at is the time of its
-    // event, which is old for a late retry or a backlog of the outbox, so the last claim tells a queue that drains from one
-    // that waits. A claim's created_at is when it was claimed.
+    // Far past a run, which reads a few rows for each webhook with queued attempts, so that only a run that hangs is cut off
+    // and frees its worker.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(5);
+
+    // Whether the head and the webhook's last claim are both at least StalledAfter old. The head's created_at is the time of
+    // its event, which is old for a late retry or a backlog of the outbox, so the last claim tells a queue that drains from
+    // one that waits. A claim's created_at is when it was claimed.
     internal static async Task<bool> HasStalledAsync(IQueryable<WebhookDelivery> deliveries, Guid webhook, WebhookDelivery head, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var stalled = now - StalledAfter;

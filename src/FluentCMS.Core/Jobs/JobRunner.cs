@@ -15,11 +15,14 @@ internal sealed class JobRunner(
     TimeProvider time,
     ILogger<JobRunner> logger) : IJobRunner, IDisposable
 {
-    private static readonly TimeSpan DisposeWait = TimeSpan.FromSeconds(5);
+    internal static readonly TimeSpan DisposeWait = TimeSpan.FromSeconds(5);
 
     private readonly CancellationTokenSource _stopping = new();
 
-    private readonly CancellationTokenSource _shutdown = new();
+    // One for each worker, whose callbacks CancelAsync runs as a thread-pool work item of their own: a job's await can end
+    // inside the cancellation, and what follows it, such as its release, which SQLite writes there synchronously, would hold
+    // the stop and the workers after it.
+    private readonly List<CancellationTokenSource> _shutdowns = [];
 
     // Stops the heartbeats of jobs that ignored the shutdown, so that their leases can expire.
     private readonly CancellationTokenSource _abandon = new();
@@ -44,7 +47,9 @@ internal sealed class JobRunner(
             for (var worker = 0; worker < workers; worker++)
             {
                 var owner = $"{_instance}/{queue}/{worker}";
-                loops.Add(Task.Run(() => WorkAsync(queue, owner), CancellationToken.None));
+                var shutdown = new CancellationTokenSource();
+                _shutdowns.Add(shutdown);
+                loops.Add(Task.Run(() => WorkAsync(queue, owner, shutdown.Token), CancellationToken.None));
             }
         }
 
@@ -59,19 +64,24 @@ internal sealed class JobRunner(
             return;
         }
 
-        await _stopping.CancelAsync();
-
-        if (await FinishedWithinAsync(options.ShutdownGracePeriod, cancellationToken))
+        // The waits run from the cancellations, not from the end of their callbacks, and include them: what a callback throws
+        // within a wait is thrown to the host, and what one throws once the stop has given up waiting is logged (9522).
+        var stopping = _stopping.CancelAsync();
+        if (await FinishedWithinAsync([stopping], options.ShutdownGracePeriod, cancellationToken))
         {
             return;
         }
 
-        await _shutdown.CancelAsync();
-
         // The host may have stopped waiting, but a job that stops now still gets its release written.
-        if (!await FinishedWithinAsync(options.ReleaseTimeout, CancellationToken.None))
+        Task[] cancellations = [stopping, .. _shutdowns.Select(shutdown => shutdown.CancelAsync())];
+        if (!await FinishedWithinAsync(cancellations, options.ReleaseTimeout, CancellationToken.None))
         {
             JobLog.StoppedWithRunningJobs(logger);
+            _ = Task.WhenAll(cancellations).ContinueWith(
+                ended => JobLog.StopCallbackFailed(logger, ended.Exception!),
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
             await _abandon.CancelAsync();
         }
     }
@@ -80,7 +90,11 @@ internal sealed class JobRunner(
     public void Dispose()
     {
         _stopping.Cancel();
-        _shutdown.Cancel();
+        foreach (var shutdown in _shutdowns)
+        {
+            shutdown.Cancel();
+        }
+
         _abandon.Cancel();
 
         try
@@ -95,31 +109,42 @@ internal sealed class JobRunner(
         }
 
         _stopping.Dispose();
-        _shutdown.Dispose();
+        foreach (var shutdown in _shutdowns)
+        {
+            shutdown.Dispose();
+        }
+
         _abandon.Dispose();
     }
 
-    private async Task<bool> FinishedWithinAsync(TimeSpan period, CancellationToken cancellationToken)
+    // The caller sees each cancellation of a wait given up again, so the fault of the wait's own task is only observed.
+    private async Task<bool> FinishedWithinAsync(IEnumerable<Task> cancellations, TimeSpan period, CancellationToken cancellationToken)
     {
+        var all = Task.WhenAll([_loops!, .. cancellations]);
         try
         {
-            await _loops!.WaitAsync(period, time, cancellationToken);
+            await all.WaitAsync(period, time, cancellationToken);
             return true;
         }
         catch (Exception exception) when (exception is TimeoutException or OperationCanceledException)
         {
+            _ = all.ContinueWith(
+                static task => _ = task.Exception,
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
             return false;
         }
     }
 
-    private async Task WorkAsync(string queue, string owner)
+    private async Task WorkAsync(string queue, string owner, CancellationToken shutdown)
     {
         while (!_stopping.IsCancellationRequested)
         {
             var worked = false;
             try
             {
-                worked = await executor.RunNextAsync(queue, owner, _stopping.Token, _shutdown.Token, _abandon.Token);
+                worked = await executor.RunNextAsync(queue, owner, _stopping.Token, shutdown, _abandon.Token);
             }
             catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
             {

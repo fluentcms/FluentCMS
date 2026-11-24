@@ -137,7 +137,7 @@ internal sealed class MediaService(
             }
 
             database.AddRange(assets);
-            await database.SaveChangesAsync(cancellationToken);
+            await SaveHeldAsync(database, library.Value, cancellationToken);
             written.Clear();
 
             foreach (var asset in assets)
@@ -538,7 +538,7 @@ internal sealed class MediaService(
             ReplacedFiles? replaced = null;
             var asset = await WriteAssetAsync(library, id, reach, expectedVersion, async asset =>
             {
-                replaced = await ReplacedFiles.TakeAsync(database, asset, asset.OwnsFile, cancellationToken);
+                replaced = await ReplacedFiles.TakeAsync(database, asset, asset.OwnsFile, time.GetUtcNow(), cancellationToken);
                 asset.FileName = prepared.FileName;
                 asset.StorageProvider = storages.Current.Name;
                 asset.StorageKey = key;
@@ -555,7 +555,7 @@ internal sealed class MediaService(
             }, cancellationToken);
             written = null;
 
-            await replaced!.DeleteAsync(asset, storages, logger);
+            await replaced!.DeleteAsync(database, asset, storages, logger);
             await events.PublishAsync(new MediaAssetReplacedEvent(asset.Id, asset.FolderId, asset.FileName, asset.MimeType, asset.Size), cancellationToken);
             return Versioned(asset, operation.Locale);
         }
@@ -640,7 +640,7 @@ internal sealed class MediaService(
         var folder = new Folder { Id = Guid.CreateVersion7(), SiteId = library.Value, ParentId = parentId, Name = valid };
         folder.Path = $"{parent?.Path ?? "/"}{folder.Id:D}/";
         database.Add(folder);
-        await SaveFolderAsync(folder, cancellationToken);
+        await SaveFolderAsync(folder, added: true, cancellationToken);
         return Info(folder);
     }
 
@@ -650,7 +650,7 @@ internal sealed class MediaService(
         var reach = await ReachAsync(MediaPermissions.ManageFolders, site, library, cancellationToken);
         var folder = await FindFolderAsync(library, id, reach, tracked: true, cancellationToken);
         folder.Name = ValidName(name);
-        await SaveFolderAsync(folder, cancellationToken);
+        await SaveFolderAsync(folder, added: false, cancellationToken);
         return Info(folder);
     }
 
@@ -690,7 +690,7 @@ internal sealed class MediaService(
         }
 
         folder.ParentId = parentId;
-        await SaveFolderAsync(folder, cancellationToken);
+        await SaveFolderAsync(folder, added: false, cancellationToken);
         return Info(folder);
     }
 
@@ -792,7 +792,14 @@ internal sealed class MediaService(
 
         try
         {
-            await database.SaveChangesAsync(cancellationToken);
+            if (preset is null)
+            {
+                await SaveHeldAsync(database, library.Value, cancellationToken);
+            }
+            else
+            {
+                await database.SaveChangesAsync(cancellationToken);
+            }
         }
         catch (DbUpdateException) when (preset is null)
         {
@@ -979,7 +986,7 @@ internal sealed class MediaService(
 
     // Two writers that both found the name free meet at the unique index, except at the root, whose null parent the index
     // does not compare.
-    private async Task SaveFolderAsync(Folder folder, CancellationToken cancellationToken)
+    private async Task SaveFolderAsync(Folder folder, bool added, CancellationToken cancellationToken)
     {
         if (await NameTakenAsync(folder, cancellationToken))
         {
@@ -988,7 +995,14 @@ internal sealed class MediaService(
 
         try
         {
-            await database.SaveChangesAsync(cancellationToken);
+            if (added)
+            {
+                await SaveHeldAsync(database, folder.SiteId, cancellationToken);
+            }
+            else
+            {
+                await database.SaveChangesAsync(cancellationToken);
+            }
         }
         catch (DbUpdateException)
         {
@@ -999,6 +1013,17 @@ internal sealed class MediaService(
 
             throw;
         }
+    }
+
+    // A save that adds rows of the library's site holds the site to its commit, so that the site's deletion waits for it and
+    // its rows go with DeletedSiteMedia, or it finds the site gone and is refused with FCMS2301 (#3586). A row that changes
+    // stays in its site and goes with the cleanup as it is, so it is not held.
+    internal static async Task SaveHeldAsync(PluginDbContext<MediaPlugin> database, Guid site, CancellationToken cancellationToken)
+    {
+        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+        await database.HoldSiteAsync(new SiteId(site), cancellationToken);
+        await database.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(CancellationToken.None);
     }
 
     private Task<bool> NameTakenAsync(Folder folder, CancellationToken cancellationToken) =>
@@ -1065,6 +1090,7 @@ internal sealed class MediaService(
                     }
 
                     SvgDocument.Sanitize(svg);
+                    SvgDocument.Scope(svg);
                     var sanitized = SvgDocument.Save(svg);
                     await content.DisposeAsync();
                     content = new MemoryStream(sanitized, writable: false);

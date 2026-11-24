@@ -24,7 +24,8 @@ internal sealed class CmsWebHost : IAsyncDisposable
         Action<WebApplicationBuilder>? configure = null,
         Action<WebApplication>? pipeline = null,
         Action<FluentCmsBuilder>? cms = null,
-        Action<IEndpointConventionBuilder>? endpoints = null)
+        Action<IEndpointConventionBuilder>? endpoints = null,
+        Action<WebApplicationBuilder>? before = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
         builder.WebHost.UseTestServer();
@@ -38,6 +39,7 @@ internal sealed class CmsWebHost : IAsyncDisposable
             ["FluentCms:Security:AllowUnencryptedKeyRing"] = "true",
         });
         builder.Configuration.AddInMemoryCollection(settings ?? []);
+        before?.Invoke(builder);
         builder.Services.AddFluentCms(options =>
         {
             options.UseSqlite($"Data Source={DatabaseFile};Pooling=False");

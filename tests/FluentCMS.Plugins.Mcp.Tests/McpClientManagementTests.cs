@@ -1,7 +1,13 @@
+using System.Buffers.Text;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json.Nodes;
+using FluentCMS.Activity;
 using FluentCMS.Agents;
 using FluentCMS.Content;
+using FluentCMS.Events;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Oidc;
@@ -10,6 +16,7 @@ using FluentCMS.Core.Sites;
 using FluentCMS.Jobs;
 using FluentCMS.Sites;
 using FluentCMS.Testing;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -442,16 +449,162 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         (await ConsentAsync(user)).ShouldBeNull();
     }
 
-    // A redirect URI of a scheme of the application's own has no host, so the page names the scheme.
-    [Fact]
-    public async Task TheConsentPageNamesARedirectUriWithoutAHostByItsScheme()
+    // A redirect URI of a scheme of the application's own goes to that application, so the page names the scheme, whether
+    // the URI has no host or an authority that would read as a web host (#3442).
+    [Theory]
+    [InlineData("com.example.app:/cb", "com.example.app:")]
+    [InlineData("myapp://callback/x", "myapp:")]
+    [InlineData("MyApp://Callback.example:8080/x", "myapp:")]
+    public async Task TheConsentPageNamesARedirectUriOfTheApplicationsOwnSchemeByItsScheme(string redirectUri, string shown)
     {
-        await RegisterConfiguredAsync("com.example.app:/cb", "Native");
+        var host = fixture.Host;
+        await RegisterConfiguredAsync(redirectUri, "Native");
+        using var agent = new McpAgent(host, "10.3.0.30");
+        await agent.SignInAsync(await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
 
-        await using var scope = fixture.Host.Services.CreateAsyncScope();
-        var request = await scope.ServiceProvider.GetRequiredService<ClientConsents>().DescribeAsync(ConfiguredClient, ["openid"], "com.example.app:/cb", Token);
+        await using var scope = host.Services.CreateAsyncScope();
+        var request = await scope.ServiceProvider.GetRequiredService<ClientConsents>().DescribeAsync(ConfiguredClient, ["openid"], redirectUri, Token);
+        using var page = await agent.Http.GetAsync(new Uri($"/account/consent?client_id={ConfiguredClient}&scope=openid&redirect_uri={Uri.EscapeDataString(redirectUri)}", UriKind.Relative), Token);
+        var html = System.Net.WebUtility.HtmlDecode(await page.Content.ReadAsStringAsync(Token));
 
-        request.ShouldNotBeNull().RedirectHosts.ShouldBe(["com.example.app:"]);
+        request.ShouldNotBeNull().RedirectHosts.ShouldBe([shown]);
+        page.StatusCode.ShouldBe(HttpStatusCode.OK);
+        html.ShouldContain($"Access goes to <strong>{shown}</strong>");
+        html.ShouldNotContain("allback");
+    }
+
+    // The authorize endpoint compares a redirect URI with the stored one as strings, so a configured URI changed only in
+    // the case of its host is written at the next start, and a client that sends it as configured gets its code. The
+    // consent stays, since the URI names the same place (#3442).
+    [Fact]
+    public async Task AConfiguredRedirectUriChangedOnlyInTheCaseOfItsHostWorksAtTheAuthorizeEndpointAfterTheNextStart()
+    {
+        var host = fixture.Host;
+        using var agent = new McpAgent(host, "10.3.0.31");
+        var user = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        await RegisterConfiguredAsync("https://desk.example/cb", "Desk");
+        await GrantAsync(user.Id);
+        await agent.SignInAsync(user);
+
+        await RegisterConfiguredAsync("https://DESK.example/cb", "Desk");
+        var stored = await ConfiguredRedirectUrisAsync(host);
+        using var asConfigured = await AuthorizeConfiguredAsync(agent, "https://DESK.example/cb");
+        using var asBefore = await AuthorizeConfiguredAsync(agent, "https://desk.example/cb");
+
+        stored.ShouldBe(["https://DESK.example/cb"]);
+        asConfigured.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        asConfigured.Headers.Location!.OriginalString.ShouldStartWith("https://desk.example/cb?code=", Case.Insensitive);
+        asBefore.Headers.Location!.OriginalString.ShouldStartWith("/account/error");
+        (await ConsentAsync(user.Id)).ShouldNotBeNull();
+
+        // A start with nothing changed writes nothing, so the spelling stays.
+        await RegisterConfiguredAsync("https://DESK.example/cb", "Desk");
+        (await ConfiguredRedirectUrisAsync(host)).ShouldBe(["https://DESK.example/cb"]);
+    }
+
+    // A user sees the clients that count toward the cap, one whose consent ended included, and frees a place by ending
+    // the consent as such: its tokens stop at once, the client no longer names the user, and one that then holds no grant
+    // of anyone goes as a client never used. Another user's consent to the same client stays, and a client that counts
+    // for another user, or none, is not the caller's to end (#3441).
+    [Fact]
+    public async Task AUserSeesTheClientsThatCountTowardTheCapAndFreesAPlace()
+    {
+        var host = fixture.Host;
+        using var agent = new McpAgent(host, "10.3.0.32");
+        using var neighbourAgent = new McpAgent(host, "10.3.0.33");
+        using var admin = await KeyAsync(host);
+        var user = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var neighbour = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var reader = await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token);
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName, maxConsents: 2);
+        var first = await agent.RegisteredAsync("First");
+        var shared = await agent.RegisteredAsync("Shared");
+        var third = await agent.RegisteredAsync("Third");
+        var (vetted, _) = await RegisteredByAdminAsync(admin, BuiltInRoles.EditorName);
+        var firstId = await IdOfAsync(admin, first);
+        var sharedId = await IdOfAsync(admin, shared);
+        await agent.TokensAsync(first, user);
+        var userTokens = await agent.TokensAsync(shared, user);
+        await agent.TokensAsync(vetted, user);
+        var neighbourTokens = await neighbourAgent.TokensAsync(shared, neighbour);
+
+        // The consent to the first ends as a session; it still holds its place.
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var sessions = scope.ServiceProvider.GetRequiredService<UserSessions>();
+            var session = (await sessions.ListAsync(user.Id, Token)).Single(session => session.ClientId == first);
+            (await sessions.RevokeAsync(user.Id, session.Id, Token)).ShouldBeTrue();
+        }
+
+        var overTheCap = await agent.AuthorizeAsync(third);
+        using var errorPage = await agent.Http.GetAsync(new Uri($"/account/error?error={ClientConsents.LimitReachedError}", UriKind.Relative), Token);
+        using var asUser = await host.AsUserAsync(user);
+        using var asNeighbour = await host.AsUserAsync(neighbour);
+        var listed = await ConsentsAsync(asUser);
+        var keyListed = await ConsentsAsync(admin);
+        var firstListed = (await FindAsync(admin, first)).ShouldNotBeNull();
+
+        overTheCap.Error.ShouldBe(ClientConsents.LimitReachedError);
+        (await errorPage.Content.ReadAsStringAsync(Token)).ShouldContain("End your consent to one you no longer use");
+        listed.Select(item => item!["id"]!.GetValue<Guid>()).Order().ShouldBe(new[] { firstId, sharedId }.Order());
+        listed.Single(item => item!["id"]!.GetValue<Guid>() == firstId)!["active"]!.GetValue<bool>().ShouldBeFalse();
+        var sharedListed = listed.Single(item => item!["id"]!.GetValue<Guid>() == sharedId)!;
+        sharedListed["active"]!.GetValue<bool>().ShouldBeTrue();
+        sharedListed["clientId"]!.GetValue<string>().ShouldBe(shared);
+        sharedListed["name"]!.GetValue<string>().ShouldBe("Shared");
+        sharedListed["consentedAt"].ShouldNotBeNull();
+        keyListed.ShouldBeEmpty();
+        firstListed["usedBy"]!.GetValue<Guid>().ShouldBe(user.Id);
+        firstListed["usedAt"].ShouldNotBeNull();
+
+        // Only the caller's own: not a client that counts for another user, not one an administrator vetted, and nothing
+        // for a caller that is no user.
+        foreach (var (caller, id) in new[] { (asNeighbour, firstId), (asUser, await IdOfAsync(admin, vetted)), (admin, sharedId), (asUser, Guid.CreateVersion7()) })
+        {
+            using var refused = await EndConsentAsync(caller, id);
+            refused.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+            (await CodeAsync(refused)).ShouldBe("FCMS1603");
+        }
+
+        using var ended = await EndConsentAsync(asUser, sharedId);
+        using var userHttp = agent.Bearer(userTokens["access_token"]!.GetValue<string>());
+        using var userCut = await PostAsync(userHttp);
+        using var neighbourHttp = neighbourAgent.Bearer(neighbourTokens["access_token"]!.GetValue<string>());
+        using var neighbourWorking = await PostAsync(neighbourHttp);
+        var afterTheEnd = await ConsentsAsync(asUser);
+        var freedThird = await agent.AuthorizeAsync(third);
+        using var endedFirst = await EndConsentAsync(asUser, firstId);
+        var firstState = await StateAsync(host, firstId);
+        using var again = await EndConsentAsync(asUser, firstId);
+
+        ended.StatusCode.ShouldBe(HttpStatusCode.NoContent, await ended.Content.ReadAsStringAsync(Token));
+        userCut.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        neighbourWorking.StatusCode.ShouldBe(HttpStatusCode.OK);
+        afterTheEnd.Select(item => item!["id"]!.GetValue<Guid>()).ShouldBe([firstId]);
+        freedThird.Code.ShouldNotBeNull();
+        endedFirst.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        firstState.UsedAt.ShouldBeNull();
+        firstState.UsedBy.ShouldBeNull();
+        again.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+
+        // The first no longer holds a grant of anyone, so it goes as a client never used; the shared one stays for the
+        // neighbour, whose place it now is.
+        host.Time.Advance(TimeSpan.FromHours(new McpSettings().NeverUsedClientHours) + TimeSpan.FromMinutes(1));
+        await RunCleanupAsync();
+        var left = (await ListAsync(admin)).Select(item => item!["clientId"]!.GetValue<string>()).ToList();
+        left.ShouldNotContain(first);
+        left.ShouldContain(shared);
+        left.ShouldContain(third);
+        (await StateAsync(host, sharedId)).UsedBy.ShouldBe(neighbour.Id);
+
+        // The end of the valid consent is a row of the user, and the end of the one already ended writes none.
+        await DrainOutboxAsync(host);
+        var rows = (await host.As(reader).RunAsync<IActivityQuery, PagedResult<ActivityItem>>(query =>
+            query.QueryAsync(new ActivityFilter { Action = "user.sessions_ended", TargetId = user.Id.ToString("D"), IncludeInstance = true }, null, Token))).Items;
+        var row = rows.ShouldHaveSingleItem();
+        row.ActorId.ShouldBe(user.Id);
+        row.Details["reason"].ShouldBe(SessionEndReasons.Revoked);
+        row.Details["session"].ShouldNotBeNull();
     }
 
     // One call removes the clients the open policy approved that registered in a span of time, used or not, and none
@@ -779,6 +932,30 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
     private Task<object?> ConsentAsync(Guid user) => McpClientTesting.ConsentAsync(fixture.Host, user);
 
     private Task ForgetGrantsAsync(Guid application) => McpClientTesting.ForgetGrantsAsync(fixture.Host, application);
+
+    private static async Task<JsonArray> ConsentsAsync(HttpClient caller)
+    {
+        using var response = await caller.GetAsync(new Uri("/api/management/v1/mcp/consents", UriKind.Relative), Token);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Token));
+        return (await JsonAsync(response))["items"]!.AsArray();
+    }
+
+    // The authorize request of the configured client, which asks for openid alone, with the redirect URI as given.
+    private static Task<HttpResponseMessage> AuthorizeConfiguredAsync(McpAgent agent, string redirectUri)
+    {
+        var verifier = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
+        var url = "/connect/authorize" + QueryString.Create(new Dictionary<string, string?>
+        {
+            ["client_id"] = ConfiguredClient,
+            ["response_type"] = "code",
+            ["redirect_uri"] = redirectUri,
+            ["scope"] = "openid",
+            ["code_challenge"] = Base64Url.EncodeToString(SHA256.HashData(Encoding.ASCII.GetBytes(verifier))),
+            ["code_challenge_method"] = "S256",
+            ["state"] = "test",
+        });
+        return agent.Http.GetAsync(new Uri(url, UriKind.Relative), Token);
+    }
 
     private async Task<IReadOnlyList<UserSession>> SessionsAsync(Guid user)
     {

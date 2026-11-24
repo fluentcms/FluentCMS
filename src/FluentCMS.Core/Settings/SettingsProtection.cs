@@ -154,6 +154,31 @@ internal sealed class SettingsProtection(IDataProtectionProvider provider, ILogg
         return changed ? document.ToJsonString() : null;
     }
 
+    // The keys of a stored document that the class does not read as secrets, such as one it no longer has or no longer marks
+    // a secret, and that hold a protected value which is not under the current default key of the ring, because the ring
+    // cannot unprotect it or it is under an older key. A pass leaves them as they are: their value is not the class's to
+    // protect. An area no class registers passes no secret keys. Nothing is logged.
+    public IReadOnlyList<string> Unreached(SettingsDescriptor descriptor, string json, Guid? site) => Unreached(descriptor.Area, descriptor.SecretKeys, json, site);
+
+    public IReadOnlyList<string> Unreached(string area, IReadOnlySet<string> secretKeys, string json, Guid? site)
+    {
+        if (Parse(json) is not JsonObject document)
+        {
+            return [];
+        }
+
+        List<string> found = [];
+        foreach (var (key, value) in document)
+        {
+            if (!secretKeys.Contains(key) && IsProtected(value, out var stored) && TryUnprotectForMigration(area, key, site, stored) is not ({ }, false))
+            {
+                found.Add(key);
+            }
+        }
+
+        return [.. found.Order(StringComparer.Ordinal)];
+    }
+
     // What a stored document holds under its secret keys, worst first: a value the key ring cannot unprotect, then one written
     // before secrets were protected. Nothing is logged.
     public StoredSecrets Inspect(SettingsDescriptor descriptor, string json, Guid? site)
@@ -196,11 +221,14 @@ internal sealed class SettingsProtection(IDataProtectionProvider provider, ILogg
 
     // Whether the value is under another key than the default, as Data Protection itself tells; a protector that cannot say
     // is taken to need it.
-    private (JsonNode? Value, bool Migrate) TryUnprotectForMigration(SettingsDescriptor descriptor, string key, Guid? site, string stored)
+    private (JsonNode? Value, bool Migrate) TryUnprotectForMigration(SettingsDescriptor descriptor, string key, Guid? site, string stored) =>
+        TryUnprotectForMigration(descriptor.Area, key, site, stored);
+
+    private (JsonNode? Value, bool Migrate) TryUnprotectForMigration(string area, string key, Guid? site, string stored)
     {
         try
         {
-            var protector = Protector(descriptor, key, site);
+            var protector = Protector(area, key, site);
             if (protector is not IPersistedDataProtector persisted)
             {
                 return (JsonNode.Parse(protector.Unprotect(stored[Prefix.Length..])), true);
@@ -215,8 +243,10 @@ internal sealed class SettingsProtection(IDataProtectionProvider provider, ILogg
         }
     }
 
-    private IDataProtector Protector(SettingsDescriptor descriptor, string key, Guid? site) =>
-        provider.CreateProtector(Purpose, descriptor.Area, key, site is { } one ? one.ToString("D") : "instance");
+    private IDataProtector Protector(SettingsDescriptor descriptor, string key, Guid? site) => Protector(descriptor.Area, key, site);
+
+    private IDataProtector Protector(string area, string key, Guid? site) =>
+        provider.CreateProtector(Purpose, area, key, site is { } one ? one.ToString("D") : "instance");
 
     private static string ScopeName(Guid? site) => site is { } one ? $"site {one}" : "the instance";
 

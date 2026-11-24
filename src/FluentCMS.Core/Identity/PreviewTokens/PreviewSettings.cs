@@ -15,6 +15,10 @@ internal sealed class PreviewSettings
 
     [Description("An absolute http or https URL template per content type, such as https://www.example.com/{locale}/articles/{slug}?preview={token}. {id}, {locale}, {token} and a field of the type are filled in, escaped. {token} is the whole value of one query parameter, which the published URL leaves out.")]
     public Dictionary<string, string> Templates { get; set; } = [];
+
+    // The type's template. One that the type no longer fits, since it was saved, is none.
+    public PreviewUrlTemplate? TemplateOf(SchemaType type) =>
+        Templates.TryGetValue(type.Name, out var template) ? PreviewUrlTemplate.Parse(template, type, "", []) : null;
 }
 
 // The rules of the area that need the schema: each template is for a content type, and a template of that type.

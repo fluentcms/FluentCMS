@@ -4,6 +4,7 @@
       "name": "article",
       "kind": "collection",
       "localized": true,
+      "previewable": false,
       "scope": "site",
       "unpublishedReferences": "warn",
       "maxVersions": 50,
@@ -236,6 +237,7 @@
       "name": "author",
       "kind": "collection",
       "localized": false,
+      "previewable": false,
       "scope": "site",
       "unpublishedReferences": "warn",
       "maxVersions": 50,
@@ -321,6 +323,7 @@
       "name": "tag",
       "kind": "collection",
       "localized": false,
+      "previewable": false,
       "scope": "global",
       "unpublishedReferences": "warn",
       "maxVersions": 50,
@@ -370,6 +373,7 @@
       "name": "seo",
       "kind": "component",
       "localized": false,
+      "previewable": false,
       "fields": [
         {
           "name": "metaTitle",
@@ -414,6 +418,7 @@
       "name": "gallery",
       "kind": "block",
       "localized": false,
+      "previewable": false,
       "fields": [
         {
           "name": "caption",
@@ -470,6 +475,7 @@
       "name": "hero",
       "kind": "block",
       "localized": false,
+      "previewable": false,
       "fields": [
         {
           "name": "heading",
@@ -526,6 +532,7 @@
       "name": "quote",
       "kind": "block",
       "localized": false,
+      "previewable": false,
       "fields": [
         {
           "name": "text",

@@ -3,10 +3,13 @@ using FluentCMS.Core.DependencyInjection;
 namespace FluentCMS.Core.Transfer;
 
 // FluentCms:Transfer in configuration. The bounds of an import (spec 4.14): what it takes as its body, what the files of a
-// package declare and what it reads of them, so that a small package never costs much more than it holds.
+// package declare and what it reads of them, so that a small package never costs much more than it holds; and how long an
+// export holds its snapshot.
 internal sealed class TransferOptions
 {
     internal const string Section = "Transfer";
+
+    internal static readonly TimeSpan MaxExportSnapshotTimeout = TimeSpan.FromDays(1);
 
     // The largest package an import takes as its body, in bytes.
     public long MaxPackageSize { get; set; } = 1L << 30;
@@ -30,6 +33,9 @@ internal sealed class TransferOptions
     // The conflicts and errors a report lists; every item is counted.
     public int MaxReportItems { get; set; } = 1_000;
 
+    // How long an export holds the snapshot its entries are read from, however slowly its package is read (#3485).
+    public TimeSpan ExportSnapshotTimeout { get; set; } = TimeSpan.FromHours(1);
+
     internal long UnpackedLimit => MaxUnpackedSize ?? MaxPackageSize;
 
     internal long ReadLimit => MaxReadSize ?? (MaxPackageSize > long.MaxValue / 2 ? long.MaxValue : 2 * MaxPackageSize);
@@ -43,6 +49,10 @@ internal sealed class TransferOptions
         Positive(nameof(MaxJsonSize), MaxJsonSize);
         Positive(nameof(MaxLineLength), MaxLineLength);
         Positive(nameof(MaxReportItems), MaxReportItems);
+        if (ExportSnapshotTimeout <= TimeSpan.Zero || ExportSnapshotTimeout > MaxExportSnapshotTimeout)
+        {
+            throw new FluentCmsConfigurationException(HostErrorCodes.InvalidOption, $"{nameof(ExportSnapshotTimeout)} is {ExportSnapshotTimeout}; it must be more than 00:00:00 and at most {MaxExportSnapshotTimeout.Days} day.");
+        }
     }
 
     private static void Positive(string name, long value)

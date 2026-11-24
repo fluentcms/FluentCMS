@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
@@ -15,6 +16,7 @@ using Microsoft.AspNetCore.DataProtection.XmlEncryption;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Shouldly;
 using Xunit;
@@ -23,6 +25,8 @@ namespace FluentCMS.Host.Tests;
 
 public sealed class ReferenceHostTests : IAsyncDisposable
 {
+    private const string RingSecret = "ring-payload-6203-value";
+
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
 
     private readonly HostUnderTest _host = new();
@@ -632,6 +636,194 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         error.Code.ShouldBe("FCMS3155");
     }
 
+    // The replacement of docs/docker.md: the new certificate with the old one as previous reads the keys the old one protected,
+    // and a key made from then on is encrypted for the new certificate alone. The old one has often expired by then, and is
+    // listed twice here, as two configuration sources can name it.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task APreviousCertificateReadsTheKeysItProtectedAndNewKeysAreProtectedWithTheCurrentOneOnly(bool expired)
+    {
+        var old = WriteRingCertificate("old.pfx", "old-ring-password", expired);
+        var current = WriteRingCertificate("current.pfx", "current-ring-password");
+        var logs = new RingLogs();
+        var settings = Operator.Settings();
+        settings["Logging:LogLevel:Default"] = "Trace";
+        settings[ReferenceHost.KeyRingCertificatePathKey] = old.Path;
+        settings[ReferenceHost.KeyRingCertificatePasswordKey] = old.Password;
+        settings["FluentCms:Security:AllowUnencryptedKeyRing"] = "false";
+        string payload;
+        await using (var first = await _host.StartAsync(settings, services => services.AddSingleton<ILoggerProvider>(logs)))
+        {
+            payload = first.Services.GetRequiredService<IDataProtectionProvider>().CreateProtector("test").Protect(RingSecret);
+            await first.StopAsync(Token);
+        }
+
+        var written = RingXml();
+        written.ShouldNotBeEmpty();
+        written.ShouldAllBe(xml => xml.Contains(old.Certificate, StringComparison.Ordinal));
+
+        // Without the previous certificate the older keys cannot be read, which is what a replacement used to come to.
+        settings[ReferenceHost.KeyRingCertificatePathKey] = current.Path;
+        settings[ReferenceHost.KeyRingCertificatePasswordKey] = current.Password;
+        await using (var alone = _host.Build(settings, services => services.AddSingleton<ILoggerProvider>(logs)))
+        {
+            Should.Throw<CryptographicException>(() => alone.Services.GetRequiredService<IDataProtectionProvider>().CreateProtector("test").Unprotect(payload));
+        }
+
+        settings[$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Path"] = old.Path;
+        settings[$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Password"] = old.Password;
+        settings[$"{ReferenceHost.PreviousKeyRingCertificatesSection}:1:Path"] = old.Path;
+        settings[$"{ReferenceHost.PreviousKeyRingCertificatesSection}:1:Password"] = old.Password;
+        var app = await _host.StartAsync(settings, services => services.AddSingleton<ILoggerProvider>(logs));
+        var before = RingXml();
+
+        app.Services.GetRequiredService<IDataProtectionProvider>().CreateProtector("test").Unprotect(payload).ShouldBe(RingSecret);
+        // Activated once every key so far has expired, so the key manager's lock finds no key just made to use instead.
+        app.Services.GetRequiredService<IKeyManager>().CreateNewKey(DateTimeOffset.UtcNow.AddDays(200), DateTimeOffset.UtcNow.AddDays(290));
+        RingXml().Except(before).ShouldHaveSingleItem();
+        var made = RingXml().Except(written).ToList();
+        made.ShouldNotBeEmpty();
+        made.ShouldAllBe(xml => xml.Contains(current.Certificate, StringComparison.Ordinal) && !xml.Contains(old.Certificate, StringComparison.Ordinal));
+        app.Services.GetRequiredService<IOptions<KeyManagementOptions>>().Value.XmlEncryptor.ShouldBeOfType<CertificateXmlEncryptor>();
+
+        var report = await Operator.ReportAsync(_host);
+        var line = report["insecureDefaults"]!.AsArray().Single(item => item!["id"]!.GetValue<string>() == "data-protection-previous-certificates")!["message"]!.GetValue<string>();
+        line.ShouldContain($"1 previous certificate of {ReferenceHost.PreviousKeyRingCertificatesSection} (thumbprint {old.Thumbprint})");
+        line.Split(old.Thumbprint).Length.ShouldBe(2);
+        line.ShouldNotContain(current.Thumbprint);
+        Operator.InsecureDefaults(report).ShouldNotContain("data-protection-keys-unencrypted");
+
+        // The capture holds Data Protection's own Debug and Trace lines, so the assertions below cover them too.
+        logs.Lines.ShouldContain(entry => entry.Category.StartsWith("Microsoft.AspNetCore.DataProtection", StringComparison.Ordinal) && entry.Level <= LogLevel.Debug);
+        foreach (var text in new[] { logs.All, report.ToJsonString() })
+        {
+            text.ShouldNotContain(RingSecret);
+            text.ShouldNotContain(payload);
+            foreach (var certificate in new[] { old, current })
+            {
+                text.ShouldNotContain(certificate.Password);
+                text.ShouldNotContain(certificate.PrivateKey);
+                text.ShouldNotContain(certificate.File);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task APreviousCertificateIsNotReportedInDevelopment()
+    {
+        var old = WriteRingCertificate("old.pfx", "old-ring-password");
+        var current = WriteRingCertificate("current.pfx", "current-ring-password");
+        var settings = Operator.Settings();
+        settings[ReferenceHost.KeyRingCertificatePathKey] = current.Path;
+        settings[ReferenceHost.KeyRingCertificatePasswordKey] = current.Password;
+        settings[$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Path"] = old.Path;
+        settings[$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Password"] = old.Password;
+        await _host.StartAsync(settings, environment: "Development");
+
+        Operator.InsecureDefaults(await Operator.ReportAsync(_host)).ShouldNotContain("data-protection-previous-certificates");
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("wrong-password")]
+    [InlineData("no-private-key")]
+    public void APreviousCertificateThatCannotBeUsedStopsTheHost(string fault)
+    {
+        var current = WriteRingCertificate("current.pfx", "current-ring-password");
+        var old = WriteRingCertificate("old.pfx", "old-ring-password");
+        var path = old.Path;
+        var password = old.Password;
+        switch (fault)
+        {
+            case "missing":
+                path = Path.Combine(_host.Root, "absent.pfx");
+                break;
+            case "wrong-password":
+                password = "not-the-old-ring-password";
+                break;
+            default:
+                using (var full = X509CertificateLoader.LoadPkcs12FromFile(old.Path, old.Password))
+                using (var publicOnly = X509CertificateLoader.LoadCertificate(full.RawData))
+                {
+                    File.WriteAllBytes(old.Path, publicOnly.Export(X509ContentType.Pkcs12, old.Password));
+                }
+
+                break;
+        }
+
+        var error = Should.Throw<ReferenceHostException>(() => _host.Build(new()
+        {
+            [ReferenceHost.KeyRingCertificatePathKey] = current.Path,
+            [ReferenceHost.KeyRingCertificatePasswordKey] = current.Password,
+            [$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Path"] = path,
+            [$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Password"] = password,
+        }));
+
+        error.Code.ShouldBe("FCMS3155");
+        error.Message.ShouldContain($"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Path");
+        error.Message.ShouldNotContain(password);
+        error.Message.ShouldNotContain(current.Password);
+    }
+
+    [Fact]
+    public void APreviousCertificateWithoutAPathStopsTheHost()
+    {
+        var current = WriteRingCertificate("current.pfx", "current-ring-password");
+
+        var error = Should.Throw<ReferenceHostException>(() => _host.Build(new()
+        {
+            [ReferenceHost.KeyRingCertificatePathKey] = current.Path,
+            [ReferenceHost.KeyRingCertificatePasswordKey] = current.Password,
+            [$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Password"] = "old-ring-password",
+        }));
+
+        error.Code.ShouldBe("FCMS3155");
+        error.Message.ShouldContain($"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Path is not set");
+        error.Message.ShouldNotContain("old-ring-password");
+    }
+
+    // As a compose file passes `${OLD_RING_CERTIFICATE:-}`, or an operator blanks an entry of appsettings.json from the
+    // environment: an entry whose every member is empty is absent, as an empty current Path is.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void APreviousCertificateEntryWithEveryMemberEmptyIsAbsent(bool withCurrent)
+    {
+        Dictionary<string, string?> settings = new()
+        {
+            [$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Path"] = "",
+            [$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Password"] = " ",
+        };
+        if (withCurrent)
+        {
+            var current = WriteRingCertificate("current.pfx", "current-ring-password");
+            settings[ReferenceHost.KeyRingCertificatePathKey] = current.Path;
+            settings[ReferenceHost.KeyRingCertificatePasswordKey] = current.Password;
+        }
+
+        var app = _host.Build(settings);
+
+        app.Services.GetServices<FluentCMS.Diagnostics.IInsecureDefaultSource>().OfType<PreviousKeyRingCertificatesReport>().ShouldBeEmpty();
+    }
+
+    // Previous certificates alone would leave nothing to protect a new key with.
+    [Fact]
+    public void APreviousCertificateWithoutACurrentOneStopsTheHost()
+    {
+        var old = WriteRingCertificate("old.pfx", "old-ring-password");
+
+        var error = Should.Throw<ReferenceHostException>(() => _host.Build(new()
+        {
+            [$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Path"] = old.Path,
+            [$"{ReferenceHost.PreviousKeyRingCertificatesSection}:0:Password"] = old.Password,
+        }));
+
+        error.Code.ShouldBe("FCMS3155");
+        error.Message.ShouldContain(ReferenceHost.KeyRingCertificatePathKey);
+        error.Message.ShouldNotContain(old.Password);
+    }
+
     [Fact]
     public async Task EmailGoesThroughTheConfiguredSmtpServerWithItsCredentials()
     {
@@ -685,6 +877,48 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         var path = Path.Combine(_host.Root, name);
         File.WriteAllBytes(path, certificate.Export(X509ContentType.Pkcs12, password));
         return path;
+    }
+
+    private RingCertificate WriteRingCertificate(string name, string password, bool expired = false)
+    {
+        using var rsa = RSA.Create(2048);
+        using var certificate = new CertificateRequest($"CN=FluentCMS test key ring {name}", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
+            .CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(expired ? -60 : -1), DateTimeOffset.UtcNow.AddDays(expired ? -1 : 30));
+        var path = Path.Combine(_host.Root, name);
+        var file = certificate.Export(X509ContentType.Pkcs12, password);
+        File.WriteAllBytes(path, file);
+        return new RingCertificate(path, password, certificate.Thumbprint, Convert.ToBase64String(certificate.RawData), Convert.ToBase64String(rsa.ExportPkcs8PrivateKey()), Convert.ToBase64String(file));
+    }
+
+    // Certificate is the public certificate as the ring embeds it; PrivateKey and File are what must never be logged.
+    private sealed record RingCertificate(string Path, string Password, string Thumbprint, string Certificate, string PrivateKey, string File);
+
+    private sealed record RingLogLine(string Category, LogLevel Level, string Text);
+
+    private sealed class RingLogs : ILoggerProvider
+    {
+        private readonly ConcurrentQueue<RingLogLine> _lines = new();
+
+        public IReadOnlyList<RingLogLine> Lines => [.. _lines];
+
+        public string All => string.Join('\n', _lines.Select(line => line.Text));
+
+        public ILogger CreateLogger(string categoryName) => new Logger(categoryName, _lines);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class Logger(string category, ConcurrentQueue<RingLogLine> lines) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state)
+                where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+                lines.Enqueue(new RingLogLine(category, logLevel, $"{eventId.Id} {formatter(state, exception)} {exception}"));
+        }
     }
 
     private List<string> RingXml()

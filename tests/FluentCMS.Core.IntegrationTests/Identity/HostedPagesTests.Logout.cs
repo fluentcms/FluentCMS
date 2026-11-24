@@ -339,6 +339,14 @@ public sealed partial class HostedPagesTests
         (await MeAsync(_host, Text(withSecondFactor, "access_token"))).ShouldBe(HttpStatusCode.OK);
         (await MeAsync(_host, Text(again, "access_token"))).ShouldBe(HttpStatusCode.OK);
         (await MeAsync(_host, Text(elsewhere, "access_token"))).ShouldBe(HttpStatusCode.OK);
+
+        // That end is a row of the user with its reason; the sign-ins with the second factor that ended nothing write none
+        // (#3207, #3531).
+        var ended = (await ActivityAsync(_host, "user.sessions_ended", count: 1, of: row => row.TargetId == editor.Id.ToString("D"))).ShouldHaveSingleItem();
+        ended.ActorType.ShouldBe(PrincipalKind.AdminUser);
+        ended.ActorId.ShouldBe(editor.Id);
+        Details(ended)["reason"].ShouldBe(SessionEndReasons.SecondFactor);
+        ended.Details!.ShouldNotContain(Text(withPassword, "refresh_token"));
     }
 
     [Fact]

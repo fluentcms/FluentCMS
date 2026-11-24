@@ -14,6 +14,9 @@ public sealed record SchemaTypeDescription
     /// <summary>Whether entries have one version per locale. Only collections and singletons can be localized.</summary>
     public bool Localized { get; init; }
 
+    /// <summary>Whether the site of the operation has a preview URL template for the type that the principal may mint a preview token with; always <see langword="false"/> for components and blocks and outside an operation.</summary>
+    public bool Previewable { get; init; }
+
     /// <summary>Whether entries belong to one site or are shared by all sites; <see langword="null"/> for components and blocks.</summary>
     public ContentScope? Scope { get; init; }
 

@@ -115,23 +115,37 @@ internal sealed class TwoFactorService(CmsUserManager users, SystemDbContext con
         }
     }
 
-    // The caller is signed in, so the lockout, which anyone who knows the user name raises, does not refuse it: a wrong code
-    // counts as a failed sign-in and towards the count of the user's sessions, which bounds their guessing (#3371).
+    // The caller is signed in, so the lockout, which anyone who knows the user name raises, does not refuse it. A code takes
+    // its place in the count of codes of the user's sessions before it is checked, so that they check no more codes than the
+    // lockout's limit in its time, however many come at once (#3371, #3447). A wrong one keeps its place and counts as a
+    // failed sign-in; a right one is taken in the save of its step, or of its recovery code, before anything answers it, and
+    // then starts the count of codes again, and no other. One that loses that save is refused like a wrong one, since a code
+    // is taken once.
     private async Task RequireCodeAsync(CmsUser user, string? code, bool recoveryCode)
     {
         // Identity's recovery codes are upper case.
         var compact = (code ?? "").Replace(" ", "", StringComparison.Ordinal).ToUpperInvariant();
-        if (compact.Length > 0 && !await users.IsSignedInLockedOutAsync(user))
+        if (compact.Length > 0)
         {
-            var authenticator = compact.Replace("-", "", StringComparison.Ordinal);
-            if (await users.VerifyTwoFactorTokenAsync(user, users.Options.Tokens.AuthenticatorTokenProvider, authenticator)
-                || (recoveryCode && (await users.RedeemTwoFactorRecoveryCodeAsync(user, compact)).Succeeded))
+            var place = await users.TakeCodePlaceAsync(user);
+            if (place.Succeeded)
             {
-                UserViews.Check(await users.ResetSignedInFailuresAsync(user));
-                return;
-            }
+                var authenticator = compact.Replace("-", "", StringComparison.Ordinal);
+                if (await users.VerifyTwoFactorTokenAsync(user, users.Options.Tokens.AuthenticatorTokenProvider, authenticator)
+                    || (recoveryCode && (await users.RedeemTwoFactorRecoveryCodeAsync(user, compact)).Succeeded))
+                {
+                    // Its failure leaves the count as it was, which only keeps the sessions out sooner.
+                    await users.ResetSignedInCodeFailuresAsync(user);
+                    return;
+                }
 
-            UserViews.Check(await users.SignedInAccessFailedAsync(user));
+                await users.CountFailedSignInAsync(user);
+            }
+            else if (!place.Errors.Any(error => error.Code == CmsUserManager.LockedOutCode))
+            {
+                // Its tries ran out before the code was checked.
+                UserViews.Check(place);
+            }
         }
 
         throw new ValidationException([new ValidationError("code", IdentityErrorCodes.InvalidTwoFactorCode, "The code is not right, or the account is locked out for now.")]);

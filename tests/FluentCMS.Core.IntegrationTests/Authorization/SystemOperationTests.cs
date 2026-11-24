@@ -56,15 +56,17 @@ public sealed class SystemOperationTests
             id = await scope.ServiceProvider.GetRequiredService<IJobScheduler>().EnqueueAsync<ManagingJob, ManagingPayload>(new ManagingPayload("from a job"), cancellationToken: Token);
         }
 
-        await using (var scope = host.Services.CreateAsyncScope())
+        // A plugin of the host may have enqueued a job of its own on the queue first, as the media plugin does at the start.
+        string status;
+        do
         {
+            await using var scope = host.Services.CreateAsyncScope();
             (await scope.ServiceProvider.GetRequiredService<JobExecutor>().RunNextAsync(JobRunnerOptions.DefaultQueue, "test", Token)).ShouldBeTrue();
+            status = (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<Job>().AsNoTracking().SingleAsync(job => job.Id == id, Token)).Status;
         }
+        while (status == JobStatus.Pending);
 
-        await using (var scope = host.Services.CreateAsyncScope())
-        {
-            (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<Job>().AsNoTracking().SingleAsync(job => job.Id == id, Token)).Status.ShouldBe(JobStatus.Succeeded);
-        }
+        status.ShouldBe(JobStatus.Succeeded);
 
         (await KeyExistsAsync(host, "from a job")).ShouldBeTrue();
     }

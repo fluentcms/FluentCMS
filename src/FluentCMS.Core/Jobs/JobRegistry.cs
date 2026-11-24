@@ -49,7 +49,7 @@ internal sealed class JobRegistration
 
 // A job that stops at its token wherever it is and leaves what is left for its next run, such as a batched delete. Stopped
 // at its attempt timeout, it has succeeded rather than failed, so that a long backlog is never dead-lettered for its size.
-// A plugin, which cannot see this, registers its job with resumable: true instead.
+// A plugin or a host, which cannot see this, registers its job with resumable: true instead.
 internal interface IResumableJob;
 
 internal static class JobJson

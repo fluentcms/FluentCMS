@@ -15,11 +15,7 @@ public sealed class OpenApiContractTests
 {
     // Members the admin reads before the backend sends them, each with the issue that adds them; one that is in the document
     // is a gap, so the pull request of that issue removes its entry.
-    private static readonly Dictionary<string, string> Awaited = new(StringComparer.Ordinal)
-    {
-        ["schema.types[].previewable"] = "#3432",
-        ["content/article/{id}/preview-token.expiresIn"] = "#3473",
-    };
+    private static readonly Dictionary<string, string> Awaited = new(StringComparer.Ordinal);
 
     [Fact]
     public async Task EveryRecordTheAdminReadsMatchesTheOpenApiDocument()

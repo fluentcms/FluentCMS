@@ -73,7 +73,13 @@ internal sealed class TransferClient : IDisposable
             await using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous))
             {
                 await file.WriteAsync(start, cancellationToken);
-                await Reading(() => package.CopyToAsync(file, cancellationToken));
+
+                // Only the reads are the connection's, so that a write to the file that fails is not taken for it.
+                var buffer = new byte[81920];
+                while (await Reading(() => package.ReadAsync(buffer, cancellationToken).AsTask()) is var count and > 0)
+                {
+                    await file.WriteAsync(buffer.AsMemory(0, count), cancellationToken);
+                }
             }
 
             await OpensAsync(temporary, path, cancellationToken);
@@ -201,14 +207,15 @@ internal sealed class TransferClient : IDisposable
     private static CliException NotAPackage(string answer, string path) =>
         new(CliErrorCodes.TransferAnswerUnexpected, $"the instance answered {answer}, so {path} was not written; is the address that of a FluentCMS instance?");
 
-    // A connection that breaks while the answer is read.
+    // A connection that breaks while the answer is read, which the handler reports as an HttpIOException or, for a reset of
+    // the transport, as the IOException of the socket or of TLS.
     private async Task Reading(Func<Task> read)
     {
         try
         {
             await read();
         }
-        catch (Exception exception) when (exception is HttpRequestException or HttpIOException)
+        catch (Exception exception) when (exception is HttpRequestException or IOException)
         {
             throw Unreachable(exception);
         }
@@ -220,7 +227,7 @@ internal sealed class TransferClient : IDisposable
         {
             return await read();
         }
-        catch (Exception exception) when (exception is HttpRequestException or HttpIOException)
+        catch (Exception exception) when (exception is HttpRequestException or IOException)
         {
             throw Unreachable(exception);
         }

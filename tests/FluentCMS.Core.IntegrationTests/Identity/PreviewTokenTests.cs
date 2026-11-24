@@ -79,6 +79,43 @@ public sealed class PreviewTokenTests : IAsyncLifetime
         refused.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
+    // A client whose clock is not the server's takes the deadline from its own clock and the lifetime (#3473).
+    [Fact]
+    public async Task TheAnswerSaysTheLifetimeInWholeSecondsFromTheTokensIssue()
+    {
+        _host.Time.Advance(TimeSpan.FromMilliseconds(700));
+
+        var asked = await MintAsync(_entry, new { minutes = 5 });
+        var standard = await MintAsync(_entry);
+
+        foreach (var (minted, seconds) in new[] { (asked, 300), (standard, 600) })
+        {
+            minted["expiresIn"]!.GetValueKind().ShouldBe(System.Text.Json.JsonValueKind.Number);
+            minted["expiresIn"]!.ToJsonString().ShouldBe(seconds.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            var payload = Payload(minted);
+            var expires = DateTimeOffset.Parse(minted["expiresAt"]!.GetValue<string>(), System.Globalization.CultureInfo.InvariantCulture);
+            expires.ToUnixTimeSeconds().ShouldBe(payload["exp"]!.GetValue<long>());
+            (payload["exp"]!.GetValue<long>() - payload["iat"]!.GetValue<long>()).ShouldBe(seconds);
+        }
+    }
+
+    [Fact]
+    public async Task TheLifetimeIsTheConfiguredDefaultWhenTheRequestNamesNone()
+    {
+        await using var host = AuthorizationServerTests.NewHost(withServiceClient: false).WithContentTypes<Brief>().Configure(cms => cms.PreviewTokens.DefaultLifetime = TimeSpan.FromMinutes(3));
+        using var editor = await host.AsUserAsync(await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
+        using var created = await editor.PostAsJsonAsync(new Uri(Management, UriKind.Relative), new { title = "Draft" }, Token);
+        var id = (await created.Content.ReadFromJsonAsync<JsonObject>(Token))!["id"]!.GetValue<Guid>();
+
+        using var response = await editor.PostAsync(new Uri($"{Management}/{id}/preview-token", UriKind.Relative), null, Token);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Token));
+        var minted = (await response.Content.ReadFromJsonAsync<JsonObject>(Token))!;
+
+        minted["expiresIn"]!.GetValue<int>().ShouldBe(180);
+        var payload = Payload(minted);
+        (payload["exp"]!.GetValue<long>() - payload["iat"]!.GetValue<long>()).ShouldBe(180);
+    }
+
     [Fact]
     public async Task ATokenIsRefusedForAnyOtherEntryRouteOrStatus()
     {
@@ -298,6 +335,12 @@ public sealed class PreviewTokenTests : IAsyncLifetime
         status.ShouldBe(HttpStatusCode.Forbidden, body.ToJsonString());
         body["code"]!.GetValue<string>().ShouldBe(PreviewTokenErrorCodes.OutsideToken);
         body["errors"]![0]!["path"]!.GetValue<string>().ShouldBe(where);
+    }
+
+    private static JsonNode Payload(JsonObject minted)
+    {
+        var payload = minted["token"]!.GetValue<string>().Split('.')[1].Replace('-', '+').Replace('_', '/');
+        return JsonNode.Parse(Convert.FromBase64String(payload.PadRight(payload.Length + ((4 - (payload.Length % 4)) % 4), '=')))!;
     }
 
     private static string Base64Url(byte[] bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');

@@ -29,3 +29,4 @@ static FluentCMS.Plugins.EntityVersions.IfMatch(Microsoft.AspNetCore.Http.HttpRe
 static FluentCMS.Plugins.EntityVersions.SetETag(Microsoft.AspNetCore.Http.HttpResponse! response, int version) -> void
 static FluentCMS.Plugins.PluginAppBuilderExtensions.GivesETag(this Microsoft.AspNetCore.Builder.RouteHandlerBuilder! builder) -> Microsoft.AspNetCore.Builder.RouteHandlerBuilder!
 static FluentCMS.Plugins.PluginAppBuilderExtensions.TakesIfMatch(this Microsoft.AspNetCore.Builder.RouteHandlerBuilder! builder) -> Microsoft.AspNetCore.Builder.RouteHandlerBuilder!
+FluentCMS.Plugins.PluginDbContext<TPlugin>.HoldSiteAsync(FluentCMS.Sites.SiteId site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!

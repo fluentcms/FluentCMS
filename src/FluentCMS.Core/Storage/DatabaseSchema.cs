@@ -11,8 +11,14 @@ public sealed record DatabaseTable(string Name, IReadOnlyList<DatabaseColumn> Co
     public IReadOnlyList<DatabaseCheckConstraint> CheckConstraints { get; init; } = [];
 }
 
-public sealed record DatabaseColumn(string Name, string StoreType, bool IsNullable);
+public sealed record DatabaseColumn(string Name, string StoreType, bool IsNullable)
+{
+    // Null for a column of the database's default collation on PostgreSQL, for a type that has none, and on SQLite, whose
+    // reader does not read it.
+    public string? Collation { get; init; }
+}
 
+// The key columns in order; a key that is an expression has an empty name, which no column of a model has.
 public sealed record DatabaseIndex(string Name, IReadOnlyList<string> Columns, bool IsUnique, bool IsPartial);
 
 public sealed record DatabaseCheckConstraint(string Name, IReadOnlyList<string> Columns);

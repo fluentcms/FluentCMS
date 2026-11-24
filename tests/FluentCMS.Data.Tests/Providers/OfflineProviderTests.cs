@@ -1,6 +1,7 @@
 using System.Data.SqlTypes;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
+using FluentCMS.Core.Caching;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Storage;
@@ -8,6 +9,8 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.PostgreSql;
 using FluentCMS.Data.SqlServer;
+using FluentCMS.Plugins;
+using FluentCMS.Plugins.Media;
 using FluentCMS.Schema;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -392,19 +395,44 @@ public partial class OfflineProviderTests
         ((Guid)context.Set<Dictionary<string, object>>("cms_post").Add(new Dictionary<string, object>()).Entity["id"]).Version.ShouldBe(7);
     }
 
+    // A host renews the locks it holds inside the commits of its contexts only on a database with one writer. On these two a
+    // renewal waits only for the lock's row, so no context renews, a plugin's no more than the content and system ones.
+    [Fact]
+    public void NoContextOfAHostOnEitherProviderRenewsItsLocksAsItCommits()
+    {
+        using var postgreSql = Host(cms => cms.UsePostgreSql("Host=localhost;Database=never_opened").AddPlugin<MediaPlugin>(), null);
+        using var sqlServer = Host(cms => cms.UseSqlServer("Server=localhost;Database=never_opened").AddPlugin<MediaPlugin>(), null);
+
+        foreach (var services in new[] { postgreSql, sqlServer })
+        {
+            using var scope = services.CreateScope();
+            var renewals = services.GetRequiredService<LeaseRenewalInterceptor>();
+            DbContext[] contexts =
+            [
+                scope.ServiceProvider.GetRequiredService<CmsDbContext>(),
+                scope.ServiceProvider.GetRequiredService<SystemDbContext>(),
+                scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>(),
+            ];
+            foreach (var context in contexts)
+            {
+                (context.GetService<IDbContextOptions>().FindExtension<CoreOptionsExtension>()?.Interceptors ?? []).ShouldNotContain(renewals, context.GetType().ToString());
+            }
+        }
+    }
+
     [Fact]
     public async Task TheInformationSchemaReaderGivesThePostgreSqlStoreTypesOfTheModel()
     {
         using var services = PostgreSql(TypedSchema);
         var read = await InformationSchemaAsync("public", services,
-            ("contact", "character varying", 254, null, null),
-            ("metadata", "jsonb", null, null, null),
-            ("price", "numeric", null, 10, 3),
-            ("published_on", "timestamp with time zone", null, null, null),
-            ("state", "smallint", null, 16, 0),
-            ("id", "uuid", null, null, null));
+            ("contact", "character varying", 254, null, null, "C"),
+            ("metadata", "jsonb", null, null, null, null),
+            ("price", "numeric", null, 10, 3, null),
+            ("published_on", "timestamp with time zone", null, null, null, null),
+            ("state", "smallint", null, 16, 0, null),
+            ("id", "uuid", null, null, null, null));
 
-        read.ShouldBe(["contact:character varying(254)", "metadata:jsonb", "price:numeric(10,3)", "published_on:timestamp with time zone", "state:smallint", "id:uuid"]);
+        read.ShouldBe(["contact:character varying(254):C", "metadata:jsonb:", "price:numeric(10,3):", "published_on:timestamp with time zone:", "state:smallint:", "id:uuid:"]);
     }
 
     [Fact]
@@ -412,30 +440,32 @@ public partial class OfflineProviderTests
     {
         using var services = SqlServer(schema: TypedSchema);
         var read = await InformationSchemaAsync("dbo", services,
-            ("contact", "nvarchar", 254, null, null),
-            ("metadata", "nvarchar", -1, null, null),
-            ("price", "decimal", null, 10, 3),
-            ("published_on", "datetimeoffset", null, null, null),
-            ("state", "smallint", null, 5, 0),
-            ("id", "uniqueidentifier", null, null, null));
+            ("contact", "nvarchar", 254, null, null, "Latin1_General_100_BIN2"),
+            ("metadata", "nvarchar", -1, null, null, "SQL_Latin1_General_CP1_CI_AS"),
+            ("price", "decimal", null, 10, 3, null),
+            ("published_on", "datetimeoffset", null, null, null, null),
+            ("state", "smallint", null, 5, 0, null),
+            ("id", "uniqueidentifier", null, null, null, null));
 
-        read.ShouldBe(["contact:nvarchar(254)", "metadata:nvarchar(max)", "price:decimal(10,3)", "published_on:datetimeoffset", "state:smallint", "id:uniqueidentifier"]);
+        // The JSON column has no collation in the model and the database's on the server.
+        read.ShouldBe(["contact:nvarchar(254):Latin1_General_100_BIN2", "metadata:nvarchar(max):SQL_Latin1_General_CP1_CI_AS", "price:decimal(10,3):", "published_on:datetimeoffset:", "state:smallint:", "id:uniqueidentifier:"]);
     }
 
     // INFORMATION_SCHEMA.COLUMNS as the server gives it for these columns of cms_post, played by an attached SQLite database,
-    // and a column of another schema that the reader leaves out. Each column read is checked against the model's store type.
-    private static async Task<List<string>> InformationSchemaAsync(string schema, ServiceProvider services, params (string Column, string DataType, int? Length, int? Precision, int? Scale)[] columns)
+    // and a column of another schema that the reader leaves out. Each column read is checked against the model's store type,
+    // and against its collation where the model gives one.
+    private static async Task<List<string>> InformationSchemaAsync(string schema, ServiceProvider services, params (string Column, string DataType, int? Length, int? Precision, int? Scale, string? Collation)[] columns)
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(TestContext.Current.CancellationToken);
         await ExecuteAsync(connection, "ATTACH DATABASE ':memory:' AS INFORMATION_SCHEMA");
-        await ExecuteAsync(connection, "CREATE TABLE INFORMATION_SCHEMA.COLUMNS (TABLE_SCHEMA TEXT, TABLE_NAME TEXT, COLUMN_NAME TEXT, DATA_TYPE TEXT, IS_NULLABLE TEXT, CHARACTER_MAXIMUM_LENGTH INTEGER, NUMERIC_PRECISION INTEGER, NUMERIC_SCALE INTEGER)");
-        foreach (var (column, dataType, length, precision, scale) in columns.Append(("title", "text", null, null, null)))
+        await ExecuteAsync(connection, "CREATE TABLE INFORMATION_SCHEMA.COLUMNS (TABLE_SCHEMA TEXT, TABLE_NAME TEXT, COLUMN_NAME TEXT, DATA_TYPE TEXT, IS_NULLABLE TEXT, CHARACTER_MAXIMUM_LENGTH INTEGER, NUMERIC_PRECISION INTEGER, NUMERIC_SCALE INTEGER, COLLATION_NAME TEXT)");
+        foreach (var (column, dataType, length, precision, scale, collation) in columns.Append(("title", "text", null, null, null, null)))
         {
             await ExecuteAsync(
                 connection,
-                "INSERT INTO INFORMATION_SCHEMA.COLUMNS VALUES ($schema, 'cms_post', $column, $type, 'YES', $length, $precision, $scale)",
-                ("$schema", column == "title" ? "other" : schema), ("$column", column), ("$type", dataType), ("$length", length), ("$precision", precision), ("$scale", scale));
+                "INSERT INTO INFORMATION_SCHEMA.COLUMNS VALUES ($schema, 'cms_post', $column, $type, 'YES', $length, $precision, $scale, $collation)",
+                ("$schema", column == "title" ? "other" : schema), ("$column", column), ("$type", dataType), ("$length", length), ("$precision", precision), ("$scale", scale), ("$collation", collation));
         }
 
         var table = (await new InformationSchemaReader($"'{schema}'").ReadAsync(connection, TestContext.Current.CancellationToken)).Tables["cms_post"];
@@ -444,10 +474,15 @@ public partial class OfflineProviderTests
         var model = DesignModel(scope.ServiceProvider).FindEntityType("cms_post")!;
         foreach (var column in table.Columns)
         {
-            column.StoreType.ShouldBe(model.GetProperties().Single(property => property.GetColumnName() == column.Name).GetColumnType(), column.Name);
+            var property = model.GetProperties().Single(property => property.GetColumnName() == column.Name);
+            column.StoreType.ShouldBe(property.GetColumnType(), column.Name);
+            if (property.GetCollation() is { } collation)
+            {
+                column.Collation.ShouldBe(collation, column.Name);
+            }
         }
 
-        return [.. table.Columns.Select(column => $"{column.Name}:{column.StoreType}")];
+        return [.. table.Columns.Select(column => $"{column.Name}:{column.StoreType}:{column.Collation}")];
     }
 
     private static async Task ExecuteAsync(SqliteConnection connection, string sql, params (string Name, object? Value)[] parameters)

@@ -47,7 +47,7 @@ internal sealed class SecretSettingsReport(IServiceScopeFactory scopes, Settings
                 defaults.Add(new InsecureDefault
                 {
                     Id = Unprotected,
-                    Message = $"{plainCount} stored settings documents hold secrets that were written before secrets were protected at rest, so a reader of the database or of a backup can read them: areas {plainAreas}. Each is protected when its document is next written; save those areas once for each site and for the instance defaults, and replace secrets that a backup may have exposed. {Ring}",
+                    Message = $"{plainCount} stored settings documents hold secrets that were written before secrets were protected at rest, so a reader of the database or of a backup can read them: areas {plainAreas}. Run 'fluentcms settings reprotect' to protect them all in one pass, as the next write of each document also does, and replace secrets that a backup may have exposed. {Ring}",
                 });
             }
 

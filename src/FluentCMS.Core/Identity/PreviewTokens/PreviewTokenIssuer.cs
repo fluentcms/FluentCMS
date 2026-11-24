@@ -27,20 +27,19 @@ internal sealed class PreviewTokenIssuer(IOptionsMonitor<OpenIddictServerOptions
 
     private readonly JsonWebTokenHandler _handler = new() { SetDefaultTimesOnTokenCreation = false };
 
-    public string Create(IReadOnlyDictionary<string, object> claims, DateTimeOffset expires)
+    public string Create(IReadOnlyDictionary<string, object> claims, DateTimeOffset issued, DateTimeOffset expires)
     {
         var options = server.CurrentValue;
         var credentials = options.SigningCredentials.FirstOrDefault(credential => credential.Key is AsymmetricSecurityKey)
             ?? throw new InvalidOperationException("The authorization server has no signing key.");
-        var now = time.GetUtcNow().UtcDateTime;
         return _handler.CreateToken(new SecurityTokenDescriptor
         {
             Audience = Audience,
             Issuer = options.Issuer?.AbsoluteUri,
             TokenType = TokenType,
             Claims = claims.ToDictionary(),
-            IssuedAt = now,
-            NotBefore = now,
+            IssuedAt = issued.UtcDateTime,
+            NotBefore = issued.UtcDateTime,
             Expires = expires.UtcDateTime,
             SigningCredentials = credentials,
         });

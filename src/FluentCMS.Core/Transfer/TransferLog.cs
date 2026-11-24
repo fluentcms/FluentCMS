@@ -34,4 +34,7 @@ internal static partial class TransferLog
 
     [LoggerMessage(EventId = 9189, Level = LogLevel.Warning, Message = "Export of site {Site} reads its entries without a snapshot, which the database does not give (on SQL Server, ALLOW_SNAPSHOT_ISOLATION is off); a save during the export may be in it in part.")]
     public static partial void ExportWithoutSnapshot(ILogger logger, Guid site);
+
+    [LoggerMessage(EventId = 9190, Level = LogLevel.Warning, Message = "Export of site {Site} held its snapshot for {Timeout}, FluentCms:Transfer:ExportSnapshotTimeout, before its entries were written, as when its reader stalls; it was stopped and its output ended, so the package is not complete.")]
+    public static partial void ExportSnapshotTimedOut(ILogger logger, Guid site, TimeSpan timeout);
 }

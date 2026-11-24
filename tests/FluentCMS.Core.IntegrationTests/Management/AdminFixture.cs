@@ -61,6 +61,9 @@ public sealed class AdminFixture : IAsyncLifetime
     // A row rule the host registers, beside core's own-entries.
     public const string NewsRule = "news";
 
+    // A row rule the host registers for each content type by a rule of its own, and none on ContentItem.
+    public const string NamedRule = "by-name";
+
     public RecordingEmailSender Email { get; } = new();
 
     public FluentCmsTestHost Host { get; }
@@ -95,6 +98,8 @@ public sealed class AdminFixture : IAsyncLifetime
                 cms.Settings.Add<MailSettings>();
                 cms.Jobs.AddJob<FailingJob, FailingPayload>(FailingJob.Type);
                 cms.Authorization.AddRowRule<Page>(NewsRule, _ => page => page.Section == "news");
+                cms.Authorization.AddRowRule<Page>(NamedRule, _ => page => page.Title == "Named");
+                cms.Authorization.AddRowRule<Person>(NamedRule, _ => person => person.Name == "Named");
             });
     }
 

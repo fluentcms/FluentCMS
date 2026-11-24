@@ -16,6 +16,7 @@ internal static class SharedComponents
     public const string PublishWarning = "publish-warning";
     public const string BridgeLocale = "bridge-locale";
     public const string SettingsIfMatch = "settings-if-match";
+    public const string PreferencesIfMatch = "preferences-if-match";
 
     public static readonly string[] SingleParameters = ["status", "fallback", "fields", "populate", "depth", "richText"];
 
@@ -105,12 +106,19 @@ internal static class SharedComponents
         yield return ("preview-token", new JsonObject
         {
             ["type"] = "object",
-            ["description"] = "Send the token as Authorization: Preview <token> to GET the entry on the Delivery API with status=draft. It reads nothing else and cannot be revoked; it ends at expiresAt.",
+            ["description"] = "Send the token as Authorization: Preview <token> to GET the entry on the Delivery API with status=draft. It reads nothing else and cannot be revoked; it ends at expiresAt, expiresIn seconds after it was issued.",
             ["properties"] = new JsonObject
             {
                 ["token"] = String(),
                 ["scheme"] = String("The Authorization scheme to send the token with: Preview."),
                 ["expiresAt"] = DateTime(),
+                ["expiresIn"] = new JsonObject
+                {
+                    ["type"] = "integer",
+                    ["format"] = "int32",
+                    ["minimum"] = 60,
+                    ["description"] = "How long the token lasts from its issue, in whole seconds: expiresAt less the moment it was issued. A client whose clock differs from the server's ends it that long after its own request.",
+                },
                 ["type"] = String(),
                 ["id"] = Uuid(),
                 ["site"] = Uuid(),
@@ -128,7 +136,7 @@ internal static class SharedComponents
                     ["description"] = "The same template filled with the published row of the locale that gave the draft, without the token's query parameter; null as url is, or when that locale has no published row.",
                 },
             },
-            ["required"] = new JsonArray("token", "scheme", "expiresAt", "type", "id", "site"),
+            ["required"] = new JsonArray("token", "scheme", "expiresAt", "expiresIn", "type", "id", "site"),
         });
 
         yield return ("versions", new JsonObject
@@ -234,6 +242,7 @@ internal static class SharedComponents
         yield return ("if-match", Header("If-Match", required: true, "The version read, as its ETag, such as \"7\"; \"0\" adds a locale the entry does not have."));
         yield return ("if-match-optional", Header("If-Match", required: false, "The version read, as its ETag, such as \"7\". Without it, or with *, the current version is used."));
         yield return (SettingsIfMatch, Header("If-Match", required: true, "The version of the setting read, as its ETag, such as \"7\"; \"0\" when nothing is stored for it, as the read says."));
+        yield return (PreferencesIfMatch, Header("If-Match", required: false, "The ETag of the preferences read, a hash of their values. Without it, or with *, the write applies to whatever is stored."));
         yield return ("idempotency-key", IdempotencyKey());
     }
 
