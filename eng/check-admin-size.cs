@@ -4,9 +4,11 @@
 // assembly's own package, _content/{assembly}/, which only its code loads, such as the rich text editor's bundle; the scoped
 // styles of such a package count, since the app's stylesheet imports them. A file without its .br is compressed here. The
 // total is an upper bound: every other file counts, those of _content that a page fetches only when it needs them too (the
-// library's lazy modules, reboot.css, the dark logo). It prints the total, the files left out and the largest files, and exits
-// with 1 above the budget. A publish with the pseudo-cultures of the end-to-end checks (FluentCmsAdminPseudoCultures) fails
-// too, since no release carries them, unless --pseudo-cultures says it is measured on purpose.
+// library's lazy modules, reboot.css, the dark logo). The boot configuration's list of the satellite resources is left out of
+// dotnet.js with them, so that a translation does not count, and printed on a line of its own, since every visitor downloads
+// it. It prints the total, the files left out and the largest files, and exits with 1 above the budget. A publish with the
+// pseudo-cultures of the end-to-end checks (FluentCmsAdminPseudoCultures) fails too, since no release carries them, unless
+// --pseudo-cultures says it is measured on purpose.
 //
 //   dotnet run eng/check-admin-size.cs -- <publish folder of FluentCMS.Admin.App> <budget in bytes> [--pseudo-cultures]
 
@@ -53,7 +55,7 @@ var published = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
     .ToLookup(file => notFetched.Contains(Path.GetFullPath(file)));
 var skipped = published[true].Select(file => Path.GetRelativePath(root, file).Replace('\\', '/')).Order(StringComparer.Ordinal).ToList();
 // A translation is its satellite assemblies, and the boot configuration's list of them grows with each: the list is left out
-// with them, so that the first download does not change with the number of cultures.
+// with them and printed on its own.
 var satelliteList = SatelliteListSize(File.ReadAllText(boot));
 var files = published[false]
     .Select(file => (Name: Path.GetRelativePath(root, file).Replace('\\', '/'), Size: Compressed(file) - (Path.GetFullPath(file) == Path.GetFullPath(boot) ? satelliteList : 0)))
@@ -62,7 +64,8 @@ var files = published[false]
 
 var total = files.Sum(file => file.Size);
 Console.WriteLine($"The first download of the admin is at most {total:N0} B in Brotli, {files.Count} files; the budget is {budget:N0} B.");
-Console.WriteLine($"Left out, as lazy assemblies, satellite resources or the scripts and stylesheets of a lazy assembly's package: {skipped.Count} files, and {satelliteList:N0} B of the boot configuration that lists satellite resources.");
+Console.WriteLine($"Left out, as lazy assemblies, satellite resources or the scripts and stylesheets of a lazy assembly's package: {skipped.Count} files.");
+Console.WriteLine($"Left out of dotnet.js, the boot configuration's list of satellite resources, which every visitor downloads and each culture grows: {satelliteList:N0} B in Brotli.");
 foreach (var name in skipped)
 {
     Console.WriteLine($"  {name}");

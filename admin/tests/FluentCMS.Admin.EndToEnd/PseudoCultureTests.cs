@@ -14,7 +14,9 @@ namespace FluentCMS.Admin.EndToEnd;
 // The admin in the pseudo-cultures of a publish that has them (spec 4.17, 7): the run's default culture, ar-XB, for a browser
 // whose language the admin does not offer, right to left with every text of the shell marked, and the satellite assemblies
 // of that culture alone fetched, a lazy assembly's when it loads; and the component gallery under en-XA with no unmarked text
-// of the library, shadow roots included.
+// of the library, shadow roots included. The image ships without the pseudo-cultures, so the run on the image leaves these
+// cases out by their trait (run-with-retry.ps1 -ExcludeTrait Host=Publish) and the run on a publish has them.
+[Trait("Host", "Publish")]
 public sealed partial class PseudoCultureTests(EndToEndHost host) : BrowserTest(host)
 {
     // The texts of the page, shadow roots included, and the text attributes, as the component tests' check reads them: a text
