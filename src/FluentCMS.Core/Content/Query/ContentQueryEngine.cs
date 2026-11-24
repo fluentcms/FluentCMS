@@ -102,6 +102,24 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         });
     }
 
+    // The paths the principal may select in the query's site, locale and state, by the check that refuses the others, for a
+    // read that chooses its own selection (LocaleFallbackReader). None when it may not read the type there.
+    public async Task<IReadOnlyList<string>> SelectableAsync(string typeName, ContentQuery query, IEnumerable<string> paths, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(paths);
+
+        var inLocale = await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken);
+        if (schema.FindContentType(typeName) is not { } type || !inLocale.CanReadType(type))
+        {
+            return [];
+        }
+
+        var state = query.Status == QueryStatus.Draft ? ContentState.Draft : ContentState.Published;
+        var scope = new QueryScope(context, schema, dialect, inLocale, options, state, query.Locale ?? "", query.Site, management: shape.Applies);
+        return [.. paths.Where(path => CheckSelection(scope, type, path, 0, out _))];
+    }
+
     // Reads the entries in the trash as drafts. Whoever calls this has decided that the principal may look at the trash;
     // what a draft read is limited by still holds.
     public Task<ContentQueryResult> ExecuteTrashAsync(string typeName, ContentQuery query, bool everySystemField, PopulateBudget budget, CancellationToken cancellationToken) =>
