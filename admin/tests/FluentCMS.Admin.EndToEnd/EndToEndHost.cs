@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.EndToEnd;
 using Microsoft.Playwright;
@@ -26,6 +27,9 @@ public sealed class EndToEndHost : IAsyncLifetime
     // The front end of PreviewTests, which no server holds: the case's browser answers its requests itself.
     public const string PreviewOrigin = "https://preview.test";
 
+    // Where StaticBuildTests serves the static build, on an origin of its own.
+    public const string StaticPath = "/team/admin/";
+
     // A run left by a test process that was killed outright is swept by a later one once it has been idle this long, which no
     // run in progress is, since its host writes to its database and every run is bounded far below it.
     private static readonly TimeSpan StaleAfter = TimeSpan.FromDays(1);
@@ -48,10 +52,18 @@ public sealed class EndToEndHost : IAsyncLifetime
     private TestCertificates? _certificates;
     private IPlaywright? _playwright;
     private IBrowser? _browser;
+    private readonly CancellationTokenSource _stopping = new();
+    private readonly Lock _staticBuildGate = new();
+    private Task<string>? _staticBuild;
 
     public Uri Origin { get; private set; } = null!;
 
     public Uri Admin => new(Origin, AdminPath);
+
+    // The origin of the static build, another site than the host's, whose port is taken when the case serves the build.
+    public Uri StaticOrigin { get; private set; } = null!;
+
+    public Uri StaticAdmin => new(StaticOrigin, StaticPath);
 
     // The editor that exists before the host starts, made as an operator makes the first user of an instance.
     public Editor Editor { get; private set; } = null!;
@@ -93,6 +105,13 @@ public sealed class EndToEndHost : IAsyncLifetime
     {
         SweepStaleRuns();
         _host = HostProcess.Create(_root);
+
+        // Beside the publish of the host, where the case of the static build can run; it asks for it itself otherwise.
+        if (_host is PublishedHost && Chromium.LooksInstalled())
+        {
+            _ = StaticBuildAsync();
+        }
+
         HostMissing = await _host.PrepareAsync(Token);
         if (HostMissing is not null)
         {
@@ -103,6 +122,7 @@ public sealed class EndToEndHost : IAsyncLifetime
         _ai = new AiProviderStub(_host.ServerAddress, _host.ServerHost);
         _certificates = TestCertificates.Create(_host.CertificateDirectory);
         Origin = new Uri($"https://{IPAddress.Loopback}:{FreePort()}/");
+        StaticOrigin = new Uri($"https://localhost:{FreePort()}/");
         Configure();
 
         MigrateOutput = await CommandAsync(null, "migrate");
@@ -119,6 +139,13 @@ public sealed class EndToEndHost : IAsyncLifetime
     {
         try
         {
+            // A static build no case waited for is stopped, and its failure is no failure of the run.
+            await _stopping.CancelAsync();
+            if (_staticBuild is { } build)
+            {
+                await ((Task)build).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            }
+
             if (_browser is not null)
             {
                 await _browser.CloseAsync();
@@ -131,6 +158,7 @@ public sealed class EndToEndHost : IAsyncLifetime
             _smtp?.Dispose();
             _ai?.Dispose();
             _certificates?.Server.Dispose();
+            _stopping.Dispose();
             TryDelete(_root);
         }
     }
@@ -190,6 +218,20 @@ public sealed class EndToEndHost : IAsyncLifetime
         Assert.SkipWhen(BrowserMissing is not null, BrowserMissing ?? "");
         traces ??= Environment.GetEnvironmentVariable(AdminBrowser.TracesVariable) is { Length: > 0 } directory ? directory : null;
         return AdminBrowser.OpenAsync(this, _browser!, traces);
+    }
+
+    // The zip of the static build (StaticBuild), made once for the run, and once for the runs that FLUENTCMS_E2E_PUBLISHED
+    // keeps the host's publish for, beside it, as the retry of the CI job's failed cases does.
+    internal Task<string> StaticBuildAsync()
+    {
+        lock (_staticBuildGate)
+        {
+            return _staticBuild ??= StaticBuild.MakeAsync(
+                Environment.GetEnvironmentVariable(PublishedHost.PublishedVariable) is { Length: > 0 } kept
+                    ? Directory.CreateDirectory(Path.Combine(kept, "static-build"))
+                    : _root.CreateSubdirectory("static-build"),
+                _stopping.Token);
+        }
     }
 
     // A directory of a test's own, deleted with the host's.
@@ -278,12 +320,17 @@ public sealed class EndToEndHost : IAsyncLifetime
     // test's action; the preview origin of PreviewTests, which no server holds; a mail server of the run's own (SmtpSink),
     // which takes the invitations the users page sends and keeps none; an AI provider of the run's own (AiProviderStub),
     // the one endpoint a site may name in its AI settings; and webhooks that may deliver to private networks, so that the
-    // receiver of WebhooksTests is reached. The paths and the address Kestrel listens on are where the host finds them, and the
-    // run's own servers are reached by the name the host knows this machine by (HostProcess).
+    // receiver of WebhooksTests is reached. The admin's client is configured whole, as for an admin on another origin (spec
+    // 6.4): what the hosting package would register (AdminClientRegistration: its display name, a public client of the admin
+    // pool with no consent, the host's own addresses and the five scopes), and the addresses of the static build of
+    // StaticBuildTests, whose origin the Management API's CORS lists. The paths and the address Kestrel listens on are where the host finds them, and
+    // the run's own servers are reached by the name the host knows this machine by (HostProcess).
     private void Configure()
     {
         var certificates = _certificates!;
         var origin = Origin.GetLeftPart(UriPartial.Authority);
+        const string Client = "FluentCms__Clients__Applications__fluentcms-admin__";
+        string[] scopes = ["openid", "profile", "email", "offline_access", "management"];
         foreach (var (name, value) in new Dictionary<string, string?>
         {
             ["ASPNETCORE_ENVIRONMENT"] = "Production",
@@ -316,6 +363,12 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["FluentCms__Email__Smtp__From"] = "cms@example.com",
             ["FluentCms__Ai__AllowedEndpoints__0"] = _ai!.Endpoint,
             ["FluentCms__Webhooks__AllowPrivateNetworks"] = "true",
+            ["FluentCms__Security__Cors__Management__AllowedOrigins__0"] = StaticOrigin.GetLeftPart(UriPartial.Authority),
+            [Client + "DisplayName"] = "FluentCMS admin",
+            [Client + "RedirectUris__0"] = new Uri(Admin, "authentication/login-callback").AbsoluteUri,
+            [Client + "RedirectUris__1"] = new Uri(StaticAdmin, "authentication/login-callback").AbsoluteUri,
+            [Client + "PostLogoutRedirectUris__0"] = Admin.AbsoluteUri,
+            [Client + "PostLogoutRedirectUris__1"] = StaticAdmin.AbsoluteUri,
             ["Kestrel__Endpoints__Https__Url"] = _host.ListenUrl(Origin),
             ["Kestrel__Endpoints__Https__Certificate__Path"] = _host.CertificatePath(certificates.ServerPath),
             ["Kestrel__Endpoints__Https__Certificate__Password"] = certificates.Password,
@@ -325,7 +378,15 @@ public sealed class EndToEndHost : IAsyncLifetime
         {
             _environment[name] = value;
         }
+
+        for (var index = 0; index < scopes.Length; index++)
+        {
+            _environment[$"{Client}Scopes__{index}"] = scopes[index];
+        }
     }
+
+    // The certificate of the host with its key, for a server of a case on another origin, which the browser accepts by the same key.
+    internal X509Certificate2 LoadServerCertificate() => X509CertificateLoader.LoadPkcs12FromFile(_certificates!.ServerPath, _certificates.Password);
 
     // secretOutput keeps what the command prints, such as a key, out of the failure message.
     private async Task<string> CommandAsync(string? input, params string[] command) => await CommandAsync(input, secretOutput: false, command);

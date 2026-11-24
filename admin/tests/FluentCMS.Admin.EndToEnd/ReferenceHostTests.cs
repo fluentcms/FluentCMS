@@ -46,8 +46,9 @@ public sealed class ReferenceHostTests(EndToEndHost running)
         ((string?)configuration["clientId"]).ShouldBe("fluentcms-admin");
     }
 
-    // The client the hosting package registers for the public origin: authorize sends a request with PKCE to the hosted login,
-    // which answers over https.
+    // The admin's client of the run, configured as the hosting package registers it for the public origin, with the addresses
+    // of the static build beside them (EndToEndHost): authorize sends a request with PKCE to the hosted login, which answers
+    // over https.
     [Fact]
     public async Task AuthorizeSendsTheAdminsSignInToTheHostedLoginOverHttps()
     {
