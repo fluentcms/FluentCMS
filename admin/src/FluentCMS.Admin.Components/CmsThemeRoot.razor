@@ -1,13 +1,22 @@
 @namespace FluentCMS.Admin.Components
 @inject IThemeService ThemeService
 
-@* The root of the admin's markup: it carries the theme tokens and the providers that dialogs, menus and toasts render into. *@
+@* The root of the admin's markup: it carries the theme tokens, the providers that dialogs and menus render into, and the
+   toasts. *@
 <div class="cms-root" data-cms-theme="@ThemeAttribute">
     @ChildContent
     <FluentProviders />
+    @Toasts
 </div>
 
 @code {
+    // CmsToasts is internal, which markup cannot name.
+    private static readonly RenderFragment Toasts = builder =>
+    {
+        builder.OpenComponent<CmsToasts>(0);
+        builder.CloseComponent();
+    };
+
     private CmsThemeMode? _appliedMode;
 
     // System follows prefers-color-scheme; Light or Dark is the user's choice, which the caller keeps.

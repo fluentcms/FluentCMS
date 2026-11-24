@@ -387,7 +387,7 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
     }
 
     private static ILocator ToolbarButton(AdminTab tab, string resourceKey) =>
-        tab.Page.Locator($"[role=toolbar] button[aria-label='{Repository.RichTextText(resourceKey)}']");
+        tab.Page.Locator($"[role=toolbar] button[aria-label^='{Repository.RichTextText(resourceKey)},']");
 
     private static Task<IResponse> SaveAsync(AdminTab tab, string method, string url) => tab.AnswerAsync(() => tab.Button("Content.Form.Save").ClickAsync(), method, url);
 }

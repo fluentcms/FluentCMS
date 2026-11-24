@@ -442,19 +442,35 @@ public sealed class ShellTests : AdminTestContext
     {
         var app = Load();
         app.Find(".cms-root").HasAttribute("data-cms-theme").ShouldBeFalse();
-        Spoken(MenuItem(app, "System theme")).ShouldBe("System theme, chosen");
+        Themes(app).ShouldBe([("System theme", "true"), ("Light theme", "false"), ("Dark theme", "false")]);
 
         Choose(app, "Dark theme");
 
         app.WaitForAssertion(() => app.Find(".cms-root").GetAttribute("data-cms-theme").ShouldBe("dark"));
         JSInterop.VerifyInvoke("localStorage.setItem").Arguments.ShouldBe([ThemeStorageInterop.Key, "dark"]);
-        Spoken(MenuItem(app, "Dark theme")).ShouldBe("Dark theme, chosen");
-        Spoken(MenuItem(app, "System theme")).ShouldBe("System theme");
+        Themes(app).ShouldBe([("System theme", "false"), ("Light theme", "false"), ("Dark theme", "true")]);
 
         Choose(app, "System theme");
 
         app.WaitForAssertion(() => app.Find(".cms-root").HasAttribute("data-cms-theme").ShouldBeFalse());
         JSInterop.VerifyInvoke("localStorage.removeItem").Arguments.ShouldBe([ThemeStorageInterop.Key]);
+    }
+
+    // The library raises the change of the item before as it unchecks it, and of the chosen one as its state is drawn; neither
+    // takes the choice back (#3178).
+    [Fact]
+    public void AThemeChoiceDoesNotFlipBackAsTheOtherItemsAreUnchecked()
+    {
+        var app = Load();
+
+        Choose(app, "Dark theme");
+        app.WaitForAssertion(() => app.Find(".cms-root").GetAttribute("data-cms-theme").ShouldBe("dark"));
+        Change(MenuItem(app, "System theme"), isChecked: false);
+        Change(MenuItem(app, "Dark theme"), isChecked: true);
+
+        app.Find(".cms-root").GetAttribute("data-cms-theme").ShouldBe("dark");
+        Themes(app).ShouldBe([("System theme", "false"), ("Light theme", "false"), ("Dark theme", "true")]);
+        JSInterop.Invocations.Count(call => call.Identifier == "localStorage.setItem").ShouldBe(1);
     }
 
     [Fact]
@@ -478,7 +494,7 @@ public sealed class ShellTests : AdminTestContext
         var app = Load();
 
         app.Find(".cms-root").HasAttribute("data-cms-theme").ShouldBeFalse();
-        Spoken(MenuItem(app, "System theme")).ShouldBe("System theme, chosen");
+        Themes(app)[0].ShouldBe(("System theme", "true"));
     }
 
     // As in a private window that refuses storage: the choice applies to the page and is not kept.
@@ -562,18 +578,19 @@ public sealed class ShellTests : AdminTestContext
     private static IElement MenuItem(IRenderedComponent<AdminApp> app, string text) =>
         app.FindAll("fluent-menu-item").Single(item => item.TextContent.Trim().StartsWith(text, StringComparison.Ordinal));
 
-    // What assistive technology reads of an item: its text without what is hidden from it.
-    private static string Spoken(IElement item) =>
-        string.Concat(item.GetDescendantsAndSelf().OfType<IText>()
-            .Where(text => text.ParentElement?.Closest("[aria-hidden=true]") is null)
-            .Select(text => text.Data)).Trim();
+    // The theme items as assistive technology has them: radio items with their state.
+    private static (string, string?)[] Themes(IRenderedComponent<AdminApp> app) =>
+        [.. app.FindAll("fluent-menu-item[role=menuitemradio]").Select(item => (item.TextContent.Trim(), item.GetAttribute("aria-checked")))];
 
-    // The library raises the item's click from its menu's change event.
+    // The library raises the item's click from its menu's change event, which carries a radio item's new state.
     private static void Choose(IRenderedComponent<AdminApp> app, string text)
     {
         var item = MenuItem(app, text);
-        item.TriggerEvent("onmenuitemchange", new MenuItemEventArgs { Id = item.Id });
+        Change(item, item.GetAttribute("role") == "menuitemradio" ? true : null);
     }
+
+    private static void Change(IElement item, bool? isChecked) =>
+        item.TriggerEvent("onmenuitemchange", new MenuItemEventArgs { Id = item.Id, Checked = isChecked });
 
     private static string[] Links(IElement sidebar) =>
         [.. sidebar.QuerySelectorAll("a.cms-nav-link").Select(link => link.GetAttribute("href")!)];

@@ -269,10 +269,6 @@
   <data name="Shell.UserMenu.ThemeDark" xml:space="preserve">
     <value>Dark theme</value>
   </data>
-  <data name="Shell.UserMenu.CurrentTheme" xml:space="preserve">
-    <value>{0}, chosen</value>
-    <comment>What assistive technology reads for the theme in use, {0} being its name; the name alone is shown.</comment>
-  </data>
   <data name="Shell.UserMenu.SignOut" xml:space="preserve">
     <value>Sign out</value>
   </data>

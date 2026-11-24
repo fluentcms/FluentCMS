@@ -141,7 +141,7 @@ public sealed class ContentListBulkTests : AdminTestContext
         Choose(MenuItem(app, "Move to trash"));
 
         var confirmation = Dialog(app, "Move to trash");
-        confirmation.FindAll("fluent-button").Select(button => button.TextContent.Trim()).ShouldBe(["Cancel", "Move to trash"]);
+        confirmation.FindAll("fluent-button").Select(button => button.TextContent.Trim()).Where(text => text.Length > 0).ShouldBe(["Cancel", "Move to trash"]);
 
         // The focus follows the library's own on a timer and renders nothing, so its call is waited for.
         SpinWait.SpinUntil(() => Focuses() > focuses, TimeSpan.FromSeconds(5)).ShouldBeTrue();

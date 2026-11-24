@@ -224,6 +224,10 @@
   <data name="RichText.Toolbar.Shortcut" xml:space="preserve">
     <value>{0} ({1})</value>
   </data>
+  <data name="RichText.Toolbar.Lettered" xml:space="preserve">
+    <value>{0}, {1}</value>
+    <comment>The name of a button whose glyph is letters, {0} being its name and {1} the letters, which a speech user may say.</comment>
+  </data>
   <data name="RichText.Toolbar.Strike" xml:space="preserve">
     <value>Strikethrough</value>
   </data>

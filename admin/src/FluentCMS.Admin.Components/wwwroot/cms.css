@@ -155,6 +155,32 @@
     min-block-size: var(--cms-target-size);
 }
 
+/* The label of the library's checkbox and switch is part of their target, which is a target high (WCAG 2.5.8). */
+.cms-root fluent-field label {
+    min-block-size: var(--cms-target-size);
+}
+
+/* At 320 pixels nothing but a table scrolls sideways (WCAG 1.4.10): a long code, address or name breaks, and a fieldset may
+   be narrower than its widest line. */
+.cms-root code,
+.cms-breadcrumb-item {
+    overflow-wrap: anywhere;
+}
+
+.cms-root fieldset {
+    min-inline-size: 0;
+}
+
+/* A long label, such as an e-mail address, ends in an ellipsis; the whole text stays the button's name. */
+.cms-menu-label {
+    display: inline-block;
+    max-inline-size: min(16rem, 60vw);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
 .cms-field {
     display: flex;
     flex-direction: column;
@@ -294,6 +320,36 @@ fluent-field .cms-field-message {
 .cms-dialog-title {
     font-size: var(--cms-font-size-l);
     font-weight: 600;
+}
+
+.cms-toasts {
+    position: fixed;
+    inset-block-end: var(--cms-space-m);
+    inset-inline-end: var(--cms-space-m);
+    z-index: 2;
+    display: grid;
+    gap: var(--cms-space-s);
+    max-inline-size: min(24rem, calc(100% - 2 * var(--cms-space-m)));
+}
+
+/* The intent is in the icon and the start edge too, not in a color alone. */
+.cms-toast {
+    display: flex;
+    align-items: center;
+    gap: var(--cms-space-s);
+    padding: var(--cms-space-s) var(--cms-space-m);
+    border: 1px solid var(--cms-color-border);
+    border-inline-start: 4px solid var(--cms-color-accent);
+    border-radius: var(--cms-radius-m);
+    background-color: var(--cms-color-bg);
+}
+
+.cms-toast[data-intent="error"] {
+    border-inline-start-color: var(--cms-color-error);
+}
+
+.cms-toast-message {
+    flex: 1;
 }
 
 .cms-secret {

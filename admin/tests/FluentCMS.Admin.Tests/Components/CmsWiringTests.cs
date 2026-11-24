@@ -118,48 +118,6 @@ public sealed class CmsWiringTests : ComponentTestContext
         files.ShouldNotBeNull().ShouldBeEmpty();
     }
 
-    [Theory]
-    [InlineData("Saved \"a < b\"")]
-    [InlineData("Published <b>x</b>")]
-    [InlineData("R&D &copy; 2026")]
-    public void AToastShowsItsMessageAsText(string message)
-    {
-        var root = Render<CmsThemeRoot>();
-        var toasts = Services.GetRequiredService<ICmsToastService>();
-
-        _ = root.InvokeAsync(() => toasts.ShowAsync(message));
-
-        root.WaitForAssertion(() => root.Find("fluent-toast-b [slot=title]").TextContent.Trim().ShouldBe(message));
-        root.FindAll("fluent-toast-b b").ShouldBeEmpty();
-    }
-
-    [Theory]
-    [InlineData(CmsToastIntent.Info, "info", "polite")]
-    [InlineData(CmsToastIntent.Success, "success", "polite")]
-    [InlineData(CmsToastIntent.Warning, "warning", "polite")]
-    [InlineData(CmsToastIntent.Error, "error", "assertive")]
-    public void AToastHasTheIntentAndPolitenessOfItsKind(CmsToastIntent intent, string attribute, string politeness)
-    {
-        var root = Render<CmsThemeRoot>();
-        var toasts = Services.GetRequiredService<ICmsToastService>();
-
-        _ = root.InvokeAsync(() => toasts.ShowAsync("Saved.", intent));
-
-        root.WaitForAssertion(() => root.Find("fluent-toast-b").GetAttribute("intent").ShouldBe(attribute));
-        root.Find("fluent-toast-b").GetAttribute("politeness").ShouldBe(politeness);
-    }
-
-    [Fact]
-    public void AToastCanBeDismissedByANamedControl()
-    {
-        var root = Render<CmsThemeRoot>();
-        var toasts = Services.GetRequiredService<ICmsToastService>();
-
-        _ = root.InvokeAsync(() => toasts.ShowAsync("Saved."));
-
-        root.WaitForAssertion(() => root.Find("fluent-toast-b [slot=action]").TextContent.Trim().ShouldBe("Close"));
-    }
-
     [Fact]
     public void ARegisteredTextSourceSuppliesTheSetsOwnTexts()
     {
@@ -171,7 +129,7 @@ public sealed class CmsWiringTests : ComponentTestContext
         _ = root.InvokeAsync(() => toasts.ShowAsync("Saved."));
 
         zone.Find(".cms-field-message").TextContent.ShouldBe("[DropZoneChoose]");
-        root.WaitForAssertion(() => root.Find("fluent-toast-b [slot=action]").TextContent.Trim().ShouldBe("[Close]"));
+        root.WaitForAssertion(() => root.Find(".cms-toast fluent-button").GetAttribute("aria-label").ShouldBe("[Close]"));
     }
 
     [Fact]

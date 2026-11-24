@@ -32,15 +32,18 @@
                 @foreach (var button in Buttons.Where(Shows))
                 {
                     var name = L[button.Resource].Value;
+                    var glyph = button.Glyph ?? L[button.Resource + ".Glyph"].Value;
+                    @* A glyph of letters, such as H1, is in the name too, so that a speech user who says what is shown reaches the
+                       button (WCAG 2.5.3); a symbol is drawn as an icon is. *@
                     <button type="button"
                             class="rich-text-button"
                             data-command="@button.Command"
-                            aria-label="@name"
+                            aria-label="@(button.Glyph is null ? L["RichText.Toolbar.Lettered", name, glyph].Value : name)"
                             title="@L["RichText.Toolbar.Shortcut", name, ShortcutOf(button)]"
                             aria-keyshortcuts="@KeysOf(button)"
                             aria-pressed="@(button.Toggle ? (active.Contains(button.Command) ? "true" : "false") : null)"
                             @onclick="@(() => ToolbarAsync(button.Command))">
-                        <span class="rich-text-glyph" aria-hidden="true" data-glyph="@(button.Glyph ?? L[button.Resource + ".Glyph"])"></span>
+                        <span class="rich-text-glyph" aria-hidden="true" data-glyph="@glyph"></span>
                     </button>
                 }
             </div>

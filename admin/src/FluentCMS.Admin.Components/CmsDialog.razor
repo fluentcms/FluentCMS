@@ -7,7 +7,7 @@
               Modal="false"
               Class="cms-dialog"
               @attributes="@DialogAttributes">
-    <FluentDialogBody TitleTemplate="@TitleTemplate" ActionTemplate="@Actions">
+    <FluentDialogBody TitleTemplate="@TitleTemplate" TitleActionTemplate="@CloseTemplate" ActionTemplate="@Actions">
         @ChildContent
     </FluentDialogBody>
 </FluentDialog>
