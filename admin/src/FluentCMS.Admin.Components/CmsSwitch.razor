@@ -1,12 +1,14 @@
 @namespace FluentCMS.Admin.Components
 @inherits CmsInputBase<bool>
 
-@* The library's switch has no read-only state of its own that stops a click, so a read-only one is disabled too. *@
+@* The library's switch has no read-only state of its own that stops a click, so a read-only one is disabled too. Its disabled
+   state is in ElementInternals only, which axe-core does not read for the label, so the attribute says it too (spec 4.18). *@
 <FluentSwitch @ref="control"
               Id="@InputId"
               Label="@Label"
               Required="@Required"
               Disabled="@(Disabled || ReadOnly)"
+              aria-disabled="@(Disabled || ReadOnly ? "true" : null)"
               ReadOnly="@ReadOnly"
               Value="@Value"
               ValueChanged="@SetValueAsync"
