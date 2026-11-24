@@ -24,6 +24,11 @@ public sealed class AdminBrowser
     // The fields of the sign-in's forms and of the token endpoint's answer whose values are secrets.
     private static readonly string[] SecretFields = ["code", "code_verifier", "refresh_token", "access_token", "id_token", "token", "__RequestVerificationToken"];
 
+    // How many of the requests the browser gave up are kept, the last ones.
+    private const int GivenUpKept = 20;
+
+    internal const string CancelledError = "net::ERR_ABORTED";
+
     private readonly EndToEndHost _host;
     private readonly IBrowserContext _context;
     private readonly string? _traces;
@@ -32,6 +37,8 @@ public sealed class AdminBrowser
     private readonly ConcurrentQueue<string> _violations = new();
     private readonly ConcurrentDictionary<string, bool> _secrets = new(StringComparer.Ordinal);
     private readonly ConcurrentBag<Task> _reads = [];
+    private readonly ConcurrentQueue<string> _givenUp = new();
+    private int _cancelled;
     private bool _tracing;
 
     private AdminBrowser(EndToEndHost host, IBrowserContext context, string? traces)
@@ -43,6 +50,7 @@ public sealed class AdminBrowser
         _slow = SlowMode.For(context);
         context.Request += (_, request) => OnRequest(request);
         context.Response += (_, response) => OnResponse(response);
+        context.RequestFailed += (_, request) => OnRequestFailed(request);
         context.Console += (_, message) =>
         {
             if (message.Text.Contains("Content Security Policy", StringComparison.OrdinalIgnoreCase))
@@ -54,6 +62,13 @@ public sealed class AdminBrowser
 
     // The console messages of a Content-Security-Policy violation, in any tab.
     public IReadOnlyCollection<string> PolicyViolations => _violations;
+
+    // The last requests of any tab the browser gave up, each with the time in UTC, as the host's log has it, the browser's
+    // error, the method and the address with its query cut, as the host's log cuts it. Not masked: the output masks them.
+    // A request a page cancels as it navigates away (net::ERR_ABORTED) is only counted, since most cases have some.
+    public IReadOnlyCollection<string> RequestsGivenUp => _givenUp;
+
+    internal int RequestsCancelled => Volatile.Read(ref _cancelled);
 
     internal static async Task<AdminBrowser> OpenAsync(EndToEndHost host, IBrowser browser, string? traces)
     {
@@ -231,6 +246,23 @@ public sealed class AdminBrowser
         }
 
         _reads.Add(ReadAsync(response, token ? tab : null, IsSecretAnswer(response)));
+    }
+
+    private void OnRequestFailed(IRequest request)
+    {
+        var error = request.Failure ?? "no error";
+        if (error == CancelledError)
+        {
+            Interlocked.Increment(ref _cancelled);
+            return;
+        }
+
+        var address = request.Url.IndexOf('?', StringComparison.Ordinal) is var query and >= 0 ? request.Url[..query] + "?[query]" : request.Url;
+        _givenUp.Enqueue($"{DateTime.UtcNow.ToString("HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture)} {error} {request.Method} {address}");
+        while (_givenUp.Count > GivenUpKept)
+        {
+            _givenUp.TryDequeue(out _);
+        }
     }
 
     // A Management call that may answer a secret shown once, as making or rotating an API key: a POST whose answer is JSON.
