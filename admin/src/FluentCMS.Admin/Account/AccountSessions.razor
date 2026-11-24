@@ -57,7 +57,24 @@
     private bool focusMessage;
     private ElementReference messageElement;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    // The times follow formats saved on this page.
+    protected override Task OnInitializedAsync()
+    {
+        Formats.Changed += OnFormatsChanged;
+        return LoadAsync();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Formats.Changed -= OnFormatsChanged;
+        }
+
+        base.Dispose(disposing);
+    }
+
+    private void OnFormatsChanged() => _ = InvokeAsync(StateHasChanged);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

@@ -7,9 +7,9 @@
 @page "/mcp/clients"
 @attribute [AdminPage("/mcp/clients", Permission = "mcp.manage", InstanceOnly = true)]
 @attribute [AdminMenuItem("Mcp.Clients.Menu", Section = AdminSection.Administration, Order = 80)]
-@using System.Globalization
 @implements IDisposable
 @inject IManagementApi Api
+@inject IAdminFormats Formats
 @inject IAdminContext Admin
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<McpResources> L
@@ -282,7 +282,7 @@ else
     private string RoleText(McpClient client) =>
         client.RoleName ?? (client.RoleId is null ? L["Mcp.Clients.NoRole"] : L["Mcp.Clients.RoleGone"]);
 
-    private static string Time(DateTimeOffset value) => value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+    private string Time(DateTimeOffset value) => Formats.FormatDateTime(value);
 
     // A change starts from the client's role when it is offered, and is off until another is chosen, since the server changes
     // nothing for the same role. A role of one site is not offered, so the select then starts empty.

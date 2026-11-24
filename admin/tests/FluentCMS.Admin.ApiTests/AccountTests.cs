@@ -106,6 +106,29 @@ public sealed class AccountTests
         AccountProblems.IsSignedOut(ended).ShouldBeTrue();
     }
 
+    // The account page sends only the members that changed, so that two tabs that each change one keep both (#3450), and a
+    // value the server's platform does not know is refused on its member.
+    [Fact]
+    public async Task AChangeOfOnePreferenceKeepsTheOneAnotherTabChanged()
+    {
+        await using var admin = new AdminHost();
+        var editor = await admin.Host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        using var first = await admin.SignInAsync(editor);
+        using var second = await admin.SignInAsync(editor);
+
+        await first.Client.ChangeMyPreferencesAsync(new Dictionary<string, string?> { ["timeZone"] = "Asia/Tokyo" }, Token);
+        var answer = await second.Client.ChangeMyPreferencesAsync(new Dictionary<string, string?> { ["dateFormat"] = "de-DE", ["numberFormat"] = "fr-FR" }, Token);
+
+        answer.ShouldBe(new MyPreferences { TimeZone = "Asia/Tokyo", DateFormat = "de-DE", NumberFormat = "fr-FR" });
+        (await first.Client.ChangeMyPreferencesAsync(new Dictionary<string, string?> { ["timeZone"] = null }, Token))
+            .ShouldBe(new MyPreferences { DateFormat = "de-DE", NumberFormat = "fr-FR" });
+
+        var refused = await Should.ThrowAsync<ApiProblemException>(() =>
+            first.Client.ChangeMyPreferencesAsync(new Dictionary<string, string?> { ["timeZone"] = "Mars/Olympus", ["numberFormat"] = "en-US" }, Token));
+        refused.Problem.Errors.Select(error => error.Path).ShouldBe(["timeZone"]);
+        (await second.Client.GetMyPreferencesAsync(Token)).NumberFormat.ShouldBe("fr-FR");
+    }
+
     // RFC 6238 with the defaults of an authenticator app: SHA-1, six digits, 30 seconds.
     private static string Totp(string key, DateTimeOffset at)
     {

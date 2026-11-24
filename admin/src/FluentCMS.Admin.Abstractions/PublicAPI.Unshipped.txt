@@ -601,6 +601,12 @@ FluentCMS.Admin.IAdminContext.ContentLocale.get -> string?
 FluentCMS.Admin.IAdminContext.ReadSitesAsync(System.Guid? gone = null) -> System.Threading.Tasks.Task!
 FluentCMS.Admin.IAdminContext.Site.get -> FluentCMS.Admin.Api.MySiteInfo?
 FluentCMS.Admin.IAdminContext.User.get -> FluentCMS.Admin.Api.MeResponse?
+FluentCMS.Admin.IAdminFormats
+FluentCMS.Admin.IAdminFormats.FormatDate(System.DateTimeOffset value) -> string!
+FluentCMS.Admin.IAdminFormats.FormatDateTime(System.DateTimeOffset value) -> string!
+FluentCMS.Admin.IAdminFormats.FormatNumber(decimal value, int? decimals = null) -> string!
+FluentCMS.Admin.IAdminFormats.FormatTime(System.DateTimeOffset value) -> string!
+FluentCMS.Admin.IAdminFormats.TimeZoneId.get -> string!
 FluentCMS.Admin.IAdminOverlays
 FluentCMS.Admin.IAdminSchema
 FluentCMS.Admin.IAdminSchema.GetSchemaAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Admin.Api.SchemaDescription!>!

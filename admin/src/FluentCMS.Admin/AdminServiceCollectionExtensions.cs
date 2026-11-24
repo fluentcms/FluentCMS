@@ -14,6 +14,7 @@ internal static class AdminServiceCollectionExtensions
         services.AddTransient<IStringLocalizer<AdminResources>, AdminTextLocalizer>();
         services.AddSingleton(culture);
         services.AddSingleton(formats);
+        services.AddSingleton<IAdminFormats>(provider => provider.GetRequiredService<FormatService>());
         return services;
     }
 

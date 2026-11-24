@@ -493,9 +493,6 @@
   <data name="Account.Password.TextElsewhere" xml:space="preserve">
     <value>The password is changed on the sign-in server's page, which opens in this tab. It does not bring you back here: open the admin again afterwards.</value>
   </data>
-  <data name="Account.Preferences.ThemeHeading" xml:space="preserve">
-    <value>Theme</value>
-  </data>
   <data name="Account.Password.Heading" xml:space="preserve">
     <value>Password</value>
   </data>
@@ -506,7 +503,7 @@
     <value>Change your password</value>
   </data>
   <data name="Account.Preferences.Heading" xml:space="preserve">
-    <value>Language and theme</value>
+    <value>Preferences</value>
   </data>
   <data name="Account.Preferences.Theme" xml:space="preserve">
     <value>Theme</value>
@@ -518,14 +515,44 @@
     <value>English</value>
     <comment>The name of the culture en, in this culture.</comment>
   </data>
-  <data name="Account.Preferences.LanguageSaved" xml:space="preserve">
-    <value>The language is saved.</value>
+  <data name="Account.Preferences.TimeZone" xml:space="preserve">
+    <value>Time zone</value>
   </data>
-  <data name="Account.Preferences.LanguageNotSaved" xml:space="preserve">
-    <value>The language could not be saved. Try again.</value>
+  <data name="Account.Preferences.DateFormat" xml:space="preserve">
+    <value>Format of dates and times</value>
   </data>
-  <data name="Account.Preferences.LanguageFailed" xml:space="preserve">
-    <value>Your language could not be read.</value>
+  <data name="Account.Preferences.NumberFormat" xml:space="preserve">
+    <value>Format of numbers</value>
+  </data>
+  <data name="Account.Preferences.AsTheBrowser" xml:space="preserve">
+    <value>As the browser</value>
+  </data>
+  <data name="Account.Preferences.TimeZoneExample" xml:space="preserve">
+    <value>It is now {0} in this time zone.</value>
+  </data>
+  <data name="Account.Preferences.DateFormatExample" xml:space="preserve">
+    <value>Today shows as {0}, and this time as {1}.</value>
+  </data>
+  <data name="Account.Preferences.NumberFormatExample" xml:space="preserve">
+    <value>A number shows as {0}.</value>
+  </data>
+  <data name="Account.Preferences.Save" xml:space="preserve">
+    <value>Save preferences</value>
+  </data>
+  <data name="Account.Preferences.Saved" xml:space="preserve">
+    <value>The preferences are saved.</value>
+  </data>
+  <data name="Account.Preferences.NotSaved" xml:space="preserve">
+    <value>The preferences could not be saved. Try again.</value>
+  </data>
+  <data name="Account.Preferences.Refused" xml:space="preserve">
+    <value>The server does not know this value. Choose another.</value>
+  </data>
+  <data name="Account.Preferences.RefusedSome" xml:space="preserve">
+    <value>The preferences are not saved: the server does not know a value.</value>
+  </data>
+  <data name="Account.Preferences.Failed" xml:space="preserve">
+    <value>Your preferences could not be read.</value>
   </data>
   <data name="Content.List.NotFoundHeading" xml:space="preserve">
     <value>Content type not found</value>

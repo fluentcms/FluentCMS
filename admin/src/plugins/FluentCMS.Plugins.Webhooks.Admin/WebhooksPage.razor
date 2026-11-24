@@ -5,10 +5,10 @@
 @page "/webhooks"
 @attribute [AdminPage("/webhooks", Permission = "webhooks.manage")]
 @attribute [AdminMenuItem("Webhooks.Menu", Section = AdminSection.Settings, Order = 30)]
-@using System.Globalization
 @using FluentCMS.Plugins.Webhooks.Admin.Api
 @implements IDisposable
 @inject IManagementApi Api
+@inject IAdminFormats Formats
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<WebhooksResources> L
 
@@ -137,7 +137,7 @@ else
         closing.Dispose();
     }
 
-    private static string Time(DateTimeOffset value) => value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+    private string Time(DateTimeOffset value) => Formats.FormatDateTime(value);
 
     private async Task ReadAsync()
     {
