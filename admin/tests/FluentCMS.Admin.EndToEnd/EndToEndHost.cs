@@ -12,11 +12,11 @@ using Xunit;
 
 namespace FluentCMS.Admin.EndToEnd;
 
-// The reference host as the image runs it, once for the run: published with no build, as the Dockerfile publishes it, and
-// run as "dotnet FluentCMS.Host.dll" in a process of its own, in Production, on SQLite in a temporary directory with the
-// Blog sample, the type of landing.schema.json beside it, and the admin at /admin. It is migrated and its editor made with
-// the host's own commands before it starts, and it listens on https on a free port of the loopback address with a
-// certificate the run makes. Everything is deleted at the end, and the process tree is killed whatever ends the run.
+// The reference host as the image runs it, once for the run: a publish of it run with dotnet, or a container of the image
+// FLUENTCMS_E2E_IMAGE names (HostProcess), in Production, on SQLite with the Blog sample, the type of landing.schema.json,
+// and the admin at /admin. It is migrated and its editor made with the host's own commands before it starts, and it
+// listens on https on a free port of the loopback address with a certificate the run makes. Everything is deleted at the
+// end, and the host is stopped whatever ends the run.
 public sealed class EndToEndHost : IAsyncLifetime
 {
     public const string AdminPath = "/admin/";
@@ -25,11 +25,6 @@ public sealed class EndToEndHost : IAsyncLifetime
 
     // The front end of PreviewTests, which no server holds: the case's browser answers its requests itself.
     public const string PreviewOrigin = "https://preview.test";
-
-    // Under the load of the Windows full run, beside every other test app, the publish has taken from 6 to more than 10
-    // minutes. It is bounded below the job's --timeout of 25 minutes, which counts from the start of this test app, with the
-    // few minutes the host's start and the tests take on Windows, where the browser tests are skipped.
-    private static readonly TimeSpan PublishTimeout = TimeSpan.FromMinutes(20);
 
     // A run left by a test process that was killed outright is swept by a later one once it has been idle this long, which no
     // run in progress is, since its host writes to its database and every run is bounded far below it.
@@ -47,9 +42,9 @@ public sealed class EndToEndHost : IAsyncLifetime
     private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory(RootPrefix);
     private readonly Dictionary<string, string?> _environment = [];
     private readonly ConcurrentDictionary<Type, Lazy<Task<Editor>>> _classEditors = new();
-    private readonly SmtpSink _smtp = new();
-    private readonly AiProviderStub _ai = new();
-    private ChildProcess? _host;
+    private HostProcess? _host;
+    private SmtpSink? _smtp;
+    private AiProviderStub? _ai;
     private TestCertificates? _certificates;
     private IPlaywright? _playwright;
     private IBrowser? _browser;
@@ -76,31 +71,34 @@ public sealed class EndToEndHost : IAsyncLifetime
     public Editor Reader { get; private set; } = null!;
 
     // The AI provider the sites of the run may name, which the host allows as an endpoint.
-    internal AiProviderStub Ai => _ai;
+    internal AiProviderStub Ai => _ai!;
+
+    // The address the run's own servers listen on, and the name the host reaches it by.
+    internal IPAddress ServerAddress => _host!.ServerAddress;
+
+    internal string ServerHost => _host!.ServerHost;
 
     // Why the browser tests are skipped: Chromium is not installed for this version of Playwright.
     public string? BrowserMissing { get; private set; }
 
-    // FLUENTCMS_E2E_PUBLISHED names a folder the publish is kept in and taken from by a later run, as the retry of the CI job's
-    // failed cases does; without it the publish is the run's own and goes with it.
-    public const string PublishedVariable = "FLUENTCMS_E2E_PUBLISHED";
-
-    private const string PublishedMark = "published.ok";
-
-    private string PublishDirectory => Environment.GetEnvironmentVariable(PublishedVariable) is { Length: > 0 } kept ? kept : Path.Combine(_root.FullName, "host");
-
-    private string DataDirectory => Path.Combine(_root.FullName, "data");
-
-    private string HostAssembly => Path.Combine(PublishDirectory, "FluentCMS.Host.dll");
+    // Why every case is skipped: the host cannot run here, as when the image is asked for and Docker does not answer.
+    public string? HostMissing { get; private set; }
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     public async ValueTask InitializeAsync()
     {
         SweepStaleRuns();
-        Directory.CreateDirectory(DataDirectory);
-        await PublishAsync();
-        _certificates = TestCertificates.Create(DataDirectory);
+        _host = HostProcess.Create(_root);
+        HostMissing = await _host.PrepareAsync(Token);
+        if (HostMissing is not null)
+        {
+            return;
+        }
+
+        _smtp = new SmtpSink(_host.ServerAddress);
+        _ai = new AiProviderStub(_host.ServerAddress, _host.ServerHost);
+        _certificates = TestCertificates.Create(_host.CertificateDirectory);
         Origin = new Uri($"https://{IPAddress.Loopback}:{FreePort()}/");
         Configure();
 
@@ -127,8 +125,8 @@ public sealed class EndToEndHost : IAsyncLifetime
         {
             _playwright?.Dispose();
             _host?.Dispose();
-            _smtp.Dispose();
-            _ai.Dispose();
+            _smtp?.Dispose();
+            _ai?.Dispose();
             _certificates?.Server.Dispose();
             TryDelete(_root);
         }
@@ -173,6 +171,13 @@ public sealed class EndToEndHost : IAsyncLifetime
         {
             return DateTime.UtcNow;
         }
+    }
+
+    // The host for a test class, which skips its cases, with the reason, when the host cannot run here.
+    public EndToEndHost Running()
+    {
+        Assert.SkipWhen(HostMissing is not null, HostMissing ?? "");
+        return this;
     }
 
     // A browser context of its own for a test; the test is skipped, with the reason, when Chromium is not installed. It is
@@ -253,33 +258,6 @@ public sealed class EndToEndHost : IAsyncLifetime
         return ((IPEndPoint)listener.LocalEndpoint).Port;
     }
 
-    // As the Dockerfile publishes it, with the SDK alone: where the wasm-tools workload is installed, as on the Windows
-    // runners, the publish would otherwise relink the WebAssembly runtime, which no image does.
-    private async Task PublishAsync()
-    {
-        var mark = Path.Combine(PublishDirectory, PublishedMark);
-        if (File.Exists(mark))
-        {
-            return;
-        }
-
-        var (exitCode, _, tail) = await ChildProcess.RunAsync(
-            "dotnet",
-            ["publish", Repository.HostProject, "-c", Repository.Configuration, "--no-build", "-o", PublishDirectory, "-p:UseAppHost=false", "-p:WasmBuildNative=false", "-nologo", "-nodeReuse:false"],
-            Repository.Root,
-            new Dictionary<string, string?> { ["MSBUILDDISABLENODEREUSE"] = "1" },
-            PublishTimeout,
-            input: null,
-            Token);
-        if (exitCode != 0)
-        {
-            throw new InvalidOperationException($"Publishing the reference host ({Repository.Configuration}, with no build) exited with {exitCode}; build the solution in that configuration first.{Environment.NewLine}{tail}");
-        }
-
-        // Written last, so that a publish cut short is not taken by a later run.
-        await File.WriteAllTextAsync(mark, Repository.Configuration, Token);
-    }
-
     // The settings of a production deployment, as few as the image needs, with six that only a test host has: its address
     // is a port of the loopback address; its certificates are the run's own; every browser of the tests calls from that one
     // address, one case after another for minutes, so the request limits per address and per user are raised to what such a
@@ -288,7 +266,8 @@ public sealed class EndToEndHost : IAsyncLifetime
     // test's action; the preview origin of PreviewTests, which no server holds; a mail server of the run's own (SmtpSink),
     // which takes the invitations the users page sends and keeps none; an AI provider of the run's own (AiProviderStub),
     // the one endpoint a site may name in its AI settings; and webhooks that may deliver to private networks, so that the
-    // receiver of WebhooksTests on the loopback address is reached.
+    // receiver of WebhooksTests is reached. The paths and the address Kestrel listens on are where the host finds them, and the
+    // run's own servers are reached by the name the host knows this machine by (HostProcess).
     private void Configure()
     {
         var certificates = _certificates!;
@@ -300,32 +279,32 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["ASPNETCORE_URLS"] = null,
             ["ASPNETCORE_HTTP_PORTS"] = null,
             ["ASPNETCORE_HTTPS_PORTS"] = null,
-            ["ConnectionStrings__FluentCms"] = $"Data Source={Path.Combine(DataDirectory, "fluentcms.db")}",
+            ["ConnectionStrings__FluentCms"] = $"Data Source={_host!.DataPath("fluentcms.db")}",
             ["FLUENTCMS_SAMPLE"] = "blog",
-            ["FLUENTCMS_SCHEMA"] = Path.Combine(AppContext.BaseDirectory, "landing.schema.json"),
+            ["FLUENTCMS_SCHEMA"] = _host.SchemaPath,
             ["FluentCms__PublicOrigin"] = origin,
             ["AllowedHosts"] = IPAddress.Loopback.ToString(),
             ["FluentCms__Admin__Enabled"] = "true",
             ["FluentCms__Admin__PreviewOrigins__0"] = PreviewOrigin,
-            ["FluentCms__Security__SigningCertificate__Path"] = certificates.SigningPath,
+            ["FluentCms__Security__SigningCertificate__Path"] = _host.CertificatePath(certificates.SigningPath),
             ["FluentCms__Security__SigningCertificate__Password"] = certificates.Password,
-            ["FluentCms__DataProtection__Certificate__Path"] = certificates.SigningPath,
+            ["FluentCms__DataProtection__Certificate__Path"] = _host.CertificatePath(certificates.SigningPath),
             ["FluentCms__DataProtection__Certificate__Password"] = certificates.Password,
-            ["FluentCms__Media__Local__Root"] = Path.Combine(DataDirectory, "media"),
+            ["FluentCms__Media__Local__Root"] = _host.DataPath("media"),
             ["FluentCms__RateLimits__Auth__PermitLimit"] = TestLimit,
             ["FluentCms__RateLimits__Management__PermitLimit"] = TestLimit,
             ["FluentCms__RateLimits__Delivery__PermitLimit"] = TestLimit,
             ["FluentCms__RateLimits__Delivery__MaxKeyLimit"] = TestLimit,
             ["FluentCms__RateLimits__PreAuth__PermitLimit"] = TestLimit,
             ["FluentCms__Clients__AccessTokenLifetime"] = AccessTokenLifetime,
-            ["FluentCms__Email__Smtp__Host"] = IPAddress.Loopback.ToString(),
-            ["FluentCms__Email__Smtp__Port"] = _smtp.Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["FluentCms__Email__Smtp__Host"] = _host.ServerHost,
+            ["FluentCms__Email__Smtp__Port"] = _smtp!.Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["FluentCms__Email__Smtp__Security"] = "None",
             ["FluentCms__Email__Smtp__From"] = "cms@example.com",
-            ["FluentCms__Ai__AllowedEndpoints__0"] = _ai.Endpoint,
+            ["FluentCms__Ai__AllowedEndpoints__0"] = _ai!.Endpoint,
             ["FluentCms__Webhooks__AllowPrivateNetworks"] = "true",
-            ["Kestrel__Endpoints__Https__Url"] = origin,
-            ["Kestrel__Endpoints__Https__Certificate__Path"] = certificates.ServerPath,
+            ["Kestrel__Endpoints__Https__Url"] = _host.ListenUrl(Origin),
+            ["Kestrel__Endpoints__Https__Certificate__Path"] = _host.CertificatePath(certificates.ServerPath),
             ["Kestrel__Endpoints__Https__Certificate__Password"] = certificates.Password,
             // As the compose file sets it: a command's output is its result alone.
             ["Logging__Console__LogToStandardErrorThreshold"] = "Trace",
@@ -340,7 +319,7 @@ public sealed class EndToEndHost : IAsyncLifetime
 
     private async Task<string> CommandAsync(string? input, bool secretOutput, params string[] command)
     {
-        var (exitCode, output, tail) = await ChildProcess.RunAsync("dotnet", ["exec", HostAssembly, "fluentcms", .. command], PublishDirectory, _environment, CommandTimeout, input, Token, secretOutput);
+        var (exitCode, output, tail) = await _host!.CommandAsync(command, _environment, input, CommandTimeout, secretOutput, Token);
         return exitCode == 0
             ? output
             : throw new InvalidOperationException($"'fluentcms {string.Join(' ', command.TakeWhile(part => part != "--email"))}' exited with {exitCode}.{Environment.NewLine}{tail}");
@@ -380,7 +359,7 @@ public sealed class EndToEndHost : IAsyncLifetime
 
     private async Task StartAsync()
     {
-        _host = ChildProcess.Start("dotnet", ["exec", HostAssembly], PublishDirectory, _environment);
+        _host!.Start(Origin, _environment);
         using var client = Client();
         using var bound = CancellationTokenSource.CreateLinkedTokenSource(Token);
         bound.CancelAfter(StartTimeout);

@@ -895,7 +895,7 @@ For the local loop (row 11.4, A-10): `dotnet watch` on the app project, with `co
 | Contract against OpenAPI | in the API tests | every route and record the admin and the first-party halves read appears in the reference host's OpenAPI document with a matching schema; needs #3104 for plugin routes | full CI |
 | Filter grammar | in the component tests | the admin's query writer writes `clients/filter-cases.json` as the C# and TypeScript clients do | Feature CI |
 | Rich text round trip | API and end-to-end tests | a set of documents made by the editor, with every node, mark and inline block, saves and reads back unchanged | full CI |
-| End-to-end | `admin/tests/FluentCMS.Admin.EndToEnd` | the editor's daily loop on the reference host on SQLite with the Blog sample in Chromium: sign-in through the hosted page with PKCE, two tabs refreshing at once, find, edit, save, conflict, publish, schedule, preview against a stub front end page that speaks the `postMessage` contract, bulk publish, upload and pick an image, expiry with the draft kept; on Playwright (AQ9) | full CI, and nightly on Firefox and WebKit |
+| End-to-end | `admin/tests/FluentCMS.Admin.EndToEnd` | the editor's daily loop on the reference host on SQLite with the Blog sample in Chromium: sign-in through the hosted page with PKCE, two tabs refreshing at once, find, edit, save, conflict, publish, schedule, preview against a stub front end page that speaks the `postMessage` contract, bulk publish, upload and pick an image, expiry with the draft kept; on Playwright (AQ9) | full CI on a publish of the host, the image where `Compose` runs, and nightly on Firefox and WebKit |
 | Accessibility | in the end-to-end tests | axe-core checks of each core page in both themes and in a right-to-left pseudo-culture, and keyboard-only runs of the daily loop (AQ9); a manual screen reader pass (NVDA with Firefox, VoiceOver with Safari) before A7 ends | full CI; manual in A-42 |
 | Localization | in the component tests | every key of the neutral resources is in each shipped culture; rendered under a pseudo-culture, no visible text of a core page is left untranslated, data aside | Feature CI |
 | Architecture | `tests/FluentCMS.Architecture.Tests` | the rules of 3.3 | Feature CI and full CI |
@@ -954,6 +954,10 @@ Tests use xUnit v3 and Shouldly, as the backend's do. The API tests need no brow
 - *A record of flakes.* In CI the `End-to-end (admin)` job runs the cases through `run-with-retry.ps1`: a failed case is run once more on a new host from the same publish (`FLUENTCMS_E2E_PUBLISHED`), with a shorter timeout, a case that passes then is named as flaky in the job summary and as a warning and the run passes, and a case that fails twice fails it. A skipped case (which `--fail-skips` reports as a failure), more than five failed cases (a broken suite or host, not a flake), or a run that ended otherwise fails the job without a second run, and the second run must have run exactly the cases that failed. A flaky case is a fault to find, not a pass.
 - *Any order, any one.* xUnit v3 runs the classes of one collection in a fixed order, which `--seed` does not change, so the end-to-end project's orderer (`ShuffledOrder`) shuffles the classes and the cases of each class by `FLUENTCMS_E2E_SHUFFLE=<n>`; unset, the order is xUnit's. `--filter-class` runs one class alone. Both pass.
 - *Component tests.* Every admin test project that references bUnit compiles `admin/tests/Shared/ComponentTestSetup.cs`, which raises the thread pool's floor to four threads a core and bUnit's default wait to ten seconds. An assertion on what an event handler renders or calls after an `await` waits for it (`WaitForAssertion`, `WaitForState`) and gives no shorter timeout.
+
+**On the image (A-45, [#3456]).** The harness runs the host one of two ways behind one type, `HostProcess`, which starts the host, runs its commands, gives its logs and stops it: a publish run with `dotnet` (`PublishedHost`), as before, or, when `FLUENTCMS_E2E_IMAGE` names an image, a container of it through the `docker` command (`ContainerHost`), as `docs/docker.md` shows an operator. The container gets the settings of the run as variables, passed by name so that no value is on a command line, the run's certificates and `landing.schema.json` mounted read-only, `/data` on a volume of the run, and its https port published on the loopback address; `migrate`, `user create`, `apikey create` and the other commands run as one-off containers on the same volume, so the editor is made by the image's own command. There is no proxy and no second container: Kestrel in the container answers https with the run's certificate. The host reaches the run's own servers (the mail sink, the AI provider stub, the webhook receiver) as `host.docker.internal`, which they listen for on the gateway of Docker's bridge where the engine runs on the machine, as on Linux, and on the loopback address where it runs in a virtual machine, as Docker Desktop does, which forwards the name there. The containers and the volume carry the label `org.fluentcms.e2e` with the name of the run's folder: the harness removes them at the end of the run, also when it is cancelled or the test process exits, a later run removes those of a run whose folder is gone, and the job removes what is left after a test process that was killed. Where Docker does not answer, every case is skipped with the reason, as the media storage tests are, and in CI a skip fails the job.
+
+The `End-to-end on the image (admin)` job of the `Compose` workflow builds the image as the smoke test does, or pulls the one a manual run names, and runs the whole end-to-end project against it through `run-with-retry.ps1`, whose second run takes the same image. It runs where `Compose` runs, on pushes to `main` and to feature branches and on manual runs, not on issue pull requests, and not when `Publish` calls `Compose` with the archive of its image. An image without a project the host needs fails its build, since the restore of the Dockerfile skips a project whose `COPY` line is missing and the publish then fails, and one without the admin's files fails the cases. `End-to-end (admin)` keeps the publish on every full run: it needs no image, and it is what a developer runs. The axe-core sweep (A-42) and the keyboard loop (A-54) are classes of the same project and run on the image too; the right-to-left run needs the pseudo-cultures of A-53, which a release image does not hold, and stays on the publish.
 
 ## 8. Feature inventory
 
@@ -1168,17 +1172,23 @@ Tracking issue: [#3431]. Created on 20 Nov 2026. The issues run on `feature/a6`,
 
 ### 10.8 A7 Distributions and admin preview
 
+Tracking issue: [#3465]. Created on 20 Nov 2026. The issues run on `feature/a7`, cut from `main` once A6 was merged, in five waves: A-53, A-43 and A-45, then A-41, A-42 and A-55, then A-54, A-44 and A-56, then A-46, then A-47 alone and last.
+
 | Id | Issue | Section | Rows | Size | Needs |
 | --- | --- | --- | --- | --- | --- |
-| A-41 | Translations and per-user culture, time zone and formats | 4.17 | 3.18 | M | #3096 |
-| A-42 | Accessibility audit to WCAG 2.2 AA, with the screen reader pass | 4.18 | 3.19 | M | |
-| A-43 | Prebuilt static build on the release, with the hosting guide | 6.3 | d5 | S | |
-| A-44 | `dotnet new fluentcms-admin`, and the admin in `dotnet new fluentcms` | 6.2 | 11.1, d5 | M | |
-| A-45 | End-to-end tests of the daily loop on the image, on three browsers | 7 | 3.19 | M | |
-| A-46 | Admin guides in `docs/`: hosting, configuration, writing an admin half | 5.1, 6 | 8.1 | S | |
-| A-47 | Release of the admin with a preview of the packages | 6 | 10.2, 11.11 | S | |
+| A-41 [#3457] | Interface language, time zone and formats per user, applied at start | 4.17 | 3.18 | M | A-53 |
+| A-42 [#3458] | Accessibility audit to WCAG 2.2 AA: axe-core checks of every page, in both themes and right to left | 4.18 | 3.19 | M | A-53 |
+| A-43 [#3455] | Prebuilt static build on the release, with the hosting guide | 6.3 | d5 | M | |
+| A-44 [#3461] | `dotnet new fluentcms-admin`, and the admin in `dotnet new fluentcms` | 6.2 | 11.1, d5 | M | A-55 |
+| A-45 [#3456] | End-to-end tests of the daily loop on the image | 7 | 3.19 | M | |
+| A-46 [#3463] | Admin guides in `docs/`: overview, configuration, writing an admin half and translating | 5.1, 6 | 8.1 | M | A-41, A-43, A-44, A-53 |
+| A-47 [#3464] | Release of the admin with a preview of its packages | 6 | 10.2, 11.11 | M | every other issue of A7 |
+| A-53 [#3454] | Admin resources ready for contributed translations, and the pseudo-cultures in the browser | 4.17, 5.1 | 3.18, 7.9 | M | |
+| A-54 [#3460] | Keyboard-only daily loop, the WCAG 2.2 criteria axe-core does not check, and the screen reader pass | 4.18 | 3.19 | M | A-42 |
+| A-55 [#3459] | The prebuilt admin inside `FluentCMS.Admin.Hosting`, served without the app's project | 6.1, 6.3 | 10.2, 11.1 | M | A-43 |
+| A-56 [#3462] | End-to-end tests on Firefox and WebKit, nightly | 7 | 3.19 | M | A-45 |
 
-52 issues: the 47 of the draft, A-48 and A-49, split from A-12 and A-13 when the document was approved (AQ17), A-50, split from A-21 when A3 was planned (AQ18), and A-51 and A-52, added when A6 was planned (AQ20, AQ21), each numbered after A-47 so that no other reference moves. Should rows get issues when their milestone is planned, not now. The one exception is A-40, which takes the members and groups pages of row 4.22 early, for the reason AQ11 gives.
+56 issues: the 47 of the draft, A-48 and A-49, split from A-12 and A-13 when the document was approved (AQ17), A-50, split from A-21 when A3 was planned (AQ18), A-51 and A-52, added when A6 was planned (AQ20, AQ21), and A-53 to A-56, split from A-41, A-42, A-43 and A-45 when A7 was planned (section 11), each numbered after A-47 so that no other reference moves. Should rows get issues when their milestone is planned, not now. The one exception is A-40, which takes the members and groups pages of row 4.22 early, for the reason AQ11 gives. A-41 needed #3096, which is merged; the hosting guide is A-43's, and A-46 writes the other guides.
 
 ## 11. Decisions on the open questions
 
@@ -1213,6 +1223,24 @@ The draft asked sixteen questions, each with a recommendation. All were decided 
 | AQ25 | Section 5.7 has the search rebuild as an action on the plugin's entry of the plugins page, and the contract has no contribution into a core page. | The rebuild is a page of the search half, linked from the plugins page: one button is not worth a new kind of contribution. |
 | AQ26 | A-39 is five views: plugins, jobs, the job dead letters, the event dead letters and diagnostics, with the search rebuild. | It stays one issue, and splits along the jobs and the dead letters if a lane finds it L. |
 | AQ27 | Section 4.16 shows the source of each value of a settings page, and the API gives the source of the area as a whole and says of each secret whether it is inherited. | The source is shown as the API gives it: for the area as a whole and for each secret, and not for each value. |
+
+**Decided when A7 was planned (20 Nov 2026, [#3465]).**
+
+- A-41 is split: A-53 takes the resources, the test of the keys and the pseudo-cultures in the browser, which A-42 needs as well, and A-41 keeps the language at start, the time zone and the formats (#3214).
+- A-42 is split: it keeps the axe-core harness, the sweep of every page and the fixes, and A-54 takes the keyboard-only loop, the criteria of WCAG 2.2 that axe-core does not check, three faults of the wrapped set and the script of the screen reader pass. The pages of A6 make the sweep alone an M.
+- A-43 is split: it keeps the zip on the release and the hosting guide, and A-55 takes the build inside `FluentCMS.Admin.Hosting`, whose way of serving is open and which A-44 waits for.
+- A-45 is split: it keeps the run on the image, and A-56 takes Firefox and WebKit, whose work depends on how many cases fail there, which no run has shown.
+- A-43, A-46 and A-47 are M where section 10.8 had S: the five recipes and the run from another origin, four guides in place of three, and the two tracked packages with the items of #3178.
+- English alone ships (AQ14 stands). The pseudo-cultures are built under a build property and are in no release; the right-to-left checks run on a publish that has them, and the image is checked as it ships.
+- The copy of the interface culture is one key of `localStorage`; a new device loads once in the browser's culture and reloads after sign-in.
+- The current culture of the app follows the user's formats, and the formats are a service of the contract, so that a half shows a moment in the user's time zone.
+- The static build is proven from another origin by an end-to-end case with a file server of the test project's own; nginx and Caddy are not run in CI.
+- The image run stays where `Compose` runs and the publish run on every full run; Firefox and WebKit run nightly against the publish.
+- `fluentcms-admin` holds every first-party half and has no option. `--admin` of `fluentcms` is on by default and serves the build of the package.
+- The hosting guide is A-43's; A-46 writes the overview, the configuration, the writing of a half and the translating.
+- A-47 turns the admin on by default, as section 6.1 says, and adds no refusal at start in a preview: a configured client that cannot sign in is named in the startup report.
+- #3213 is not part of A7.
+- A release tagged before A-47 needs #3453 first: the `Publish` workflow would push the admin halves without the packages they depend on.
 
 [#3050]: https://github.com/fluentcms/FluentCMS/issues/3050
 [#3094]: https://github.com/fluentcms/FluentCMS/issues/3094
@@ -1297,3 +1325,15 @@ The draft asked sixteen questions, each with a recommendation. All were decided 
 [#3488]: https://github.com/fluentcms/FluentCMS/issues/3488
 [#3514]: https://github.com/fluentcms/FluentCMS/issues/3514
 [#3395]: https://github.com/fluentcms/FluentCMS/issues/3395
+[#3454]: https://github.com/fluentcms/FluentCMS/issues/3454
+[#3455]: https://github.com/fluentcms/FluentCMS/issues/3455
+[#3456]: https://github.com/fluentcms/FluentCMS/issues/3456
+[#3457]: https://github.com/fluentcms/FluentCMS/issues/3457
+[#3458]: https://github.com/fluentcms/FluentCMS/issues/3458
+[#3459]: https://github.com/fluentcms/FluentCMS/issues/3459
+[#3460]: https://github.com/fluentcms/FluentCMS/issues/3460
+[#3461]: https://github.com/fluentcms/FluentCMS/issues/3461
+[#3462]: https://github.com/fluentcms/FluentCMS/issues/3462
+[#3463]: https://github.com/fluentcms/FluentCMS/issues/3463
+[#3464]: https://github.com/fluentcms/FluentCMS/issues/3464
+[#3465]: https://github.com/fluentcms/FluentCMS/issues/3465

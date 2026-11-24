@@ -15,7 +15,7 @@ public sealed class SmtpSinkTests
     [Fact]
     public async Task AClientThatStallsOrBreaksOffLeavesTheNextOneAnswered()
     {
-        using var sink = new SmtpSink();
+        using var sink = new SmtpSink(IPAddress.Loopback);
 
         using var stalled = new TcpClient();
         await stalled.ConnectAsync(IPAddress.Loopback, sink.Port, TestContext.Current.CancellationToken);
