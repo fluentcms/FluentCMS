@@ -99,9 +99,11 @@ public sealed class McpTests
         made.ClientId.ShouldNotBeNullOrWhiteSpace();
         Has(await Should.ThrowAsync<ApiProblemException>(() => api.RegisterClientAsync(null, ["http://example.com/callback"], editor.Id.ToString("D"), Token)), McpProblems.ClientRegistrationInvalid).ShouldBeTrue();
 
-        // What the administrator did came through the Management API, so none of it is an agent write.
+        // What the administrator did came through the Management API, so none of it is an agent write; the client's own
+        // registration came in for MCP, and may be listed once its row is written.
         var writes = await api.GetAgentWritesAsync(1, Token);
-        (writes.Page, writes.PageSize, writes.Total).ShouldBe((1, McpApi.ActivityPageSize, 0L));
+        (writes.Page, writes.PageSize).ShouldBe((1, McpApi.ActivityPageSize));
+        writes.Items.Select(row => row.Action).ShouldBeSubsetOf(["mcp.client_registered"]);
     }
 
     [Fact]
