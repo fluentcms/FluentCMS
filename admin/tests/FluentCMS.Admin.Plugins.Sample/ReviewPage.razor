@@ -2,12 +2,17 @@
 @page "/reviews/new"
 @attribute [AdminPage("/reviews/{Id:guid}", Permission = "reviews.notes.manage")]
 @attribute [AdminPage("/reviews/new", Permission = "reviews.notes.create")]
+@inject IAdminFormats Formats
 
 <CmsCard Title="Review">
     <p>@Id</p>
+    <p class="review-written"><time datetime="@Written.ToString("O", System.Globalization.CultureInfo.InvariantCulture)">@Formats.FormatDateTime(Written)</time> @Formats.TimeZoneId</p>
 </CmsCard>
 
 @code {
+    // When the review was written, as a half reads a moment from its API: shown in the user's time zone and formats.
+    public static readonly DateTimeOffset Written = new(2026, 11, 15, 21, 30, 0, TimeSpan.Zero);
+
     [Parameter]
     public Guid? Id { get; set; }
 }

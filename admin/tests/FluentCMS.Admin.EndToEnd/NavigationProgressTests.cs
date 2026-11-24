@@ -66,21 +66,22 @@ public sealed class NavigationProgressTests(EndToEndHost host) : BrowserTest(hos
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
-    // From the account page, which loads nothing lazily, to an area's route and then to a half's: the page before stays below
-    // the loading state while the assembly downloads.
+    // From an address of no page, which loads nothing lazily (the account page now loads with the administration assembly,
+    // and the start page with the halves of its widgets), to an area's route and then to a half's: the page before stays
+    // below the loading state while the assembly downloads.
     [Fact]
     public async Task ANavigationInsideTheAppToARouteWhoseAssemblyIsNotLoadedShowsProgressAtOnce()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await SignedInTabAsync(browser, "account", await Host.CreateEditorAsync("Super Admin"));
-        await Expect(tab.Heading("Account.Page.Heading")).ToBeVisibleAsync();
+        var tab = await SignedInTabAsync(browser, "no-such-page", await Host.CreateEditorAsync("Super Admin"));
+        await Expect(tab.Heading("Shell.NotFound.Heading")).ToBeVisibleAsync();
         var administration = await HoldAsync(tab, url => Administration.IsMatch(url.AbsolutePath));
         var media = await HoldAsync(tab, url => MediaHalf.IsMatch(url.AbsolutePath));
 
         await Entry(tab, "Administration.Menu.Users").ClickAsync();
 
         await Expect(Loading(tab)).ToBeVisibleAsync();
-        await Expect(tab.Heading("Account.Page.Heading")).ToBeVisibleAsync();
+        await Expect(tab.Heading("Shell.NotFound.Heading")).ToBeVisibleAsync();
         administration.SetResult();
         await Expect(AreaHeading(tab, "Users")).ToBeVisibleAsync();
         await Expect(Loading(tab)).ToHaveCountAsync(0);

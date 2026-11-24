@@ -3,7 +3,7 @@
   <!-- Core's administration pages, which an app loads lazily on the first visit of one of their routes (spec 2.6, 4.15). It is
        not trimmable, so the app's partial trimming keeps its pages, which the router finds once the assembly is loaded. -->
   <PropertyGroup>
-    <Description>The administration pages of the FluentCMS admin: users, roles, keys, members, sites, settings, plugins, jobs and diagnostics, loaded on the first visit of one of them.</Description>
+    <Description>The administration pages of the FluentCMS admin: users, roles, keys, members, sites, settings, plugins, jobs and diagnostics, with the component gallery and the account page, loaded on the first visit of one of them.</Description>
     <PackageTags>$(PackageTags) admin blazor webassembly</PackageTags>
   </PropertyGroup>
 

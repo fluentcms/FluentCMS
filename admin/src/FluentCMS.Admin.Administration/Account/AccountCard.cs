@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 
-namespace FluentCMS.Admin.Account;
+namespace FluentCMS.Admin.Administration.Account;
 
 // A card of the account page, inert while the page's hold is set: its controls are disabled and its actions do nothing.
 public abstract class AccountCard : ComponentBase, IDisposable

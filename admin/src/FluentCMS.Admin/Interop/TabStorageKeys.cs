@@ -5,4 +5,7 @@ internal static class TabStorageKeys
 {
     // The site the shell showed last, which a reload stays in and a sign-out clears.
     public const string Site = "fluentcms-admin/site";
+
+    // The interface culture the start last reloaded the tab for, so that it does so once.
+    public const string CultureReload = "fluentcms-admin/culture-reload";
 }

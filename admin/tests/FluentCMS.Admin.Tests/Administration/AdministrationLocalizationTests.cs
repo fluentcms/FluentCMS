@@ -8,12 +8,13 @@ using Xunit;
 namespace FluentCMS.Admin.Tests.Administration;
 
 // The sweep of spec 7 over the administration assembly: each page is swept by the localization tests of its area, with the
-// answers its page reads, and the gallery here.
+// answers its page reads, the account page by AccountLocalizationTests, and the gallery here.
 public sealed class AdministrationLocalizationTests : AdministrationTestContext
 {
     // The route of each page and the tests that sweep it; a new page is swept in its area's tests and named here.
     private static readonly Dictionary<string, string> Swept = new(StringComparer.Ordinal)
     {
+        ["/account"] = "AccountLocalizationTests",
         ["/api-keys"] = "ApiKeysLocalizationTests",
         ["/api-keys/new"] = "ApiKeysLocalizationTests",
         ["/api-keys/{Id:guid}"] = "ApiKeysLocalizationTests",

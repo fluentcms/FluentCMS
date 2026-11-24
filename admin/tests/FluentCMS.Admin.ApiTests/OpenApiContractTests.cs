@@ -45,6 +45,7 @@ public sealed class OpenApiContractTests
         Check(ManagementJsonContext.Default.ItemListMyLogin, Answer(paths, "/api/management/v1/me/logins", "get"), "me/logins", document, gaps);
         Check(ManagementJsonContext.Default.MyPreferences, Answer(paths, "/api/management/v1/me/preferences", "get"), "me/preferences", document, gaps);
         Check(ManagementJsonContext.Default.MyPreferences, Answer(paths, "/api/management/v1/me/preferences", "put"), "me/preferences put", document, gaps);
+        Check(ManagementJsonContext.Default.MyPreferences, Answer(paths, "/api/management/v1/me/preferences", "patch"), "me/preferences patch", document, gaps);
         Check(ManagementJsonContext.Default.ApiProblem, document["components"]!["schemas"]!["problem"]!, "problem", document, gaps);
 
         gaps.ShouldBeEmpty();

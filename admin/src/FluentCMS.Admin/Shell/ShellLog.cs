@@ -22,4 +22,10 @@ internal static partial class ShellLog
 
     [LoggerMessage(EventId = 25, EventName = "PluginsNotRead", Level = LogLevel.Warning, Message = "The plugins of the site could not be read again; the admin shows their contributions as they were.")]
     public static partial void PluginsNotRead(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 26, EventName = "CultureNotKept", Level = LogLevel.Warning, Message = "The browser's storage could not be used for the interface language; the next start is in the browser's.")]
+    public static partial void CultureNotKept(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 27, EventName = "CultureNotApplied", Level = LogLevel.Warning, Message = "The app started in another interface language than the saved one again after a reload for it; it stays in this one.")]
+    public static partial void CultureNotApplied(ILogger logger);
 }
