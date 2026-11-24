@@ -308,7 +308,7 @@
         draftOperator = filter?.Operator ?? field.Filter.Operators[0];
         values = [.. ListFilters.Texts(filter?.Value)];
         listText = ListFilters.Join(field.Filter.Operand is FilterOperand.WholeNumber or FilterOperand.DecimalNumber
-            ? values.Select(value => Number(value) is { } number ? number.ToString(Format.Culture) : value)
+            ? values.Select(value => Number(value) is { } number ? number.ToString(Format.NumberCulture) : value)
             : values);
         for (var slot = 0; slot < days.Length; slot++)
         {
@@ -435,7 +435,7 @@
                 break;
             case FilterOperand.WholeNumber or FilterOperand.DecimalNumber:
                 <CmsNumberInput Label="@label"
-                                Culture="@Format.Culture"
+                                Culture="@Format.NumberCulture"
                                 WholeNumbers="@(field.Filter.Operand == FilterOperand.WholeNumber)"
                                 Value="@Number(text)"
                                 ValueChanged="@(number => Set(slot, number?.ToString(System.Globalization.CultureInfo.InvariantCulture)))"
@@ -486,7 +486,7 @@
     // A number of a list as the API takes it, from the user's format; any other value as it was typed.
     private string Invariant(FilterField field, string text) =>
         field.Filter.Operand is FilterOperand.WholeNumber or FilterOperand.DecimalNumber
-        && decimal.TryParse(text, System.Globalization.NumberStyles.AllowLeadingSign | System.Globalization.NumberStyles.AllowDecimalPoint, Format.Culture, out var number)
+        && decimal.TryParse(text, System.Globalization.NumberStyles.AllowLeadingSign | System.Globalization.NumberStyles.AllowDecimalPoint, Format.NumberCulture, out var number)
             ? number.ToString(System.Globalization.CultureInfo.InvariantCulture)
             : text;
 

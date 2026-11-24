@@ -396,6 +396,22 @@ public sealed class AccountPageTests : AccountTestContext
         Services.GetRequiredService<FormatService>().NumberCulture.Name.ShouldNotBe("fr-FR");
     }
 
+    // A zone or a culture saved elsewhere that the browser does not list, as a neutral culture, shows as it is saved rather
+    // than as the browser's.
+    [Fact]
+    public void ASavedValueTheBrowserDoesNotListIsShownAsSaved()
+    {
+        Management.Preferences["timeZone"] = "Mars/Olympus";
+        Management.Preferences["numberFormat"] = "de";
+
+        var app = Load();
+
+        var zone = Select(app, "Time zone");
+        zone.GetAttribute("value").ShouldBe("Mars/Olympus");
+        zone.QuerySelector("option[selected]")!.GetAttribute("value").ShouldBe("Mars/Olympus");
+        Select(app, "Format of numbers").QuerySelector("option[selected]")!.GetAttribute("value").ShouldBe("de");
+    }
+
     [Fact]
     public void TheLanguageOfThePreferencesIsShownByItsName()
     {

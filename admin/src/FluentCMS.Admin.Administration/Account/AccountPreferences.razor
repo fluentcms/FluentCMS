@@ -43,7 +43,7 @@
                 <CmsSelect Label="@L["Account.Preferences.Language"]" Options="@languages" Value="@Shown(CultureKey)" ValueChanged="@(value => Choose(CultureKey, value))"
                            Disabled="@Held" Error="@errors.GetValueOrDefault(CultureKey)" />
             }
-            <CmsSelect Label="@L["Account.Preferences.TimeZone"]" Options="@Zones" Value="@Shown(ZoneKey)" ValueChanged="@(value => Choose(ZoneKey, value))"
+            <CmsSelect Label="@L["Account.Preferences.TimeZone"]" Options="@ZoneOptions" Value="@Shown(ZoneKey)" ValueChanged="@(value => Choose(ZoneKey, value))"
                        Placeholder="@L["Account.Preferences.AsTheBrowser"]" Clearable="true" Disabled="@Held"
                        Help="@L["Account.Preferences.TimeZoneExample", preview.Time(now)]" Error="@errors.GetValueOrDefault(ZoneKey)" />
             <CmsSelect Label="@L["Account.Preferences.DateFormat"]" Options="@Formatted(DateKey)" Value="@Shown(DateKey)" ValueChanged="@(value => Choose(DateKey, value))"
@@ -92,6 +92,10 @@
             .Select(zone => zone.HasIanaId ? zone.Id : TimeZoneInfo.TryConvertWindowsIdToIanaId(zone.Id, out var iana) ? iana : null).OfType<string>()
             .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Select(id => new CmsOption(id, id)),
     ];
+
+    // A saved zone the browser does not list, as one a newer platform knows, is offered too, so that the select shows it.
+    private IReadOnlyList<CmsOption> ZoneOptions =>
+        Shown(ZoneKey) is { } zone && !Zones.Any(option => option.Value == zone) ? [new CmsOption(zone, zone), .. Zones] : Zones;
 
     // The cultures whose conventions dates and numbers may follow, by their own names; a saved one that is not among them, as
     // a neutral culture another client saved, is offered too.
