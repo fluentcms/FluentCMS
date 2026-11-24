@@ -3,7 +3,7 @@ using System.Text.Json;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Authentication;
 
-namespace FluentCMS.Admin.Account;
+namespace FluentCMS.Admin.Administration.Account;
 
 // After a change that gives the user a new security stamp, the tab signs in again through the session to come back here. False
 // when the authorization server could not be reached, which the page then says, as for a failed action.

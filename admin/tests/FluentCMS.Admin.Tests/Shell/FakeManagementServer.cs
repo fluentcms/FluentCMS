@@ -225,6 +225,17 @@ internal sealed class FakeManagementServer : HttpMessageHandler
             return Json(Preferences);
         }
 
+        // As the server, which changes the members the body names and keeps the others.
+        if (request.Method == HttpMethod.Patch && path == "me/preferences")
+        {
+            foreach (var (member, value) in JsonNode.Parse(body!)!.AsObject())
+            {
+                Preferences[member] = value?.DeepClone();
+            }
+
+            return Json(Preferences);
+        }
+
         var site = Guid.TryParse(siteHeader, out var id) ? id : MainSite;
         var locale = request.Headers.TryGetValues("X-Cms-Locale", out var locales) ? locales.Single() : null;
         if (path is "me/access" or "schema")

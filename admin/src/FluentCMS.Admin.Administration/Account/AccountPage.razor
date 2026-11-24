@@ -1,11 +1,12 @@
 @* The account page of the signed-in user (spec 4.3, A-09): its sessions, two-factor sign-in, external logins, the hosted page
-   that changes the password, and the theme and interface language. *@
+   that changes the password, and the preferences. It loads with this assembly on its first visit, as an open route, so that
+   it is not part of the first download (A-41). *@
 @page "/account"
 @implements IDisposable
 @using FluentCMS.Admin.Configuration
 @inject AdminConfiguration Configuration
 @inject NavigationManager Navigation
-@inject IStringLocalizer<AdminResources> L
+@inject IStringLocalizer<AccountResources> L
 
 <div class="account">
     <h1 tabindex="-1">@L["Account.Page.Heading"]</h1>
@@ -31,7 +32,7 @@
 </div>
 
 @code {
-    public const string Route = "account";
+    public const string Route = AdministrationAreas.AccountRoute;
 
     private readonly AccountHold hold = new();
 

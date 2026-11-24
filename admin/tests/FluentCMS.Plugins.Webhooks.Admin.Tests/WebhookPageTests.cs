@@ -18,6 +18,7 @@ public sealed class WebhookPageTests : WebhooksTestContext
         cut.WaitForAssertion(() => cut.Find("h1").TextContent.ShouldBe("Receiver"));
 
         Cells(cut, 0).ShouldBe(["content.published", "1", "Failed", "500", "42 ms"]);
+        cut.Find("tr.webhooks-attempt th").TextContent.ShouldBe(new UtcFormats().FormatDateTime(DateTimeOffset.Parse(failed["createdAt"]!.GetValue<string>(), System.Globalization.CultureInfo.InvariantCulture)));
         Button(cut, "Details of content.published, attempt 1").Click();
         cut.WaitForAssertion(() => cut.Find(".webhooks-attempt-details").TextContent.ShouldContain("Receiver broke"));
         cut.Find(".webhooks-body").TextContent.ShouldContain("\"event\": \"content.published\"");

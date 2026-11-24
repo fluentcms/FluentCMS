@@ -42,15 +42,17 @@ public class AdminRulesTests
     private static readonly string[] CompilerPackages = ["FluentCMS.Analyzers", "FluentCMS.Generators"];
 
     // Spec 3.1: the types that may use JavaScript interop, the document module, the tab's sessionStorage of the sign-in,
-    // localStorage for the theme's one key and for the column names of the lists, the drop and paste of the media library,
-    // in the media half (A-21), the rich text editor's bundle (A-24), the messages of the preview frame (A-29), and the
-    // clipboard that the secret shown once writes to (A-33), in the wrapped set since the halves that show a secret reach no
-    // other admin package. The component library's script is loaded by the library's own types, which are not the set's.
+    // localStorage for the theme's one key, the copy of the interface culture (A-41) and the column names of the lists, the
+    // drop and paste of the media library, in the media half (A-21), the rich text editor's bundle (A-24), the messages of
+    // the preview frame (A-29), and the clipboard that the secret shown once writes to (A-33), in the wrapped set since the
+    // halves that show a secret reach no other admin package. The component library's script is loaded by the library's own
+    // types, which are not the set's.
     // Each type with the one assembly it is in, so that a type moved to another assembly fails the rule below.
     private static readonly (string Type, string Assembly)[] InteropTypesByAssembly =
     [
         ("FluentCMS.Admin.Components.CmsClipboard", AdminComponents),
         ("FluentCMS.Admin.Interop.ColumnStorageInterop", Admin),
+        ("FluentCMS.Admin.Interop.CultureStorageInterop", Admin),
         ("FluentCMS.Admin.Interop.DocumentInterop", Admin),
         ("FluentCMS.Admin.Interop.PreviewInterop", Admin),
         ("FluentCMS.Admin.Interop.SessionStorageInterop", Admin),
