@@ -58,7 +58,9 @@ public sealed class WebhooksTests(EndToEndHost host) : BrowserTest(host)
             await Expect(dialog.GetByText(Repository.ComponentText("SecretCopied"), new LocatorGetByTextOptions { Exact = true })).ToBeVisibleAsync();
             var secret = await tab.Page.EvaluateAsync<string>("() => navigator.clipboard.readText()");
             secret.ShouldStartWith("whsec_");
-            (await browser.SecretsAsync()).ShouldContain(secret);
+
+            // Given to the mask here: Chromium does not always keep the body of the answer that made the webhook (#3635).
+            browser.Mask(secret);
             await Ui.PressAsync(Ui.ButtonIn(dialog, Repository.ComponentText("SecretDone")), "Enter");
             await Expect(tab.ShownDialog(Text("Webhooks.Secret.CreatedTitle"))).ToHaveCountAsync(0);
             (await tab.Page.EvaluateAsync<bool>("secret => document.documentElement.outerHTML.includes(secret)", secret)).ShouldBeFalse();
