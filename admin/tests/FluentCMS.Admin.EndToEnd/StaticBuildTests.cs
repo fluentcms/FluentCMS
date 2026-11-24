@@ -16,8 +16,8 @@ using static Microsoft.Playwright.Assertions;
 
 namespace FluentCMS.Admin.EndToEnd;
 
-// The prebuilt static build of admin spec 6.3 as an operator takes it from a release: the case publishes the admin, makes the
-// zip with eng/admin-zip.cs as the Publish workflow does, unzips it, edits config.json and the <base href> of index.html, and
+// The prebuilt static build of admin spec 6.3 as an operator takes it from a release: the case takes the zip StaticBuild makes
+// as the Publish workflow does, beside the publish of the host, unzips it, edits config.json and the <base href> of index.html, and
 // serves it from another site and under a path with a file server of its own, the framework's static files, with what
 // docs/admin-hosting.md asks of any host. The API host lists that origin and the client's redirect URIs (EndToEndHost, spec
 // 6.4). The run on the image leaves the case out by its trait (run-with-retry.ps1 -ExcludeTrait Host=Publish): it checks the
@@ -26,9 +26,6 @@ namespace FluentCMS.Admin.EndToEnd;
 public sealed class StaticBuildTests(EndToEndHost host) : BrowserTest(host)
 {
     private const string Icon = "_content/FluentCMS.Admin.Components/favicon.svg";
-
-    // The build and publish of the app, under the load of the other test apps of a full run.
-    private static readonly TimeSpan BuildTimeout = TimeSpan.FromMinutes(10);
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -91,19 +88,11 @@ public sealed class StaticBuildTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
-    // The zip as a release attaches it, unzipped, with config.json pointing at the API host and the base at StaticPath.
+    // The zip as a release attaches it (StaticBuild), unzipped, with config.json pointing at the API host and the base at StaticPath.
     private async Task<DirectoryInfo> BuildAsync()
     {
-        var work = Host.NewDirectory();
-        var publish = Path.Combine(work.FullName, "publish");
-        var app = Path.Combine(Repository.Root, "admin", "src", "FluentCMS.Admin.App", "FluentCMS.Admin.App.csproj");
-        // Built apart from the run's own build, which may hold the pseudo-cultures (spec 4.17), as the Publish workflow builds a release.
-        string[] release = ["--artifacts-path", Path.Combine(work.FullName, "build"), "-p:FluentCmsAdminPseudoCultures=false", "-p:WasmBuildNative=false"];
-        await DotnetAsync("Publishing the admin app", ["publish", app, "-c", "Release", "-o", publish, .. release, "-nologo", "-nodeReuse:false"]);
-        await DotnetAsync("Making the zip", ["run", Path.Combine(Repository.Root, "eng", "admin-zip.cs"), "--", "pack", publish, "e2e", work.FullName]);
-
-        var site = work.CreateSubdirectory("site");
-        ZipFile.ExtractToDirectory(Path.Combine(work.FullName, "fluentcms-admin-e2e.zip"), site.FullName);
+        var site = Host.NewDirectory();
+        ZipFile.ExtractToDirectory(await Host.StaticBuildAsync(), site.FullName);
         Directory.GetDirectories(Path.Combine(site.FullName, "_framework")).ShouldBeEmpty("a release holds the neutral resources alone");
 
         var configurationFile = Path.Combine(site.FullName, "config.json");
@@ -117,16 +106,6 @@ public sealed class StaticBuildTests(EndToEndHost host) : BrowserTest(host)
         index.ShouldContain("<base href=\"/\" />");
         await File.WriteAllTextAsync(indexFile, index.Replace("<base href=\"/\" />", $"<base href=\"{EndToEndHost.StaticPath}\" />", StringComparison.Ordinal), Token);
         return site;
-    }
-
-    private static async Task DotnetAsync(string step, string[] arguments)
-    {
-        var (exitCode, _, tail) = await ChildProcess.RunAsync(
-            "dotnet", arguments, Repository.Root, new Dictionary<string, string?> { ["MSBUILDDISABLENODEREUSE"] = "1" }, BuildTimeout, input: null, Token);
-        if (exitCode != 0)
-        {
-            throw new InvalidOperationException($"{step} exited with {exitCode}.{Environment.NewLine}{tail}");
-        }
     }
 
     // The requirements of docs/admin-hosting.md: a path that is no file answers index.html, but under _framework/ and _content/;

@@ -146,7 +146,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.scope != 'docs'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -169,11 +169,12 @@ jobs:
 
       # A skipped test fails here, so that a browser that did not install cannot pass the job. A failed case is run once more,
       # and one that passes then is named as flaky in the job summary (spec 7). A manual run with traces on keeps the masked
-      # trace of each failed test in the uploaded results.
+      # trace of each failed test in the uploaded results. The first run took 13 min 45 s with 85 cases before the static build's
+      # (#3455), which builds and publishes the admin beside the publish of the host.
       - name: Test
         env:
           FLUENTCMS_E2E_TRACES: ${{ inputs.traces && format('{0}/artifacts/test-results/traces', github.workspace) || '' }}
-        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 15m -RetryTimeout 6m
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 20m -RetryTimeout 6m
 
       - name: Name the tests that were running
         if: failure() || cancelled()
@@ -595,18 +596,24 @@ jobs:
       - name: Make the static build of the admin
         run: dotnet run eng/admin-zip.cs -- pack artifacts/admin "$PACKAGE_VERSION" artifacts/packages
 
-      # A copy of the zip without each file the check asks for, and one with a compressed copy of index.html or config.json,
-      # which the check must refuse and name.
-      - name: Check that a static build without a file or with a compressed document fails the check
+      # A copy of the zip without each file the check asks for, one with a compressed copy of index.html or config.json, one with
+      # a resource of a pseudo-culture and one with index.html twice, which the check must refuse and name.
+      - name: Check that a broken static build fails the check
         shell: bash
         run: |
           built="$PWD/artifacts/packages/fluentcms-admin-$PACKAGE_VERSION.zip"
           broken="$RUNNER_TEMP/broken-admin"
           mkdir -p "$broken"
-          for name in index.html config.json _framework/blazor.webassembly.js LICENSE THIRD-PARTY-NOTICES.md README.txt index.html.br config.json.gz; do
+          for name in index.html config.json _framework/blazor.webassembly.js LICENSE THIRD-PARTY-NOTICES.md README.txt index.html.br config.json.gz \
+              _framework/ar-XB/FluentCMS.Admin.resources.wasm twice; do
             cp "$built" "$broken/build.zip"
             case "$name" in
-              *.br | *.gz) (cd "$broken" && echo stale > "$name" && zip -q build.zip "$name" && rm "$name"); expected="holds $name" ;;
+              *.br | *.gz | */ar-XB/*)
+                (cd "$broken" && mkdir -p "$(dirname "$name")" && echo stale > "$name" && zip -q build.zip "$name" && rm -r "${name%%/*}")
+                expected="holds $name" ;;
+              twice)
+                python3 -W ignore -c "import sys, zipfile; zipfile.ZipFile(sys.argv[1], 'a').writestr('index.html', 'stale')" "$broken/build.zip"
+                expected="holds index.html twice" ;;
               *) zip -q -d "$broken/build.zip" "$name"; expected="misses $name" ;;
             esac
             if dotnet run eng/admin-zip.cs -- check "$broken/build.zip" > "$broken/build.log"; then

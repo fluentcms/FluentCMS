@@ -1,9 +1,9 @@
 // The prebuilt static build of the admin (admin spec 6.3), fluentcms-admin-{version}.zip, which the Publish workflow attaches to
 // the GitHub release and the Pack job of CI makes on every full run. pack writes the wwwroot of a publish of FluentCMS.Admin.App,
 // which holds the sample config.json and the licence and the third-party notices, with a README that points to the hosting
-// guide, and checks the zip; check checks a zip alone. The check names each file the zip misses and each compressed copy of
+// guide, and checks the zip; check checks a zip alone. The check names each file the zip misses, each compressed copy of
 // index.html or config.json it holds, which a server that prefers a precompressed copy would serve in place of the edited
-// file, and exits with 1.
+// file, each entry it holds twice and each resource of a pseudo-culture, which no release carries, and exits with 1.
 //
 //   dotnet run eng/admin-zip.cs -- pack <publish folder of FluentCMS.Admin.App> <version> <output folder>
 //   dotnet run eng/admin-zip.cs -- check <zip>
@@ -67,12 +67,30 @@ internal static partial class StaticBuild
 
     private static readonly string[] Uncompressed = ["index.html", "config.json"];
 
+    // The pseudo-cultures of admin spec 4.17, as eng/check-admin-size.cs names them.
+    private static readonly string[] PseudoCultures = ["en-XA", "ar-XB"];
+
+    private static bool IsPseudoCulture(string name) =>
+        PseudoCultures.Any(culture => name.Split('/').Contains(culture, StringComparer.OrdinalIgnoreCase)
+            || name.Contains($".{culture}.", StringComparison.OrdinalIgnoreCase));
+
     public static int Check(string zip)
     {
         var problems = new List<string>();
         using (var archive = ZipFile.OpenRead(zip))
         {
-            var entries = archive.Entries.Where(entry => !entry.FullName.EndsWith('/')).ToDictionary(entry => entry.FullName, StringComparer.Ordinal);
+            var files = archive.Entries.Where(entry => !entry.FullName.EndsWith('/')).GroupBy(entry => entry.FullName, StringComparer.Ordinal).ToList();
+            foreach (var name in files.Where(group => group.Count() > 1).Select(group => group.Key))
+            {
+                problems.Add($"holds {name} twice, and an unzip keeps one of them");
+            }
+
+            var entries = files.ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+            foreach (var name in entries.Keys.Where(IsPseudoCulture))
+            {
+                problems.Add($"holds {name}, a resource of a pseudo-culture, which only the end-to-end checks build (FluentCmsAdminPseudoCultures)");
+            }
+
             foreach (var name in Required.Where(name => !entries.ContainsKey(name)))
             {
                 problems.Add($"misses {name}");

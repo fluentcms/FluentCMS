@@ -34,6 +34,18 @@ internal static class Chromium
         }
     }
 
+    // Whether Playwright's browsers folder holds a Chromium, where the launch looks (PLAYWRIGHT_BROWSERS_PATH, or the user's
+    // cache), for work worth starting before the launch; only the launch tells for sure.
+    public static bool LooksInstalled()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var folder = Environment.GetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH") is { Length: > 0 } set && set != "0" ? set
+            : OperatingSystem.IsWindows() ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ms-playwright")
+            : OperatingSystem.IsMacOS() ? Path.Combine(home, "Library", "Caches", "ms-playwright")
+            : Path.Combine(Environment.GetEnvironmentVariable("XDG_CACHE_HOME") is { Length: > 0 } cache ? cache : Path.Combine(home, ".cache"), "ms-playwright");
+        return Directory.Exists(folder) && Directory.EnumerateDirectories(folder, "chromium*").Any();
+    }
+
     // The folders a launch makes in the temporary directory, which stay empty when there was no browser to launch.
     private static void DeleteEmptyFolders(DateTime since)
     {

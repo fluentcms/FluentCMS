@@ -17,7 +17,7 @@ Edit nothing else: the names of the other files and their copies are fixed by th
 
 1. **Fall back to `index.html`.** A path under the base that is no file answers `index.html` with `200`, so that a reload or a link to a client route such as `/admin/content/article` opens the app. A missing file under `_framework/` or `_content/` answers `404` where the host can tell it apart; a host that falls back there too only hides a broken upload. No client route of the admin has a dot in its last segment (spec 4.1), so a host that can only tell a route from a file by its name may take a last segment without a dot for a route.
 2. **Never store `index.html` and `config.json`.** Both, and every answer of the fallback, carry `Cache-Control: no-store`, so that an edit or a new release shows at the next load.
-3. **Keep the fingerprinted files for good.** The names under `_framework/` but `blazor.webassembly.js` and `dotnet.js` carry `Cache-Control: public, max-age=31536000, immutable`. Every other file revalidates: `Cache-Control: no-cache`.
+3. **Keep the fingerprinted files for good.** The names under `_framework/` but `blazor.webassembly.js` and `dotnet.js` carry `Cache-Control: public, max-age=31536000, immutable`, on a `200` only: a `404` kept for a year would outlive the fix. Every other file revalidates: `Cache-Control: no-cache`, or `no-store`, which costs a download per load.
 4. **Send the right types.** `.wasm` is `application/wasm`, which the browser needs to compile it as it downloads; `.js` is `text/javascript`, `.json` `application/json`, `.css` `text/css`, `.svg` `image/svg+xml`, and `.dat`, the culture data, `application/octet-stream`.
 5. **Serve the compressed copies by `Accept-Encoding`**, where the host can: the `.br` or `.gz` beside a file, with `Content-Encoding`, the type of the file itself and `Vary: Accept-Encoding`. The download size the admin is held to (spec 7) is its Brotli size. A host or CDN that compresses on its own may leave the copies out.
 6. **Send the page's headers** on every answer:
@@ -122,7 +122,7 @@ server {
 
     location /admin/_framework/ {
         include /etc/nginx/fluentcms-admin-headers.conf;
-        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        add_header Cache-Control "public, max-age=31536000, immutable";
         try_files $uri =404;
     }
 
@@ -139,7 +139,7 @@ server {
 }
 ```
 
-The `mime.types` of nginx gives `.wasm` its type; `.dat` takes the `default_type` of `nginx.conf`, `application/octet-stream`.
+The `mime.types` of nginx gives `.wasm` its type; `.dat` takes the `default_type` of `nginx.conf`, `application/octet-stream`. The `Cache-Control` of `_framework/` has no `always`, so that a 404 there is not kept for a year.
 
 ### Caddy
 
@@ -170,6 +170,7 @@ admin.example.com {
             header /admin/_framework/* Cache-Control "public, max-age=31536000, immutable"
             header /admin/_framework/blazor.webassembly.js Cache-Control no-cache
             header /admin/_framework/dotnet.js Cache-Control no-cache
+            header /admin/ Cache-Control no-store
             header /admin/index.html Cache-Control no-store
             header /admin/config.json Cache-Control no-store
             file_server {
@@ -180,7 +181,7 @@ admin.example.com {
 }
 ```
 
-Inside `route` the directives run in the order written, so the `Cache-Control` of `index.html` is the one of the path that `try_files` rewrote a client route to.
+Inside `route` the directives run in the order written, so the `Cache-Control` of `index.html` is the one of the path that `try_files` rewrote a client route to; the base itself, which `file_server` answers with its `index.html` when `try_files` takes the folder, is named too. A missing file under `_framework/` is answered by `respond` before any `Cache-Control` is set.
 
 ### Azure Static Web Apps
 
@@ -193,18 +194,17 @@ Not run: it needs an Azure subscription. The app serves from the root of its hos
     "exclude": ["/_framework/*", "/_content/*"]
   },
   "routes": [
-    { "route": "/index.html", "headers": { "Cache-Control": "no-store" } },
-    { "route": "/config.json", "headers": { "Cache-Control": "no-store" } },
     { "route": "/_framework/blazor.webassembly.js", "headers": { "Cache-Control": "no-cache" } },
     { "route": "/_framework/dotnet.js", "headers": { "Cache-Control": "no-cache" } },
-    { "route": "/_framework/*", "headers": { "Cache-Control": "public, max-age=31536000, immutable" } }
+    { "route": "/_framework/*", "headers": { "Cache-Control": "public, max-age=31536000, immutable" } },
+    { "route": "/_content/*", "headers": { "Cache-Control": "no-cache" } }
   ],
   "globalHeaders": {
     "Content-Security-Policy": "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cms.example.com; font-src 'self'; connect-src 'self' https://cms.example.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "Cross-Origin-Opener-Policy": "same-origin",
-    "Cache-Control": "no-cache"
+    "Cache-Control": "no-store"
   },
   "mimeTypes": {
     ".wasm": "application/wasm",
@@ -213,7 +213,7 @@ Not run: it needs an Azure subscription. The app serves from the root of its hos
 }
 ```
 
-Check with the commands above that a client route, which the fallback answers, carries `no-store`; where it carries the global `no-cache`, the browser still asks again on every load.
+`no-store` is the global `Cache-Control`, so that the base, `index.html`, `config.json` and the fallback's answers carry it whichever route the platform matches them by; the few small files at the root are not stored either, which step 3 allows. What was not run is whether a route's headers also reach a `404` it answers: check with the commands above that a missing file under `_framework/` answers `404` without `immutable`, and where it carries it, take the `/_framework/*` route out, so that the framework revalidates.
 
 ### Amazon S3 with CloudFront
 
@@ -260,14 +260,6 @@ Not run: it needs a Cloudflare account. A Pages project serves from the root of 
 
 /_framework/*
   ! Cache-Control
-  Cache-Control: public, max-age=31536000, immutable
-
-/_framework/blazor.webassembly.js
-  ! Cache-Control
-  Cache-Control: no-cache
-
-/_framework/dotnet.js
-  ! Cache-Control
   Cache-Control: no-cache
 
 /_content/*
@@ -275,4 +267,4 @@ Not run: it needs a Cloudflare account. A Pages project serves from the root of 
   Cache-Control: no-cache
 ```
 
-Pages compresses on its own. A missing file under `_framework/` answers `index.html` there, which the checks above show as a `200` where a `404` is expected.
+Pages compresses on its own. This recipe cannot meet steps 1 and 3 together: Pages answers a missing file under `_framework/` with `index.html` and a `200`, which the checks above show where a `404` is expected, and a rule that kept `_framework/*` for a year would keep that answer a year as well, under a fingerprinted name that the next deployment of the same build asks for again. So the framework revalidates here (`no-cache`), which costs a conditional request per file on each load.

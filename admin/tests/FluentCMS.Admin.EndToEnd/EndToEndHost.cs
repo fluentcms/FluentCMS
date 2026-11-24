@@ -52,6 +52,9 @@ public sealed class EndToEndHost : IAsyncLifetime
     private TestCertificates? _certificates;
     private IPlaywright? _playwright;
     private IBrowser? _browser;
+    private readonly CancellationTokenSource _stopping = new();
+    private readonly Lock _staticBuildGate = new();
+    private Task<string>? _staticBuild;
 
     public Uri Origin { get; private set; } = null!;
 
@@ -99,6 +102,13 @@ public sealed class EndToEndHost : IAsyncLifetime
     {
         SweepStaleRuns();
         _host = HostProcess.Create(_root);
+
+        // Beside the publish of the host, where the case of the static build can run; it asks for it itself otherwise.
+        if (_host is PublishedHost && Chromium.LooksInstalled())
+        {
+            _ = StaticBuildAsync();
+        }
+
         HostMissing = await _host.PrepareAsync(Token);
         if (HostMissing is not null)
         {
@@ -126,6 +136,13 @@ public sealed class EndToEndHost : IAsyncLifetime
     {
         try
         {
+            // A static build no case waited for is stopped, and its failure is no failure of the run.
+            await _stopping.CancelAsync();
+            if (_staticBuild is { } build)
+            {
+                await ((Task)build).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            }
+
             if (_browser is not null)
             {
                 await _browser.CloseAsync();
@@ -138,6 +155,7 @@ public sealed class EndToEndHost : IAsyncLifetime
             _smtp?.Dispose();
             _ai?.Dispose();
             _certificates?.Server.Dispose();
+            _stopping.Dispose();
             TryDelete(_root);
         }
     }
@@ -197,6 +215,20 @@ public sealed class EndToEndHost : IAsyncLifetime
         Assert.SkipWhen(BrowserMissing is not null, BrowserMissing ?? "");
         traces ??= Environment.GetEnvironmentVariable(AdminBrowser.TracesVariable) is { Length: > 0 } directory ? directory : null;
         return AdminBrowser.OpenAsync(this, _browser!, traces);
+    }
+
+    // The zip of the static build (StaticBuild), made once for the run, and once for the runs that FLUENTCMS_E2E_PUBLISHED
+    // keeps the host's publish for, beside it, as the retry of the CI job's failed cases does.
+    internal Task<string> StaticBuildAsync()
+    {
+        lock (_staticBuildGate)
+        {
+            return _staticBuild ??= StaticBuild.MakeAsync(
+                Environment.GetEnvironmentVariable(PublishedHost.PublishedVariable) is { Length: > 0 } kept
+                    ? Directory.CreateDirectory(Path.Combine(kept, "static-build"))
+                    : _root.CreateSubdirectory("static-build"),
+                _stopping.Token);
+        }
     }
 
     // A directory of a test's own, deleted with the host's.
@@ -286,8 +318,9 @@ public sealed class EndToEndHost : IAsyncLifetime
     // which takes the invitations the users page sends and keeps none; an AI provider of the run's own (AiProviderStub),
     // the one endpoint a site may name in its AI settings; and webhooks that may deliver to private networks, so that the
     // receiver of WebhooksTests is reached. The admin's client is configured whole, as for an admin on another origin (spec
-    // 6.4), with the addresses the hosting package would register and those of the static build of StaticBuildTests, whose
-    // origin the Management API's CORS lists. The paths and the address Kestrel listens on are where the host finds them, and
+    // 6.4): what the hosting package would register (AdminClientRegistration: its display name, a public client of the admin
+    // pool with no consent, the host's own addresses and the five scopes), and the addresses of the static build of
+    // StaticBuildTests, whose origin the Management API's CORS lists. The paths and the address Kestrel listens on are where the host finds them, and
     // the run's own servers are reached by the name the host knows this machine by (HostProcess).
     private void Configure()
     {
@@ -328,6 +361,7 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["FluentCms__Ai__AllowedEndpoints__0"] = _ai!.Endpoint,
             ["FluentCms__Webhooks__AllowPrivateNetworks"] = "true",
             ["FluentCms__Security__Cors__Management__AllowedOrigins__0"] = StaticOrigin.GetLeftPart(UriPartial.Authority),
+            [Client + "DisplayName"] = "FluentCMS admin",
             [Client + "RedirectUris__0"] = new Uri(Admin, "authentication/login-callback").AbsoluteUri,
             [Client + "RedirectUris__1"] = new Uri(StaticAdmin, "authentication/login-callback").AbsoluteUri,
             [Client + "PostLogoutRedirectUris__0"] = Admin.AbsoluteUri,
