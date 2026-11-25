@@ -482,6 +482,20 @@ public sealed class AdminTab
         return calls.Count == 0 ? "none" : _masked(string.Join(Environment.NewLine, calls.Select(Line)));
     }
 
+    // A line for a wait that found nothing when the browser reported no call of the tab to the host after the answer of the
+    // sign-in's callback: the app makes many as it starts, so the browser lost its reports, not the page its calls (#3654).
+    internal string? SilentSinceSignIn()
+    {
+        var calls = _calls.ToArray();
+        var callback = Array.FindLastIndex(calls, call => new Uri(call.Request.Url).AbsolutePath.EndsWith("/authentication/login-callback", StringComparison.Ordinal));
+        if (callback < 0 || calls.Skip(callback + 1).Any(call => call.Request.Url.StartsWith(_host.Origin.AbsoluteUri, StringComparison.Ordinal)))
+        {
+            return null;
+        }
+
+        return $"The test browser reported none of the tab's calls to the host since the sign-in's return at {calls[callback].Time}; a route put on the page while it navigated does this.";
+    }
+
     private static string Line(Call call) => $"{call.Time} {call.Request.Method} {AdminBrowser.WithoutQuery(call.Request.Url)} {call.Outcome ?? "no answer seen"}";
 
     internal void Answered(IResponse response)
