@@ -52,7 +52,8 @@ internal sealed class AdminClientReport(AdminOptions admin, IOptions<ClientOptio
             });
         }
 
-        var missing = AdminSite.Scopes.Where(scope => !client.Scopes.Contains(scope, StringComparer.Ordinal)).ToList();
+        // The authorization server holds a client to the scopes it lists, but never to openid and offline_access.
+        var missing = AdminSite.Scopes.Where(scope => scope is not "openid" and not "offline_access" && !client.Scopes.Contains(scope, StringComparer.Ordinal)).ToList();
         if (missing.Count > 0)
         {
             found.Add(new InsecureDefault

@@ -384,7 +384,8 @@ public sealed class AdminHostingTests : IAsyncDisposable
         var found = AdminClientFindings();
         found.Keys.ShouldBe(["admin-client-secret", "admin-client-scopes", "admin-client-redirect-uri"], ignoreOrder: true);
         found["admin-client-secret"].ShouldContain("fluentcms-admin");
-        found["admin-client-scopes"].ShouldContain("profile, email, offline_access");
+        found["admin-client-scopes"].ShouldContain("lacks the scopes profile, email,");
+        found["admin-client-scopes"].ShouldNotContain("offline_access");
         found["admin-client-scopes"].ShouldNotContain("management");
         found["admin-client-redirect-uri"].ShouldContain("/admin/authentication/login-callback on FluentCms:PublicOrigin");
         found.Values.ShouldAllBe(message => !message.Contains(Secret, StringComparison.Ordinal) && message.Contains("FluentCms:Admin:Enabled", StringComparison.Ordinal));
@@ -408,6 +409,42 @@ public sealed class AdminHostingTests : IAsyncDisposable
         await using var host = new HostUnderTest();
         await host.StartAsync(settings);
         AdminClientFindings(host).ShouldBeEmpty();
+    }
+
+    // The server holds a client to the scopes it lists but never to openid and offline_access, so a client without those two
+    // signs the admin in with all five, and the report does not name it.
+    [Fact]
+    public async Task AConfiguredAdminClientWithoutOpenIdAndOfflineAccessSignsInAndIsNotNamed()
+    {
+        var settings = AdminSettings();
+        settings["FluentCms:Clients:Applications:fluentcms-admin:RedirectUris:0"] = Callback;
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:0"] = "management";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:1"] = "profile";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:2"] = "email";
+        await _host.StartAsync(settings);
+        using var client = _host.Client();
+
+        using var accepted = await client.GetAsync(Authorize(Callback, pkce: true), Token);
+        accepted.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        accepted.Headers.Location!.AbsolutePath.ShouldBe("/account/login");
+        AdminClientFindings().ShouldBeEmpty();
+    }
+
+    // Under a path base the callback the entry names is under it too.
+    [Fact]
+    public async Task UnderAPathBaseTheRedirectUriEntryNamesTheCallbackThere()
+    {
+        var settings = AdminSettings();
+        settings["FluentCms:ReverseProxy:PathBase"] = "/cms";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:RedirectUris:0"] = "https://localhost/admin/authentication/login-callback";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:0"] = "profile";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:1"] = "email";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:2"] = "management";
+        await _host.StartAsync(settings);
+
+        var found = AdminClientFindings();
+        found.Keys.ShouldBe(["admin-client-redirect-uri"]);
+        found["admin-client-redirect-uri"].ShouldContain("the path /cms/admin/authentication/login-callback on FluentCms:PublicOrigin");
     }
 
     [Fact]

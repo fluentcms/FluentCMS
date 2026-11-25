@@ -39,6 +39,10 @@ public sealed class ClientOptions
 
     public IDictionary<string, ClientRegistration> Applications { get; } = new Dictionary<string, ClientRegistration>(StringComparer.Ordinal);
 
+    // Whether the configuration or the host's code listed a client, before a package's post-configure added one of its own,
+    // as the admin's registration does; null for options that never went through the host's options.
+    internal bool? ListedAny { get; set; }
+
     internal bool HasOutlived(DateTimeOffset signedInAt, DateTimeOffset now) => AbsoluteSessionLifetime is { } cap && now - signedInAt > cap;
 
     internal void Validate()

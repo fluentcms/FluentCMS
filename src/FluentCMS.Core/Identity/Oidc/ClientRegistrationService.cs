@@ -11,8 +11,8 @@ namespace FluentCMS.Core.Identity.Oidc;
 // Writes the clients of cms.Clients to cms_oidc_application when the host starts, after the migrations. A listed client is
 // replaced by what the options say, its secret included, unless it is that already. A client the options registered and no
 // longer list is deleted with its sessions and tokens, so that dropping a compromised client from the configuration ends it,
-// except when the options list none at all, which is more likely a configuration that failed to load. A client registered
-// some other way is left alone.
+// except when the configuration and the host's code list none at all, whatever client a package adds, which is more likely a
+// configuration that failed to load. A client registered some other way is left alone.
 internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, ClientOptions clients, ILogger<ClientRegistrationService> logger) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -108,7 +108,8 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
             }
         }
 
-        if (unlisted.Count > 0 && clients.Applications.Count == 0)
+        // A client a package added, such as the admin's own, does not make a list of none a list.
+        if (unlisted.Count > 0 && !(clients.ListedAny ?? clients.Applications.Count > 0))
         {
             OidcLog.ClientsKept(logger, string.Join(", ", unlisted.Select(entry => entry.ClientId)));
             return;

@@ -31,6 +31,10 @@ internal static class AuthorizationServerRegistration
     {
         services.AddFluentCmsOptions(ClientOptions.Section, OidcErrorCodes.InvalidClients, clients, options => options.Validate());
 
+        // The first post-configure of the clients, so that it runs after every configure, the binding of FluentCms:Clients
+        // and a host's Configure<ClientOptions> included, and before a package's post-configure adds a client.
+        services.Insert(0, ServiceDescriptor.Singleton<IPostConfigureOptions<ClientOptions>, ListedClients>());
+
         // One application name, so that every instance reads the ring the others write.
         services.AddDataProtection().SetApplicationName(ApplicationName);
         services.AddSingleton<DataProtectionKeyRepository>();
@@ -176,6 +180,18 @@ internal static class AuthorizationServerRegistration
             identity.AddClaims(current.FindAll(claim => claim.Type is OpenIddictConstants.Claims.AuthenticationMethodReference or ClaimTypes.AuthenticationMethod)
                 .Where(claim => !identity.HasClaim(claim.Type, claim.Value))
                 .Select(claim => new Claim(claim.Type, claim.Value)));
+        }
+    }
+
+    // What ClientRegistrationService's rule for a list of none reads: the clients the operator listed, not those a package adds.
+    private sealed class ListedClients : IPostConfigureOptions<ClientOptions>
+    {
+        public void PostConfigure(string? name, ClientOptions options)
+        {
+            if (name == Options.DefaultName)
+            {
+                options.ListedAny = options.Applications.Count > 0;
+            }
         }
     }
 }

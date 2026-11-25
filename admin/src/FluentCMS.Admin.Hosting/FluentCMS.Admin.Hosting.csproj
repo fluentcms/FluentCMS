@@ -26,7 +26,9 @@
   </ItemGroup>
 
   <!-- The package serves its surface with public members of Core that no public API file tracks (#3451), so it depends on
-       the one version of FluentCMS.Core it was built with, and a mismatch is named at restore rather than met at run time. -->
+       the one version of FluentCMS.Core it was built with. Restore names another version of Core but does not always stop:
+       NU1608, a warning, when the host references a newer Core itself; NU1605, an error by default, when it references an
+       older one; NU1107 when two packages ask for different ones. -->
   <Target Name="FluentCmsPinCoreVersion" AfterTargets="_GetProjectReferenceVersions">
     <ItemGroup>
       <_ProjectReferencesWithVersions Condition="'%(Filename)' == 'FluentCMS.Core'">
