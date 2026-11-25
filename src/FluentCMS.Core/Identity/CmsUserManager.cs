@@ -266,6 +266,35 @@ public sealed class CmsUserManager : UserManager<CmsUser>
     // password, so the count of wrong passwords and the lockout stay.
     internal Task<IdentityResult> ResetSignedInCodeFailuresAsync(CmsUser user) => ResetSignedInFailuresAsync(user, CodeFailuresName);
 
+    // New recovery codes in place of the user's, asked for once a right code was taken. Identity's own saves once and answers
+    // nothing when that save loses to another save of the user; here the save is made again on what is stored then, with new
+    // codes, so that the caller gets those of the save that went through, and no code is checked again (#3666). Each try
+    // first runs check on the user as stored, which throws when the user no longer holds what the codes were asked for. A
+    // user deactivated meanwhile gets none and is answered as a save that lost.
+    internal async Task<(IdentityResult Result, IReadOnlyList<string> Codes)> ReplaceRecoveryCodesAsync(CmsUser user, int number, Func<Task> check)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+        ArgumentNullException.ThrowIfNull(check);
+
+        var store = Store as IUserTwoFactorRecoveryCodeStore<CmsUser> ?? throw new NotSupportedException("Recovery codes need a store of them.");
+        List<string> codes = [];
+        var result = await RetryingAsync(user, async () =>
+        {
+            if (user.DeactivatedAt is not null)
+            {
+                return IdentityResult.Failed(ErrorDescriber.ConcurrencyFailure());
+            }
+
+            await check();
+            codes = [.. Enumerable.Range(0, number).Select(_ => CreateTwoFactorRecoveryCode()).Distinct()];
+            await store.ReplaceCodesAsync(user, codes, CancellationToken);
+            return await UpdateUserAsync(user);
+        });
+
+        return (result, result.Succeeded ? codes : []);
+    }
+
     // A wrong password or code of a signed-in user, once checked, counts towards the lockout too, as a wrong one at sign-in
     // does. Its place in the sessions' count is already saved, so a failure here leaves only the lockout's count short.
     internal async Task CountFailedSignInAsync(CmsUser user)
