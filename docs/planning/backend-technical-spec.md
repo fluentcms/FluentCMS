@@ -1,8 +1,8 @@
-# FluentCMS backend: technical specification (draft for review)
+# FluentCMS backend: technical specification
 
 Version 1, 1 Nov 2026. Status: **approved**. The eighteen questions in section 10.1 were decided on 1 Nov 2026 and the text reflects those decisions. GitHub issues for milestones M0 and M1 were created from section 9 the same day; later milestones get their issues when they are planned.
 
-This document takes the approved [feature specification](specification/README.md) and keeps only what runs on the server: the NuGet packages a host adds, the reference host, the server halves of the first-party plugins, and the developer tooling that talks to them. The Blazor admin, the admin halves of plugins, frontend starter kits and the documentation site are out of scope here and get their own documents later. Once this document is approved, GitHub issues are created from section 9.
+This document takes the approved [feature specification](specification/README.md) and keeps only what runs on the server: the NuGet packages a host adds, the reference host, the server halves of the first-party plugins, and the developer tooling that talks to them. The Blazor admin, the admin halves of plugins, frontend starter kits and the documentation site are out of scope here: the admin and the admin halves have the [admin technical specification](admin-technical-spec.md), and the starter kits and the documentation site get their own documents later. Once this document is approved, GitHub issues are created from section 9.
 
 How to read it: sections 1 to 3 set scope and architecture; sections 4 to 6 describe each backend area with its design, key types, storage and endpoints; section 7 maps every specification row to a backend area and a milestone; section 8 sequences the work; section 9 is the proposed issue list; section 10 records the decisions taken on the open questions and the suggestions that shaped the design. Everything marked *proposed* is still open to change during review.
 
@@ -211,7 +211,7 @@ FluentCMS/
 |   +-- FluentCMS.Plugins.*.Tests/
 +-- templates/
 |   +-- fluentcms/                         API host template
-|   +-- fluentcms-plugin/                  plugin template, server half (admin half later)
+|   +-- fluentcms-plugin/                  plugin template, server half and admin half
 +-- samples/
 |   +-- Blog/                              sample host used by docs and tests
 +-- clients/
