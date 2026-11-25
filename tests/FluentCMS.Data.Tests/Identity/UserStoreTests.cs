@@ -880,6 +880,98 @@ public sealed class UserStoreTests : IDisposable
         }
     }
 
+    // The save of new recovery codes, made once a right code was taken, loses to another save of the user. It is made again on
+    // what is stored, the code is not checked again, and the codes answered are those stored, which all redeem (#3666).
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RecoveryCodesWhoseSaveLostAreMadeAgainAndTheStoredOnesAnswered(bool regenerate)
+    {
+        using var fixture = CodesFixture(out var between, out var counting);
+        var (user, code, _) = await TwoFactorUserAsync(fixture, on: regenerate);
+        between.Arm(1, () => fixture.Read(context => context.Set<CmsUser>().Where(row => row.Id == user.Id)
+            .ExecuteUpdate(setters => setters.SetProperty(row => row.ConcurrencyStamp, Guid.NewGuid().ToString()))));
+
+        var codes = await fixture.WithAsync(async services =>
+        {
+            var twoFactor = services.GetRequiredService<TwoFactorService>();
+            var ann = (await services.GetRequiredService<CmsUserManager>().FindByIdAsync(user.Id.ToString("D")))!;
+            return regenerate ? await twoFactor.RegenerateRecoveryCodesAsync(ann, code) : await twoFactor.VerifyAsync(ann, code);
+        });
+
+        (between.Disarm(), counting.Checked.Count).ShouldBe((1, 1));
+        codes.Count.ShouldBe(TwoFactorService.RecoveryCodeCount);
+        await fixture.UsersAsync(async users =>
+        {
+            var ann = (await users.FindByIdAsync(user.Id.ToString("D")))!;
+            ann.TwoFactorEnabled.ShouldBeTrue();
+            (await users.CountRecoveryCodesAsync(ann)).ShouldBe(codes.Count);
+            foreach (var each in codes)
+            {
+                Succeeded(await users.RedeemTwoFactorRecoveryCodeAsync(ann, each));
+            }
+
+            (await users.CountRecoveryCodesAsync(ann)).ShouldBe(0);
+            return true;
+        });
+    }
+
+    // When every try of that save loses, the request is refused with the code of a save that keeps losing, after the tries of
+    // the manager's other saves, with its code checked once, and the codes it was to replace stay (#3666).
+    [Fact]
+    public async Task RecoveryCodesWhoseSavesKeepLosingAreRefusedAndTheOldOnesKept()
+    {
+        using var fixture = CodesFixture(out var between, out var counting);
+        var (user, code, old) = await TwoFactorUserAsync(fixture, on: true);
+        between.Arm(int.MaxValue, () => fixture.Read(context => context.Set<CmsUser>().Where(row => row.Id == user.Id)
+            .ExecuteUpdate(setters => setters.SetProperty(row => row.ConcurrencyStamp, Guid.NewGuid().ToString()))));
+
+        var refused = await Should.ThrowAsync<FluentCMS.Content.ValidationException>(() => fixture.WithAsync(async services =>
+            await services.GetRequiredService<TwoFactorService>().RegenerateRecoveryCodesAsync((await services.GetRequiredService<CmsUserManager>().FindByIdAsync(user.Id.ToString("D")))!, code)));
+
+        refused.Errors.ShouldHaveSingleItem().Code.ShouldBe(IdentityErrorCodes.InvalidUser);
+        (between.Disarm(), counting.Checked.Count).ShouldBe((2 * new AdminUserOptions().Lockout.MaxFailedAccessAttempts, 1));
+        await fixture.UsersAsync(async users =>
+        {
+            var ann = (await users.FindByIdAsync(user.Id.ToString("D")))!;
+            (await users.CountRecoveryCodesAsync(ann)).ShouldBe(old.Count);
+            Succeeded(await users.RedeemTwoFactorRecoveryCodeAsync(ann, old[0]));
+            return true;
+        });
+    }
+
+    // A try made again runs on the user as stored: one whose two-factor the other save turned off gets no codes and is told
+    // two-factor is off, and one the other save deactivated gets none and is refused as a save that lost, without a try more.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RecoveryCodesWhoseSaveLostToTurningOffOrDeactivatingAreNotStored(bool deactivate)
+    {
+        using var fixture = CodesFixture(out var between, out _);
+        var (user, code, old) = await TwoFactorUserAsync(fixture, on: true);
+        List<string> twoFactorTokens = ["AuthenticatorKey", "RecoveryCodes", OneTimeAuthenticatorTokenProvider.LastStepName];
+        between.Arm(1, () => fixture.Read(context =>
+        {
+            if (!deactivate)
+            {
+                context.Set<IdentityUserToken<Guid>>().Where(row => row.UserId == user.Id && row.LoginProvider == "[AspNetUserStore]" && twoFactorTokens.Contains(row.Name)).ExecuteDelete();
+            }
+
+            return context.Set<CmsUser>().Where(row => row.Id == user.Id).ExecuteUpdate(setters => setters
+                .SetProperty(row => row.TwoFactorEnabled, deactivate)
+                .SetProperty(row => row.DeactivatedAt, deactivate ? Start : (DateTimeOffset?)null)
+                .SetProperty(row => row.ConcurrencyStamp, Guid.NewGuid().ToString()));
+        }));
+
+        var refused = await Should.ThrowAsync<FluentCMS.Content.ValidationException>(() => fixture.WithAsync(async services =>
+            await services.GetRequiredService<TwoFactorService>().RegenerateRecoveryCodesAsync((await services.GetRequiredService<CmsUserManager>().FindByIdAsync(user.Id.ToString("D")))!, code)));
+
+        refused.Errors.ShouldHaveSingleItem().Code.ShouldBe(deactivate ? IdentityErrorCodes.InvalidUser : IdentityErrorCodes.TwoFactorNotEnabled);
+        between.Disarm().ShouldBe(1);
+        var stored = await fixture.FindAsync(user.Id);
+        (await fixture.UsersAsync(users => users.CountRecoveryCodesAsync(stored))).ShouldBe(deactivate ? old.Count : 0);
+    }
+
     // A failed save that reloaded the user with what another request stored puts nothing the call changed back over it, so a
     // later save of the scope keeps the other request's flag, deactivation or reactivation. No caller of core saves again
     // after such a failure, so this was latent (#3447).
@@ -995,6 +1087,76 @@ public sealed class UserStoreTests : IDisposable
             var offset = hash[^1] & 0x0f;
             var value = (System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(hash.AsSpan(offset)) & 0x7fffffff) % 1_000_000;
             return value.ToString("D6", System.Globalization.CultureInfo.InvariantCulture);
+        }
+    }
+
+    // A fixture whose authenticator counts the codes it checks, and in which another save of a user can be made just before
+    // a save of its recovery codes.
+    private static IdentityFixture CodesFixture(out SaveBeforeCodes between, out CountingAuthenticator counting)
+    {
+        var before = between = new SaveBeforeCodes();
+        var authenticator = counting = new CountingAuthenticator();
+        var fixture = new IdentityFixture(cms =>
+        {
+            cms.Services.AddScoped<IUserValidator<CmsUser>>(services => new SaveBeforeCodes.Validator(services.GetRequiredService<SystemDbContext>(), before));
+            cms.Services.PostConfigure<IdentityOptions>(options =>
+            {
+                authenticator.Inner = options.Tokens.ProviderMap[options.Tokens.AuthenticatorTokenProvider].ProviderInstance as IUserTwoFactorTokenProvider<CmsUser>;
+                options.Tokens.ProviderMap[options.Tokens.AuthenticatorTokenProvider] = new TokenProviderDescriptor(typeof(CountingAuthenticator)) { ProviderInstance = authenticator };
+            });
+        });
+        counting.Clock = fixture.Clock;
+        return fixture;
+    }
+
+    // A user with a key, the right code of it now, and, with two-factor on, the recovery codes it holds.
+    private static Task<(CmsUser User, string Code, IReadOnlyList<string> Codes)> TwoFactorUserAsync(IdentityFixture fixture, bool on) =>
+        fixture.UsersAsync(async users =>
+        {
+            var ann = new CmsUser { UserName = "ann", Email = "ann@example.com" };
+            Succeeded(await users.CreateAsync(ann, Password));
+            Succeeded(await users.SetPendingAuthenticatorKeyAsync(ann));
+            IReadOnlyList<string> codes = [];
+            if (on)
+            {
+                Succeeded(await users.SetTwoFactorEnabledAsync(ann, true));
+                codes = [.. (await users.GenerateNewTwoFactorRecoveryCodesAsync(ann, TwoFactorService.RecoveryCodeCount))!];
+            }
+
+            return (ann, CountingAuthenticator.Code((await users.GetAuthenticatorKeyAsync(ann))!, Start.ToUnixTimeSeconds() / 30), codes);
+        });
+
+    // While armed, another request's save of the user, made through a connection of its own, comes just before each save that
+    // stores the user's recovery codes, as many times as it is armed for, so that the save loses to it. It runs in a user
+    // validator, which Identity calls before the save's transaction opens.
+    private sealed class SaveBeforeCodes
+    {
+        private Action? _other;
+        private int _left;
+        private int _made;
+
+        public void Arm(int times, Action other) => (_other, _left, _made) = (other, times, 0);
+
+        public int Disarm()
+        {
+            (_other, _left) = (null, 0);
+            return _made;
+        }
+
+        public sealed class Validator(SystemDbContext context, SaveBeforeCodes before) : IUserValidator<CmsUser>
+        {
+            public Task<IdentityResult> ValidateAsync(UserManager<CmsUser> manager, CmsUser user)
+            {
+                if (before._other is { } other && before._left > 0 && context.ChangeTracker.Entries<IdentityUserToken<Guid>>()
+                    .Any(entry => entry.Entity.UserId == user.Id && entry.Entity.Name == "RecoveryCodes" && entry.State is EntityState.Added or EntityState.Modified))
+                {
+                    before._left--;
+                    before._made++;
+                    other();
+                }
+
+                return Task.FromResult(IdentityResult.Success);
+            }
         }
     }
 

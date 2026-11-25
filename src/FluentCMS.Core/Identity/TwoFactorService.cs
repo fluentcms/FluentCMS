@@ -67,13 +67,21 @@ internal sealed class TwoFactorService(CmsUserManager users, SystemDbContext con
     public async Task<IReadOnlyList<string>> VerifyAsync(CmsUser user, string? code)
     {
         await RequireOffAsync(user);
-        if (string.IsNullOrEmpty(await users.GetAuthenticatorKeyAsync(user)))
+        var key = await users.GetAuthenticatorKeyAsync(user);
+        if (string.IsNullOrEmpty(key))
         {
             throw new ValidationException([new ValidationError("code", IdentityErrorCodes.NoAuthenticator, "There is no authenticator to verify; enrol one first.")]);
         }
 
         await RequireCodeAsync(user, code, recoveryCode: false);
-        var codes = await NewRecoveryCodesAsync(user);
+        var codes = await NewRecoveryCodesAsync(user, async () =>
+        {
+            await RequireOffAsync(user);
+            if (!string.Equals(await users.GetAuthenticatorKeyAsync(user), key, StringComparison.Ordinal))
+            {
+                throw WrongCode();
+            }
+        });
         UserViews.Check(await users.SetTwoFactorEnabledAsync(user, true));
         return codes;
     }
@@ -82,7 +90,7 @@ internal sealed class TwoFactorService(CmsUserManager users, SystemDbContext con
     {
         await RequireOnAsync(user);
         await RequireCodeAsync(user, code, recoveryCode: false);
-        return await NewRecoveryCodesAsync(user);
+        return await NewRecoveryCodesAsync(user, () => RequireOnAsync(user));
     }
 
     // A recovery code will do, for a user who lost the app and signed in with one.
@@ -96,8 +104,14 @@ internal sealed class TwoFactorService(CmsUserManager users, SystemDbContext con
     public static string FormatKey(string key) =>
         string.Join(' ', key.ToLowerInvariant().Chunk(4).Select(group => new string(group)));
 
-    private async Task<IReadOnlyList<string>> NewRecoveryCodesAsync(CmsUser user) =>
-        [.. await users.GenerateNewTwoFactorRecoveryCodesAsync(user, RecoveryCodeCount) ?? throw new InvalidOperationException("Identity generated no recovery codes.")];
+    // A save of the codes that keeps losing to other saves of the user is refused as any such save is. A try made again runs on
+    // the user as stored then, and check answers as this request would have if it came after the save it lost to (#3666).
+    private async Task<IReadOnlyList<string>> NewRecoveryCodesAsync(CmsUser user, Func<Task> check)
+    {
+        var (result, codes) = await users.ReplaceRecoveryCodesAsync(user, RecoveryCodeCount, check);
+        UserViews.Check(result);
+        return codes;
+    }
 
     private async Task RequireOffAsync(CmsUser user)
     {
@@ -148,8 +162,11 @@ internal sealed class TwoFactorService(CmsUserManager users, SystemDbContext con
             }
         }
 
-        throw new ValidationException([new ValidationError("code", IdentityErrorCodes.InvalidTwoFactorCode, "The code is not right, or the account is locked out for now.")]);
+        throw WrongCode();
     }
+
+    private static ValidationException WrongCode() =>
+        new([new ValidationError("code", IdentityErrorCodes.InvalidTwoFactorCode, "The code is not right, or the account is locked out for now.")]);
 
     private static AuthenticatorSetup Setup(CmsUser user, string key, string issuer)
     {
