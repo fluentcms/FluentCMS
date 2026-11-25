@@ -60,7 +60,7 @@
     else if (step == Step.Codes && recoveryCodes is not null)
     {
         @* Modal, so that nothing else of the page or the shell can be used while the codes are shown; Escape opens it again. *@
-        <CmsDialog @key="codesDialog" Title="@L["Account.TwoFactor.CodesHeading"]" Open="true" OpenChanged="@(_ => codesDialog++)">
+        <CmsDialog @key="codesDialog" Title="@L["Account.TwoFactor.CodesHeading"]" Open="true" OpenChanged="@(_ => codesDialog++)" CloseButton="false">
             <ChildContent>
                 <p>@L["Account.TwoFactor.CodesText"]</p>
                 <pre class="account-codes" aria-label="@L["Account.TwoFactor.CodesLabel"]">@string.Join('\n', recoveryCodes)</pre>

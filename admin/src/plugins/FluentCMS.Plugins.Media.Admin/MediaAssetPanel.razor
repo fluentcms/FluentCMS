@@ -10,7 +10,7 @@
 @inject IStringLocalizer<MediaResources> L
 
 <CascadingValue Value="@gate" IsFixed="true">
-    <CmsDrawer Title="@((asset ?? Asset)?.Name ?? L["Media.Panel.Title"].Value)" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())">
+    <CmsDrawer Title="@((asset ?? Asset)?.Name ?? L["Media.Panel.Title"].Value)" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())" CloseButton="false">
         <ChildContent>
             @if (problem is { } failure)
             {

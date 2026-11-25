@@ -11,7 +11,7 @@
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<AdminResources> L
 
-<CmsDrawer Side="CmsDrawerSide.End" Title="@L["Content.Versions.Title"]" Open="@shown" OpenChanged="OnDismissedAsync">
+<CmsDrawer Side="CmsDrawerSide.End" Title="@L["Content.Versions.Title"]" Open="@shown" OpenChanged="OnDismissedAsync" CloseButton="false">
     <ChildContent>
         @if (Open)
         {

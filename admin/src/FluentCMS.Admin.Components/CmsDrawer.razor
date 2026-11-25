@@ -8,8 +8,8 @@
               Alignment="@(Side == CmsDrawerSide.Start ? DialogAlignment.Start : DialogAlignment.End)"
               Class="cms-drawer"
               @attributes="@DialogAttributes">
-    <FluentDialogBody TitleTemplate="@TitleTemplate" TitleActionTemplate="@CloseTemplate" ActionTemplate="@Actions">
-        @ChildContent
+    <FluentDialogBody TitleTemplate="@TitleTemplate" TitleActionTemplate="@CloseTemplate" ActionTemplate="@ActionsContent">
+        @Content
     </FluentDialogBody>
 </FluentDialog>
 

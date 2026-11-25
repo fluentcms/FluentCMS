@@ -14,6 +14,7 @@
               role="@(Expanded is null ? null : "button")"
               aria-expanded="@(Expanded is { } expanded ? (expanded ? "true" : "false") : null)"
               aria-controls="@Controls"
+              Autofocus="@(DialogFocus is not null && !Disabled)"
               Class="cms-button"
               OnClick="@OnClick">
     @if (IconOnly)
@@ -57,6 +58,10 @@
     public string? Controls { get; set; }
 
     private FluentButton? _button;
+
+    // In a dialog, the first wrapped control takes focus as it opens (CmsDialogFocus).
+    [CascadingParameter]
+    private CmsDialogFocus? DialogFocus { get; set; }
 
     private bool IconOnly => ChildContent is null && Icon is not null;
 

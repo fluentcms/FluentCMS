@@ -178,7 +178,7 @@ public sealed class ContentListBulkTests : AdminTestContext
 
         // The list's own run waits for its chunk in flight however long it takes: no grace ends it before.
         time.GraceWaiting.ShouldBeFalse();
-        ProgressDialog(app).FindAll("fluent-button").Select(button => button.TextContent.Trim()).ShouldNotContain("Close");
+        ProgressDialog(app).FindAll("fluent-button").Select(button => button.GetAttribute("aria-label") ?? button.TextContent.Trim()).ShouldNotContain("Close");
         var renders = app.RenderCount;
         Management.Hold.SetResult();
         Management.Hold = null;
@@ -463,7 +463,7 @@ public sealed class ContentListBulkTests : AdminTestContext
 
         DialogButton(ProgressDialog(app, "Hang: Review"), "Cancel").Click();
         app.WaitForAssertion(() => time.GraceWaiting.ShouldBeTrue());
-        ProgressDialog(app, "Hang: Review").FindAll("fluent-button").Select(button => button.TextContent.Trim()).ShouldNotContain("Close");
+        ProgressDialog(app, "Hang: Review").FindAll("fluent-button").Select(button => button.GetAttribute("aria-label") ?? button.TextContent.Trim()).ShouldNotContain("Close");
         time.EndGrace();
 
         app.WaitForAssertion(() => ProgressDialog(app, "Hang: Review").Find(".bulk-progress-problem").TextContent.ShouldStartWith("The action did not stop within 10 seconds"));

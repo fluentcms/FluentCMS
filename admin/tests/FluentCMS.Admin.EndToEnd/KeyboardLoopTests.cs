@@ -85,6 +85,11 @@ public sealed class KeyboardLoopTests(EndToEndHost host) : BrowserTest(host)
         sent["sections"]!.AsArray().Select(block => (string)block!["type"]!).ShouldBe(["gallery", "quote"]);
         sent["sections"]![0]!["columns"]!.GetValue<int>().ShouldBe(4);
         sent["body"]!.ToJsonString().ShouldContain("bold");
+        // The image, put in after the text, was moved before it by the cut and the paste.
+        var blocks = sent["body"]!["content"]!.AsArray().Select(block => block!.ToJsonString()).ToList();
+        blocks.Count(block => block.Contains("\"type\":\"media\"", StringComparison.Ordinal)).ShouldBe(1);
+        blocks.FindIndex(block => block.Contains("\"type\":\"media\"", StringComparison.Ordinal))
+            .ShouldBeLessThan(blocks.FindIndex(block => block.Contains("bold", StringComparison.Ordinal)));
 
         // Someone else saves first: the conflict dialog takes focus, Keep mine saves, and focus is back on the save button.
         await SaveElsewhereAsync(articles[0], $"Keys {mark} 1 saved elsewhere");
@@ -223,8 +228,9 @@ public sealed class KeyboardLoopTests(EndToEndHost host) : BrowserTest(host)
         await keys.PressOnAsync(add, "Enter");
         var dialog = tab.Dialog(Text("Content.Filter.AddTitle"));
         await Expect(tab.ShownDialog(Text("Content.Filter.AddTitle"))).ToBeVisibleAsync();
-        await KeyboardOnly.FocusInsideAsync(dialog);
-        await keys.TabToAsync(dialog.GetByLabel(Text("Content.Filter.Field"), new LocatorGetByLabelOptions { Exact = true }));
+        // A dialog opens on its first control, not on the close button of its title, so typing goes into the field.
+        var field = dialog.GetByLabel(Text("Content.Filter.Field"), new LocatorGetByLabelOptions { Exact = true });
+        await Expect(field).ToBeFocusedAsync();
         await keys.Keys.TypeAsync("Title");
         await keys.TabToAsync(dialog.GetByLabel(Text("Content.Filter.Operator"), new LocatorGetByLabelOptions { Exact = true }));
         await keys.Keys.TypeAsync(Text("Content.Filter.Operator.StartsWith"));
@@ -293,6 +299,39 @@ public sealed class KeyboardLoopTests(EndToEndHost host) : BrowserTest(host)
         await Expect(body).ToBeFocusedAsync();
         await keys.Keys.TypeAsync("bold");
         await Expect(body.Locator("strong").Filter(new LocatorFilterOptions { HasText = "bold" })).ToHaveCountAsync(1);
+
+        // An image put in the text by the shortcut, then moved to the start by cut and paste, the way without dragging (2.5.7).
+        await keys.Keys.PressAsync("End");
+        await keys.Keys.PressAsync("Enter");
+        await keys.Keys.PressAsync("Control+Alt+m");
+        var embedding = tab.Dialog(MediaUi.Text("Media.Picker.TitleOne"));
+        await Expect(tab.ShownDialog(MediaUi.Text("Media.Picker.TitleOne"))).ToBeVisibleAsync();
+        await keys.TypeIntoAsync(embedding.GetByLabel(MediaUi.Text("Media.Search.Label"), new LocatorGetByLabelOptions { Exact = true }), mark);
+        await keys.PressOnAsync(Ui.ButtonIn(embedding, MediaUi.Text("Media.Search.Submit")), "Enter");
+        await Expect(embedding.Locator(".media-tile-name")).ToHaveTextAsync([file]);
+        await keys.PressOnAsync(embedding.Locator(".media-tile-open"), "Enter");
+        var embed = body.Locator(".rich-text-media");
+        await Expect(embed).ToHaveClassAsync(new Regex("ProseMirror-selectednode"));
+        await Expect(body).ToBeFocusedAsync();
+        await keys.Keys.PressAsync("Control+x");
+        await Expect(embed).ToHaveCountAsync(0);
+        // The caret goes up line by line to the start; the editor reads each move from the browser a moment after the key,
+        // so the next key waits for it. (Control+Home leaves the caret where it is in the headless browser.)
+        await Ui.UntilAsync(
+            async () =>
+            {
+                if (await body.EvaluateAsync<bool>("text => text.editor?.state.selection.from <= 1"))
+                {
+                    return true;
+                }
+
+                await keys.Keys.PressAsync("ArrowUp");
+                return false;
+            },
+            "the caret never reached the start of the text");
+        await keys.Keys.PressAsync("Control+v");
+        await Expect(embed).ToHaveCountAsync(1);
+        await Expect(body.Locator(":scope > *").First).ToHaveClassAsync(new Regex("rich-text-media"));
 
         // A quote and a gallery with four columns, the gallery moved first by Alt with the up arrow.
         var sections = page.Locator("[data-field='sections'] > fieldset");
@@ -384,7 +423,7 @@ public sealed class KeyboardLoopTests(EndToEndHost host) : BrowserTest(host)
         var title = Gallery("System.Components.DialogTitle");
         await keys.PressOnAsync(open, "Enter");
         await Expect(tab.ShownDialog(title)).ToBeVisibleAsync();
-        await KeyboardOnly.FocusInsideAsync(tab.Dialog(title));
+        await Expect(Ui.ButtonIn(tab.Dialog(title), Gallery("System.Components.Discard"))).ToBeFocusedAsync();
         await keys.PressOnAsync(tab.Dialog(title).Locator(close), "Enter");
         await Expect(tab.ShownDialog(title)).ToBeHiddenAsync();
         await Ui.FocusReturnedAsync(open);
@@ -399,7 +438,7 @@ public sealed class KeyboardLoopTests(EndToEndHost host) : BrowserTest(host)
         var filters = page.Locator($"fluent-drawer[aria-label=\"{Gallery("System.Components.Filters")}\"]");
         await keys.PressOnAsync(drawer, "Enter");
         await Expect(tab.ShownDialog(Gallery("System.Components.Filters"))).ToBeVisibleAsync();
-        await KeyboardOnly.FocusInsideAsync(filters);
+        await Expect(filters.GetByLabel(Gallery("System.Components.Search"), new LocatorGetByLabelOptions { Exact = true })).ToBeFocusedAsync();
         await keys.PressOnAsync(filters.Locator(close), "Enter");
         await Expect(tab.ShownDialog(Gallery("System.Components.Filters"))).ToBeHiddenAsync();
         await Ui.FocusReturnedAsync(drawer);

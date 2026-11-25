@@ -146,6 +146,38 @@ public sealed class CmsDialogTests : ComponentTestContext
         open.ShouldBe(false);
     }
 
+    // The library focuses the element with autofocus as the dialog opens; without it the close button, first in the document,
+    // would take focus, so every enabled wrapped control of the body and the actions carries it.
+    [Fact]
+    public void ADialogOpensOnItsFirstFieldAndADrawerOnItsFirstControlNotOnTheCloseButton()
+    {
+        Microsoft.AspNetCore.Components.RenderFragment fields = builder =>
+        {
+            builder.OpenComponent<CmsTextInput>(0);
+            builder.AddComponentParameter(1, nameof(CmsTextInput.Label), "Disabled");
+            builder.AddComponentParameter(2, nameof(CmsTextInput.Disabled), true);
+            builder.CloseComponent();
+            builder.OpenComponent<CmsTextInput>(3);
+            builder.AddComponentParameter(4, nameof(CmsTextInput.Label), "Value");
+            builder.CloseComponent();
+        };
+        Microsoft.AspNetCore.Components.RenderFragment apply = builder =>
+        {
+            builder.OpenComponent<CmsButton>(0);
+            builder.AddComponentParameter(1, nameof(CmsButton.ChildContent), (Microsoft.AspNetCore.Components.RenderFragment)(text => text.AddContent(0, "Apply")));
+            builder.CloseComponent();
+        };
+        var dialog = Render<CmsDialog>(p => p.Add(x => x.Title, "Add a filter").Add(x => x.ChildContent, fields).Add(x => x.Actions, apply));
+        var drawer = Render<CmsDrawer>(p => p.Add(x => x.Title, "Filters").Add(x => x.Actions, apply));
+
+        // The library focuses the first element with autofocus in the document: the enabled field, before the actions.
+        dialog.FindAll("[autofocus]")[0].Id.ShouldBe(dialog.FindAll("input")[1].Id);
+        dialog.FindAll("input")[0].HasAttribute("autofocus").ShouldBeFalse();
+        dialog.Find("fluent-button[aria-label='Close']").HasAttribute("autofocus").ShouldBeFalse();
+        drawer.FindAll("[autofocus]")[0].TextContent.Trim().ShouldBe("Apply");
+        drawer.Find("fluent-button[aria-label='Close']").HasAttribute("autofocus").ShouldBeFalse();
+    }
+
     [Fact]
     public void TheDrawerHasTheCloseButtonTooAndADialogMayLeaveItOut()
     {

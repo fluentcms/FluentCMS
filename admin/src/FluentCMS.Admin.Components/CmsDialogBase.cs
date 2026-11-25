@@ -1,14 +1,14 @@
 using FluentCMS.Admin.Components.Resources;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.FluentUI.AspNetCore.Components;
-using Microsoft.JSInterop;
 
 namespace FluentCMS.Admin.Components;
 
 /// <summary>
 /// The parameters and the open state shared by <see cref="CmsDialog"/> and <see cref="CmsDrawer"/>: a modal dialog named by its
-/// title, which takes focus when it opens and gives it back to the control that opened it, also when it is removed from the
-/// page while open.
+/// title, which takes focus on its first control when it opens and gives it back to the control that opened it, also when it
+/// is removed from the page while open. Only the wrapped set derives from it.
 /// </summary>
 public abstract class CmsDialogBase : ComponentBase, IHandleEvent, IAsyncDisposable
 {
@@ -16,6 +16,11 @@ public abstract class CmsDialogBase : ComponentBase, IHandleEvent, IAsyncDisposa
     private bool _appliedOpen;
     private EventCallback<DialogToggleEventArgs>? _onToggle;
     private RenderFragment? _closeTemplate;
+
+    // Only the set's two sealed dialogs derive from it (CmsDialogs.cs).
+    private protected CmsDialogBase()
+    {
+    }
 
     /// <summary>Gets or sets the title, shown at the top and naming the dialog for assistive technology.</summary>
     [Parameter, EditorRequired]
@@ -73,6 +78,11 @@ public abstract class CmsDialogBase : ComponentBase, IHandleEvent, IAsyncDisposa
         builder.CloseComponent();
     };
 
+    // The body and the actions, whose wrapped controls carry autofocus (CmsDialogFocus); the close button is outside them.
+    internal RenderFragment? Content => ChildContent is null ? null : builder => Cascade(builder, ChildContent);
+
+    internal RenderFragment? ActionsContent => Actions is null ? null : builder => Cascade(builder, Actions);
+
     // The library raises OnStateChange only for dialogs opened through its service, so the toggle event is handled here.
     internal Dictionary<string, object> DialogAttributes => new(StringComparer.Ordinal)
     {
@@ -94,14 +104,7 @@ public abstract class CmsDialogBase : ComponentBase, IHandleEvent, IAsyncDisposa
         }
 
         _shown = false;
-        try
-        {
-            await Dialog.HideAsync();
-        }
-        catch (JSDisconnectedException)
-        {
-            // The page is gone, and the dialog with it.
-        }
+        await Dialog.HideAsync();
     }
 
     /// <inheritdoc />
@@ -129,6 +132,15 @@ public abstract class CmsDialogBase : ComponentBase, IHandleEvent, IAsyncDisposa
     Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem callback, object? arg) => callback.InvokeAsync(arg);
 
     private Task CloseAsync() => Dialog?.HideAsync() ?? Task.CompletedTask;
+
+    private static void Cascade(RenderTreeBuilder builder, RenderFragment content)
+    {
+        builder.OpenComponent<CascadingValue<CmsDialogFocus>>(0);
+        builder.AddComponentParameter(1, nameof(CascadingValue<CmsDialogFocus>.Value), CmsDialogFocus.Instance);
+        builder.AddComponentParameter(2, nameof(CascadingValue<CmsDialogFocus>.IsFixed), true);
+        builder.AddComponentParameter(3, nameof(CascadingValue<CmsDialogFocus>.ChildContent), content);
+        builder.CloseComponent();
+    }
 
     private async Task OnToggleAsync(DialogToggleEventArgs args)
     {
