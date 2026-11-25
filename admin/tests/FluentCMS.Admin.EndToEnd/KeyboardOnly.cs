@@ -9,38 +9,44 @@ namespace FluentCMS.Admin.EndToEnd;
 // A tab driven by the keyboard alone (spec 4.18, 7). Focus moves by Tab and Shift+Tab only, as it does for a user without a
 // pointer, so a control that Tab does not reach fails its step by name, with the stops Tab made. Every trusted pointer event
 // of the tab's pages is recorded, so that a step a click alone reaches cannot pass unseen. At each stop the focused element
-// must not be hidden under a sticky or fixed part of the page (WCAG 2.4.11), and Tab must move it, so that no control traps
-// it. A focus a script gives, as Ui.FocusAsync does, is not used.
+// must not be hidden under a sticky or fixed part of the page (WCAG 2.4.11), and Tab or Shift+Tab must move it, so that no
+// control traps it. A focus a script gives, as Ui.FocusAsync does, is not used.
 public sealed class KeyboardOnly
 {
     // Further than the longest walk of the admin's pages: a control so many stops away is not reached in practice.
-    private const int MostStops = 90;
+    private const int MostStops = 150;
 
     private const string Binding = "fluentcmsPointerEvent";
 
-    // The events a pointer sends: a press, a move over the page, a drag, a wheel; and a click with a count of presses, which a
-    // click by Enter or Space has not.
+    // The events a pointer sends: a press, a move over the page, a drag, a wheel. A click is not one of them: Enter and Space
+    // make one too, and Firefox gives the one of Enter on a link a count of presses; a click of a pointer comes with a press.
     private const string Watch = """
         (() => {
             const name = target => target instanceof Element ? target.localName + (target.id ? '#' + target.id : '') : String(target);
             for (const type of ['pointerdown', 'pointerup', 'pointermove', 'mousedown', 'mouseup', 'mousemove', 'touchstart', 'dragstart', 'wheel', 'contextmenu', 'dblclick']) {
                 window.addEventListener(type, event => { if (event.isTrusted) window.fluentcmsPointerEvent(`${type} on ${name(event.target)} at ${location.pathname}`); }, { capture: true, passive: true });
             }
-            window.addEventListener('click', event => { if (event.isTrusted && event.detail > 0) window.fluentcmsPointerEvent(`click on ${name(event.target)} at ${location.pathname}`); }, { capture: true });
         })();
         """;
 
     // Where focus stands against the target: on it or in it, and otherwise the way to it in the order of the document, with the
-    // stop's name, whether Tab left it where it was, and the fault of 2.4.11.
-    private static readonly string Stop = "target => {" + Wcag22.HiddenFocus + """
+    // stop's name, whether the last key left it where it was, whether the other key did too, and the fault of 2.4.11.
+    private static readonly string Stop = "(target, first) => {" + Wcag22.HiddenFocus + """
+            if (first) {
+                window.fluentcmsLastStop = null;
+                window.fluentcmsTurnedAt = null;
+            }
             const active = document.activeElement;
             const same = active !== document.body && window.fluentcmsLastStop === active;
+            const trapped = same && window.fluentcmsTurnedAt === active;
+            if (same) window.fluentcmsTurnedAt = active;
             window.fluentcmsLastStop = active;
             return {
                 reached: !!active && (active === target || target.contains(active)),
                 backward: !!active && active !== document.body && !!(active.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_PRECEDING),
                 name: focused ? describe(focused) : 'nothing',
                 same,
+                trapped,
                 hidden: hidden(),
             };
         }
@@ -78,7 +84,7 @@ public sealed class KeyboardOnly
         var stops = new List<string>();
         for (var stop = 0; stop <= most; stop++)
         {
-            var state = await target.EvaluateAsync<JsonElement>(Stop);
+            var state = await target.EvaluateAsync<JsonElement>(Stop, stop == 0);
             if (state.GetProperty("hidden").GetString() is { } hidden)
             {
                 _hidden.Enqueue(hidden);
@@ -91,16 +97,24 @@ public sealed class KeyboardOnly
 
             var name = state.GetProperty("name").GetString() ?? "";
             stops.Add(name);
-            if (stop > 0 && state.GetProperty("same").GetBoolean())
+            backward ??= state.GetProperty("backward").GetBoolean();
+
+            // At an end of the document a key may leave focus where it is, as Firefox's Tab does at the last control, where
+            // Chromium's goes round; the walk turns there. A control that neither Tab nor Shift+Tab leaves traps focus.
+            if (state.GetProperty("trapped").GetBoolean())
             {
-                throw new ShouldAssertException($"Tab left focus on {name}, which traps it, on the way to {target}. The stops: {string.Join(" > ", stops)}");
+                throw new ShouldAssertException($"Tab and Shift+Tab both left focus on {name}, which traps it, on the way to {target}. The stops: {string.Join(" > ", stops)}");
             }
 
-            backward ??= state.GetProperty("backward").GetBoolean();
+            if (state.GetProperty("same").GetBoolean())
+            {
+                backward = !backward;
+            }
+
             await Keys.PressAsync(backward.Value ? "Shift+Tab" : "Tab");
         }
 
-        throw new ShouldAssertException($"{target} was not reached by {most} presses of {(backward == true ? "Shift+Tab" : "Tab")}. The stops: {string.Join(" > ", stops)}");
+        throw new ShouldAssertException($"{target} was not reached by {most} presses of Tab and Shift+Tab. The stops: {string.Join(" > ", stops)}");
     }
 
     // Moves focus along a composite control, such as a menu or a list of options, by the key until the item has it.
@@ -118,6 +132,33 @@ public sealed class KeyboardOnly
         }
 
         throw new ShouldAssertException($"{item} was not reached by {MostStops} presses of {key}.");
+    }
+
+    // A native select's option by its text: typed, as a user chooses, and the arrows where the typing did not take, as it once
+    // did not in WebKit on Linux, each key until the option is chosen.
+    public async Task ChooseAsync(ILocator select, string option)
+    {
+        await TabToAsync(select);
+        await Keys.TypeAsync(option);
+        foreach (var key in new[] { "ArrowDown", "ArrowUp" })
+        {
+            for (var press = 0; press <= MostStops; press++)
+            {
+                if (await select.EvaluateAsync<bool>("(select, option) => select.selectedOptions[0]?.textContent.trim().toLowerCase() === option.toLowerCase()", option))
+                {
+                    return;
+                }
+
+                if (await select.EvaluateAsync<bool>("(select, key) => key === 'ArrowDown' ? select.selectedIndex === select.options.length - 1 : select.selectedIndex === 0", key))
+                {
+                    break;
+                }
+
+                await Keys.PressAsync(key);
+            }
+        }
+
+        throw new ShouldAssertException($"{select} has no option {option} that the keyboard chose.");
     }
 
     // Tab to the target, then the key.

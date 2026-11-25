@@ -158,6 +158,12 @@
 /* The label of the library's checkbox and switch is part of their target, which is a target high (WCAG 2.5.8). */
 .cms-root fluent-field label {
     min-block-size: var(--cms-target-size);
+    overflow-wrap: anywhere;
+}
+
+/* A field of the library is no wider than its container, so that a long label breaks rather than widen the page. */
+.cms-root fluent-field {
+    max-inline-size: 100%;
 }
 
 /* At 320 pixels nothing but a table scrolls sideways (WCAG 1.4.10): a long code, address or name breaks, and a fieldset may

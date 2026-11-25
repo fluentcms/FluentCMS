@@ -126,8 +126,8 @@ public sealed class KeyboardLoopTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
-    // A control only a click reaches fails the walk by name, and a pointer event is seen; the mouse is used here only to show
-    // that the loop above could not use it unseen.
+    // A control only a click reaches fails the walk by name, a control that keeps focus from Tab and Shift+Tab fails it as a
+    // trap, and a pointer event is seen; the mouse is used here only to show that the loop above could not use it unseen.
     [Fact]
     public async Task AControlOnlyAClickReachesFailsTheWalkAndAClickIsSeen()
     {
@@ -145,6 +145,16 @@ public sealed class KeyboardLoopTests(EndToEndHost host) : BrowserTest(host)
                 <body><main><h1>Click only</h1><button id="first">First</button><div id="clicked" onclick="this.textContent = 'Clicked'">Click me</div><button id="last">Last</button></main></body></html>
                 """,
         }));
+        await tab.Page.RouteAsync($"{EndToEndHost.PreviewOrigin}/trap", route => route.FulfillAsync(new RouteFulfillOptions
+        {
+            Status = 200,
+            ContentType = "text/html",
+            Body = """
+                <!doctype html>
+                <html lang="en"><head><title>Trap</title></head>
+                <body><main><h1>Trap</h1><button id="before">Before</button><input id="trap" aria-label="Trap" onkeydown="if (event.key === 'Tab') event.preventDefault()"><button id="after">After</button></main></body></html>
+                """,
+        }));
         await tab.Page.GotoAsync($"{EndToEndHost.PreviewOrigin}/click-only");
 
         await keys.TabToAsync(tab.Page.Locator("#last"));
@@ -160,6 +170,20 @@ public sealed class KeyboardLoopTests(EndToEndHost host) : BrowserTest(host)
 
         failure.ShouldNotBeNull().ShouldContain("was not reached");
         failure.ShouldContain("button#first");
+
+        await tab.Page.GotoAsync($"{EndToEndHost.PreviewOrigin}/trap");
+        failure = null;
+        try
+        {
+            await keys.TabToAsync(tab.Page.Locator("#after"), most: 6);
+        }
+        catch (ShouldAssertException exception)
+        {
+            failure = exception.Message;
+        }
+
+        failure.ShouldNotBeNull().ShouldContain("traps it");
+        failure.ShouldContain("input#trap");
         keys.PointerEvents.ShouldBeEmpty();
 
         await tab.Page.Mouse.ClickAsync(1, 1);
@@ -231,9 +255,8 @@ public sealed class KeyboardLoopTests(EndToEndHost host) : BrowserTest(host)
         // A dialog opens on its first control, not on the close button of its title, so typing goes into the field.
         var field = dialog.GetByLabel(Text("Content.Filter.Field"), new LocatorGetByLabelOptions { Exact = true });
         await Expect(field).ToBeFocusedAsync();
-        await keys.Keys.TypeAsync("Title");
-        await keys.TabToAsync(dialog.GetByLabel(Text("Content.Filter.Operator"), new LocatorGetByLabelOptions { Exact = true }));
-        await keys.Keys.TypeAsync(Text("Content.Filter.Operator.StartsWith"));
+        await keys.ChooseAsync(field, "Title");
+        await keys.ChooseAsync(dialog.GetByLabel(Text("Content.Filter.Operator"), new LocatorGetByLabelOptions { Exact = true }), Text("Content.Filter.Operator.StartsWith"));
         await keys.TypeIntoAsync(dialog.GetByLabel(Text("Content.Filter.Value"), new LocatorGetByLabelOptions { Exact = true }), title);
         await keys.PressOnAsync(Ui.ButtonIn(dialog, Text("Content.Filter.Apply")), "Enter");
         await Expect(tab.Page).ToHaveURLAsync(new Regex(@"filter\[title\]\[startsWith\]="));
@@ -260,8 +283,7 @@ public sealed class KeyboardLoopTests(EndToEndHost host) : BrowserTest(host)
         await Expect(moment.Nth(0)).Not.ToHaveAttributeAsync("aria-invalid", "true");
 
         var category = page.Locator("[data-field='category'] select");
-        await keys.TabToAsync(category);
-        await keys.Keys.TypeAsync("Opinion");
+        await keys.ChooseAsync(category, "Opinion");
         await Expect(category).ToHaveValueAsync("opinion");
 
         // The author from the picker: a row's checkbox by Space, Choose by Enter, and focus back on the opener.
@@ -349,8 +371,7 @@ public sealed class KeyboardLoopTests(EndToEndHost host) : BrowserTest(host)
     private static async Task AddBlockAsync(KeyboardOnly keys, ILocator sections, string label)
     {
         var count = await sections.Locator(":scope > ul > li").CountAsync();
-        await keys.TabToAsync(sections.Locator(":scope > .nested-actions select"));
-        await keys.Keys.TypeAsync(label);
+        await keys.ChooseAsync(sections.Locator(":scope > .nested-actions select"), label);
         await keys.PressOnAsync(sections.Locator(":scope > .nested-actions fluent-button").Filter(Ui.Exactly(Text("Content.Nested.Add", label))), "Enter");
         await Expect(sections.Locator(":scope > ul > li")).ToHaveCountAsync(count + 1);
         await Expect(sections.Locator(":scope > ul > li").Last.Locator(":scope > .nested-head .nested-toggle")).ToBeFocusedAsync();
@@ -383,8 +404,7 @@ public sealed class KeyboardLoopTests(EndToEndHost host) : BrowserTest(host)
         var pane = page.Locator(".content-preview");
         await Expect(pane.Locator("iframe")).ToHaveAttributeAsync("src", new Regex($@"/showcase/{showcase:D}\?preview="));
         await Expect(pane).ToBeFocusedAsync();
-        await keys.TabToAsync(page.GetByLabel(Text("Content.Preview.Width"), new PageGetByLabelOptions { Exact = true }));
-        await keys.Keys.TypeAsync(Text("Content.Preview.Tablet"));
+        await keys.ChooseAsync(page.GetByLabel(Text("Content.Preview.Width"), new PageGetByLabelOptions { Exact = true }), Text("Content.Preview.Tablet"));
         await Expect(pane).ToHaveAttributeAsync("data-width", "tablet");
     }
 
