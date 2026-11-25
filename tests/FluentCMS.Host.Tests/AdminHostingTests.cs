@@ -8,6 +8,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Admin.Hosting;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Diagnostics;
 using FluentCMS.Data.Sqlite;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -36,10 +37,35 @@ public sealed class AdminHostingTests : IAsyncDisposable
 
     public ValueTask DisposeAsync() => _host.DisposeAsync();
 
+    // The image with nothing set about the admin, and the refusals lifted as an operator lifts them.
     [Fact]
-    public async Task TheAdminIsOffByDefaultAndNothingUnderAdminAnswersOrRegistersAClient()
+    public async Task TheAdminIsOnByDefaultAndItsClientRegistered()
     {
-        await _host.StartAsync(Operator.Settings());
+        await _host.StartAsync(new Dictionary<string, string?>
+        {
+            ["FluentCms:PublicOrigin"] = "https://localhost",
+            ["FluentCms:Security:AllowGeneratedSigningKey"] = "true",
+            ["FluentCms:Security:AllowUnencryptedKeyRing"] = "true",
+        }, optIns: false);
+
+        using var client = _host.Client();
+        using var page = await client.GetAsync(new Uri("/admin/", UriKind.Relative), Token);
+        page.StatusCode.ShouldBe(HttpStatusCode.OK);
+        page.Headers.GetValues("Content-Security-Policy").ShouldHaveSingleItem().ShouldBe(Policy);
+        (await page.Content.ReadAsStringAsync(Token)).ShouldContain("<base href=\"/admin/\" />");
+
+        using var authorize = await client.GetAsync(Authorize(Callback, pkce: true), Token);
+        authorize.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        authorize.Headers.Location!.AbsolutePath.ShouldBe("/account/login");
+    }
+
+    [Fact]
+    public async Task TurnedOffNothingUnderAdminAnswersOrRegistersAClient()
+    {
+        var settings = Operator.Settings();
+        settings["FluentCms:PublicOrigin"] = "https://localhost";
+        settings["FluentCms:Admin:Enabled"] = "false";
+        await _host.StartAsync(settings);
 
         using var client = _host.Client();
         foreach (var path in new[] { "/admin", "/admin/", "/admin/index.html", "/admin/config.json", "/admin/_framework/blazor.webassembly.js", "/admin/system/components" })
@@ -343,6 +369,59 @@ public sealed class AdminHostingTests : IAsyncDisposable
         ShouldBeRefused(builtIn, "redirect_uri");
     }
 
+    // The host starts, and its startup report names what the served admin cannot sign in with, never the secret.
+    [Fact]
+    public async Task AConfiguredAdminClientTheAdminCannotSignInWithIsNamedInTheStartupReport()
+    {
+        const string Secret = "a-secret-of-the-admin-client";
+        var settings = AdminSettings();
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Secret"] = Secret;
+        settings["FluentCms:Clients:Applications:fluentcms-admin:RedirectUris:0"] = "https://admin.example.com/authentication/login-callback";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:0"] = "openid";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:1"] = "management";
+        await _host.StartAsync(settings);
+
+        var found = AdminClientFindings();
+        found.Keys.ShouldBe(["admin-client-secret", "admin-client-scopes", "admin-client-redirect-uri"], ignoreOrder: true);
+        found["admin-client-secret"].ShouldContain("fluentcms-admin");
+        found["admin-client-scopes"].ShouldContain("profile, email, offline_access");
+        found["admin-client-scopes"].ShouldNotContain("management");
+        found["admin-client-redirect-uri"].ShouldContain("/admin/authentication/login-callback on FluentCms:PublicOrigin");
+        found.Values.ShouldAllBe(message => !message.Contains(Secret, StringComparison.Ordinal) && message.Contains("FluentCms:Admin:Enabled", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task AConfiguredAdminClientTheAdminSignsInWithAndTheRegisteredOneAreNotNamed()
+    {
+        await _host.StartAsync(AdminSettings());
+        AdminClientFindings().ShouldBeEmpty();
+
+        var settings = AdminSettings();
+        settings["FluentCms:Clients:Applications:fluentcms-admin:RedirectUris:0"] = "https://admin.example.com/authentication/login-callback";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:RedirectUris:1"] = Callback;
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:0"] = "management";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:1"] = "offline_access";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:2"] = "email";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:3"] = "profile";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:4"] = "openid";
+
+        await using var host = new HostUnderTest();
+        await host.StartAsync(settings);
+        AdminClientFindings(host).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task WhileTheAdminIsOffAConfiguredAdminClientIsNotNamed()
+    {
+        var settings = AdminSettings();
+        settings["FluentCms:Admin:Enabled"] = "false";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Secret"] = "a-secret";
+        settings["FluentCms:Clients:Applications:fluentcms-admin:Scopes:0"] = "management";
+        await _host.StartAsync(settings);
+
+        AdminClientFindings().ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task InDevelopmentConfigJsonFollowsTheRequestAndTheClientTheAddressesTheHostListensOn()
     {
@@ -521,6 +600,11 @@ public sealed class AdminHostingTests : IAsyncDisposable
         settings["FluentCms:Admin:Enabled"] = "true";
         return settings;
     }
+
+    private Dictionary<string, string> AdminClientFindings(HostUnderTest? host = null) =>
+        (host ?? _host).App.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults
+            .Where(item => item.Id.StartsWith("admin-client-", StringComparison.Ordinal))
+            .ToDictionary(item => item.Id, item => item.Message);
 
     // The authorization server refuses a request it cannot send back to the client on its error page, never the login.
     private static void ShouldBeRefused(HttpResponseMessage response, string parameter)

@@ -16,6 +16,7 @@ internal sealed partial class AdminClientRegistration(
     AdminOptions admin,
     PublicOrigin origin,
     ReverseProxyOptions proxy,
+    SecurityOptions security,
     IHostEnvironment environment,
     IConfiguration configuration) : IPostConfigureOptions<ClientOptions>
 {
@@ -50,7 +51,7 @@ internal sealed partial class AdminClientRegistration(
                 $"{AdminOptions.Root}:{AdminOptions.ClientsSection}:{nameof(ClientOptions.AdminClientId)} is '{options.AdminClientId}'; the admin's config.json takes a client id of visible ASCII characters without spaces.");
         }
 
-        if (options.Applications.ContainsKey(options.AdminClientId))
+        if (origins.Count == 0 || options.Applications.ContainsKey(options.AdminClientId))
         {
             return;
         }
@@ -69,6 +70,9 @@ internal sealed partial class AdminClientRegistration(
 
         options.Applications[options.AdminClientId] = client;
     }
+
+    // The sign-in callback of the admin at each address it is reached at, as the registration lists them.
+    internal List<string> CallbackUris() => [.. Origins().Select(hostBase => hostBase + AdminSite.Path + AdminSite.CallbackPath)];
 
     // The scheme, host, port and path base of each address the admin is reached at, without a trailing slash.
     private List<string> Origins()
@@ -102,6 +106,13 @@ internal sealed partial class AdminClientRegistration(
 
         if (!environment.IsDevelopment())
         {
+            // Unless lifted, FCMS1105 stops this start before the database with the other refusals and names the public
+            // origin, so the admin registers nothing rather than stop the host first on its own.
+            if (!security.AllowRequestOrigin)
+            {
+                return [];
+            }
+
             throw FluentCmsConfigurationException.InvalidOption(
                 $"{AdminOptions.Root}:{AdminOptions.Section}:{nameof(AdminOptions.Enabled)} is true and {AdminOptions.Root}:{PublicOrigin.Key} is not set. Outside Development the admin's sign-in addresses and its config.json are built from the public origin, never from a request's host; set it, or turn the admin off.");
         }

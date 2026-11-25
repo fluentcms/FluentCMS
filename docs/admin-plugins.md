@@ -247,7 +247,7 @@ A half that fails to load gives an error state with a retry. A component that th
 
 ## Versions
 
-The half's package has a version of its own, the `Version` of `[FluentCmsAdminPlugin]` and `version` of the manifest. `AdminRange` says which versions of the contract it runs on: `FluentCMS.Admin.Abstractions` and `FluentCMS.Admin.Components` follow semantic versioning from 1.0.0 on, so a range of one major version, such as `[1.0.0,2.0.0)`, holds every admin of that major version. A preview of the packages may break the contract between previews.
+The half's package has a version of its own, the `Version` of `[FluentCmsAdminPlugin]` and `version` of the manifest. `AdminRange` says which versions of the contract it runs on: `FluentCMS.Admin.Abstractions` and `FluentCMS.Admin.Components` follow semantic versioning from 1.0.0 on, so a range of one major version, such as `[1.0.0,2.0.0)`, holds every admin of that major version. A preview of the packages may break the contract between previews, and every preview of 1.0.0 has the assembly version 1.0.0, which the range is compared with, so an admin loads a half built against another preview: build the half again for each preview. The other admin packages are a preview without that promise ([releasing](releasing.md#the-admin-packages)).
 
 ## The half's records and the OpenAPI document
 

@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.Commands;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
@@ -47,6 +48,15 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         refusals["FCMS1105"].ShouldContain("FluentCms:Security:AllowRequestOrigin");
         refusals["FCMS1106"].ShouldContain("FluentCms:Security:AllowUnencryptedKeyRing");
         File.Exists(Path.Combine(_host.Root, "fluentcms.db")).ShouldBeFalse();
+    }
+
+    // As "docker run <image> fluentcms migrate" with nothing set: the admin, on by default, needs no public origin there.
+    [Fact]
+    public async Task WithNothingSetACommandRunsWithTheAdminOn()
+    {
+        var app = _host.Build(optIns: false);
+
+        (await app.RunFluentCmsCommandAsync(["fluentcms", "migrate", "--check"], Token)).ShouldBe(1);
     }
 
     [Fact]

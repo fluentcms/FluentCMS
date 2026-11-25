@@ -349,7 +349,6 @@ public sealed partial class EndToEndHost : IAsyncLifetime
             ["FLUENTCMS_SCHEMA"] = _host.SchemaPath,
             ["FluentCms__PublicOrigin"] = origin,
             ["AllowedHosts"] = IPAddress.Loopback.ToString(),
-            ["FluentCms__Admin__Enabled"] = "true",
             ["FluentCms__Admin__PreviewOrigins__0"] = PreviewOrigin,
             ["FluentCms__Admin__Cultures__Default"] = Culture,
             ["FluentCms__Security__SigningCertificate__Path"] = _host.CertificatePath(certificates.SigningPath),

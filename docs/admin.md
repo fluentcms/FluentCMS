@@ -36,13 +36,13 @@ A project made by a template references the FluentCMS packages, the admin's amon
 
 The admin has no users of its own: it signs in the users of the instance, through the hosted login page of the API host, with the authorization code flow and PKCE ([decision record 0007](decisions/0007-admin-sign-in-flow.md)). So the first step is the instance's first administrator, which [Run with Docker](docker.md#the-first-administrator) makes with `fluentcms user create`, and the template's README with `dotnet fluentcms user create`.
 
-With the admin served by the host, while `FluentCms:Admin:Enabled` is true ([host configuration](host-configuration.md#admin) gives its default):
+With the admin served by the host, as it is unless `FluentCms:Admin:Enabled` is false ([host configuration](host-configuration.md#admin)):
 
 1. Open `{public origin}/admin/`, such as `https://cms.example.com/admin/`, under `FluentCms:ReverseProxy:PathBase` when it is set. A host of `dotnet new fluentcms` run in Development is at `https://localhost:5443/admin/`.
 2. The admin sends the browser to the host's login page. Sign in as the first administrator, with the second factor there when the user has one.
 3. The login page sends the browser back to `/admin/authentication/login-callback`, and the admin opens the address it was first opened at, the start page here.
 
-The hosted pages answer https only, so the admin needs https too, with the development certificate on a local machine (`dotnet dev-certs https --trust`). Outside Development the host needs `FluentCms:PublicOrigin` for the admin, and stops with `FCMS1101` without it.
+The hosted pages answer https only, so the admin needs https too, with the development certificate on a local machine (`dotnet dev-certs https --trust`). Outside Development the host needs `FluentCms:PublicOrigin` for the admin, and stops without it: with `FCMS1105`, or with `FCMS1101` where `FluentCms:Security:AllowRequestOrigin` lifts that one.
 
 An admin on another origin signs in the same way once the API host lists its origin and its addresses ([admin configuration](admin-configuration.md#an-admin-on-another-origin)). A `config.json` that is missing or wrong shows a page that names the member before the admin calls the API.
 

@@ -13,8 +13,27 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../../../src/FluentCMS.Core/FluentCMS.Core.csproj" />
   </ItemGroup>
+
+  <!-- The package serves its surface with public members of Core that no public API file tracks (#3451), so it depends on
+       the one version of FluentCMS.Core it was built with, and a mismatch is named at restore rather than met at run time. -->
+  <Target Name="FluentCmsPinCoreVersion" AfterTargets="_GetProjectReferenceVersions">
+    <ItemGroup>
+      <_ProjectReferencesWithVersions Condition="'%(Filename)' == 'FluentCMS.Core'">
+        <ProjectVersion>[%(ProjectVersion)]</ProjectVersion>
+      </_ProjectReferencesWithVersions>
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <None Remove="build/**" />

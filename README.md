@@ -16,8 +16,9 @@
 - **Its first-party plugins.** Media (with S3 and Azure Blob storage), webhooks, GraphQL, MCP, AI assist, multi-site and search.
 - **The CLI and the templates.** The `fluentcms` tool, and the `dotnet new` templates `fluentcms` for a host, `fluentcms-admin` for an admin app and `fluentcms-plugin` for a plugin.
 - **Two minimal clients.** `FluentCMS.Client` for C# and `@fluentcms/client` for TypeScript, which generated code compiles against. `@fluentcms/client` is published to npm with each release; a preview is under the dist-tag `next`.
+- **The admin**, from the release after `1.0.0-preview.1`: a Blazor WebAssembly app for editors and administrators, served at `/admin` by the reference image and by a host of `dotnet new fluentcms`, unless `FluentCms:Admin:Enabled` is false; as a prebuilt static build, `fluentcms-admin-{version}.zip` on each GitHub release; and as an app of your own from `dotnet new fluentcms-admin`. Its twelve packages are a preview, and only `FluentCMS.Admin.Abstractions` and `FluentCMS.Admin.Components`, the contract of a plugin's admin half, carry the semantic versioning promise from 1.0.0 ([releasing](docs/releasing.md#the-admin-packages)). It ships in English.
 
-The admin, the documentation site and the starters are not part of the preview.
+The documentation site and the starters are not part of the preview.
 
 ## Quick start
 
@@ -30,7 +31,7 @@ cd MyCms
 dotnet run
 ```
 
-The host runs on SQLite with the Blog sample, at `https://localhost:5443`. The [template's README](templates/fluentcms/README.md) covers PostgreSQL and SQL Server, migrations, the first administrator and an API key.
+The host runs on SQLite with the Blog sample, at `https://localhost:5443`. The [template's README](templates/fluentcms/README.md) covers PostgreSQL and SQL Server, migrations, the first administrator and an API key. With a template of a release that has the admin, open `https://localhost:5443/admin/` and sign in as that administrator ([the admin](docs/admin.md#the-first-sign-in)).
 
 With Docker, the compose file of the reference host runs the published image `ghcr.io/fluentcms/fluentcms:1.0.0-preview.1` on PostgreSQL, with its media in MinIO. In `src/FluentCMS.Host` of a clone of this repository, copy `.env.example` to `.env`, fill in every empty value, uncomment the two evaluation opt-ins (or mount the certificates, see [docs/docker.md](docs/docker.md#before-production)), set `FLUENTCMS_IMAGE=ghcr.io/fluentcms/fluentcms:1.0.0-preview.1`, and start:
 
@@ -39,7 +40,7 @@ docker compose pull
 docker compose up -d --no-build
 ```
 
-`http://localhost:8080/health/ready` answers `Healthy` once the host is ready. [Run with Docker](docs/docker.md) covers the first administrator, a key and what to change for production.
+`http://localhost:8080/health/ready` answers `Healthy` once the host is ready. [Run with Docker](docs/docker.md) covers the first administrator, a key and what to change for production. The image of a release with the admin serves it at `/admin/` of the public origin, whose sign-in needs the https of the proxy in front ([the admin](docs/docker.md#the-admin)).
 
 ## Documentation
 

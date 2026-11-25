@@ -78,7 +78,7 @@ jobs:
 
       # Throwaway values in place of the example's empty ones. The override stands in for the proxy that ends TLS, which
       # sign-in needs: the runner reaches the host through the network's gateway and forwards the scheme. It also registers
-      # a public client to sign the administrator in with, and turns the admin on.
+      # a public client to sign the administrator in with.
       - name: Write .env with throwaway values
         run: |
           : > .env
@@ -102,7 +102,6 @@ jobs:
                 FluentCms__Clients__Applications__smoke__RedirectUris__0: https://localhost/signed-in
                 FluentCms__Clients__Applications__smoke__Scopes__0: openid
                 FluentCms__Clients__Applications__smoke__Scopes__1: management
-                FluentCms__Admin__Enabled: "true"
                 FluentCms__Security__AllowGeneratedSigningKey: "true"
                 FluentCms__Security__AllowUnencryptedKeyRing: "true"
           YAML
