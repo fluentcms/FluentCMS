@@ -10,8 +10,8 @@ What the project's own planning documents say comes next. It gives no dates. The
 
 - **Member sign-in with Apple**, verified against the real service ([#3165](https://github.com/fluentcms/FluentCMS/issues/3165)).
 - **AI assist on Azure OpenAI**, verified against the real service (H3 of the [backend technical specification](docs/planning/backend-technical-spec.md)).
-- **At 1.0.0, the contract freezes**: the public API files of the contract packages move to shipped, and package validation compares each later release with 1.0.0 ([releasing](docs/releasing.md#cutting-a-release), steps 2 and 7).
-- **The documentation site and the frontend starters**, Must rows 11.7 and 11.10 of the [specification](docs/planning/specification/11-developer-experience-tooling.md), are not built. Whether they come before 1.0.0 is not decided.
+- **At 1.0.0, the contract freezes**: the public API files of the contract packages move to shipped, and package validation compares each later release with the release before it ([releasing](docs/releasing.md#cutting-a-release), steps 2 and 7).
+- **The documentation site, with its `llms.txt`, and the frontend starters**, Must rows 11.7, 11.8 and 11.10 of the [specification](docs/planning/specification/11-developer-experience-tooling.md), are not built; no document gives them a release.
 
 ## After 1.0.0
 
@@ -25,7 +25,7 @@ What the project's own planning documents say comes next. It gives no dates. The
 
 ## Not planned
 
-The Won't rows of the specification, stated so that no one proposes them:
+Among the Won't rows of the specification, stated so that no one proposes them:
 
 - A hosted SaaS or managed cloud ([infrastructure](docs/planning/specification/10-infrastructure-operations.md)).
 - Usage telemetry sent to the project ([infrastructure](docs/planning/specification/10-infrastructure-operations.md)).

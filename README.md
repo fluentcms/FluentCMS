@@ -53,7 +53,7 @@ FluentCMS is a headless CMS for .NET teams. It comes as NuGet packages that you 
 
 - **An MCP server.** Agents and IDEs connect to `/mcp`, or through `fluentcms mcp` over stdio, with tools for content and media.
 - **Dry runs.** A delete, an unpublish or a bulk change answers its plan first, and runs only when it is called again with the plan's token.
-- **AI assist in the editor.** Rewrite, shorten, translate or write alt text with an OpenAI-compatible provider, within a daily token budget per site.
+- **AI assist in the editor.** Rewrite, shorten, summarize or write alt text with an OpenAI-compatible provider, with an optional daily token budget per site.
 
 ## Quick start
 
@@ -66,7 +66,7 @@ cd MyCms
 dotnet run
 ```
 
-The host runs on SQLite with the Blog sample, at `https://localhost:5443`. The [template's README](templates/fluentcms/README.md) covers PostgreSQL and SQL Server, migrations, and [the first administrator and a key](templates/fluentcms/README.md#the-first-administrator-and-a-key). A host of a release with the admin serves it at `https://localhost:5443/admin/`, with the development certificate trusted ([the first sign-in](docs/admin.md#the-first-sign-in)).
+The host runs on SQLite with the Blog sample, at `https://localhost:5443`. The [template's README](https://github.com/fluentcms/FluentCMS/blob/v1.0.0-preview.1/templates/fluentcms/README.md) of that release covers PostgreSQL and SQL Server, migrations, and [the first administrator and a key](https://github.com/fluentcms/FluentCMS/blob/v1.0.0-preview.1/templates/fluentcms/README.md#the-first-administrator-and-a-key). A host of a release with the admin serves it at `https://localhost:5443/admin/`, with the development certificate trusted ([the first sign-in](docs/admin.md#the-first-sign-in)).
 
 With Docker, the compose file of the reference host runs the published image on PostgreSQL, with its media in MinIO. In `src/FluentCMS.Host` of a clone of this repository, copy `.env.example` to `.env`, fill in every empty value, uncomment the two evaluation opt-ins, set `FLUENTCMS_IMAGE=ghcr.io/fluentcms/fluentcms:1.0.0-preview.1`, and start:
 
@@ -83,7 +83,7 @@ docker compose up -d --no-build
 - The admin: [overview](docs/admin.md), [configuration](docs/admin-configuration.md), [hosting](docs/admin-hosting.md), [writing an admin half](docs/admin-plugins.md) and [translating](docs/admin-translating.md)
 - [Content migrations](docs/content-migrations.md), [system migrations](docs/system-migrations.md), [plugin migrations](docs/plugin-migrations.md) and [backups](docs/backups.md)
 - [The `fluentcms` tool](src/FluentCMS.Cli/README.md), [the templates](templates/README.md) and [analyzer rules](docs/analyzers.md)
-- Each package's README beside its project, under [`src`](src), [`src/plugins`](src/plugins) and [`admin/src`](admin/src), and the [TypeScript client](clients/typescript/README.md)
+- Each package's README beside its project, under [`src`](src), [`src/plugins`](src/plugins) and [`admin/src`](admin/src), and the [TypeScript client](clients/typescript/README.md), `@fluentcms/client` on npm under the dist-tag `next`
 - [Releasing and versioning](docs/releasing.md), the [backend technical specification](docs/planning/backend-technical-spec.md) and the [admin technical specification](docs/planning/admin-technical-spec.md)
 
 ## Community and support
