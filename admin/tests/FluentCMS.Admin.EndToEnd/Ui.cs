@@ -75,9 +75,16 @@ public static class Ui
     {
         var page = source.Page;
         var drop = new Regex($@"(^|\s){Regex.Escape(dropClass)}(\s|$)");
+        string? unseen;
         await using (var targetElement = await target.ElementHandleAsync())
         {
             await source.EvaluateAsync(WatchDrag, targetElement);
+            unseen = await source.EvaluateAsync<string?>(BringIntoView, new { target = targetElement, byEdge });
+        }
+
+        if (unseen is not null)
+        {
+            throw new ShouldAssertException($"{source} and {target} cannot both be in view for a drag between them: {unseen}.");
         }
 
         if (byEdge)
@@ -131,6 +138,35 @@ public static class Ui
         await page.Mouse.UpAsync();
     }
 
+    // The pointer reaches only what the viewport shows, and hovering the source brings only the source into view, so the pair
+    // is centred in the source's scrolling box first (#3659). Returns why the points the drag presses and goes to are not both
+    // shown, or null.
+    private const string BringIntoView = """
+        (source, { target, byEdge }) => {
+          let scroller = document.scrollingElement;
+          for (let element = source.parentElement; element; element = element.parentElement) {
+            if (/(auto|scroll|overlay)/.test(getComputedStyle(element).overflowY) && element.scrollHeight > element.clientHeight) {
+              scroller = element;
+              break;
+            }
+          }
+          const view = scroller === document.scrollingElement ? { top: 0, height: innerHeight } : { top: scroller.getBoundingClientRect().top + scroller.clientTop, height: scroller.clientHeight };
+          source.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+          const before = [source.getBoundingClientRect(), target.getBoundingClientRect()];
+          const middle = (Math.min(before[0].top, before[1].top) + Math.max(before[0].bottom, before[1].bottom)) / 2;
+          scroller.scrollBy({ top: middle - (view.top + view.height / 2), behavior: "instant" });
+          const [held, over] = [source.getBoundingClientRect(), target.getBoundingClientRect()];
+          const press = { x: byEdge ? held.left + 2 : held.left + held.width / 2, y: held.top + held.height / 2 };
+          const drop = { x: over.left + over.width / 2, y: over.top + over.height / 2 };
+          const shown = (point, element) => point.x >= 0 && point.y >= 0 && point.x < innerWidth && point.y < innerHeight && element.contains(document.elementFromPoint(point.x, point.y));
+          if (shown(press, source) && shown(drop, target)) {
+            return null;
+          }
+          const box = r => `(${Math.round(r.x)}, ${Math.round(r.y)}, ${Math.round(r.width)} x ${Math.round(r.height)})`;
+          return `after scrolling, the source's box is at ${box(held)} and the target's at ${box(over)}, in a viewport of ${innerWidth} x ${innerHeight}`;
+        }
+        """;
+
     // What the page saw of a drag, kept from before the press, for the message of a drag that never reached its target: whether
     // the browser started the drag, where it raised its events and which the page took, and what the pointer is over.
     private const string WatchDrag = """
@@ -170,7 +206,7 @@ public static class Ui
           const seen = steps.length === 0 ? "The page saw no event of the drag" : "The page saw " + steps.slice(0, 80).map(s => `${s.step}${s.count > 1 ? " x" + s.count : ""} at ${s.at} ms`).join(", ") + (steps.length > 80 ? ", and more" : "");
           const box = watch.target.getBoundingClientRect();
           const at = document.elementFromPoint(x, y);
-          return `${seen}. ${state(watch.source, "The source")}; ${state(watch.target, "the target")}, with its box at (${Math.round(box.x)}, ${Math.round(box.y)}, ${Math.round(box.width)} x ${Math.round(box.height)}); under the pointer is ${at ? where(at) : "nothing"}.`;
+          return `${seen}. ${state(watch.source, "The source")}; ${state(watch.target, "the target")}, with its box at (${Math.round(box.x)}, ${Math.round(box.y)}, ${Math.round(box.width)} x ${Math.round(box.height)}) in a viewport of ${innerWidth} x ${innerHeight}; under the pointer is ${at ? where(at) : "nothing"}.`;
         }
         """;
 
