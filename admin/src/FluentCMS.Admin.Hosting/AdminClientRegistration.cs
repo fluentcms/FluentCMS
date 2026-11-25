@@ -56,7 +56,7 @@ internal sealed partial class AdminClientRegistration(
             return;
         }
 
-        var client = new ClientRegistration { DisplayName = DisplayName, Pool = ClientPool.Admins };
+        var client = new ClientRegistration { DisplayName = DisplayName, Pool = ClientPool.Admins, ContributedByPackage = true };
         foreach (var hostBase in origins)
         {
             client.RedirectUris.Add(hostBase + AdminSite.Path + AdminSite.CallbackPath);

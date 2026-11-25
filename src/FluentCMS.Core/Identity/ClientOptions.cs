@@ -39,10 +39,6 @@ public sealed class ClientOptions
 
     public IDictionary<string, ClientRegistration> Applications { get; } = new Dictionary<string, ClientRegistration>(StringComparer.Ordinal);
 
-    // Whether the configuration or the host's code listed a client, before a package's post-configure added one of its own,
-    // as the admin's registration does; null for options that never went through the host's options.
-    internal bool? ListedAny { get; set; }
-
     internal bool HasOutlived(DateTimeOffset signedInAt, DateTimeOffset now) => AbsoluteSessionLifetime is { } cap && now - signedInAt > cap;
 
     internal void Validate()
@@ -120,6 +116,11 @@ public enum ClientPool
 public sealed class ClientRegistration
 {
     public string? DisplayName { get; set; }
+
+    // Set by a package that lists a client on its own behalf, as the admin's hosting package lists its own. Such a client is
+    // registered like any other, but is not one the operator listed: options that hold no other keep the clients the host
+    // registered before, as options that hold none do.
+    public bool ContributedByPackage { get; set; }
 
     public string? Secret { get; set; }
 

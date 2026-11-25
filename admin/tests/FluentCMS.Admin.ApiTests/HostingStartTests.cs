@@ -211,16 +211,72 @@ public sealed class HostingStartTests : IAsyncDisposable
         await StartAsync(WithAnotherClient(Unset()));
         (await ClientAsync(OtherClientId)).ShouldNotBeNull();
 
-        await StartAsync(Unset(), services: services => services.Configure<ClientOptions>(options =>
-        {
-            var kiosk = new ClientRegistration();
-            kiosk.RedirectUris.Add("https://kiosk.example.com/callback");
-            kiosk.Scopes.Add("openid");
-            options.Applications[ThirdClientId] = kiosk;
-        }));
+        await StartAsync(Unset(), services: services => services.Configure<ClientOptions>(options => options.Applications[ThirdClientId] = Public(ThirdClientId)));
 
         (await ClientAsync(ThirdClientId)).ShouldNotBeNull();
         (await ClientAsync(OtherClientId)).ShouldBeNull();
+    }
+
+    // Clients the host lists in a post-configure of its own are the operator's too, whatever order it runs in: one it drops
+    // goes, with its session, as one dropped from the configuration does.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AClientDroppedFromTheHostsPostConfigureIsDeleted(bool adminOn)
+    {
+        var settings = adminOn ? Unset() : Settings(enabled: false);
+        await StartAsync(settings, services: PostConfigured(OtherClientId, ThirdClientId));
+        var other = (await ClientAsync(OtherClientId)).ShouldNotBeNull();
+        var (authorization, token) = await GrantAsync(ThirdClientId);
+
+        var logs = new LogCapture();
+        await StartAsync(settings, logs, PostConfigured(OtherClientId));
+
+        (await ClientAsync(OtherClientId)).ShouldBe(other);
+        (await ClientAsync(ThirdClientId)).ShouldBeNull();
+        (await ExistsAsync(authorization, token)).ShouldBe((false, false));
+        logs.Entries.ShouldContain((ClientDeleted, LogLevel.Warning));
+        logs.Entries.ShouldNotContain(entry => entry.Id == ClientsKept);
+    }
+
+    // A container built over the same services before the host's own, as a host's code may build one, runs the admin's
+    // post-configure on the same options first; a lost section still keeps the clients.
+    [Fact]
+    public async Task ASecondContainerBeforeTheHostsKeepsTheClientsOfALostSection()
+    {
+        await StartAsync(WithAnotherClient(Unset()));
+        var other = (await ClientAsync(OtherClientId)).ShouldNotBeNull();
+        var (authorization, token) = await GrantAsync(OtherClientId);
+
+        var logs = new LogCapture();
+        await StartAsync(Unset(), logs, services =>
+        {
+            using var early = services.BuildServiceProvider();
+            early.GetRequiredService<ClientOptions>().Applications.ShouldContainKey(AdminClientId);
+        });
+
+        (await ClientAsync(OtherClientId)).ShouldBe(other);
+        (await ExistsAsync(authorization, token)).ShouldBe((true, true));
+        logs.Entries.ShouldContain((ClientsKept, LogLevel.Warning));
+        logs.Entries.ShouldNotContain(entry => entry.Id == ClientDeleted);
+    }
+
+    // The admin's client under a new id is the package's only client, so the options list none of the operator's and the row
+    // under the old id is kept, a public client whose addresses are the host's own, as for a lost section.
+    [Fact]
+    public async Task AChangedAdminClientIdKeepsTheRowOfTheOldOne()
+    {
+        await StartAsync(Unset());
+        var old = (await AdminClientAsync()).ShouldNotBeNull();
+
+        var renamed = Unset();
+        renamed["FluentCms:Clients:AdminClientId"] = "team-admin";
+        var logs = new LogCapture();
+        await StartAsync(renamed, logs);
+
+        (await AdminClientAsync()).ShouldBe(old);
+        (await ClientAsync("team-admin")).ShouldNotBeNull();
+        logs.Entries.ShouldContain((ClientsKept, LogLevel.Warning));
     }
 
     [Theory]
@@ -299,6 +355,23 @@ public sealed class HostingStartTests : IAsyncDisposable
         settings.Remove("FluentCms:Admin:Enabled");
         return settings;
     }
+
+    private static ClientRegistration Public(string clientId)
+    {
+        var client = new ClientRegistration();
+        client.RedirectUris.Add($"https://{clientId}.example.com/callback");
+        client.Scopes.Add("openid");
+        return client;
+    }
+
+    // The host's own post-configure of the clients, which lists these.
+    private static Action<IServiceCollection> PostConfigured(params string[] clientIds) => services => services.PostConfigure<ClientOptions>(options =>
+    {
+        foreach (var clientId in clientIds)
+        {
+            options.Applications[clientId] = Public(clientId);
+        }
+    });
 
     // A session of the client: a permanent authorization and a refresh token under it.
     private async Task<(string Authorization, string Token)> GrantAsync(string clientId)

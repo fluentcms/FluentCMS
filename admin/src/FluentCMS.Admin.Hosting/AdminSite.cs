@@ -15,8 +15,9 @@ namespace FluentCMS.Admin.Hosting;
 // What MapFluentCmsAdmin answers besides the app's files: index.html with its base set, config.json from FluentCms:Admin,
 // and the page's Content-Security-Policy. The addresses come from FluentCms:PublicOrigin, or from the request in
 // Development only, so that a forged Host never reaches a document; without either the host does not start, refused with
-// FCMS1105, or by AdminClientRegistration with FCMS1101 once AllowRequestOrigin lifts that one. The client options are read at the first config.json and not when the admin is mapped, so that a host
-// building for a command, such as an init container's migrate, needs no public origin.
+// FCMS1105, or by AdminClientRegistration with FCMS1101 once AllowRequestOrigin lifts that one. The client options are
+// read at the first config.json and not when the admin is mapped, so that a host building for a command, such as an init
+// container's migrate, needs no public origin.
 internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origin, ReverseProxyOptions proxy, IOptions<ClientOptions> clients, IWebHostEnvironment environment)
 {
     public const string Path = "/admin";
