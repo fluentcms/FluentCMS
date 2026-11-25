@@ -69,11 +69,17 @@ public static class Ui
     // Drags the source onto the target with the pointer and lets go only once the target shows, by its class, that the editor
     // would drop there: a drag let go before the editor has seen it over the target drops nothing on a slow machine. The
     // browser raises dragover only as the pointer moves, so the pointer moves a pixel over the target until the editor has it.
-    // A source whose middle is a control, such as a button, which starts no drag, is held by its edge instead.
+    // A source whose middle is a control, such as a button, which starts no drag, is held by its edge instead. A drag that never
+    // gets there fails with what the page saw of it (#3659).
     public static async Task DragAsync(ILocator source, ILocator target, string dropClass, bool byEdge = false)
     {
         var page = source.Page;
         var drop = new Regex($@"(^|\s){Regex.Escape(dropClass)}(\s|$)");
+        await using (var targetElement = await target.ElementHandleAsync())
+        {
+            await source.EvaluateAsync(WatchDrag, targetElement);
+        }
+
         if (byEdge)
         {
             var held = (await source.BoundingBoxAsync()).ShouldNotBeNull();
@@ -89,20 +95,84 @@ public static class Ui
         var (x, y) = (box.X + (box.Width / 2), box.Y + (box.Height / 2));
         await page.Mouse.MoveAsync(x, y, new MouseMoveOptions { Steps = 10 });
         var nudge = 0;
-        await UntilAsync(
-            async () =>
-            {
-                if (drop.IsMatch(await target.GetAttributeAsync("class") ?? ""))
+        try
+        {
+            await UntilAsync(
+                async () =>
                 {
-                    return true;
-                }
+                    if (drop.IsMatch(await target.GetAttributeAsync("class") ?? ""))
+                    {
+                        return true;
+                    }
 
-                await page.Mouse.MoveAsync(x + (++nudge % 2), y);
-                return false;
-            },
-            $"{target} never showed that the editor would take the drop");
+                    await page.Mouse.MoveAsync(x + (++nudge % 2), y);
+                    return false;
+                },
+                $"{target} never showed that the editor would take the drop");
+        }
+        catch (ShouldAssertException exception)
+        {
+            string seen;
+            try
+            {
+                // Playwright passes a float to the page as an object, not a number.
+                seen = await page.EvaluateAsync<string>(DragSeen, new { x = (double)x, y = (double)y });
+            }
+            catch (PlaywrightException unread)
+            {
+                seen = $"The page could not say what it saw of the drag: {unread.Message}";
+            }
+
+            throw new ShouldAssertException(
+                $"{target} never showed that the editor would take the drop within {AdminBrowser.Wait.TotalSeconds:0} s, the pointer held at ({x:0.#}, {y:0.#}). {seen}",
+                exception);
+        }
+
         await page.Mouse.UpAsync();
     }
+
+    // What the page saw of a drag, kept from before the press, for the message of a drag that never reached its target: whether
+    // the browser started the drag, where it raised its events and which the page took, and what the pointer is over.
+    private const string WatchDrag = """
+        (source, target) => {
+          const watch = window.__fluentcmsDragWatch ??= (() => {
+            const kept = { events: [] };
+            for (const type of ["pointerdown", "mousedown", "mousemove", "dragstart", "dragenter", "dragover", "dragleave", "drop", "dragend", "mouseup"]) {
+              window.addEventListener(type, event => { if (kept.events.length < 5000) kept.events.push({ type, event, at: performance.now() }); }, true);
+            }
+            return kept;
+          })();
+          watch.events = [];
+          watch.source = source;
+          watch.target = target;
+        }
+        """;
+
+    private const string DragSeen = """
+        ({ x, y }) => {
+          const watch = window.__fluentcmsDragWatch;
+          if (!watch) {
+            return "The page holds no record of the drag: it was loaded again after the press.";
+          }
+          const name = node => node instanceof Element ? node.localName + [...node.classList].map(c => "." + c).join("") : node === window ? "the window" : String(node?.nodeName);
+          const where = node => !(node instanceof Node) ? name(node) : watch.source.contains(node) ? "the source" : watch.target.contains(node) ? "the target" : name(node);
+          const state = (element, what) => `${what}${element.isConnected ? "" : ", no longer in the document,"} has class "${element.getAttribute("class") ?? ""}" and draggable "${element.getAttribute("draggable") ?? ""}"`;
+          const steps = [];
+          for (const { type, event, at } of watch.events) {
+            const step = `${type} on ${where(event.target)}${event.defaultPrevented ? " (default prevented)" : ""}`;
+            const last = steps[steps.length - 1];
+            if (last?.step === step) {
+              last.count++;
+            } else {
+              steps.push({ step, count: 1, at: Math.round(at - watch.events[0].at) });
+            }
+          }
+          const seen = steps.length === 0 ? "The page saw no event of the drag" : "The page saw " + steps.slice(0, 80).map(s => `${s.step}${s.count > 1 ? " x" + s.count : ""} at ${s.at} ms`).join(", ") + (steps.length > 80 ? ", and more" : "");
+          const box = watch.target.getBoundingClientRect();
+          const at = document.elementFromPoint(x, y);
+          return `${seen}. ${state(watch.source, "The source")}; ${state(watch.target, "the target")}, with its box at (${Math.round(box.x)}, ${Math.round(box.y)}, ${Math.round(box.width)} x ${Math.round(box.height)}); under the pointer is ${at ? where(at) : "nothing"}.`;
+        }
+        """;
 
     // Runs the action and returns the answer that matches, once it has come. A 401 is skipped: the host's access tokens last
     // five seconds, and the admin sends the call again after a refresh, whose answer is the one that counts; a wait that ends
