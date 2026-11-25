@@ -9,7 +9,7 @@ CI tests the [member providers](host-configuration.md#member-sign-in-with-an-ext
 | Microsoft, through Entra ID | Run on 15 Nov 2026 with a personal account; the deny of the consent could not be exercised, since Microsoft asks for no consent for `user.read`. |
 | GitHub | Run on 15 Nov 2026 with a personal account and an enterprise-managed one. |
 | Generic OIDC, against Entra ID | Run on 15 Nov 2026 with a personal account and a user of the tenant; both were refused, as specified, and no sign-in through generic OIDC completed ([#3160](https://github.com/fluentcms/FluentCMS/issues/3160)). It found that Entra ID sends no `email` for a user without a mail attribute, even with the optional claim on. |
-| Apple | Not verified, and named as such in the notes of the preview. It is verified before 1.0.0. |
+| Apple | Not verified, and named as such in the notes of the preview. The run is not a condition of 1.0.0, and when it is made is not decided. |
 
 ## On the wire
 
