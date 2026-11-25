@@ -78,7 +78,7 @@ public sealed class AdminBrowser
     internal static async Task<AdminBrowser> OpenAsync(EndToEndHost host, IBrowser browser, string? traces)
     {
         SetDefaultExpectTimeout((float)Wait.TotalMilliseconds);
-        var context = await browser.NewContextAsync(new BrowserNewContextOptions { Locale = "en-US", ServiceWorkers = ServiceWorkerPolicy.Block });
+        var context = await browser.NewContextAsync(host.Engine.ContextOptions());
         context.SetDefaultTimeout((float)Wait.TotalMilliseconds);
         context.SetDefaultNavigationTimeout((float)Wait.TotalMilliseconds);
         if (traces is not null)
@@ -150,7 +150,9 @@ public sealed class AdminBrowser
 
     // Lets the pages of the host read and write the clipboard, as a user who allows it does.
     public Task GrantClipboardAsync() =>
-        _context.GrantPermissionsAsync(["clipboard-read", "clipboard-write"], new BrowserContextGrantPermissionsOptions { Origin = _host.Origin.GetLeftPart(UriPartial.Authority) });
+        _host.Engine.ClipboardPermissions is { Length: > 0 } permissions
+            ? _context.GrantPermissionsAsync(permissions, new BrowserContextGrantPermissionsOptions { Origin = _host.Origin.GetLeftPart(UriPartial.Authority) })
+            : Task.CompletedTask;
 
     // Every secret this context has seen, for a test of a kept trace.
     public async Task<IReadOnlyCollection<string>> SecretsAsync()
@@ -214,7 +216,7 @@ public sealed class AdminBrowser
         return TabOf(page);
     }
 
-    private AdminTab TabOf(IPage page) => _tabs.GetOrAdd(page, created => new AdminTab(_host, created));
+    private AdminTab TabOf(IPage page) => _tabs.GetOrAdd(page, created => new AdminTab(_host, created, Masked));
 
     private void OnRequest(IRequest request)
     {
@@ -245,6 +247,8 @@ public sealed class AdminBrowser
             tab!.Saw(TokenRequest.Of(response));
         }
 
+        tab?.Answered(response);
+
         if (!response.Url.StartsWith(_host.Origin.AbsoluteUri, StringComparison.Ordinal))
         {
             return;
@@ -256,6 +260,11 @@ public sealed class AdminBrowser
     private void OnRequestFailed(IRequest request)
     {
         var error = request.Failure ?? "no error";
+        if (PageOf(request) is { } page)
+        {
+            TabOf(page).Failed(request, error);
+        }
+
         if (error == CancelledError)
         {
             Interlocked.Increment(ref _cancelled);
@@ -274,9 +283,9 @@ public sealed class AdminBrowser
         }
     }
 
-    private static string Now() => DateTime.UtcNow.ToString("HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
+    internal static string Now() => DateTime.UtcNow.ToString("HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
 
-    private static string WithoutQuery(string address) =>
+    internal static string WithoutQuery(string address) =>
         address.IndexOf('?', StringComparison.Ordinal) is var query and >= 0 ? address[..query] + "?[query]" : address;
 
     // A Management call that may answer a secret shown once, as making or rotating an API key: a POST whose answer is JSON.
@@ -364,18 +373,27 @@ public sealed class AdminBrowser
 }
 
 // One tab, with what it asked of the authorization server: the address of each authorize request, each login page shown, and
-// the grant and status of each token request, never a token or a code.
+// the grant and status of each token request, never a token or a code. It also keeps its last calls, frames included, for
+// the output of a wait for an answer that did not come (Ui.AnswerAsync).
 public sealed class AdminTab
 {
+    private const int CallsKept = 200;
+    private const int CallsShown = 40;
+    private const int CallsBeforeShown = 5;
+
     private readonly EndToEndHost _host;
+    private readonly Func<string, string> _masked;
     private readonly ConcurrentQueue<Uri> _authorizeRequests = new();
     private readonly ConcurrentQueue<string> _loginPages = new();
     private readonly ConcurrentQueue<TokenRequest> _tokenRequests = new();
+    private readonly ConcurrentQueue<Call> _calls = new();
+    private long _callsSeen;
     private long _lastGrant;
 
-    internal AdminTab(EndToEndHost host, IPage page)
+    internal AdminTab(EndToEndHost host, IPage page, Func<string, string> masked)
     {
         _host = host;
+        _masked = masked;
         Page = page;
     }
 
@@ -433,8 +451,65 @@ public sealed class AdminTab
     internal bool IsTokenRequest(IResponse response) =>
         response.Request.Method == "POST" && response.Url == new Uri(_host.Origin, "connect/token").AbsoluteUri;
 
+    // How many calls the tab has made, the mark a wait starts from.
+    internal long CallsSeen => Interlocked.Read(ref _callsSeen);
+
+    // The first calls since the mark, each with the time in UTC, the method, the address with its query cut, and the status
+    // of its answer, the error it failed with, or that neither was seen; masked. The first, since the call a wait is for is
+    // sent at its start.
+    internal string CallsSince(long mark)
+    {
+        var calls = _calls.Where(call => call.Number > mark).ToList();
+        if (calls.Count == 0)
+        {
+            return "none";
+        }
+
+        List<string> lines = calls[0].Number > mark + 1 ? [$"(the first {calls[0].Number - mark - 1} are not kept)"] : [];
+        lines.AddRange(calls.Take(CallsShown).Select(Line));
+        if (calls.Count > CallsShown)
+        {
+            lines.Add($"(and {calls.Count - CallsShown} later)");
+        }
+
+        return _masked(string.Join(Environment.NewLine, lines));
+    }
+
+    // The last calls up to the mark, in the same form, which show whether the call a wait is for was sent before it began.
+    internal string CallsBefore(long mark)
+    {
+        var calls = _calls.Where(call => call.Number <= mark).TakeLast(CallsBeforeShown).ToList();
+        return calls.Count == 0 ? "none" : _masked(string.Join(Environment.NewLine, calls.Select(Line)));
+    }
+
+    private static string Line(Call call) => $"{call.Time} {call.Request.Method} {AdminBrowser.WithoutQuery(call.Request.Url)} {call.Outcome ?? "no answer seen"}";
+
+    internal void Answered(IResponse response)
+    {
+        if (CallOf(response.Request) is { } call)
+        {
+            call.Outcome = response.Status.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+    }
+
+    internal void Failed(IRequest request, string error)
+    {
+        if (CallOf(request) is { } call)
+        {
+            call.Outcome = call.Outcome is null ? error : $"{call.Outcome}, then {error}";
+        }
+    }
+
+    private Call? CallOf(IRequest request) => _calls.LastOrDefault(call => ReferenceEquals(call.Request, request));
+
     internal void Saw(IRequest request)
     {
+        _calls.Enqueue(new Call(Interlocked.Increment(ref _callsSeen), AdminBrowser.Now(), request));
+        while (_calls.Count > CallsKept)
+        {
+            _calls.TryDequeue(out _);
+        }
+
         var url = new Uri(request.Url);
         if (url.AbsolutePath == "/connect/authorize")
         {
@@ -467,6 +542,23 @@ public sealed class AdminTab
         if (wait > TimeSpan.Zero)
         {
             await Task.Delay(wait, TestContext.Current.CancellationToken);
+        }
+    }
+
+    private sealed class Call(long number, string time, IRequest request)
+    {
+        private volatile string? _outcome;
+
+        public long Number => number;
+
+        public string Time => time;
+
+        public IRequest Request => request;
+
+        public string? Outcome
+        {
+            get => _outcome;
+            set => _outcome = value;
         }
     }
 }

@@ -270,6 +270,8 @@ The admin's target is WCAG 2.2 AA, and a field editor of a half sits in the admi
 - **Work by keyboard alone**, with a visible focus and targets of at least 24 by 24 CSS pixels, and give a dragged interaction another way.
 - **Put every text in the resources**, so that it is translated with the half and marked under the pseudo-cultures ([translating the admin](admin-translating.md#the-pseudo-cultures)).
 
+[Accessibility of the admin](admin-accessibility.md) says what CI checks of every page, a half's among them, and holds the script of the screen reader pass, whose steps a half's page can follow.
+
 ## What a half cannot do
 
 - **Add services to the admin's container.** The container is built before the half loads; the half's services are in its own provider, reached through `IAdminPluginServices`.

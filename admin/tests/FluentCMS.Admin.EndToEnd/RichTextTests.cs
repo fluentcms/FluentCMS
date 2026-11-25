@@ -18,7 +18,9 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
     private const string Pasted =
         """<p>Pasted <span style="color:red">red</span> <a href="javascript:alert(1)">bad</a><img src="x.png"> <a href="https://example.org/">good</a></p><table><tr><td>cell</td></tr></table>""";
 
+    // Not on WebKit (spec 7, #3651): after Ctrl+K on a selection and an address the selected text is gone, with no link.
     [Fact]
+    [Trait("NotOn", "webkit")]
     public async Task TheEditorWritesABodyByKeyboardSavesItAndReadsItBackUnchanged()
     {
         var browser = await OpenBrowserAsync();
@@ -82,7 +84,7 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
         await Expect(body).ToBeFocusedAsync();
         await keyboard.PressAsync("Control+i");
         await keyboard.PressAsync("Enter");
-        await body.EvaluateAsync("(element, html) => { const data = new DataTransfer(); data.setData('text/html', html); data.setData('text/plain', 'Pasted'); element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })); }", Pasted);
+        await body.EvaluateAsync("(element, html) => { const data = new DataTransfer(); data.setData('text/html', html); data.setData('text/plain', 'Pasted'); const paste = new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }); Object.defineProperty(paste, 'clipboardData', { value: data }); element.dispatchEvent(paste); }", Pasted);
         await Expect(body).ToContainTextAsync("cell");
 
         var create = await SaveAsync(tab, "POST", tab.ManagementUrl("content/article"));
@@ -302,7 +304,10 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
                         transfer.setData(format, text);
                     }
 
-                    target.dispatchEvent(new ClipboardEvent(type, { clipboardData: transfer, bubbles: true, cancelable: true }));
+                    const event = new ClipboardEvent(type, { clipboardData: transfer, bubbles: true, cancelable: true });
+                    // Firefox gives an event made by a script an empty clipboard of its own, whatever the event was made with.
+                    Object.defineProperty(event, "clipboardData", { value: transfer });
+                    target.dispatchEvent(event);
                     return { html: transfer.getData("text/html"), text: transfer.getData("text/plain") };
                 };
                 // The editor's document: the change it holds back, else the last one it sent.

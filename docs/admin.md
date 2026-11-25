@@ -9,6 +9,7 @@ This page says which distribution to take and how to sign in the first time. The
 | [Admin configuration](admin-configuration.md) | `config.json`, how a host builds it from `FluentCms:Admin`, an admin on another origin, the client `fluentcms-admin`, branding, cultures, preview and the rate limits |
 | [Writing an admin half](admin-plugins.md) | the admin half of a plugin, from `dotnet new fluentcms-plugin` |
 | [Translating the admin](admin-translating.md) | the resource files of a translation, the test of the keys and the pseudo-cultures |
+| [Accessibility of the admin](admin-accessibility.md) | what CI checks against WCAG 2.2, and the script and result table of the screen reader pass |
 | [Hosting the admin](admin-hosting.md) | the prebuilt static build on a static host or a CDN, with recipes |
 | [Host configuration](host-configuration.md#admin) | every key of `FluentCms:Admin`, what the host serves at `/admin` and the headers of the page |
 | [Run with Docker](docker.md#the-admin) | the admin in the reference image |
@@ -50,6 +51,8 @@ An admin on another origin signs in the same way once the API host lists its ori
 The admin is built for the last two versions of Chrome, Edge, Firefox and Safari, on desktop and tablet. A phone gets a readable layout that no test covers (decision AQ12 of the [admin technical specification](planning/admin-technical-spec.md#11-decisions-on-the-open-questions)).
 
 The repository's end-to-end tests drive the admin in Chromium, against a publish of the reference host and against its image, and check every view with axe-core in the light and the dark theme, and on the publish right to left as well. Some cases also run at the width of a tablet.
+
+Every night the same tests run in Firefox and in WebKit, Safari's engine, against the publish. Five cases are left out in WebKit, each with an issue: closing a tab with nothing unsaved ([#3648](https://github.com/fluentcms/FluentCMS/issues/3648)), the loading state on the reload of a lazily loaded page, in two cases ([#3649](https://github.com/fluentcms/FluentCMS/issues/3649)), the preview after its page navigates to one without the preview script, a fault of the admin in WebKit ([#3650](https://github.com/fluentcms/FluentCMS/issues/3650)), and a link set by keyboard in the rich text editor ([#3651](https://github.com/fluentcms/FluentCMS/issues/3651)). The list is in section 7 of the [admin technical specification](planning/admin-technical-spec.md#7-testing).
 
 ## Language and formats
 

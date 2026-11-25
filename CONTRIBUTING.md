@@ -141,6 +141,20 @@ $env:FLUENTCMS_E2E_SHUFFLE = '4242'; dotnet test --project admin/tests/FluentCMS
 dotnet test --project admin/tests/FluentCMS.Admin.EndToEnd -c Release --no-build --filter-class FluentCMS.Admin.EndToEnd.MediaLibraryTests
 ```
 
+To run them in Firefox or WebKit, as the nightly run's `End-to-end (admin, firefox)` and `End-to-end (admin, webkit)` jobs do, install that browser once and set `FLUENTCMS_E2E_BROWSER` to `firefox` or `webkit`; unset, or `chromium`, the run is in Chromium as above. Leave out the cases that browser does not run, which carry the trait `NotOn` with its name and are listed in section 7 of the admin technical specification. Firefox and WebKit have no flag to accept one certificate by its key, so their contexts ignore certificate errors. Slow mode throttles through Chromium's DevTools protocol, so a run in another browser with `FLUENTCMS_E2E_SLOW` set stops with a message. On Linux, `install --with-deps` also installs the system libraries the browser needs, as the jobs do; WebKit needs them. A manual run of `CI` with the `browsers` input runs the two jobs. In PowerShell:
+
+```powershell
+pwsh admin/tests/FluentCMS.Admin.EndToEnd/bin/Release/net10.0/playwright.ps1 install firefox webkit
+```
+
+```powershell
+$env:FLUENTCMS_E2E_BROWSER = 'firefox'; dotnet test --project admin/tests/FluentCMS.Admin.EndToEnd -c Release --no-build --filter-not-trait NotOn=firefox
+```
+
+```powershell
+$env:FLUENTCMS_E2E_BROWSER = 'webkit'; dotnet test --project admin/tests/FluentCMS.Admin.EndToEnd -c Release --no-build --filter-not-trait NotOn=webkit
+```
+
 To run them against the image, as the `End-to-end on the image (admin)` job does, build it from the repository's root and set `FLUENTCMS_E2E_IMAGE` to its name; the harness then needs Docker with Linux containers and no publish. Without Docker every case is skipped and says why. The run's containers and volume carry the label `org.fluentcms.e2e` and are removed at its end; a later run removes those a killed run left behind. In PowerShell:
 
 ```powershell
