@@ -150,6 +150,10 @@
   <data name="RichText.Toolbar.Bold" xml:space="preserve">
     <value>Bold</value>
   </data>
+  <data name="RichText.Toolbar.Bold.Glyph" xml:space="preserve">
+    <value>B</value>
+    <comment>The letters on the button, which a screen reader does not read; the shortcut stays the same.</comment>
+  </data>
   <data name="RichText.Toolbar.BulletList" xml:space="preserve">
     <value>Bulleted list</value>
   </data>
@@ -165,11 +169,23 @@
   <data name="RichText.Toolbar.Heading1" xml:space="preserve">
     <value>Heading 1</value>
   </data>
+  <data name="RichText.Toolbar.Heading1.Glyph" xml:space="preserve">
+    <value>H1</value>
+    <comment>The letters on the button, which a screen reader does not read; the shortcut stays the same.</comment>
+  </data>
   <data name="RichText.Toolbar.Heading2" xml:space="preserve">
     <value>Heading 2</value>
   </data>
+  <data name="RichText.Toolbar.Heading2.Glyph" xml:space="preserve">
+    <value>H2</value>
+    <comment>The letters on the button, which a screen reader does not read; the shortcut stays the same.</comment>
+  </data>
   <data name="RichText.Toolbar.Heading3" xml:space="preserve">
     <value>Heading 3</value>
+  </data>
+  <data name="RichText.Toolbar.Heading3.Glyph" xml:space="preserve">
+    <value>H3</value>
+    <comment>The letters on the button, which a screen reader does not read; the shortcut stays the same.</comment>
   </data>
   <data name="RichText.Toolbar.Hint" xml:space="preserve">
     <value>Alt+F10 moves to the formatting toolbar; Escape returns to the text.</value>
@@ -182,6 +198,10 @@
   </data>
   <data name="RichText.Toolbar.Italic" xml:space="preserve">
     <value>Italic</value>
+  </data>
+  <data name="RichText.Toolbar.Italic.Glyph" xml:space="preserve">
+    <value>I</value>
+    <comment>The letters on the button, which a screen reader does not read; the shortcut stays the same.</comment>
   </data>
   <data name="RichText.Toolbar.Label" xml:space="preserve">
     <value>Formatting of {0}</value>
@@ -204,11 +224,23 @@
   <data name="RichText.Toolbar.Shortcut" xml:space="preserve">
     <value>{0} ({1})</value>
   </data>
+  <data name="RichText.Toolbar.Lettered" xml:space="preserve">
+    <value>{0}, {1}</value>
+    <comment>The name of a button whose glyph is letters, {0} being its name and {1} the letters, which a speech user may say.</comment>
+  </data>
   <data name="RichText.Toolbar.Strike" xml:space="preserve">
     <value>Strikethrough</value>
   </data>
+  <data name="RichText.Toolbar.Strike.Glyph" xml:space="preserve">
+    <value>S</value>
+    <comment>The letters on the button, which a screen reader does not read; the shortcut stays the same.</comment>
+  </data>
   <data name="RichText.Toolbar.Underline" xml:space="preserve">
     <value>Underline</value>
+  </data>
+  <data name="RichText.Toolbar.Underline.Glyph" xml:space="preserve">
+    <value>U</value>
+    <comment>The letters on the button, which a screen reader does not read; the shortcut stays the same.</comment>
   </data>
   <data name="RichText.Toolbar.Undo" xml:space="preserve">
     <value>Undo</value>

@@ -1,9 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
-  <!-- The server side of the admin: it runs in the ASP.NET Core host, never in the browser. -->
+  <!-- The server side of the admin: it runs in the ASP.NET Core host, never in the browser. The Razor SDK packs static web
+       assets, which the package's first-party build is. -->
   <PropertyGroup>
-    <Description>Serves the FluentCMS admin from an ASP.NET Core host: its config.json from configuration, the admin client's registration and the admin page's headers.</Description>
+    <Description>Serves the FluentCMS admin from an ASP.NET Core host: the prebuilt first-party admin, or an admin app the host references, with its config.json from configuration, the admin client's registration and the admin page's headers.</Description>
     <PackageTags>$(PackageTags) admin aspnetcore</PackageTags>
+    <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,7 +13,81 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../../../src/FluentCMS.Core/FluentCMS.Core.csproj" />
   </ItemGroup>
+
+  <!-- The package serves its surface with public members of Core that no public API file tracks (#3451), so it depends on
+       the one version of FluentCMS.Core it was built with. Restore names another version of Core but does not always stop:
+       NU1608, a warning, when the host references a newer Core itself; NU1605, an error by default, when it references an
+       older one; NU1107 when two packages ask for different ones. -->
+  <Target Name="FluentCmsPinCoreVersion" AfterTargets="_GetProjectReferenceVersions">
+    <ItemGroup>
+      <_ProjectReferencesWithVersions Condition="'%(Filename)' == 'FluentCMS.Core'">
+        <ProjectVersion>[%(ProjectVersion)]</ProjectVersion>
+      </_ProjectReferencesWithVersions>
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <None Remove="build/**" />
+    <None Include="build/FluentCMS.Admin.Hosting.targets" Pack="true" PackagePath="build;buildTransitive" />
+  </ItemGroup>
+
+  <!-- The first-party build (admin spec 6.1, AQ8): `dotnet pack` publishes FluentCMS.Admin.App, as the Pack job publishes it
+       for fluentcms-admin-{version}.zip, and packs the wwwroot of the publish as the package's static web assets, with the
+       endpoints of the publish. -p:FluentCmsAdminPublishDir takes a publish made before, the one the zip is made of, in
+       place of a publish of its own. A build that is not a pack publishes nothing and packs no file. -->
+  <PropertyGroup>
+    <_FluentCmsAdminApp>$(MSBuildThisFileDirectory)../FluentCMS.Admin.App/FluentCMS.Admin.App.csproj</_FluentCmsAdminApp>
+  </PropertyGroup>
+
+  <UsingTask TaskName="ReadPrebuiltAdmin" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <Task>
+      <Code Type="Class" Language="cs" Source="$(MSBuildThisFileDirectory)../../eng/PrebuiltAdmin.cs" />
+    </Task>
+  </UsingTask>
+
+  <UsingTask TaskName="RelatePrebuiltAdminAssets" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <Task>
+      <Code Type="Class" Language="cs" Source="$(MSBuildThisFileDirectory)../../eng/PrebuiltAdmin.cs" />
+    </Task>
+  </UsingTask>
+
+  <!-- A pack that builds writes the pack files in its build, and one with no build here. -->
+  <Target Name="FluentCmsPackAdminBuild" BeforeTargets="IncludeStaticWebAssetsPackItems" DependsOnTargets="ResolveStaticWebAssetsConfiguration;GenerateStaticWebAssetsPackFiles" Condition="'$(_IsPacking)' == 'true'" />
+
+  <Target Name="_FluentCmsResolveAdminPublish">
+    <PropertyGroup>
+      <_FluentCmsAdminPublish Condition="'$(FluentCmsAdminPublishDir)' != ''">$([MSBuild]::NormalizeDirectory('$(FluentCmsAdminPublishDir)'))</_FluentCmsAdminPublish>
+      <_FluentCmsAdminPublish Condition="'$(FluentCmsAdminPublishDir)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'app'))</_FluentCmsAdminPublish>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="FluentCmsAddAdminBuild" BeforeTargets="GenerateStaticWebAssetsPackFiles" DependsOnTargets="_FluentCmsResolveAdminPublish" Condition="'$(_IsPacking)' == 'true'">
+    <!-- The build with the global properties of the pack's own, so that a pack of the solution builds the app once; the
+         publish then builds nothing. -->
+    <MSBuild Projects="$(_FluentCmsAdminApp)" Targets="Build" Condition="'$(FluentCmsAdminPublishDir)' == '' And '$(NoBuild)' != 'true'" />
+    <RemoveDir Directories="$(_FluentCmsAdminPublish)" Condition="'$(FluentCmsAdminPublishDir)' == ''" />
+    <MSBuild Projects="$(_FluentCmsAdminApp)" Targets="Publish" Properties="NoBuild=true;PublishDir=$(_FluentCmsAdminPublish)" Condition="'$(FluentCmsAdminPublishDir)' == ''" />
+
+    <Message Importance="high" Text="$(MSBuildProjectName) -> the admin's build from $(_FluentCmsAdminPublish)" />
+    <ReadPrebuiltAdmin PublishDirectory="$(_FluentCmsAdminPublish)" Source="$(PackageId)">
+      <Output TaskParameter="Assets" ItemName="StaticWebAsset" />
+      <Output TaskParameter="Endpoints" ItemName="StaticWebAssetEndpoint" />
+    </ReadPrebuiltAdmin>
+  </Target>
+
+  <Target Name="FluentCmsRelateAdminBuild" AfterTargets="GenerateStaticWebAssetsPackFiles" DependsOnTargets="_FluentCmsResolveAdminPublish" Condition="'$(_IsPacking)' == 'true'">
+    <RelatePrebuiltAdminAssets PropsFile="$(_GeneratedStaticWebAssetsPropsFile)" PublishDirectory="$(_FluentCmsAdminPublish)" />
+  </Target>
 
 </Project>

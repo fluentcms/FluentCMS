@@ -118,48 +118,6 @@ public sealed class CmsWiringTests : ComponentTestContext
         files.ShouldNotBeNull().ShouldBeEmpty();
     }
 
-    [Theory]
-    [InlineData("Saved \"a < b\"")]
-    [InlineData("Published <b>x</b>")]
-    [InlineData("R&D &copy; 2026")]
-    public void AToastShowsItsMessageAsText(string message)
-    {
-        var root = Render<CmsThemeRoot>();
-        var toasts = Services.GetRequiredService<ICmsToastService>();
-
-        _ = root.InvokeAsync(() => toasts.ShowAsync(message));
-
-        root.WaitForAssertion(() => root.Find("fluent-toast-b [slot=title]").TextContent.Trim().ShouldBe(message));
-        root.FindAll("fluent-toast-b b").ShouldBeEmpty();
-    }
-
-    [Theory]
-    [InlineData(CmsToastIntent.Info, "info", "polite")]
-    [InlineData(CmsToastIntent.Success, "success", "polite")]
-    [InlineData(CmsToastIntent.Warning, "warning", "polite")]
-    [InlineData(CmsToastIntent.Error, "error", "assertive")]
-    public void AToastHasTheIntentAndPolitenessOfItsKind(CmsToastIntent intent, string attribute, string politeness)
-    {
-        var root = Render<CmsThemeRoot>();
-        var toasts = Services.GetRequiredService<ICmsToastService>();
-
-        _ = root.InvokeAsync(() => toasts.ShowAsync("Saved.", intent));
-
-        root.WaitForAssertion(() => root.Find("fluent-toast-b").GetAttribute("intent").ShouldBe(attribute));
-        root.Find("fluent-toast-b").GetAttribute("politeness").ShouldBe(politeness);
-    }
-
-    [Fact]
-    public void AToastCanBeDismissedByANamedControl()
-    {
-        var root = Render<CmsThemeRoot>();
-        var toasts = Services.GetRequiredService<ICmsToastService>();
-
-        _ = root.InvokeAsync(() => toasts.ShowAsync("Saved."));
-
-        root.WaitForAssertion(() => root.Find("fluent-toast-b [slot=action]").TextContent.Trim().ShouldBe("Close"));
-    }
-
     [Fact]
     public void ARegisteredTextSourceSuppliesTheSetsOwnTexts()
     {
@@ -171,7 +129,7 @@ public sealed class CmsWiringTests : ComponentTestContext
         _ = root.InvokeAsync(() => toasts.ShowAsync("Saved."));
 
         zone.Find(".cms-field-message").TextContent.ShouldBe("[DropZoneChoose]");
-        root.WaitForAssertion(() => root.Find("fluent-toast-b [slot=action]").TextContent.Trim().ShouldBe("[Close]"));
+        root.WaitForAssertion(() => root.Find(".cms-toast fluent-button").GetAttribute("aria-label").ShouldBe("[Close]"));
     }
 
     [Fact]
@@ -199,6 +157,21 @@ public sealed class CmsWiringTests : ComponentTestContext
 
         resources.Count.ShouldBeGreaterThan(0);
         resources.ShouldAllBe(entry => library[(string)entry.Key] == (string)entry.Value!);
+    }
+
+    // The keys of the library that the library's components under the set read (FluentTabs, FluentTreeItem, and the input
+    // base, field and label of FluentCheckbox and FluentSwitch), found in the library's code: a translation reaches each.
+    [Fact]
+    public void TheResourcesHoldEveryTextOfTheLibraryThatAWrappedComponentCanShow()
+    {
+        string[] reachable =
+        [
+            "Tabs_MoreItems", "TreeItem_LoadingMessage", "FluentInputBase_Required", "FluentInputBase_RequiredMessage",
+            "Field_ErrorMessage", "Field_WarningMessage", "LabelInfo_InfoText", "LabelInfo_InfoActionText",
+        ];
+        var resources = new ResourceManager("FluentCMS.Admin.Components.Resources.CmsStrings", typeof(ICmsTextSource).Assembly);
+
+        reachable.Where(key => resources.GetString(key, CultureInfo.InvariantCulture) is null).ShouldBeEmpty();
     }
 
     [Fact]

@@ -127,6 +127,25 @@ public sealed class AccessibilityTests : AdminTestContext
         app.WaitForAssertion(() => Messages(app, "polite").ShouldBe(["Saved 3", "Saved 4", "Saved 5", "Saved 6", "Saved 7"]));
     }
 
+    // A toast of the wrapped set is read once, from the shell's region of its intent, and the shell has no other live region.
+    [Fact]
+    public void AToastIsReadOnceFromTheRegionOfItsIntent()
+    {
+        var app = Render<AdminApp>();
+        var toasts = Services.GetRequiredService<FluentCMS.Admin.Components.ICmsToastService>();
+
+        app.InvokeAsync(async () =>
+        {
+            await toasts.ShowAsync("Not saved", FluentCMS.Admin.Components.CmsToastIntent.Error);
+            await toasts.ShowAsync("Saved", FluentCMS.Admin.Components.CmsToastIntent.Success);
+        });
+
+        app.WaitForAssertion(() => app.FindAll(".cms-toast").Count.ShouldBe(2));
+        Messages(app, "assertive").ShouldBe(["Not saved"]);
+        Messages(app, "polite").ShouldBe(["Saved"]);
+        app.FindAll("[aria-live]").Count.ShouldBe(2);
+    }
+
     [Fact]
     public void AnEmptyAnnouncementIsRefused()
     {

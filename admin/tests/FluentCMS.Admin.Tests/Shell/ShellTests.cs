@@ -64,6 +64,82 @@ public sealed class ShellTests : AdminTestContext
         Services.GetRequiredService<FormatService>().TimeZone.ShouldBe(TimeZoneInfo.Utc);
     }
 
+    // A new device, or a language saved elsewhere: the start had no copy of it, so the browser keeps the saved one and the
+    // app reloads once in it, the shell loading until then.
+    [Fact]
+    public void ASavedLanguageTheAppDidNotStartInIsKeptInTheBrowserAndReloadsTheAppOnce()
+    {
+        OfferCultures();
+        Management.Preferences["culture"] = "fr";
+        Start();
+        Navigation.NavigateTo("content/article?locale=en");
+        var app = Render<AdminApp>();
+
+        app.WaitForAssertion(() => Reloads().ShouldHaveSingleItem().ShouldEndWith("content/article?locale=en"));
+        Context.Status.ShouldBe(ShellStatus.Loading);
+        CopyWrites().ShouldBe(["fr"]);
+        Storage.Items[TabStorageKeys.CultureReload].ShouldBe("fr");
+        Management.Count("me/access").ShouldBe(0);
+    }
+
+    // The start read the browser's copy, so the first paint was in the saved language already.
+    [Fact]
+    public void ASavedLanguageTheAppStartedInNeedsNoReload()
+    {
+        OfferCultures();
+        UseCultureCopy("fr");
+        Management.Preferences["culture"] = "fr";
+
+        Load();
+
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Reloads().ShouldBeEmpty();
+        CopyWrites().ShouldBeEmpty();
+    }
+
+    // A language no longer chosen takes the copy out, and the app goes back to the browser's.
+    [Fact]
+    public void ACopyOfALanguageNoLongerChosenIsTakenOutAndTheAppReloads()
+    {
+        OfferCultures();
+        UseCultureCopy("fr");
+        Start();
+        Navigation.NavigateTo("");
+        var app = Render<AdminApp>();
+
+        app.WaitForAssertion(() => Reloads().ShouldHaveSingleItem());
+        JSInterop.Invocations.Where(call => call.Identifier == "localStorage.removeItem").Select(call => call.Arguments.Single()).ShouldBe([CultureStorageInterop.Key]);
+    }
+
+    // A browser that gives back no copy would start in the browser's language each time: the tab reloads for a language once.
+    [Fact]
+    public async Task TheStartReloadsTheTabForALanguageOnce()
+    {
+        OfferCultures();
+        Management.Preferences["culture"] = "fr";
+        await Storage.SetAsync(TabStorageKeys.CultureReload, "fr");
+
+        Load();
+
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Reloads().ShouldBeEmpty();
+    }
+
+    // A key or a service account has no preferences, so nothing is kept in the browser for it.
+    [Fact]
+    public void WithoutPreferencesTheLanguageIsTheOneTheAppStartedIn()
+    {
+        OfferCultures();
+        UseCultureCopy("fr");
+        Management.Answer = (method, path) => path == "me/preferences" ? Problem(HttpStatusCode.Forbidden, "FCMS2001") : null;
+
+        Load();
+
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Reloads().ShouldBeEmpty();
+        CopyWrites().ShouldBeEmpty();
+    }
+
     [Fact]
     public void TheSidebarListsTheCollectionsAndThenTheSingletonsInSchemaOrderWithGlobalTypesMarked()
     {
@@ -75,6 +151,19 @@ public sealed class ShellTests : AdminTestContext
         Sections(sidebar).ShouldBe(["Collections", "Singletons"]);
         Links(sidebar).ShouldBe(["", "content/article", "content/tag", "content/author", "content/site-settings"]);
         sidebar.QuerySelectorAll("a.cms-nav-link").Select(link => link.TextContent.Trim()).ShouldBe(["Home", "Article", "Tag Global", "Writers", "Site settings"]);
+    }
+
+    // AddFluentCmsAdmin<TResources> gives the app's resources, which name a type before the admin's resources and the schema.
+    [Fact]
+    public void TheAppsOwnResourcesNameAContentType()
+    {
+        Services.AddSingleton(new AdminAppResources(typeof(TeamResources)));
+        Management.SetTypes(MainSite, Type("article", displayName: "Articles"), Type("author", displayName: "Writers"));
+
+        var app = Load();
+
+        app.Find(".shell-sidebar nav[aria-label='Main']").QuerySelectorAll("a.cms-nav-link").Select(link => link.TextContent.Trim())
+            .ShouldBe(["Home", "Stories", "Writers"]);
     }
 
     [Fact]
@@ -353,19 +442,35 @@ public sealed class ShellTests : AdminTestContext
     {
         var app = Load();
         app.Find(".cms-root").HasAttribute("data-cms-theme").ShouldBeFalse();
-        Spoken(MenuItem(app, "System theme")).ShouldBe("System theme, chosen");
+        Themes(app).ShouldBe([("System theme", "true"), ("Light theme", "false"), ("Dark theme", "false")]);
 
         Choose(app, "Dark theme");
 
         app.WaitForAssertion(() => app.Find(".cms-root").GetAttribute("data-cms-theme").ShouldBe("dark"));
         JSInterop.VerifyInvoke("localStorage.setItem").Arguments.ShouldBe([ThemeStorageInterop.Key, "dark"]);
-        Spoken(MenuItem(app, "Dark theme")).ShouldBe("Dark theme, chosen");
-        Spoken(MenuItem(app, "System theme")).ShouldBe("System theme");
+        Themes(app).ShouldBe([("System theme", "false"), ("Light theme", "false"), ("Dark theme", "true")]);
 
         Choose(app, "System theme");
 
         app.WaitForAssertion(() => app.Find(".cms-root").HasAttribute("data-cms-theme").ShouldBeFalse());
         JSInterop.VerifyInvoke("localStorage.removeItem").Arguments.ShouldBe([ThemeStorageInterop.Key]);
+    }
+
+    // The library raises the change of the item before as it unchecks it, and of the chosen one as its state is drawn; neither
+    // takes the choice back (#3178).
+    [Fact]
+    public void AThemeChoiceDoesNotFlipBackAsTheOtherItemsAreUnchecked()
+    {
+        var app = Load();
+
+        Choose(app, "Dark theme");
+        app.WaitForAssertion(() => app.Find(".cms-root").GetAttribute("data-cms-theme").ShouldBe("dark"));
+        Change(MenuItem(app, "System theme"), isChecked: false);
+        Change(MenuItem(app, "Dark theme"), isChecked: true);
+
+        app.Find(".cms-root").GetAttribute("data-cms-theme").ShouldBe("dark");
+        Themes(app).ShouldBe([("System theme", "false"), ("Light theme", "false"), ("Dark theme", "true")]);
+        JSInterop.Invocations.Count(call => call.Identifier == "localStorage.setItem").ShouldBe(1);
     }
 
     [Fact]
@@ -389,7 +494,7 @@ public sealed class ShellTests : AdminTestContext
         var app = Load();
 
         app.Find(".cms-root").HasAttribute("data-cms-theme").ShouldBeFalse();
-        Spoken(MenuItem(app, "System theme")).ShouldBe("System theme, chosen");
+        Themes(app)[0].ShouldBe(("System theme", "true"));
     }
 
     // As in a private window that refuses storage: the choice applies to the page and is not kept.
@@ -473,24 +578,35 @@ public sealed class ShellTests : AdminTestContext
     private static IElement MenuItem(IRenderedComponent<AdminApp> app, string text) =>
         app.FindAll("fluent-menu-item").Single(item => item.TextContent.Trim().StartsWith(text, StringComparison.Ordinal));
 
-    // What assistive technology reads of an item: its text without what is hidden from it.
-    private static string Spoken(IElement item) =>
-        string.Concat(item.GetDescendantsAndSelf().OfType<IText>()
-            .Where(text => text.ParentElement?.Closest("[aria-hidden=true]") is null)
-            .Select(text => text.Data)).Trim();
+    // The theme items as assistive technology has them: radio items with their state.
+    private static (string, string?)[] Themes(IRenderedComponent<AdminApp> app) =>
+        [.. app.FindAll("fluent-menu-item[role=menuitemradio]").Select(item => (item.TextContent.Trim(), item.GetAttribute("aria-checked")))];
 
-    // The library raises the item's click from its menu's change event.
+    // The library raises the item's click from its menu's change event, which carries a radio item's new state.
     private static void Choose(IRenderedComponent<AdminApp> app, string text)
     {
         var item = MenuItem(app, text);
-        item.TriggerEvent("onmenuitemchange", new MenuItemEventArgs { Id = item.Id });
+        Change(item, item.GetAttribute("role") == "menuitemradio" ? true : null);
     }
+
+    private static void Change(IElement item, bool? isChecked) =>
+        item.TriggerEvent("onmenuitemchange", new MenuItemEventArgs { Id = item.Id, Checked = isChecked });
 
     private static string[] Links(IElement sidebar) =>
         [.. sidebar.QuerySelectorAll("a.cms-nav-link").Select(link => link.GetAttribute("href")!)];
 
     private static string[] Sections(IElement sidebar) =>
         [.. sidebar.QuerySelectorAll(".cms-nav-section-title").Select(title => title.TextContent)];
+
+    // A second culture, as config.json may offer once one ships.
+    private void OfferCultures() => Services.AddSingleton(new InterfaceCultureOptions { Offered = ["en", "fr"], Default = "en" });
+
+    // The addresses the whole page was loaded again at.
+    private List<string> Reloads() => [.. Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>().History.Where(entry => entry.Options.ForceLoad).Select(entry => entry.Uri)];
+
+    // The cultures written to the browser's copy.
+    private List<string?> CopyWrites() =>
+        [.. JSInterop.Invocations.Where(call => call.Identifier == "localStorage.setItem" && Equals(call.Arguments[0], CultureStorageInterop.Key)).Select(call => call.Arguments[1] as string)];
 
     private IRenderedComponent<AdminApp> Load(string route = "")
     {

@@ -87,8 +87,9 @@ public abstract class AiTestContext : BunitContext
     protected static IElement Button(IRenderedComponent<IComponent> panel, string text) =>
         panel.FindAll("fluent-button").Single(button => button.TextContent.Trim() == text);
 
+    // The buttons with a text, which leaves out the dialog's own close button, named by its label.
     protected static string[] Buttons(IRenderedComponent<IComponent> panel) =>
-        [.. panel.FindAll("fluent-button").Select(button => button.TextContent.Trim())];
+        [.. panel.FindAll("fluent-button").Select(button => button.TextContent.Trim()).Where(text => text.Length > 0)];
 
     // The dialog's close, which the browser reports once the dialog has hidden and given focus back.
     protected static Task ClosedAsync(IRenderedComponent<IComponent> panel)

@@ -18,12 +18,14 @@ internal sealed class HostUnderTest : IAsyncDisposable
     public static readonly Uri Https = new("https://localhost/");
 
     // The image lifts no Production refusal itself, so a run with nothing set stops. These are the opt-ins docs/docker.md
-    // names, with AllowRequestOrigin in place of a public origin, which a test sets when it is about one.
+    // names, with AllowRequestOrigin in place of a public origin, which a test sets when it is about one, and so the admin
+    // off, since it needs the public origin; a test of the admin turns it on with one.
     public static readonly IReadOnlyDictionary<string, string?> EvaluationOptIns = new Dictionary<string, string?>
     {
         ["FluentCms:Security:AllowGeneratedSigningKey"] = "true",
         ["FluentCms:Security:AllowUnencryptedKeyRing"] = "true",
         ["FluentCms:Security:AllowRequestOrigin"] = "true",
+        ["FluentCms:Admin:Enabled"] = "false",
     };
 
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;

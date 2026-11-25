@@ -1,6 +1,7 @@
 using System.Text;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity;
+using FluentCMS.Diagnostics;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -18,8 +19,9 @@ public static class AdminHostingExtensions
     private const string Surface = "admin";
 
     // The admin of admin spec 6.1, with FluentCms:Admin from configuration winning over what configure sets. While
-    // FluentCms:Admin:Enabled is true it registers the admin's client under cms.Clients.AdminClientId, unless the host or
-    // FluentCms:Clients lists one there, which then wins whole. While it is false and the options list no client, it deletes
+    // FluentCms:Admin:Enabled is true, its default, it registers the admin's client under cms.Clients.AdminClientId, unless the
+    // host or FluentCms:Clients lists one there, which then wins whole and which the startup report names when the admin cannot
+    // sign in with it. While it is false and the options list no client, it deletes
     // the client it registered before; while they list any, the host deletes it, as any client they no longer list.
     public static FluentCmsBuilder AddAdmin(this FluentCmsBuilder cms, Action<AdminOptions>? configure = null)
     {
@@ -33,14 +35,16 @@ public static class AdminHostingExtensions
         var options = new AdminOptions();
         configure?.Invoke(options);
         cms.Services.AddFluentCmsOptions(AdminOptions.Section, options, admin => admin.Validate());
-        cms.Services.AddSingleton<IPostConfigureOptions<ClientOptions>, AdminClientRegistration>();
+        cms.Services.AddSingleton<AdminClientRegistration>();
+        cms.Services.AddSingleton<IPostConfigureOptions<ClientOptions>>(services => services.GetRequiredService<AdminClientRegistration>());
+        cms.Services.AddSingleton<IInsecureDefaultSource, AdminClientReport>();
         cms.Services.AddHostedService<AdminClientRemoval>();
         cms.Services.AddSingleton<AdminSite>();
         return cms;
     }
 
     // Serves the admin at /admin, under FluentCms:ReverseProxy:PathBase: the host's static web assets, which are the admin
-    // app's when the host references its project, through MapStaticAssets (fingerprinted files cached for good, compressed
+    // app's when the host references its project and the package's first-party build otherwise, through MapStaticAssets (fingerprinted files cached for good, compressed
     // copies by Accept-Encoding); index.html with its <base href> set, for /admin/ and every client route; and config.json
     // built from FluentCms:Admin. index.html and config.json are never cached. With FluentCms:Admin:Enabled false nothing is
     // mapped, and /admin is a 404 like any unknown path. staticAssetsManifestPath is that of MapStaticAssets.
@@ -67,7 +71,7 @@ public static class AdminHostingExtensions
         if (!File.Exists(manifest))
         {
             throw FluentCmsConfigurationException.NotRegistered(
-                $"MapFluentCmsAdmin found no manifest of static web assets at {manifest}. The host references the admin app's project, such as FluentCMS.Admin.App, whose files become its static web assets.");
+                $"MapFluentCmsAdmin found no manifest of static web assets at {manifest}. A host that references FluentCMS.Admin.Hosting as a package gets the first-party build as its static web assets; one that references an admin app's project, such as FluentCMS.Admin.App, gets that app's files.");
         }
 
         site.LoadIndex();

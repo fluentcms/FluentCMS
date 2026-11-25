@@ -117,6 +117,11 @@ public sealed class ClientRegistration
 {
     public string? DisplayName { get; set; }
 
+    // Set by a package that lists a client on its own behalf, as the admin's hosting package lists its own. Such a client is
+    // registered like any other, but is not one the operator listed: options that hold no other keep the clients the host
+    // registered before, as options that hold none do.
+    public bool ContributedByPackage { get; set; }
+
     public string? Secret { get; set; }
 
     public IList<string> RedirectUris { get; } = [];

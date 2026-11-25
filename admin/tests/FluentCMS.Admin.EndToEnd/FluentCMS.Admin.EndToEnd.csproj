@@ -5,6 +5,11 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <!-- The file server of StaticBuildTests, the framework's static files on Kestrel. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Microsoft.Playwright" />
@@ -13,14 +18,37 @@
     <PackageReference Include="Shouldly" />
   </ItemGroup>
 
+  <!-- The accessibility sweep (spec 4.18, 7): axe-core in the page, with the two packages it brings referenced so that their
+       pins hold. -->
+  <ItemGroup>
+    <PackageReference Include="Deque.AxeCore.Playwright" />
+    <PackageReference Include="Deque.AxeCore.Commons" />
+    <PackageReference Include="System.IO.Abstractions" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="landing.schema.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Built with -p:FluentCmsAdminPseudoCultures=true, the host is built with the pseudo-cultures too, and the run publishes
+       it with them (spec 4.17). -->
+  <ItemGroup Condition="'$(FluentCmsAdminPseudoCultures)' == 'true'">
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>FluentCmsAdminPseudoCultures</_Parameter1>
+      <_Parameter2>true</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 
   <!-- The tests publish the reference host with no build and run it in a process of its own, as the image does, so the host is
        built first in the same configuration; nothing of it is copied or compiled against. -->
   <ItemGroup>
     <ProjectReference Include="../../../src/FluentCMS.Host/FluentCMS.Host.csproj" ReferenceOutputAssembly="false" Private="false" />
+  </ItemGroup>
+
+  <!-- The admin's assemblies, read for the routes of the app, which the views of the accessibility sweep must cover; nothing
+       of them runs in the tests. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/FluentCMS.Admin.App/FluentCMS.Admin.App.csproj" />
   </ItemGroup>
 
 </Project>

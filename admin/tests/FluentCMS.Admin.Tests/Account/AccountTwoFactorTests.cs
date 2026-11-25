@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json.Nodes;
 using Bunit;
 using FluentCMS.Admin.Account;
+using FluentCMS.Admin.Administration.Account;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Admin.Tests.Shell.FakeManagementServer;
@@ -335,7 +336,7 @@ public sealed class AccountTwoFactorTests : AccountTestContext
         AssertInert(app);
         Button(Section(app, "Sessions"), "End, the sign-in of Phone app").Click();
         Button(Section(app, "External logins"), "Remove, the login of Corporate sign-in").Click();
-        Section(app, "Theme").QuerySelector("select")!.Change("Dark");
+        Section(app, "Preferences").QuerySelector("select")!.Change("Dark");
 
         Management.Calls.Count.ShouldBe(calls);
         SignIns.ShouldBeEmpty();
@@ -409,7 +410,8 @@ public sealed class AccountTwoFactorTests : AccountTestContext
             Section(app, heading).QuerySelectorAll("fluent-button").ShouldAllBe(button => button.HasAttribute("disabled"));
         }
 
-        Section(app, "Theme").QuerySelector("select")!.HasAttribute("disabled").ShouldBeTrue();
+        Section(app, "Preferences").QuerySelectorAll("select").ShouldAllBe(select => select.HasAttribute("disabled"));
+        Section(app, "Preferences").QuerySelectorAll("fluent-button").ShouldAllBe(button => button.HasAttribute("disabled"));
         Section(app, "Password").QuerySelector("a")!.HasAttribute("href").ShouldBeFalse();
     }
 

@@ -2,11 +2,17 @@ using System.Globalization;
 
 namespace FluentCMS.Admin.Localization;
 
-// The culture of the interface, chosen once at start: Blazor WebAssembly loads the resources of the current culture when the
-// host starts, so a change of culture reloads the app.
-internal sealed class InterfaceCulture(CultureInfo culture)
+// The culture of the interface, chosen once at start from the copy of the user's preference, the browser's culture and the
+// default: Blazor WebAssembly loads the resources of the current culture when the host starts, so a change of culture reloads
+// the app.
+internal sealed class InterfaceCulture(CultureInfo culture, CultureInfo? browser = null, string? copy = null)
 {
     public CultureInfo Culture { get; } = culture;
+
+    public CultureInfo Browser { get; } = browser ?? culture;
+
+    // The copy of the preference the start read, null for none.
+    public string? Copy { get; } = copy;
 
     public string Direction => TextDirection.Of(Culture);
 
@@ -27,6 +33,13 @@ internal sealed class InterfaceCulture(CultureInfo culture)
 
         CultureInfo.DefaultThreadCurrentUICulture = Culture;
         CultureInfo.CurrentUICulture = Culture;
+        UseFormats(formats);
+    }
+
+    // The current culture of the app is the user's formats, so that every text formatted with it follows them (spec 4.17). The
+    // default is what counts in the browser: a culture set in an async flow does not reach the ones it did not start.
+    public static void UseFormats(CultureInfo formats)
+    {
         CultureInfo.DefaultThreadCurrentCulture = formats;
         CultureInfo.CurrentCulture = formats;
     }

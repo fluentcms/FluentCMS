@@ -16,7 +16,9 @@ public static class CmsComponentsServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddFluentUIComponents();
-        services.AddScoped<ICmsToastService, CmsToastService>();
+        // The host's announcer reads each toast through the shell's live regions; without one a toast is shown only.
+        services.AddScoped(provider => new CmsToastService(provider.GetService<FluentCMS.Admin.IAnnouncer>(), provider.GetService<TimeProvider>() ?? TimeProvider.System));
+        services.AddScoped<ICmsToastService>(provider => provider.GetRequiredService<CmsToastService>());
         services.TryAddScoped<CmsClipboard>();
         services.TryAddSingleton<ICmsTextSource, CmsStrings>();
         // The library's texts, such as a row's selection state, then follow the culture and the ICmsTextSource of the host.

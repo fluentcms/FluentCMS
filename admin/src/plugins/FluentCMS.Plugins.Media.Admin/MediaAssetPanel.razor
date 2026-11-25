@@ -10,7 +10,7 @@
 @inject IStringLocalizer<MediaResources> L
 
 <CascadingValue Value="@gate" IsFixed="true">
-    <CmsDrawer Title="@((asset ?? Asset)?.Name ?? L["Media.Panel.Title"].Value)" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())">
+    <CmsDrawer Title="@((asset ?? Asset)?.Name ?? L["Media.Panel.Title"].Value)" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())" CloseButton="false">
         <ChildContent>
             @if (problem is { } failure)
             {
@@ -34,7 +34,7 @@
                     <dt>@L["Media.Column.Type"]</dt>
                     <dd>@shown.MimeType</dd>
                     <dt>@L["Media.Column.Size"]</dt>
-                    <dd>@MediaFormat.Size(shown.Size)</dd>
+                    <dd>@MediaFormat.Size(shown.Size, L)</dd>
                     @if (MediaFormat.Dimensions(shown) is { } dimensions)
                     {
                         <dt>@L["Media.Column.Dimensions"]</dt>

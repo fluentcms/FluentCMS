@@ -1,0 +1,378 @@
+@* Two-factor sign-in by choice (spec 4.3): its status, enrolment with the authenticator URI as a QR code and the key beside it,
+   the recovery codes, and turning it off. The key and the recovery codes are shown once: they live in this component while
+   their step is open and nowhere else, never logged, never in the URL, never in the browser's storage.
+   Turning it on or off gives the user a new security stamp, which revokes this tab's access and refresh tokens with the
+   user's other sessions, so the tab signs in again at once, through the session, rather than at its next refresh: after the recovery codes are
+   saved, and after turning it off. While the codes are shown this card makes no call, they are in a modal dialog, which the
+   browser keeps the rest of the page and the shell from, and the page's other cards are held inert. The shell makes no
+   call of its own, so what can still take the codes away is the browser itself: a reload, or going back. *@
+@inherits AccountCard
+@using FluentCMS.Admin.Api
+@using FluentCMS.Admin.Authentication
+@inject ManagementClient Client
+@inject IAdminSession Session
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<AccountResources> L
+
+<CmsCard Title="@L["Account.TwoFactor.Heading"]">
+    @if (state == AccountSectionState.Loading)
+    {
+        <p role="status">@L["Account.Page.Loading"]</p>
+    }
+    else if (state == AccountSectionState.Refused)
+    {
+        <p>@L["Account.Page.NotAUser"]</p>
+    }
+    else if (state == AccountSectionState.Failed)
+    {
+        <p>@L["Account.Page.Failed"]</p>
+        <CmsButton OnClick="LoadAsync">@L["Account.Page.TryAgain"]</CmsButton>
+    }
+    else if (step == Step.Enrol && setup is not null)
+    {
+        <h3 class="account-step" tabindex="-1" @ref="stepHeading">@L["Account.TwoFactor.ScanHeading"]</h3>
+        @if (QrCode.Fits(setup.AuthenticatorUri))
+        {
+            <p>@L["Account.TwoFactor.ScanText"]</p>
+            <div class="account-enrol">
+                <QrCodeImage Text="@setup.AuthenticatorUri" Label="@L["Account.TwoFactor.QrLabel"]" />
+                <div>
+                    <p>@L["Account.TwoFactor.KeyText"]</p>
+                    <p><code class="account-key">@GroupedKey(setup.SharedKey)</code></p>
+                </div>
+            </div>
+        }
+        else
+        {
+            @* A URI longer than the largest code, as a long brand name in a non-Latin script gives, is entered by hand. *@
+            <p>@L["Account.TwoFactor.KeyOnlyText"]</p>
+            <p><code class="account-key">@GroupedKey(setup.SharedKey)</code></p>
+        }
+        <p>@L["Account.TwoFactor.EnrolSignInAgain"]</p>
+        <CmsStack>
+            <CmsTextInput Label="@L["Account.TwoFactor.Code"]" Required="true" Error="@codeError" Autocomplete="one-time-code" Numeric="true" @bind-Value="code" />
+            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="VerifyAsync">@L["Account.TwoFactor.Verify"]</CmsButton>
+                <CmsButton Disabled="@busy" OnClick="@(() => CloseStep(L["Account.TwoFactor.NothingChanged"]))">@L["Account.TwoFactor.Cancel"]</CmsButton>
+            </CmsStack>
+        </CmsStack>
+    }
+    else if (step == Step.Codes && recoveryCodes is not null)
+    {
+        @* Modal, so that nothing else of the page or the shell can be used while the codes are shown; Escape opens it again. *@
+        <CmsDialog @key="codesDialog" Title="@L["Account.TwoFactor.CodesHeading"]" Open="true" OpenChanged="@(_ => codesDialog++)" CloseButton="false">
+            <ChildContent>
+                <p>@L["Account.TwoFactor.CodesText"]</p>
+                <pre class="account-codes" aria-label="@L["Account.TwoFactor.CodesLabel"]">@string.Join('\n', recoveryCodes)</pre>
+                @if (signInAfterCodes)
+                {
+                    <p>@L["Account.TwoFactor.CodesSignInAgain"]</p>
+                }
+            </ChildContent>
+            <Actions>
+                <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="CodesSavedAsync">@L["Account.TwoFactor.CodesSaved"]</CmsButton>
+            </Actions>
+        </CmsDialog>
+    }
+    else if (step is Step.Disable or Step.NewCodes)
+    {
+        <h3 class="account-step" tabindex="-1" @ref="stepHeading">
+            @(step == Step.Disable ? L["Account.TwoFactor.DisableHeading"] : L["Account.TwoFactor.NewCodesHeading"])
+        </h3>
+        @if (step == Step.Disable)
+        {
+            <p>@L["Account.TwoFactor.DisableSignInAgain"]</p>
+            @if (status.Required)
+            {
+                <p>@L["Account.TwoFactor.DisableRequired"]</p>
+            }
+        }
+        <CmsStack>
+            @if (step == Step.Disable)
+            {
+                <CmsTextInput Label="@L["Account.TwoFactor.CodeOrRecovery"]" Required="true" Error="@codeError" Autocomplete="off" @bind-Value="code" />
+            }
+            else
+            {
+                <CmsTextInput Label="@L["Account.TwoFactor.Code"]" Required="true" Error="@codeError" Autocomplete="one-time-code" Numeric="true" @bind-Value="code" />
+            }
+            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="@(() => step == Step.Disable ? DisableAsync() : NewCodesAsync())">
+                    @(step == Step.Disable ? L["Account.TwoFactor.Disable"] : L["Account.TwoFactor.NewCodes"])
+                </CmsButton>
+                <CmsButton Disabled="@busy" OnClick="@(() => CloseStep(L["Account.TwoFactor.NothingChanged"]))">@L["Account.TwoFactor.Cancel"]</CmsButton>
+            </CmsStack>
+        </CmsStack>
+    }
+    else if (status.Enabled)
+    {
+        <p>@L["Account.TwoFactor.On", status.RecoveryCodesLeft]</p>
+        <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+            <CmsButton OnClick="@(() => OpenStep(Step.NewCodes))">@L["Account.TwoFactor.NewCodes"]</CmsButton>
+            <CmsButton OnClick="@(() => OpenStep(Step.Disable))">@L["Account.TwoFactor.Disable"]</CmsButton>
+        </CmsStack>
+    }
+    else
+    {
+        <p>@L["Account.TwoFactor.Off"]</p>
+        @if (status.Required)
+        {
+            <p>@L["Account.TwoFactor.Required"]</p>
+        }
+        @if (status.Pending)
+        {
+            <p>@L["Account.TwoFactor.Pending"]</p>
+        }
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="EnrolAsync">@L["Account.TwoFactor.Enrol"]</CmsButton>
+    }
+    <p class="account-message" tabindex="-1" @ref="messageElement">@message</p>
+</CmsCard>
+
+@code {
+    private enum Step
+    {
+        None,
+        Enrol,
+        Codes,
+        Disable,
+        NewCodes,
+    }
+
+    private MyTwoFactor status = new();
+    private AccountSectionState state = AccountSectionState.Loading;
+    private Step step;
+    private AuthenticatorSetup? setup;
+    private IReadOnlyList<string>? recoveryCodes;
+    private bool signInAfterCodes;
+    private string? code;
+    private string? codeError;
+    private string? message;
+    private bool busy;
+    private int codesDialog;
+    private ElementReference stepHeading;
+    private ElementReference messageElement;
+    private bool focusNext;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    // The dialog of the codes takes focus itself.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusNext && step != Step.Codes)
+        {
+            focusNext = false;
+            await (step == Step.None ? messageElement : stepHeading).FocusAsync();
+        }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Forget();
+            Hold?.Set(false);
+        }
+
+        base.Dispose(disposing);
+    }
+
+    private async Task LoadAsync()
+    {
+        state = AccountSectionState.Loading;
+        try
+        {
+            status = await Client.GetTwoFactorAsync(CancellationToken.None);
+            state = AccountSectionState.Ready;
+        }
+        catch (Exception exception) when (AccountProblems.IsRefused(exception))
+        {
+            state = AccountSectionState.Refused;
+        }
+        catch (Exception exception) when (AccountProblems.IsFailure(exception))
+        {
+            state = AccountSectionState.Failed;
+        }
+    }
+
+    private async Task EnrolAsync()
+    {
+        busy = true;
+        message = null;
+        try
+        {
+            setup = await Client.EnrolAuthenticatorAsync(CancellationToken.None);
+            status = status with { Pending = true };
+            OpenStep(Step.Enrol);
+        }
+        catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.TwoFactorEnabled))
+        {
+            await ShowAsync(L["Account.TwoFactor.AlreadyOn"]);
+        }
+        catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.RecentSignInRequired))
+        {
+            await ShowAsync(L["Account.TwoFactor.SignInAgainFirst"]);
+        }
+        catch (Exception exception) when (AccountProblems.IsFailure(exception))
+        {
+            await ShowAsync(L["Account.TwoFactor.ActionFailed"]);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private async Task VerifyAsync()
+    {
+        if (await RunWithCodeAsync(Client.VerifyAuthenticatorAsync) is { } codes)
+        {
+            ShowCodes(codes, signInAgain: true);
+            status = status with { Enabled = true, Pending = false, RecoveryCodesLeft = codes.Count };
+            Announcer.Announce(L["Account.TwoFactor.TurnedOn"]);
+        }
+    }
+
+    private async Task NewCodesAsync()
+    {
+        if (await RunWithCodeAsync(Client.NewRecoveryCodesAsync) is { } codes)
+        {
+            ShowCodes(codes, signInAgain: false);
+            status = status with { RecoveryCodesLeft = codes.Count };
+        }
+    }
+
+    private async Task DisableAsync()
+    {
+        if (await RunWithCodeAsync(async (value, token) =>
+        {
+            await Client.DisableTwoFactorAsync(value, token);
+            return (IReadOnlyList<string>)[];
+        }) is not null)
+        {
+            status = status with { Enabled = false, Pending = false, RecoveryCodesLeft = 0 };
+            CloseStep(L["Account.TwoFactor.TurnedOff"]);
+            if (!await AccountSignIn.AgainAsync(Session))
+            {
+                message = L["Account.Page.SignInFailed"];
+            }
+        }
+    }
+
+    // After turning it on, the page stays held until it has left for the sign-in; if it cannot leave, the page is let go and
+    // says so, since the next call of the tab will send it to sign in anyway.
+    private async Task CodesSavedAsync()
+    {
+        var signInAgain = signInAfterCodes;
+        CloseStep(L["Account.TwoFactor.CodesClosed"]);
+        if (!signInAgain)
+        {
+            Hold?.Set(false);
+        }
+        else if (!await AccountSignIn.AgainAsync(Session))
+        {
+            Hold?.Set(false);
+            message = L["Account.Page.SignInFailed"];
+        }
+    }
+
+    // The answer, or null with the reason shown and announced: a wrong code stays on the step, a sign-in too old to turn it
+    // on closes the step, any other refusal reads the status again.
+    private async Task<IReadOnlyList<string>?> RunWithCodeAsync(Func<string, CancellationToken, Task<IReadOnlyList<string>>> call)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            CodeError(L["Account.TwoFactor.CodeRequired"]);
+            return null;
+        }
+
+        busy = true;
+        codeError = null;
+        try
+        {
+            return await call(code, CancellationToken.None);
+        }
+        catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.InvalidTwoFactorCode))
+        {
+            CodeError(L["Account.TwoFactor.WrongCode"]);
+            return null;
+        }
+        catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.RecentSignInRequired))
+        {
+            CloseStep(L["Account.TwoFactor.SignInAgainFirst"]);
+            return null;
+        }
+        catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.NoAuthenticator)
+            || AccountProblems.Has(exception, AccountProblems.TwoFactorEnabled)
+            || AccountProblems.Has(exception, AccountProblems.TwoFactorNotEnabled))
+        {
+            CloseStep(L["Account.TwoFactor.Changed"]);
+            status = await ReadStatusAsync() ?? status;
+            return null;
+        }
+        catch (Exception exception) when (AccountProblems.IsFailure(exception))
+        {
+            CodeError(L["Account.TwoFactor.ActionFailed"]);
+            return null;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    // On the input, and through the shell's assertive region, since focus stays on the button (spec 4.18).
+    private void CodeError(string text)
+    {
+        codeError = text;
+        Announcer.Announce(text, AnnouncementPoliteness.Assertive);
+    }
+
+    private async Task<MyTwoFactor?> ReadStatusAsync()
+    {
+        try
+        {
+            return await Client.GetTwoFactorAsync(CancellationToken.None);
+        }
+        catch (Exception exception) when (AccountProblems.IsFailure(exception))
+        {
+            return null;
+        }
+    }
+
+    private void ShowCodes(IReadOnlyList<string> codes, bool signInAgain)
+    {
+        Forget();
+        recoveryCodes = codes;
+        signInAfterCodes = signInAgain;
+        Hold?.Set(true);
+        OpenStep(Step.Codes);
+    }
+
+    private void OpenStep(Step next)
+    {
+        step = next;
+        (code, codeError, message) = (null, null, null);
+        focusNext = true;
+    }
+
+    // Leaving a step drops what it showed.
+    private void CloseStep(string? result = null)
+    {
+        Forget();
+        step = Step.None;
+        message = result;
+        focusNext = true;
+    }
+
+    private void Forget() => (setup, recoveryCodes, signInAfterCodes, code, codeError) = (null, null, false, null, null);
+
+    private async Task ShowAsync(string text)
+    {
+        message = text;
+        status = await ReadStatusAsync() ?? status;
+        focusNext = true;
+    }
+
+    // In groups of four, as the hosted enrolment page shows it, so that it can be typed into an app.
+    private static string GroupedKey(string key) => string.Join(' ', key.ToLowerInvariant().Chunk(4).Select(group => new string(group)));
+}

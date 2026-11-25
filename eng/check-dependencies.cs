@@ -1,6 +1,6 @@
-// The check of the Pack job of the Publish workflow, after the packages a release leaves out are removed: every dependency of
-// a NuGet package in the directory on a FluentCMS package is a package of the directory too, so that a release pushes no package
-// that cannot be restored from nuget.org. It names each such dependency and exits with 1.
+// The check of the Pack job of the Publish workflow, after the pack: every dependency of a NuGet package in the directory on a
+// FluentCMS package is a package of the directory too, so that a release pushes no package that cannot be restored from
+// nuget.org. It names each such dependency and exits with 1.
 //
 //   dotnet run eng/check-dependencies.cs -- <directory of the packages>
 

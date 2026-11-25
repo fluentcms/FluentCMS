@@ -31,6 +31,7 @@ public abstract class McpTestContext : BunitContext
         Services.AddSingleton<IAdminContext>(Admin);
         Services.AddSingleton<IAdminSchema>(Schema);
         Services.AddSingleton<IAnnouncer>(Announcer);
+        Services.AddSingleton<IAdminFormats>(new UtcFormats());
     }
 
     internal FakeMcp Server { get; } = new();
@@ -99,6 +100,9 @@ internal sealed class FakeAdminContext : IAdminContext, IAdminAccess
 
 internal sealed class FakeSchema : IAdminSchema
 {
+    // Applied to the names of the types, which the sweep of the pseudo-cultures marks as a resource is.
+    public Func<string, string> Label { get; set; } = name => name;
+
     public Task<SchemaDescription> GetSchemaAsync(CancellationToken cancellationToken = default) => Task.FromResult(new SchemaDescription
     {
         Types = [Type("article", "Article"), Type("product", null)],
@@ -106,7 +110,8 @@ internal sealed class FakeSchema : IAdminSchema
         Blocks = [],
     });
 
-    private static SchemaTypeDescription Type(string name, string? displayName) => new() { Name = name, Kind = "collection", DisplayName = displayName, Fields = [] };
+    private SchemaTypeDescription Type(string name, string? displayName) =>
+        new() { Name = Label(name), Kind = "collection", DisplayName = displayName is null ? null : Label(displayName), Fields = [] };
 }
 
 // The routes of the half as the server answers them, over clients, roles, instructions, prompts and activity rows in memory.
@@ -195,7 +200,10 @@ internal sealed class FakeMcp : IManagementApi
         return new ApiResponse(HttpStatusCode.NoContent, null);
     }
 
-    private static string RoleName(Guid role) => role == McpTestContext.Editor ? "Editor" : role == McpTestContext.Reader ? "Reader" : "Shop editor";
+    // Applied to the names of the roles, which the sweep of the pseudo-cultures marks as a resource is.
+    public Func<string, string> RoleLabel { get; set; } = name => name;
+
+    private string RoleName(Guid role) => RoleLabel(role == McpTestContext.Editor ? "Editor" : role == McpTestContext.Reader ? "Reader" : "Shop editor");
 
     private JsonNode Answer(ApiRequest request)
     {
@@ -211,9 +219,9 @@ internal sealed class FakeMcp : IManagementApi
         {
             ("GET", ["roles"]) => Items(
             [
-                new JsonObject { ["id"] = McpTestContext.Editor, ["siteId"] = null, ["name"] = "Editor" },
-                new JsonObject { ["id"] = McpTestContext.Reader, ["siteId"] = null, ["name"] = "Reader" },
-                new JsonObject { ["id"] = McpTestContext.SiteRole, ["siteId"] = Guid.NewGuid(), ["name"] = "Shop editor" },
+                new JsonObject { ["id"] = McpTestContext.Editor, ["siteId"] = null, ["name"] = RoleLabel("Editor") },
+                new JsonObject { ["id"] = McpTestContext.Reader, ["siteId"] = null, ["name"] = RoleLabel("Reader") },
+                new JsonObject { ["id"] = McpTestContext.SiteRole, ["siteId"] = Guid.NewGuid(), ["name"] = RoleLabel("Shop editor") },
             ]),
             ("GET", ["mcp", "clients"]) => Items(Clients),
             ("POST", ["mcp", "clients"]) => Register(request.Body!),
@@ -346,4 +354,19 @@ internal sealed class FakeMcp : IManagementApi
             ["pageSize"] = size,
         };
     }
+}
+
+// The user's formats as the shell gives them, in UTC and a pattern of no culture, so that a test tells a moment the page
+// wrote through the contract from one it wrote by itself.
+internal sealed class UtcFormats : IAdminFormats
+{
+    public string TimeZoneId => "UTC";
+
+    public string FormatDate(DateTimeOffset value) => value.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    public string FormatTime(DateTimeOffset value) => value.UtcDateTime.ToString("HH:mm", CultureInfo.InvariantCulture);
+
+    public string FormatDateTime(DateTimeOffset value) => value.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+
+    public string FormatNumber(decimal value, int? decimals = null) => value.ToString(CultureInfo.InvariantCulture);
 }

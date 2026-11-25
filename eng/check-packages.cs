@@ -1,7 +1,7 @@
 // The check of the Pack job (spec 3.2): every NuGet package of a build is at the version of the build and carries a
 // description, its README, its tags (fluentcms-plugin on the plugins, decision 15), the icon, the licence, the repository
-// and SourceLink in the PDB of its assembly; @fluentcms/client carries its version, a description, the licence and a README.
-// It names each part a package misses and exits with 1.
+// and SourceLink in the PDB of its assembly; FluentCMS.Admin.Hosting carries the first-party build of the admin; @fluentcms/client
+// carries its version, a description, the licence and a README. It names each part a package misses and exits with 1.
 //
 //   dotnet run eng/check-packages.cs -- <directory of the packages> <version>
 
@@ -148,7 +148,35 @@ internal static class Checks
             problems.Add($"its assembly {id}.dll");
         }
 
+        if (id == AdminHosting)
+        {
+            problems.AddRange(AdminBuild(package));
+        }
+
         return (id.Length > 0 ? id : Path.GetFileName(path), problems);
+    }
+
+    private const string AdminHosting = "FluentCMS.Admin.Hosting";
+
+    // The first-party build the hosting package serves (admin spec 6.1, AQ8): the page and the Blazor script among its static
+    // web assets, with their endpoints, and no resource of a pseudo-culture, which no release carries (4.17).
+    private static readonly string[] AdminBuildFiles =
+        ["staticwebassets/index.html", "staticwebassets/_framework/blazor.webassembly.js", "build/Microsoft.AspNetCore.StaticWebAssetEndpoints.props"];
+
+    private static readonly string[] PseudoCultures = ["en-XA", "ar-XB"];
+
+    private static IEnumerable<string> AdminBuild(ZipArchive package)
+    {
+        foreach (var file in AdminBuildFiles.Where(file => package.GetEntry(file) is not { Length: > 0 }))
+        {
+            yield return $"the first-party build's {file}";
+        }
+
+        foreach (var entry in package.Entries.Where(entry => PseudoCultures.Any(culture =>
+            entry.FullName.Split('/').Contains(culture, StringComparer.OrdinalIgnoreCase) || entry.FullName.Contains($".{culture}.", StringComparison.OrdinalIgnoreCase))))
+        {
+            yield return $"no resource of a pseudo-culture, and it holds {entry.FullName}";
+        }
     }
 
     public static (string Name, List<string> Problems) Npm(string path, string version)

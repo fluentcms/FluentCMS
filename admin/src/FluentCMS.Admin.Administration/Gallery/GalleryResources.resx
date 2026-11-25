@@ -201,6 +201,16 @@
   <data name="System.Components.Saved" xml:space="preserve">
     <value>Saved.</value>
   </data>
+  <data name="System.Components.ShowErrorToast" xml:space="preserve">
+    <value>Show error toast</value>
+  </data>
+  <data name="System.Components.SaveFailed" xml:space="preserve">
+    <value>The entry could not be saved.</value>
+  </data>
+  <data name="System.Components.RemoveDialog" xml:space="preserve">
+    <value>Remove from the page</value>
+    <comment>A button of the sample dialog that takes the open dialog out of the page, which gives focus back to its opener.</comment>
+  </data>
   <data name="System.Components.DialogTitle" xml:space="preserve">
     <value>Discard changes?</value>
   </data>
@@ -233,6 +243,12 @@
   </data>
   <data name="System.Components.Preview" xml:space="preserve">
     <value>Preview</value>
+  </data>
+  <data name="System.Components.SortByTitle" xml:space="preserve">
+    <value>Sort by title</value>
+  </data>
+  <data name="System.Components.SortByDate" xml:space="preserve">
+    <value>Sort by date</value>
   </data>
   <data name="System.Components.LastAction" xml:space="preserve">
     <value>Last action: {0}</value>

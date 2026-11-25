@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Web;
 using Bunit;
 using Bunit.TestDoubles;
-using FluentCMS.Admin.Account;
+using FluentCMS.Admin.Administration.Account;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Authentication;
 using FluentCMS.Admin.Forms;

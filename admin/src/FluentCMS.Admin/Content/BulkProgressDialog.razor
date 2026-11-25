@@ -10,7 +10,7 @@
 @inject FormDrafts Drafts
 @inject IStringLocalizer<AdminResources> L
 
-<CmsDialog Title="@Progress.Title" Open="@open" OpenChanged="OnOpenChangedAsync" OnClosed="OnClosed">
+<CmsDialog Title="@Progress.Title" Open="@open" OpenChanged="OnOpenChangedAsync" OnClosed="OnClosed" CloseButton="false">
     <ChildContent>
         <div class="bulk-progress">
             <progress max="@Progress.Total" value="@Progress.Processed" aria-label="@L["Content.Bulk.Bar"]"></progress>

@@ -1,9 +1,9 @@
 #Requires -Version 7.4
 # The M6 sequence as a new user runs it, from packages alone, in a work directory outside the repository: every package of
 # the solution packed into a folder feed, FluentCMS.Templates and the fluentcms tool installed from it, a Blog host made with
-# `dotnet new fluentcms`, its migrations added and applied, an administrator and a management key made with the tool, the
-# TypeScript of the instance generated and compiled, the site exported and imported into a second new host and compared there
-# through the Delivery API, and a plugin made with `dotnet new fluentcms-plugin`, built and tested.
+# `dotnet new fluentcms`, its migrations added and applied, an administrator and a management key made with the tool, its admin
+# read at /admin, the TypeScript of the instance generated and compiled, the site exported and imported into a second new host
+# and compared there through the Delivery API, and a plugin made with `dotnet new fluentcms-plugin`, built and tested.
 #
 #   pwsh eng/fresh-machine.ps1 [-WorkDirectory <dir>] [-Version <version>] [-Feed <dir or URL>] [-Client <.tgz or npm spec>]
 #                              [-PostgreSql <connection string> -PostgreSqlImport <connection string>]
@@ -266,6 +266,21 @@ function Assert-TemplateVersions([string] $directory) {
 
 function New-Host([string] $name, [string] $provider, [string] $directory) {
     Invoke-Checked dotnet @('new', 'fluentcms', '-n', $name, '-o', $directory, '--provider', $provider, '--sample', 'blog', '--debug:custom-hive', $hive)
+}
+
+# Whether the installed template has the option, which a template of an earlier release may not.
+function Test-TemplateOption([string] $template, [string] $option) {
+    [bool]((& dotnet new $template --help --debug:custom-hive $hive) -match $option)
+}
+
+# The host's admin at /admin: the page with its base set, from the prebuilt build of FluentCMS.Admin.Hosting.
+function Test-Admin($cms) {
+    $page = Invoke-WebRequest "$($cms.Origin)/admin/" -SkipHttpErrorCheck -TimeoutSec 60
+    if ($page.StatusCode -ne 200 -or -not $page.Content.Contains('<base href="/admin/" />')) {
+        Fail "GET /admin/ on $($cms.Name) answered $($page.StatusCode) without the page's base: $($page.Content)"
+    }
+
+    Write-Host "$($cms.Name) serves the admin at /admin/."
 }
 
 # Restored from the feed, built with warnings as errors, and the tool of .config/dotnet-tools.json restored, from the feed too.
@@ -574,6 +589,11 @@ function Test-Provider([string] $provider, [hashtable] $sourceVariables, [hashta
         Fail "the welcome article is titled '$($welcome.title)'"
     }
 
+    if ($script:hostHasAdmin) {
+        Start-Step "Read the admin of $sourceName at /admin/"
+        Test-Admin $sourceHost
+    }
+
     Test-TypeScript $sourceHost $source
 
     Start-Step "fluentcms export --media-files from $sourceName"
@@ -738,6 +758,9 @@ try {
         Invoke-Checked dotnet @('new', 'install', "FluentCMS.Templates@$Version", '--debug:custom-hive', $hive)
     }
 
+    # The template of 1.0.0-preview.1 has no --admin, and its host no admin to read.
+    $script:hostHasAdmin = Test-TemplateOption 'fluentcms' '--admin'
+
     Test-Provider 'sqlite' @{} @{}
     if ($withPostgreSql) {
         Test-Provider 'postgresql' @{ ConnectionStrings__FluentCms = $PostgreSql } @{ ConnectionStrings__FluentCms = $PostgreSqlImport }
@@ -746,14 +769,8 @@ try {
     $plugin = 'Acme.FreshMachine'
     $pluginDirectory = Join-Path $WorkDirectory $plugin
     Start-Step "dotnet new fluentcms-plugin -n $plugin, built and tested"
-    $pluginArguments = @('new', 'fluentcms-plugin', '-n', $plugin, '-o', $pluginDirectory, '--debug:custom-hive', $hive)
-    # A release before A-47 publishes no admin package, so the admin half cannot restore from a URL feed. The template of
-    # 1.0.0-preview.1 has neither the half nor --admin.
-    if ($feedIsUrl -and ((& dotnet new fluentcms-plugin --help --debug:custom-hive $hive) -match '--admin')) {
-        $pluginArguments += @('--admin', 'false')
-    }
     Use-Location $WorkDirectory {
-        Invoke-Checked dotnet $pluginArguments
+        Invoke-Checked dotnet @('new', 'fluentcms-plugin', '-n', $plugin, '-o', $pluginDirectory, '--debug:custom-hive', $hive)
     }
     Assert-TemplateVersions $pluginDirectory
     Invoke-Checked dotnet @('restore', (Join-Path $pluginDirectory "$plugin.slnx"))

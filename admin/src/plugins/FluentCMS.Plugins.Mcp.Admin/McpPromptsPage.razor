@@ -4,9 +4,9 @@
 @page "/mcp/prompts"
 @attribute [AdminPage("/mcp/prompts", Permission = "mcp.manage")]
 @attribute [AdminMenuItem("Mcp.Prompts.Menu", Section = AdminSection.Administration, Order = 82)]
-@using System.Globalization
 @implements IDisposable
 @inject IManagementApi Api
+@inject IAdminFormats Formats
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<McpResources> L
 
@@ -49,7 +49,7 @@ else
                     <th scope="row"><code>@prompt.Name</code></th>
                     <td>@prompt.Title</td>
                     <td>@string.Join(", ", prompt.Arguments.Select(argument => argument.Name))</td>
-                    <td>@prompt.UpdatedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</td>
+                    <td>@Formats.FormatDateTime(prompt.UpdatedAt)</td>
                     <td>
                         <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
                             <CmsButton Disabled="@busy" OnClick="@(() => Edit(prompt))">

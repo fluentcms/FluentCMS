@@ -3,20 +3,25 @@
 # summary and as a warning, and the run passes; a case that fails twice fails it. Nothing is run again when the first run
 # ended for another reason than failed cases (a timeout, a crash), when a case was skipped (--fail-skips reports it as a
 # failure), or when more than MaxRetried cases failed, which is a broken suite, not a flake. The second run takes the host the
-# first one published.
+# first one published, or with FLUENTCMS_E2E_IMAGE the same image.
 #
-#   pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results [-- <test options>]
+# -ExcludeTrait Name=Value leaves out the cases of that trait, as the run on the image does with those of the pseudo-cultures.
+#
+#   pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results [-ExcludeTrait Name=Value] [-- <test options>]
 param(
     [string] $ResultsDirectory = 'artifacts/test-results',
     [string] $Configuration = 'Release',
     [string] $Timeout = '15m',
     [string] $RetryTimeout = '6m',
     [int] $MaxRetried = 5,
+    [string] $ExcludeTrait = '',
     [string] $Project = (Join-Path $PSScriptRoot 'FluentCMS.Admin.EndToEnd.csproj'),
     [Parameter(ValueFromRemainingArguments = $true)] [string[]] $TestOptions = @()
 )
 
 $ErrorActionPreference = 'Stop'
+
+$excluded = if ($ExcludeTrait) { @('--filter-not-trait', $ExcludeTrait) } else { @() }
 
 # Exit code 2 of Microsoft.Testing.Platform is "at least one test failed"; every other failure is not a failed case.
 $failedCases = 2
@@ -25,7 +30,7 @@ function Invoke-Tests([string] $name, [string] $timeout, [string[]] $options) {
     & dotnet test --project $Project -c $Configuration --no-build `
         --results-directory $ResultsDirectory --report-xunit-trx --report-xunit-trx-filename "$name.trx" `
         --report-xunit-xml --report-xunit-xml-filename "$name.xml" `
-        --fail-skips on --timeout $timeout @options @TestOptions | Out-Host
+        --fail-skips on --timeout $timeout @options @excluded @TestOptions | Out-Host
     return $LASTEXITCODE
 }
 

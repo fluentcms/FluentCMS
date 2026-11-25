@@ -2,8 +2,10 @@ using System.Reflection;
 using System.Text.Json.Nodes;
 using AngleSharp.Dom;
 using Bunit;
-using FluentCMS.Admin.Account;
+using FluentCMS.Admin.Administration.Account;
 using FluentCMS.Admin.Authentication;
+using FluentCMS.Admin.Plugins;
+using FluentCMS.Admin.Tests.Administration;
 using FluentCMS.Admin.Tests.Authentication;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,12 +13,16 @@ using Shouldly;
 
 namespace FluentCMS.Admin.Tests.Account;
 
-// The account page (A-09) against the fake Management API, with the resources as they ship.
+// The account page (A-09) against the fake Management API, with the resources as they ship. It is a page of the
+// administration assembly, which the shell loads on its first visit (A-41).
 public abstract class AccountTestContext : AdminTestContext
 {
     protected AccountTestContext() => UseNeutralResources();
 
     protected NavigationManager Navigation => Services.GetRequiredService<NavigationManager>();
+
+    // The loader of the administration assembly, which the page is in.
+    internal AdministrationTestContext.AdministrationLoader Loader { get; } = new();
 
     // The routes the page asked the session to sign in again to come back to.
     protected List<string?> SignIns => ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).SignIns;
@@ -60,6 +66,7 @@ public abstract class AccountTestContext : AdminTestContext
 
     protected IRenderedComponent<AdminApp> Load(string route = AccountPage.Route, string configuration = ValidConfiguration)
     {
+        Services.AddScoped<IAdminAssemblyLoader>(_ => Loader);
         Start(configuration);
         Navigation.NavigateTo(route);
         var app = Render<AdminApp>();

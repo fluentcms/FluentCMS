@@ -98,7 +98,7 @@
                                     }
                                 </span>
                                 <span class="media-tile-name">@item.Name</span>
-                                <span class="media-tile-meta">@MediaFormat.Type(item.MimeType) · @MediaFormat.Size(item.Size)</span>
+                                <span class="media-tile-meta">@MediaFormat.Type(item.MimeType) · @MediaFormat.Size(item.Size, L)</span>
                             </button>
                         </li>
                     }
@@ -130,7 +130,7 @@
                         </span>
                     </CmsDataGridColumn>
                     <CmsDataGridColumn TItem="MediaAssetInfo" Name="type" Title="@L["Media.Column.Type"]" Order="1" Value="@(asset => asset.MimeType)" />
-                    <CmsDataGridColumn TItem="MediaAssetInfo" Name="size" Title="@L["Media.Column.Size"]" Order="2" Value="@(asset => MediaFormat.Size(asset.Size))" />
+                    <CmsDataGridColumn TItem="MediaAssetInfo" Name="size" Title="@L["Media.Column.Size"]" Order="2" Value="@(asset => MediaFormat.Size(asset.Size, L))" />
                     <CmsDataGridColumn TItem="MediaAssetInfo" Name="dimensions" Title="@L["Media.Column.Dimensions"]" Order="3" Value="@(asset => MediaFormat.Dimensions(asset))" />
                 </ChildContent>
             </CmsDataGrid>

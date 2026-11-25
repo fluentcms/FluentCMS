@@ -21,6 +21,9 @@
         if (firstRender && Branding.AccentColor is { } accent)
         {
             await Document.SetPropertyAsync(AccentProperty, accent);
+            var (onAccent, shade) = AccentColors.Of(accent);
+            await Document.SetPropertyAsync(AccentColors.OnAccentProperty, onAccent);
+            await Document.SetPropertyAsync(AccentColors.ShadeProperty, shade);
         }
     }
 }

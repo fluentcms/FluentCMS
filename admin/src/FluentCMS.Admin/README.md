@@ -9,6 +9,8 @@ await builder.AddFluentCmsAdmin();
 await builder.Build().RunAsync();
 ```
 
+A team's app names its content types in its own resources, read before the admin's for `ContentType.{name}` (such as `ContentType.article`), with `await builder.AddFluentCmsAdmin<AppResources>();` in place of the call above.
+
 The app's project file must load all globalization data. The admin sets the interface culture at start, `en` for a browser in `en-US`, and with only the culture data of the browser's language the runtime then stops the app with a blank page:
 
 ```xml
@@ -42,4 +44,4 @@ The pages of administration (users, roles, keys, members, sites, settings, plugi
 </ItemGroup>
 ```
 
-This preview holds the entry points only; section 2 of the [admin technical specification](https://github.com/fluentcms/FluentCMS/blob/main/docs/planning/admin-technical-spec.md) has the design.
+This preview holds the entry points only; section 2 of the [admin technical specification](https://github.com/fluentcms/FluentCMS/blob/main/docs/planning/admin-technical-spec.md) has the design. The guides are the [admin overview](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin.md), [admin configuration](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin-configuration.md), for `config.json`, and [translating the admin](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin-translating.md).

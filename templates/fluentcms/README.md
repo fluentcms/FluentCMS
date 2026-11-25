@@ -1,6 +1,10 @@
 # FluentCms-App
 
+<!--#if (admin) -->
+A FluentCMS API host with the admin, made with the `fluentcms` template of the `FluentCMS.Templates` package:
+<!--#else -->
 A FluentCMS API host, made with the `fluentcms` template of the `FluentCMS.Templates` package:
+<!--#endif -->
 
 ```bash
 dotnet new install FluentCMS.Templates
@@ -11,18 +15,29 @@ dotnet new fluentcms -n FluentCms-App --provider sqlite --sample none
 | --- | --- | --- |
 | `--provider` | `sqlite`, `postgresql`, `sqlserver`: the database the host runs on | `sqlite` |
 | `--sample` | `none`: one `Article` type; `blog`: the Blog types (articles, authors, tags, an SEO component, hero, quote and gallery blocks), its settings and a seeder that writes sample content | `none` |
+<!--#if (admin) -->
+| `--admin` | `true`: the admin at `/admin`, from the prebuilt build of `FluentCMS.Admin.Hosting`; `false`: the API host only | `true` |
+<!--#endif -->
 
 ## What is here
 
 | File | Holds |
 | --- | --- |
+<!--#if (admin) -->
+| `Program.cs` | `AddFluentCms` with `AddAdmin`, the command entry point of the `fluentcms` tool, `UseFluentCms`, `MapFluentCms`, the OpenAPI document and `MapFluentCmsAdmin` |
+<!--#else -->
 | `Program.cs` | `AddFluentCms`, the command entry point of the `fluentcms` tool, `UseFluentCms`, `MapFluentCms` and the OpenAPI document |
+<!--#endif -->
 | `CmsSetup.cs` | the content types of the project, the data provider and the plugins: media, webhooks and search |
 | `Content/Article.cs`, or `Blog/` | the content types: each class with `[Collection]`, `[Singleton]`, `[Component]` or `[Block]` is one |
 | `CmsContextFactory.cs` | the design-time factory that `fluentcms migrations add` builds the content model with |
 | `Migrations/Content/` | the content migrations, empty until the first `fluentcms migrations add` |
 | `.config/dotnet-tools.json` | the `fluentcms` tool, at the version of the FluentCMS packages |
+<!--#if (admin) -->
+| `appsettings.json`, `appsettings.Development.json` | the connection string `ConnectionStrings:FluentCms` and the `FluentCms` options, among them `FluentCms:Admin:Enabled`, which turns the admin on |
+<!--#else -->
 | `appsettings.json`, `appsettings.Development.json` | the connection string `ConnectionStrings:FluentCms` and the `FluentCms` options |
+<!--#endif -->
 | `Dockerfile` | a multi-stage image on the chiseled ASP.NET Core runtime, as a non-root user |
 | `.dockerignore` | what stays out of the image's build context: build output, the local database, and secrets and local settings such as `.env`, `*.pfx`, `*.key` and `*.local.json` |
 
@@ -83,6 +98,31 @@ dotnet fluentcms apikey create --name website --class management --role "Super A
 ```
 
 The password is read from standard input, so it stays out of the shell history. The key is shown once; send it as `Authorization: ApiKey <key>`.
+<!--#if (admin) -->
+
+## The admin
+
+With the host running, open `https://localhost:5443/admin/` and sign in as the administrator made above. The admin is a Blazor WebAssembly app that runs in the browser and calls the Management API of this host, on its origin, so it needs no CORS setting and no client to configure: `cms.AddAdmin()` registers the client `fluentcms-admin`, and `app.MapFluentCmsAdmin()` serves the app at `/admin`, its `index.html` with the base set and its `config.json` built from the `FluentCms:Admin` settings, such as `Branding:Name` and `PreviewOrigins` ([host configuration](https://github.com/fluentcms/FluentCMS/blob/main/docs/host-configuration.md#admin)). `FluentCms:Admin:Enabled` in `appsettings.json` turns it on; set to `false`, `/admin` answers 404 and the client is deleted at the next start, which signs every admin user out.
+
+The app is the prebuilt build that `FluentCMS.Admin.Hosting` carries: the shell, the administration pages, the rich text editor and the first-party admin halves, of the media, webhooks, MCP, AI assist, multi-site and search plugins. Its files become static web assets of this host, served by `dotnet run` and copied into `wwwroot` by `dotnet publish`, whether or not `MapFluentCmsAdmin()` is called. So:
+
+- The host has no files of its own at the app's paths: a `wwwroot/index.html` or `wwwroot/config.json`, the `_content/` of the component library, or the `_framework/` of a WebAssembly project it references, stops its build on conflicting assets.
+- A call of `app.MapStaticAssets()` of the host's own would serve the app's files at the root too, the raw `index.html` and the sample `config.json` among them; serve files of the host's own with `UseStaticFiles()` from a folder of their own.
+- On Windows a restore leaves out a file of a package whose path passes 260 characters, and some paths of the build pass 200 under the package folder. With a NuGet cache on a long path, the page loads and each file left out answers 404, and a publish fails with `MSB3030`. Keep the cache on a short path, with `NUGET_PACKAGES` if needed.
+
+For an admin with halves of your own, such as the admin half of a plugin made with `dotnet new fluentcms-plugin`, make an admin app with `dotnet new fluentcms-admin`, add the halves to it, and reference its project from this host:
+
+```bash
+dotnet new fluentcms-admin -n MyAdmin -o ../MyAdmin
+dotnet add reference ../MyAdmin/MyAdmin.csproj
+```
+
+The host then serves that app at `/admin` in place of the prebuilt build, with the same `config.json`; remove the reference and it serves the prebuilt build again. The `Dockerfile` builds from this folder alone, so with a reference to an app outside it, build the image from a folder that holds both and copy both projects.
+
+Serve nothing of other parties on this host's origin: the admin keeps its refresh token and unsaved drafts in `sessionStorage`, which every page of the same origin in the same tab can read.
+
+The [admin overview](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin.md) has the other ways to run the admin, and [admin configuration](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin-configuration.md) what the `FluentCms:Admin` settings put in `config.json`, the client `fluentcms-admin` and the rate limits the admin's files count against.
+<!--#endif -->
 
 ## A front end
 
@@ -102,6 +142,9 @@ docker run --rm fluentcms-app fluentcms migrate
 ```
 
 The image runs the commands of the tool too, so the migrate step of a deployment, such as an init container, is the same image with `fluentcms migrate`. In Production, as in every environment but Development, the host stops at start until a signing certificate, `FluentCms__PublicOrigin` and an encryptor of the Data Protection key ring are set, and names each with its setting; set `AllowedHosts` too.
+<!--#if (admin) -->
+The image serves the admin at `/admin`, whose sign-in addresses and `config.json` are built from `FluentCms__PublicOrigin` outside Development.
+<!--#endif -->
 
 ## More
 

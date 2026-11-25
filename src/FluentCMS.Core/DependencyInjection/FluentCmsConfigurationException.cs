@@ -27,4 +27,11 @@ public sealed class FluentCmsConfigurationException : InvalidOperationException
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
         return new(HostErrorCodes.NotRegistered, message);
     }
+
+    // A file the host serves is there but not in a form it can serve, such as a page whose <base href> a package sets (FCMS1107).
+    public static FluentCmsConfigurationException MalformedFile(string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        return new(HostErrorCodes.MalformedFile, message);
+    }
 }

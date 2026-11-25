@@ -10,7 +10,7 @@
     </ResolveStaticWebAssetsInputsDependsOn>
   </PropertyGroup>
 
-  <Target Name="FluentCmsGatherAdminPlugins" DependsOnTargets="ResolveCoreStaticWebAssets" Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
+  <Target Name="FluentCmsWriteAdminPlugins" DependsOnTargets="ResolveCoreStaticWebAssets" Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
     <PropertyGroup>
       <_FluentCmsAdminPluginsRoot>$(IntermediateOutputPath)fluentcms-admin\</_FluentCmsAdminPluginsRoot>
       <_FluentCmsAdminPluginsPath>$(_FluentCmsAdminPluginsRoot)fluentcms-admin.plugins.json</_FluentCmsAdminPluginsPath>
@@ -46,6 +46,9 @@
     </PropertyGroup>
 
     <WriteLinesToFile File="$(_FluentCmsAdminPluginsPath)" Lines="$(_FluentCmsAdminPluginsText)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+
+  <Target Name="FluentCmsGatherAdminPlugins" DependsOnTargets="FluentCmsWriteAdminPlugins" Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
 
     <ItemGroup>
       <_FluentCmsAdminPluginsCandidate Include="$(_FluentCmsAdminPluginsPath)">
@@ -78,6 +81,13 @@
       <StaticWebAsset Include="@(_FluentCmsAdminPluginsAsset)" />
       <StaticWebAssetEndpoint Include="@(_FluentCmsAdminPluginsEndpoint)" />
       <FileWrites Include="$(_FluentCmsAdminPluginsPath)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The project of an admin app, for a host that asks its references which of them is one (FluentCMS.Admin.Hosting). -->
+  <Target Name="FluentCmsAdminApp" Returns="@(_FluentCmsAdminAppProject)">
+    <ItemGroup Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
+      <_FluentCmsAdminAppProject Include="$(MSBuildProjectFullPath)" />
     </ItemGroup>
   </Target>
 

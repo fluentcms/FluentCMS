@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- The publish is trimmed, and a trim warning fails it. An assembly of a package, such as those of the framework and of
+       FluentCMS, reports its warnings as one IL2104 that names it, which stays a warning. -->
+  <PropertyGroup>
+    <PublishTrimmed>true</PublishTrimmed>
+    <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+    <ILLinkTreatWarningsAsErrors>true</ILLinkTreatWarningsAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);IL2104</WarningsNotAsErrors>
+    <!-- The admin sets the culture at start, and with the culture data of the browser's language only the runtime then stops
+         the app with a blank page. -->
+    <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
+    <!-- config.json and the <base href> of index.html are edited where the app is served, and a server that prefers a
+         precompressed copy would serve the unedited one. -->
+    <CompressionExcludePatterns>$(CompressionExcludePatterns);**/config.json;**/index.html</CompressionExcludePatterns>
+  </PropertyGroup>
+
+  <!-- The admin and the first-party admin halves. Each half, and the administration pages and the rich text editor, is loaded
+       lazily, the first time one of its pages is opened, so each has its BlazorWebAssemblyLazyLoad line: the build stops on a
+       half without one. Remove both lines of a half you do not want. -->
+  <ItemGroup>
+    <PackageReference Include="FluentCMS.Admin" Version="{{version:FluentCMS}}" />
+    <PackageReference Include="FluentCMS.Admin.Administration" Version="{{version:FluentCMS}}" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Admin.Administration.wasm" />
+    <PackageReference Include="FluentCMS.Admin.RichText" Version="{{version:FluentCMS}}" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Admin.RichText.wasm" />
+    <PackageReference Include="FluentCMS.Plugins.Media.Admin" Version="{{version:FluentCMS}}" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.Media.Admin.wasm" />
+    <PackageReference Include="FluentCMS.Plugins.Webhooks.Admin" Version="{{version:FluentCMS}}" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.Webhooks.Admin.wasm" />
+    <PackageReference Include="FluentCMS.Plugins.Mcp.Admin" Version="{{version:FluentCMS}}" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.Mcp.Admin.wasm" />
+    <PackageReference Include="FluentCMS.Plugins.AiAssist.Admin" Version="{{version:FluentCMS}}" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.AiAssist.Admin.wasm" />
+    <PackageReference Include="FluentCMS.Plugins.MultiSite.Admin" Version="{{version:FluentCMS}}" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.MultiSite.Admin.wasm" />
+    <PackageReference Include="FluentCMS.Plugins.Search.Admin" Version="{{version:FluentCMS}}" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.Search.Admin.wasm" />
+  </ItemGroup>
+
+</Project>

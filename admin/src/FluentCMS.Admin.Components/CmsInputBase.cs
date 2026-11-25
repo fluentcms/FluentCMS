@@ -12,6 +12,9 @@ public abstract class CmsInputBase<TValue> : ComponentBase
     private readonly string _generatedId = CmsIds.Next();
     private TValue? _shownValue;
 
+    [CascadingParameter]
+    private CmsDialogFocus? DialogFocus { get; set; }
+
     /// <summary>Gets or sets the visible label of the input.</summary>
     [Parameter, EditorRequired]
     public string Label { get; set; } = string.Empty;
@@ -162,6 +165,12 @@ public abstract class CmsInputBase<TValue> : ComponentBase
             if (Invalid || MarkedInvalid)
             {
                 attributes["aria-invalid"] = "true";
+            }
+
+            // In a dialog, the first wrapped control takes focus as it opens (CmsDialogFocus).
+            if (DialogFocus is not null && !Disabled)
+            {
+                attributes["autofocus"] = true;
             }
 
             return attributes;

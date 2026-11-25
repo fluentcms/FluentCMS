@@ -10,7 +10,8 @@
 
 .cms-root {
     --cms-color-accent: var(--fluentcms-brand-accent, #154ef2);
-    --cms-color-on-accent: #ffffff;
+    --cms-color-on-accent: var(--fluentcms-brand-on-accent, #ffffff);
+    --cms-color-accent-shade: var(--fluentcms-brand-accent-shade, #000000);
     --cms-color-accent-text: var(--cms-color-accent);
     --cms-color-bg: #ffffff;
     --cms-color-surface: #f5f6f8;
@@ -72,20 +73,28 @@
     color-scheme: dark;
 }
 
-/* The library's own tokens, driven by the FluentCMS ones so that the accent and the focus ring are the same everywhere. */
+/* The library's own tokens, driven by the FluentCMS ones so that the accent and the focus ring are the same everywhere. A
+ * state of a control on the accent mixes in the shade, the opposite of the color on the accent, so that it contrasts with
+ * that color at least as much as the accent does. */
 .cms-root {
     --colorBrandBackground: var(--cms-color-accent);
-    --colorBrandBackgroundHover: color-mix(in srgb, var(--cms-color-accent) 85%, #000000);
-    --colorBrandBackgroundPressed: color-mix(in srgb, var(--cms-color-accent) 70%, #000000);
-    --colorBrandBackgroundSelected: color-mix(in srgb, var(--cms-color-accent) 80%, #000000);
+    --colorBrandBackgroundHover: color-mix(in srgb, var(--cms-color-accent) 85%, var(--cms-color-accent-shade));
+    --colorBrandBackgroundPressed: color-mix(in srgb, var(--cms-color-accent) 70%, var(--cms-color-accent-shade));
+    --colorBrandBackgroundSelected: color-mix(in srgb, var(--cms-color-accent) 80%, var(--cms-color-accent-shade));
     --colorCompoundBrandBackground: var(--cms-color-accent);
-    --colorCompoundBrandBackgroundHover: color-mix(in srgb, var(--cms-color-accent) 85%, #000000);
-    --colorCompoundBrandBackgroundPressed: color-mix(in srgb, var(--cms-color-accent) 70%, #000000);
+    --colorCompoundBrandBackgroundHover: color-mix(in srgb, var(--cms-color-accent) 85%, var(--cms-color-accent-shade));
+    --colorCompoundBrandBackgroundPressed: color-mix(in srgb, var(--cms-color-accent) 70%, var(--cms-color-accent-shade));
     --colorCompoundBrandStroke: var(--cms-color-accent);
-    --colorCompoundBrandStrokeHover: color-mix(in srgb, var(--cms-color-accent) 85%, #000000);
+    --colorCompoundBrandStrokeHover: color-mix(in srgb, var(--cms-color-accent) 85%, var(--cms-color-accent-shade));
+    --colorCompoundBrandStrokePressed: color-mix(in srgb, var(--cms-color-accent) 70%, var(--cms-color-accent-shade));
+    --colorCompoundBrandForeground1: var(--cms-color-accent-text);
+    --colorCompoundBrandForeground1Hover: var(--cms-color-accent-text);
+    --colorCompoundBrandForeground1Pressed: var(--cms-color-accent-text);
     --colorBrandStroke1: var(--cms-color-accent);
     --colorBrandForeground1: var(--cms-color-accent-text);
     --colorBrandForegroundLink: var(--cms-color-accent-text);
+    --colorBrandForegroundLinkHover: var(--cms-color-accent-text);
+    --colorBrandForegroundLinkPressed: var(--cms-color-accent-text);
     --colorNeutralForegroundOnBrand: var(--cms-color-on-accent);
     --colorNeutralBackground1: var(--cms-color-bg);
     --colorNeutralForeground1: var(--cms-color-text);
@@ -144,6 +153,38 @@
 
 .cms-target {
     min-block-size: var(--cms-target-size);
+}
+
+/* The label of the library's checkbox and switch is part of their target, which is a target high (WCAG 2.5.8). */
+.cms-root fluent-field label {
+    min-block-size: var(--cms-target-size);
+    overflow-wrap: anywhere;
+}
+
+/* A field of the library is no wider than its container, so that a long label breaks rather than widen the page. */
+.cms-root fluent-field {
+    max-inline-size: 100%;
+}
+
+/* At 320 pixels nothing but a table scrolls sideways (WCAG 1.4.10): a long code, address or name breaks, and a fieldset may
+   be narrower than its widest line. */
+.cms-root code,
+.cms-breadcrumb-item {
+    overflow-wrap: anywhere;
+}
+
+.cms-root fieldset {
+    min-inline-size: 0;
+}
+
+/* A long label, such as an e-mail address, ends in an ellipsis; the whole text stays the button's name. */
+.cms-menu-label {
+    display: inline-block;
+    max-inline-size: min(16rem, 60vw);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
 }
 
 .cms-field {
@@ -285,6 +326,36 @@ fluent-field .cms-field-message {
 .cms-dialog-title {
     font-size: var(--cms-font-size-l);
     font-weight: 600;
+}
+
+.cms-toasts {
+    position: fixed;
+    inset-block-end: var(--cms-space-m);
+    inset-inline-end: var(--cms-space-m);
+    z-index: 2;
+    display: grid;
+    gap: var(--cms-space-s);
+    max-inline-size: min(24rem, calc(100% - 2 * var(--cms-space-m)));
+}
+
+/* The intent is in the icon and the start edge too, not in a color alone. */
+.cms-toast {
+    display: flex;
+    align-items: center;
+    gap: var(--cms-space-s);
+    padding: var(--cms-space-s) var(--cms-space-m);
+    border: 1px solid var(--cms-color-border);
+    border-inline-start: 4px solid var(--cms-color-accent);
+    border-radius: var(--cms-radius-m);
+    background-color: var(--cms-color-bg);
+}
+
+.cms-toast[data-intent="error"] {
+    border-inline-start-color: var(--cms-color-error);
+}
+
+.cms-toast-message {
+    flex: 1;
 }
 
 .cms-secret {

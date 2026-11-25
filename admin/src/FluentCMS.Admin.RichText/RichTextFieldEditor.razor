@@ -32,15 +32,18 @@
                 @foreach (var button in Buttons.Where(Shows))
                 {
                     var name = L[button.Resource].Value;
+                    var glyph = button.Glyph ?? L[button.Resource + ".Glyph"].Value;
+                    @* A glyph of letters, such as H1, is in the name too, so that a speech user who says what is shown reaches the
+                       button (WCAG 2.5.3); a symbol is drawn as an icon is. *@
                     <button type="button"
                             class="rich-text-button"
                             data-command="@button.Command"
-                            aria-label="@name"
+                            aria-label="@(button.Glyph is null ? L["RichText.Toolbar.Lettered", name, glyph].Value : name)"
                             title="@L["RichText.Toolbar.Shortcut", name, ShortcutOf(button)]"
                             aria-keyshortcuts="@KeysOf(button)"
                             aria-pressed="@(button.Toggle ? (active.Contains(button.Command) ? "true" : "false") : null)"
                             @onclick="@(() => ToolbarAsync(button.Command))">
-                        <span aria-hidden="true">@button.Glyph</span>
+                        <span class="rich-text-glyph" aria-hidden="true" data-glyph="@glyph"></span>
                     </button>
                 }
             </div>
@@ -156,20 +159,21 @@
     public const string ModulePath = "./_content/FluentCMS.Admin.RichText/rich-text.js";
 
     // Keys are written with Mod, which the module binds to Command on a Mac and to Control elsewhere, as Tiptap does.
-    internal sealed record ToolbarButton(string Command, string Resource, string Glyph, string Keys, bool Toggle);
+    // A glyph of letters, which a translation may change, is the resource {Resource}.Glyph, given here as null.
+    internal sealed record ToolbarButton(string Command, string Resource, string? Glyph, string Keys, bool Toggle);
 
     // Each button has the shortcut the module binds, so the toolbar is never the only way to a command.
     internal static readonly ToolbarButton[] Buttons =
     [
-        new("bold", "RichText.Toolbar.Bold", "B", "Mod+B", true),
-        new("italic", "RichText.Toolbar.Italic", "I", "Mod+I", true),
-        new("underline", "RichText.Toolbar.Underline", "U", "Mod+U", true),
-        new("strike", "RichText.Toolbar.Strike", "S", "Mod+Shift+S", true),
+        new("bold", "RichText.Toolbar.Bold", null, "Mod+B", true),
+        new("italic", "RichText.Toolbar.Italic", null, "Mod+I", true),
+        new("underline", "RichText.Toolbar.Underline", null, "Mod+U", true),
+        new("strike", "RichText.Toolbar.Strike", null, "Mod+Shift+S", true),
         new("code", "RichText.Toolbar.Code", "</>", "Mod+E", true),
         new("paragraph", "RichText.Toolbar.Paragraph", "¶", "Mod+Alt+0", true),
-        new("heading1", "RichText.Toolbar.Heading1", "H1", "Mod+Alt+1", true),
-        new("heading2", "RichText.Toolbar.Heading2", "H2", "Mod+Alt+2", true),
-        new("heading3", "RichText.Toolbar.Heading3", "H3", "Mod+Alt+3", true),
+        new("heading1", "RichText.Toolbar.Heading1", null, "Mod+Alt+1", true),
+        new("heading2", "RichText.Toolbar.Heading2", null, "Mod+Alt+2", true),
+        new("heading3", "RichText.Toolbar.Heading3", null, "Mod+Alt+3", true),
         new("bulletList", "RichText.Toolbar.BulletList", "•", "Mod+Shift+8", true),
         new("orderedList", "RichText.Toolbar.OrderedList", "1.", "Mod+Shift+7", true),
         new("blockquote", "RichText.Toolbar.Blockquote", "❝", "Mod+Shift+B", true),

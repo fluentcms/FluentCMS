@@ -65,6 +65,8 @@ The admin half's tests render its page, and check that `fluentcms-admin.json` an
 ## Change the admin half
 
 The admin reads `wwwroot/fluentcms-admin.json` before it loads the half's assembly, the first time one of its contributions is used, so the file lists every page, menu item, settings page and widget with the full name of its class. When you add, change or remove a contribution attribute, change the file with it: the manifest test names each difference. A page carries its route twice, `@page` for the router and `[AdminPage]` for the manifest, under `/starter-plugin`. A menu item's `labels` in the file are its texts by culture name, which the sidebar shows before the half is loaded, in the interface culture, else its parents', else `en`; `en` is required, and the manifest test fails without it. The admin shows the half's contributions only in a site where the server plugin is enabled, and each only to a user who holds the permission it declares.
+
+[Writing an admin half](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin-plugins.md) has every kind of contribution, with those the template does not have, such as a field editor, a list cell and the actions, and the services the admin gives a component; [translating the admin](https://github.com/fluentcms/FluentCMS/blob/main/docs/admin-translating.md) has the rules of a resource file per culture.
 <!--#endif -->
 
 ## Use it in a host
@@ -86,7 +88,13 @@ Run the tests: a set behind the model fails them. Do not edit a migration that h
 
 ## Use the admin half in an admin app
 
-The prebuilt admin that `FluentCMS.Admin.Hosting` serves holds the first-party halves only, so a plugin's own half runs in an admin app that you build on `FluentCMS.Admin`. Reference the half's project, or the package that `dotnet pack` makes, from that app, and list its assembly as lazy, so that it is downloaded the first time it is used:
+The prebuilt admin that `FluentCMS.Admin.Hosting` serves holds the first-party halves only, so a plugin's own half runs in an admin app of your own, which `dotnet new fluentcms-admin` makes with the first-party halves:
+
+```bash
+dotnet new fluentcms-admin -n Acme.AdminApp
+```
+
+Reference the half's project, or the package that `dotnet pack` makes, from that app, and list its assembly as lazy, so that it is downloaded the first time it is used:
 
 ```xml
 <ItemGroup>
@@ -95,5 +103,5 @@ The prebuilt admin that `FluentCMS.Admin.Hosting` serves holds the first-party h
 </ItemGroup>
 ```
 
-The app's build writes the `fluentcms-admin.json` of every half it references into `fluentcms-admin.plugins.json`, and stops when a half is not listed as lazy. The admin needs no change to its code for the half: in a site where the plugin is enabled, the sidebar shows the menu item to a user who holds the page's permission, and the page loads the half the first time it is opened. A half the admin cannot use, such as one whose admin range does not hold the running admin, is left out and listed on `/system/plugins`.
+The app's build writes the `fluentcms-admin.json` of every half it references into `fluentcms-admin.plugins.json`, and stops when a half is not listed as lazy. A host with `FluentCMS.Admin.Hosting`, such as one of `dotnet new fluentcms`, serves the app at `/admin` once it references the app's project, and the app's README says how to host it as static files instead. The admin needs no change to its code for the half: in a site where the plugin is enabled, the sidebar shows the menu item to a user who holds the page's permission, and the page loads the half the first time it is opened. A half the admin cannot use, such as one whose admin range does not hold the running admin, is left out and listed on `/system/plugins`.
 <!--#endif -->

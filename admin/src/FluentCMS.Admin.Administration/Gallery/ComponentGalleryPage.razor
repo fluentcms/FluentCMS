@@ -64,19 +64,25 @@
 
         <CmsCard Title="@L["System.Components.Overlays"]">
             <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
-                <CmsButton OnClick="@(() => dialogOpen = true)">@L["System.Components.OpenDialog"]</CmsButton>
+                <CmsButton OnClick="@(() => (dialogShown, dialogOpen) = (true, true))">@L["System.Components.OpenDialog"]</CmsButton>
                 <CmsButton OnClick="@(() => drawerOpen = true)">@L["System.Components.OpenDrawer"]</CmsButton>
                 <CmsButton OnClick="@(() => Toasts.ShowAsync(L["System.Components.Saved"], CmsToastIntent.Success))">@L["System.Components.ShowToast"]</CmsButton>
+                <CmsButton OnClick="@(() => Toasts.ShowAsync(L["System.Components.SaveFailed"], CmsToastIntent.Error))">@L["System.Components.ShowErrorToast"]</CmsButton>
             </CmsStack>
-            <CmsDialog Title="@L["System.Components.DialogTitle"]" @bind-Open="dialogOpen">
-                <ChildContent>
-                    <p>@L["System.Components.DialogText"]</p>
-                </ChildContent>
-                <Actions>
-                    <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => dialogOpen = false)">@L["System.Components.Discard"]</CmsButton>
-                    <CmsButton OnClick="@(() => dialogOpen = false)">@L["System.Components.KeepEditing"]</CmsButton>
-                </Actions>
-            </CmsDialog>
+            @* Its last action takes the open dialog out of the page, which gives focus back to its opener all the same. *@
+            @if (dialogShown)
+            {
+                <CmsDialog Title="@L["System.Components.DialogTitle"]" @bind-Open="dialogOpen">
+                    <ChildContent>
+                        <p>@L["System.Components.DialogText"]</p>
+                    </ChildContent>
+                    <Actions>
+                        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => dialogOpen = false)">@L["System.Components.Discard"]</CmsButton>
+                        <CmsButton OnClick="@(() => dialogOpen = false)">@L["System.Components.KeepEditing"]</CmsButton>
+                        <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="@(() => dialogShown = false)">@L["System.Components.RemoveDialog"]</CmsButton>
+                    </Actions>
+                </CmsDialog>
+            }
             <CmsDrawer Title="@L["System.Components.Filters"]" @bind-Open="drawerOpen">
                 <ChildContent>
                     <CmsTextInput Label="@L["System.Components.Search"]" Type="CmsTextInputType.Search" @bind-Value="search" />
@@ -93,6 +99,8 @@
                     <CmsMenuItem Icon="CmsIconName.Edit" OnClick="@(() => lastAction = L["System.Components.Edit"])">@L["System.Components.Edit"]</CmsMenuItem>
                     <CmsMenuItem Icon="CmsIconName.Open" OnClick="@(() => lastAction = L["System.Components.Preview"])">@L["System.Components.Preview"]</CmsMenuItem>
                     <CmsMenuItem Icon="CmsIconName.Delete" OnClick="@(() => lastAction = L["System.Components.Delete"])">@L["System.Components.Delete"]</CmsMenuItem>
+                    <CmsMenuItem Checked="@(!sortByDate)" OnClick="@(() => sortByDate = false)">@L["System.Components.SortByTitle"]</CmsMenuItem>
+                    <CmsMenuItem Checked="@sortByDate" OnClick="@(() => sortByDate = true)">@L["System.Components.SortByDate"]</CmsMenuItem>
                 </CmsMenu>
                 <p>@L["System.Components.LastAction", lastAction ?? L["System.Components.None"]]</p>
                 <CmsTabs @bind-ActiveTabId="tab">
@@ -155,8 +163,10 @@
     private TimeOnly? time;
     private bool inNavigation = true;
     private bool comments;
+    private bool dialogShown = true;
     private bool dialogOpen;
     private bool drawerOpen;
+    private bool sortByDate;
     private string? search;
     private string? lastAction;
     private string? tab = "content";

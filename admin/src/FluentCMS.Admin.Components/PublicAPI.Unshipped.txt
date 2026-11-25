@@ -114,7 +114,9 @@ FluentCMS.Admin.Components.CmsDialogBase.Actions.get -> Microsoft.AspNetCore.Com
 FluentCMS.Admin.Components.CmsDialogBase.Actions.set -> void
 FluentCMS.Admin.Components.CmsDialogBase.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
 FluentCMS.Admin.Components.CmsDialogBase.ChildContent.set -> void
-FluentCMS.Admin.Components.CmsDialogBase.CmsDialogBase() -> void
+FluentCMS.Admin.Components.CmsDialogBase.CloseButton.get -> bool
+FluentCMS.Admin.Components.CmsDialogBase.CloseButton.set -> void
+FluentCMS.Admin.Components.CmsDialogBase.DisposeAsync() -> System.Threading.Tasks.ValueTask
 FluentCMS.Admin.Components.CmsDialogBase.OnClosed.get -> Microsoft.AspNetCore.Components.EventCallback
 FluentCMS.Admin.Components.CmsDialogBase.OnClosed.set -> void
 FluentCMS.Admin.Components.CmsDialogBase.Open.get -> bool
@@ -236,6 +238,8 @@ FluentCMS.Admin.Components.CmsMenu.Icon.set -> void
 FluentCMS.Admin.Components.CmsMenu.Label.get -> string!
 FluentCMS.Admin.Components.CmsMenu.Label.set -> void
 FluentCMS.Admin.Components.CmsMenuItem
+FluentCMS.Admin.Components.CmsMenuItem.Checked.get -> bool?
+FluentCMS.Admin.Components.CmsMenuItem.Checked.set -> void
 FluentCMS.Admin.Components.CmsMenuItem.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
 FluentCMS.Admin.Components.CmsMenuItem.ChildContent.set -> void
 FluentCMS.Admin.Components.CmsMenuItem.CmsMenuItem() -> void
@@ -458,8 +462,6 @@ override FluentCMS.Admin.Components.CmsCheckbox.OnAfterRender(bool firstRender) 
 override FluentCMS.Admin.Components.CmsDataGrid<TItem>.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.OnInitialized() -> void
 override FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.OnParametersSet() -> void
-override FluentCMS.Admin.Components.CmsDialogBase.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
-override FluentCMS.Admin.Components.CmsDialogBase.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsFileDropZone.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsInputBase<TValue>.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsMenu.OnParametersSet() -> void
@@ -503,8 +505,6 @@ virtual FluentCMS.Admin.Components.CmsInputBase<TValue>.AdditionalDescriptionId.
 ~override FluentCMS.Admin.Components.CmsDataGrid<TItem>.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsDatePicker.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
-~override FluentCMS.Admin.Components.CmsDialog.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
-~override FluentCMS.Admin.Components.CmsDrawer.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsFileDropZone.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsIcon.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsLogo.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void

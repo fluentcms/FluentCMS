@@ -7,9 +7,11 @@ using Xunit;
 namespace FluentCMS.Admin.EndToEnd;
 
 // The host the browser tests drive, checked without a browser, so that these run wherever the tests build: started from its
-// publish in Production, seeded with its own commands, and serving the admin over https at its public origin.
-public sealed class ReferenceHostTests(EndToEndHost host)
+// publish or its image in Production, seeded with its own commands, and serving the admin over https at its public origin.
+public sealed class ReferenceHostTests(EndToEndHost running)
 {
+    private readonly EndToEndHost host = running.Running();
+
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -44,8 +46,9 @@ public sealed class ReferenceHostTests(EndToEndHost host)
         ((string?)configuration["clientId"]).ShouldBe("fluentcms-admin");
     }
 
-    // The client the hosting package registers for the public origin: authorize sends a request with PKCE to the hosted login,
-    // which answers over https.
+    // The admin's client of the run, configured as the hosting package registers it for the public origin, with the addresses
+    // of the static build beside them (EndToEndHost): authorize sends a request with PKCE to the hosted login, which answers
+    // over https.
     [Fact]
     public async Task AuthorizeSendsTheAdminsSignInToTheHostedLoginOverHttps()
     {

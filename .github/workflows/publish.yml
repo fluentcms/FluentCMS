@@ -4,8 +4,9 @@ name: Publish
 # its symbols to nuget.org; the image of the reference host for linux/amd64 and linux/arm64, pushed to ghcr.io/fluentcms/fluentcms
 # with the version and preview (latest for a release that is not a preview); @fluentcms/client on npm when the repository
 # variable NPM_SCOPE_OWNED is true, attached to the GitHub release otherwise; and the GitHub release, a pre-release for a
-# preview. It refuses a tag that is not on main, a commit without a successful CI and Fresh machine, and a version that the
-# version prefix of Directory.Build.props does not lead to. The image is built once, into an archive of the run that the
+# preview, with the prebuilt static build of the admin attached as fluentcms-admin-{version}.zip. It refuses a tag that is not
+# on main, a commit without a successful CI and Fresh machine, and a version that the version prefix of Directory.Build.props
+# does not lead to. The image is built once, into an archive of the run that the
 # Compose smoke test loads and runs, and the publish job pushes that archive and checks that the registry holds the digest the
 # smoke test ran. Only the publish job holds credentials: it runs in the release environment, after its reviewer approves, and
 # signs in to nuget.org with trusted publishing.
@@ -27,8 +28,11 @@ on:
       - Directory.Build.props
       - eng/check-packages.cs
       - eng/check-dependencies.cs
+      - eng/admin-zip.cs
       - "src/**/*.csproj"
       - "admin/src/**/*.csproj"
+      - admin/eng/PrebuiltAdmin.cs
+      - admin/src/FluentCMS.Admin.Hosting/build/**
       - src/FluentCMS.Host/Dockerfile
       - .dockerignore
       - .github/workflows/compose.yml
@@ -204,18 +208,17 @@ jobs:
             Directory.Packages.props
             **/*.csproj
 
-      - name: Pack
-        run: dotnet pack FluentCMS.slnx -c Release -o artifacts/packages -p:Version="$VERSION"
-
-      # The admin is not part of a release yet, so its packages and the admin halves of the plugins, which depend on them, are
-      # packed but never pushed. A-47 removes this step.
-      - name: Leave out the admin packages
-        shell: bash
+      # The prebuilt static build of the admin (admin spec 6.3) at the version of the release, which the GitHub release attaches.
+      # FluentCMS.Admin.Hosting carries the same publish (6.1, AQ8).
+      - name: Make the static build of the admin
         run: |
-          rm -f artifacts/packages/FluentCMS.Admin*.nupkg artifacts/packages/FluentCMS.Admin*.snupkg
-          rm -f artifacts/packages/FluentCMS.Plugins.*.Admin.[0-9]*.nupkg artifacts/packages/FluentCMS.Plugins.*.Admin.[0-9]*.snupkg
+          dotnet publish admin/src/FluentCMS.Admin.App -c Release -o artifacts/admin -p:Version="$VERSION"
+          dotnet run eng/admin-zip.cs -- pack artifacts/admin "$VERSION" artifacts/packages
 
-      - name: Check that no package depends on one left out
+      - name: Pack
+        run: dotnet pack FluentCMS.slnx -c Release -o artifacts/packages -p:Version="$VERSION" -p:FluentCmsAdminPublishDir="$PWD/artifacts/admin"
+
+      - name: Check that no package depends on one that is not packed
         run: dotnet run eng/check-dependencies.cs -- artifacts/packages
 
       - name: Set up Node
@@ -342,6 +345,9 @@ jobs:
               else
                 echo "The GitHub release: $(basename "$client"), since NPM_SCOPE_OWNED is not true"
               fi
+            done
+            for build in artifacts/packages/fluentcms-admin-*.zip; do
+              echo "The GitHub release: $(basename "$build"), the prebuilt static build of the admin"
             done
             echo
             echo "ghcr.io, for $PLATFORMS, the image the Compose smoke test ran, $TESTED:"
@@ -550,7 +556,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          options=(--verify-tag --title "FluentCMS $VERSION" --notes-file "docs/releases/$VERSION.md")
+          options=(--verify-tag --title "FluentCMS $VERSION" --notes-file "docs/releases/$VERSION.md" "artifacts/packages/fluentcms-admin-$VERSION.zip")
           if [ "$PREVIEW" = true ]; then options+=(--prerelease); fi
           if [ "$NPM" != true ]; then options+=("artifacts/packages/fluentcms-client-$VERSION.tgz"); fi
           gh release create "$TAG" "${options[@]}"

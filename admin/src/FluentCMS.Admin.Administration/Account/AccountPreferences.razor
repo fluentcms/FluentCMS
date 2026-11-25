@@ -1,0 +1,268 @@
+@* The theme and the preferences of GET /me/preferences (spec 4.1, 4.3, 4.17). The theme is the shell's, kept in the browser,
+   since the preferences hold none, and applies as it is chosen. The interface language, shown when more than one culture is
+   offered, the time zone and the cultures of dates and of numbers follow the user to every browser. They are saved by the
+   button, since a select changes with each arrow key, and PATCH sends only the members that changed, so that a change made
+   in another tab meanwhile stays. The example under each select shows a date, a time or a number as the choice will show
+   it. The formats apply at once; a new language reloads the app in it. *@
+@inherits AccountCard
+@using System.Globalization
+@using FluentCMS.Admin.Api
+@inject ManagementClient Client
+@inject ShellTheme Theme
+@inject InterfaceCulture Interface
+@inject InterfaceCultureOptions Cultures
+@inject IInterfaceLanguage Language
+@inject FormatService Formats
+@inject TimeProvider Time
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<AccountResources> L
+@inject IStringLocalizer<AdminResources> Shell
+
+<CmsCard Title="@L["Account.Preferences.Heading"]">
+    <CmsStack>
+        <CmsSelect Label="@L["Account.Preferences.Theme"]" Options="@themes" Value="@Theme.Mode.ToString()" ValueChanged="@OnThemeChanged" Disabled="@Held" />
+        @if (state == AccountSectionState.Loading)
+        {
+            <p role="status">@L["Account.Page.Loading"]</p>
+        }
+        else if (state == AccountSectionState.Refused)
+        {
+            <p>@L["Account.Page.NotAUser"]</p>
+        }
+        else if (state == AccountSectionState.Failed)
+        {
+            <p>@L["Account.Preferences.Failed"]</p>
+            <CmsButton Disabled="@Held" OnClick="TryAgainAsync">@L["Account.Page.TryAgain"]</CmsButton>
+        }
+        else
+        {
+            var preview = Formats.Preview(Shown(DateKey), Shown(NumberKey), Shown(ZoneKey));
+            var now = Time.GetUtcNow();
+            if (ChoosesLanguage)
+            {
+                <CmsSelect Label="@L["Account.Preferences.Language"]" Options="@languages" Value="@Shown(CultureKey)" ValueChanged="@(value => Choose(CultureKey, value))"
+                           Disabled="@Held" Error="@errors.GetValueOrDefault(CultureKey)" />
+            }
+            <CmsSelect Label="@L["Account.Preferences.TimeZone"]" Options="@ZoneOptions" Value="@Shown(ZoneKey)" ValueChanged="@(value => Choose(ZoneKey, value))"
+                       Placeholder="@L["Account.Preferences.AsTheBrowser"]" Clearable="true" Disabled="@Held"
+                       Help="@L["Account.Preferences.TimeZoneExample", preview.Time(now)]" Error="@errors.GetValueOrDefault(ZoneKey)" />
+            <CmsSelect Label="@L["Account.Preferences.DateFormat"]" Options="@Formatted(DateKey)" Value="@Shown(DateKey)" ValueChanged="@(value => Choose(DateKey, value))"
+                       Placeholder="@L["Account.Preferences.AsTheBrowser"]" Clearable="true" Disabled="@Held"
+                       Help="@L["Account.Preferences.DateFormatExample", preview.Date(now), preview.Time(now)]" Error="@errors.GetValueOrDefault(DateKey)" />
+            <CmsSelect Label="@L["Account.Preferences.NumberFormat"]" Options="@Formatted(NumberKey)" Value="@Shown(NumberKey)" ValueChanged="@(value => Choose(NumberKey, value))"
+                       Placeholder="@L["Account.Preferences.AsTheBrowser"]" Clearable="true" Disabled="@Held"
+                       Help="@L["Account.Preferences.NumberFormatExample", preview.Number(ExampleNumber)]" Error="@errors.GetValueOrDefault(NumberKey)" />
+            @* Not disabled while it saves, which would take focus from it; a second save waits for the first. *@
+            <div>
+                <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@Held" OnClick="SaveAsync">@L["Account.Preferences.Save"]</CmsButton>
+            </div>
+            <p class="account-message">@message</p>
+        }
+    </CmsStack>
+</CmsCard>
+
+@code {
+    // The members of the preferences, as the API names them.
+    private const string CultureKey = "culture";
+    private const string ZoneKey = "timeZone";
+    private const string DateKey = "dateFormat";
+    private const string NumberKey = "numberFormat";
+
+    private const decimal ExampleNumber = 1234567.89m;
+
+    private static IReadOnlyList<CmsOption>? zones;
+    private static IReadOnlyList<CmsOption>? formatCultures;
+
+    private readonly SemaphoreSlim saving = new(1, 1);
+    private readonly Dictionary<string, string?> saved = [];
+    private readonly Dictionary<string, string?> chosen = [];
+    private readonly Dictionary<string, string> errors = [];
+    private IReadOnlyList<CmsOption> themes = [];
+    private IReadOnlyList<CmsOption> languages = [];
+    private AccountSectionState state = AccountSectionState.Loading;
+    private string? message;
+
+    // A choice of one culture is none.
+    private bool ChoosesLanguage => Cultures.Offered.Count > 1;
+
+    // The IANA zones the platform knows; on a desktop, a zone without an IANA id is left out, since the server takes none.
+    private static IReadOnlyList<CmsOption> Zones => zones ??=
+    [
+        .. TimeZoneInfo.GetSystemTimeZones()
+            .Select(zone => zone.HasIanaId ? zone.Id : TimeZoneInfo.TryConvertWindowsIdToIanaId(zone.Id, out var iana) ? iana : null).OfType<string>()
+            .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Select(id => new CmsOption(id, id)),
+    ];
+
+    // A saved zone the browser does not list, as one a newer platform knows, is offered too, so that the select shows it.
+    private IReadOnlyList<CmsOption> ZoneOptions =>
+        Shown(ZoneKey) is { } zone && !Zones.Any(option => option.Value == zone) ? [new CmsOption(zone, zone), .. Zones] : Zones;
+
+    // The cultures whose conventions dates and numbers may follow, by their own names; a saved one that is not among them, as
+    // a neutral culture another client saved, is offered too.
+    private IReadOnlyList<CmsOption> Formatted(string member)
+    {
+        formatCultures ??= [.. CultureInfo.GetCultures(CultureTypes.SpecificCultures).OrderBy(culture => culture.NativeName, StringComparer.CurrentCulture)
+            .Select(culture => new CmsOption(culture.Name, culture.NativeName))];
+        return Shown(member) is { } name && !formatCultures.Any(option => option.Value == name)
+            ? [new CmsOption(name, NativeName(name)), .. formatCultures]
+            : formatCultures;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Theme.Changed += OnChanged;
+        themes =
+        [
+            new(nameof(CmsThemeMode.System), Shell["Shell.UserMenu.ThemeSystem"]),
+            new(nameof(CmsThemeMode.Light), Shell["Shell.UserMenu.ThemeLight"]),
+            new(nameof(CmsThemeMode.Dark), Shell["Shell.UserMenu.ThemeDark"]),
+        ];
+        languages = [.. Cultures.Offered.Select(name => new CmsOption(name, LanguageName(name)))];
+        await LoadAsync();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Theme.Changed -= OnChanged;
+            saving.Dispose();
+        }
+
+        base.Dispose(disposing);
+    }
+
+    private Task TryAgainAsync() => Held ? Task.CompletedTask : LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        state = AccountSectionState.Loading;
+        try
+        {
+            Keep(await Client.GetMyPreferencesAsync(CancellationToken.None));
+            state = AccountSectionState.Ready;
+        }
+        catch (Exception exception) when (AccountProblems.IsRefused(exception))
+        {
+            state = AccountSectionState.Refused;
+        }
+        catch (Exception exception) when (AccountProblems.IsFailure(exception))
+        {
+            state = AccountSectionState.Failed;
+        }
+    }
+
+    // A language none was chosen for shows as the one the app runs in.
+    private void Keep(MyPreferences preferences)
+    {
+        saved[CultureKey] = Offered(preferences.Culture) ?? Offered(Interface.Culture.Name);
+        saved[ZoneKey] = preferences.TimeZone;
+        saved[DateKey] = preferences.DateFormat;
+        saved[NumberKey] = preferences.NumberFormat;
+    }
+
+    private string? Shown(string member) => chosen.TryGetValue(member, out var value) ? value : saved.GetValueOrDefault(member);
+
+    private void Choose(string member, string? value)
+    {
+        if (!Held)
+        {
+            chosen[member] = value;
+            errors.Remove(member);
+        }
+    }
+
+    private async Task OnThemeChanged(string? value)
+    {
+        if (!Held && Enum.TryParse<CmsThemeMode>(value, out var mode))
+        {
+            await Theme.ChooseAsync(mode);
+        }
+    }
+
+    // A value the server refuses is named on its field, and the choices stay as they are until the user changes them.
+    private async Task SaveAsync()
+    {
+        if (Held)
+        {
+            return;
+        }
+
+        await saving.WaitAsync();
+        try
+        {
+            Dictionary<string, string?> changed = [];
+            foreach (var (member, value) in chosen.Where(item => !string.Equals(item.Value, saved.GetValueOrDefault(item.Key), StringComparison.Ordinal)))
+            {
+                changed[member] = value;
+            }
+
+            message = null;
+            errors.Clear();
+            try
+            {
+                if (changed.Count > 0)
+                {
+                    var answer = await Client.ChangeMyPreferencesAsync(changed, CancellationToken.None);
+                    Keep(answer);
+                    chosen.Clear();
+                    Formats.Apply(answer.DateFormat, answer.NumberFormat, answer.TimeZone);
+                    if (changed.ContainsKey(CultureKey) && await Language.FollowAsync(answer.Culture, atStart: false))
+                    {
+                        return;
+                    }
+                }
+
+                message = L["Account.Preferences.Saved"];
+                Announcer.Announce(message);
+            }
+            catch (Exception exception) when (AccountProblems.IsFailure(exception))
+            {
+                List<string> refused = exception is ApiProblemException { Problem.Errors: var problems }
+                    ? [.. changed.Keys.Where(member => problems.Any(error => error.Path == member))]
+                    : [];
+                foreach (var member in refused)
+                {
+                    errors[member] = L["Account.Preferences.Refused"];
+                }
+
+                message = refused.Count > 0 ? L["Account.Preferences.RefusedSome"] : L["Account.Preferences.NotSaved"];
+                Announcer.Announce(message, AnnouncementPoliteness.Assertive);
+            }
+        }
+        finally
+        {
+            saving.Release();
+        }
+    }
+
+    // An offered culture that is the name or one of its parents, as the start chooses.
+    private string? Offered(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        return Cultures.Offered.FirstOrDefault(offered => string.Equals(offered, name, StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith(offered + "-", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // The culture's name in its own language, from the resources when they have it.
+    private string LanguageName(string name) =>
+        L[$"Account.Preferences.Language.{name}"] is { ResourceNotFound: false } named ? named.Value : NativeName(name);
+
+    private static string NativeName(string name)
+    {
+        try
+        {
+            return CultureInfo.GetCultureInfo(name).NativeName;
+        }
+        catch (CultureNotFoundException)
+        {
+            return name;
+        }
+    }
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+}

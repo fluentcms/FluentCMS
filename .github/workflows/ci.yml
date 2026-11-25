@@ -17,6 +17,10 @@ on:
         description: Keep a masked Playwright trace of each failed end-to-end test in the test results.
         type: boolean
         default: false
+      browsers:
+        description: Run the admin's end-to-end tests in Firefox and WebKit too, as the nightly run does.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -146,7 +150,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.scope != 'docs'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 50
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -156,8 +160,10 @@ jobs:
         with:
           global-json-file: global.json
 
+      # With the pseudo-cultures, which the run publishes the host with for its right-to-left case (admin spec 4.17); no
+      # release builds them, and the size check of the Pack job fails a publish that has them.
       - name: Build
-        run: dotnet build admin/tests/FluentCMS.Admin.EndToEnd -c Release -warnaserror
+        run: dotnet build admin/tests/FluentCMS.Admin.EndToEnd -c Release -warnaserror -p:FluentCmsAdminPseudoCultures=true
 
       # The headless shell is what headless Chromium runs. The runner's image holds every system library it needs, so
       # --with-deps is left out: all it added through apt was fonts the tests do not read, and the mirror took up to seven
@@ -167,11 +173,14 @@ jobs:
 
       # A skipped test fails here, so that a browser that did not install cannot pass the job. A failed case is run once more,
       # and one that passes then is named as flaky in the job summary (spec 7). A manual run with traces on keeps the masked
-      # trace of each failed test in the uploaded results.
+      # trace of each failed test in the uploaded results. The first run took 13 min 45 s with 85 cases before the static build's
+      # (#3455), which builds and publishes the admin beside the publish of the host. The accessibility sweep (admin spec 4.18,
+      # #3458) adds about 4 min, so the first run has 30 min and the retry 12 min, which holds two failed sweeps, each of which
+      # starts a host and makes its data again; the job's 50 min hold the build, Chromium, the first run and the retry.
       - name: Test
         env:
           FLUENTCMS_E2E_TRACES: ${{ inputs.traces && format('{0}/artifacts/test-results/traces', github.workspace) || '' }}
-        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 15m -RetryTimeout 6m
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 30m -RetryTimeout 12m
 
       - name: Name the tests that were running
         if: failure() || cancelled()
@@ -183,6 +192,56 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: test-results-end-to-end
+          path: artifacts/test-results
+          retention-days: 14
+
+  # The admin's browser tests in Firefox and WebKit (spec 7), against the publish as End-to-end (admin) runs them, on the
+  # nightly run and on a manual run with the browsers input, not on a push or a pull request. Each job installs its browser
+  # with the system libraries it needs, which the runner's image does not hold for WebKit. The cases a browser cannot run
+  # carry the trait NotOn with its name and are left out, so a skip still fails the job. On a Windows PC, with the axe-core
+  # sweep and other builds running, the whole project took 37 min in Firefox and 40 min in WebKit; the limits leave room
+  # for the install with its system libraries and a retry until the first nightly runs give the runner's times.
+  end-to-end-browsers:
+    name: End-to-end (admin, ${{ matrix.browser }})
+    needs: plan
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.browsers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build admin/tests/FluentCMS.Admin.EndToEnd -c Release -warnaserror -p:FluentCmsAdminPseudoCultures=true
+
+      - name: Install ${{ matrix.browser }}
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/bin/Release/net10.0/playwright.ps1 install --with-deps ${{ matrix.browser }}
+
+      - name: Test
+        env:
+          FLUENTCMS_E2E_BROWSER: ${{ matrix.browser }}
+          FLUENTCMS_E2E_TRACES: ${{ inputs.traces && format('{0}/artifacts/test-results/traces', github.workspace) || '' }}
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 60m -RetryTimeout 12m -ExcludeTrait NotOn=${{ matrix.browser }}
+
+      - name: Name the tests that were running
+        if: failure() || cancelled()
+        shell: bash
+        run: grep -h -A6 -e "\[Long Running Test\]" -e "\[FAIL\]" artifacts/test-results/*.diag 2>/dev/null || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: test-results-end-to-end-${{ matrix.browser }}
           path: artifacts/test-results
           retention-days: 14
 
@@ -526,7 +585,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.scope != 'docs'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -559,12 +618,13 @@ jobs:
             echo "::warning::Deprecated NuGet packages found. See the Check deprecated packages step."
           fi
 
-      - name: Pack
-        run: dotnet pack -c Release --no-build -o artifacts/packages
-
       # The admin app is the prebuilt static build, not a package. A trim warning in a FluentCMS assembly fails the publish.
       - name: Publish the admin trimmed
         run: dotnet publish admin/src/FluentCMS.Admin.App -c Release --no-build -o artifacts/admin
+
+      # FluentCMS.Admin.Hosting carries the wwwroot of that publish, the files of the static build below (admin spec 6.1, AQ8).
+      - name: Pack
+        run: dotnet pack -c Release --no-build -o artifacts/packages -p:FluentCmsAdminPublishDir="$PWD/artifacts/admin"
 
       # The licence and the third-party notices travel with the compiled code (#3215).
       - name: Check that the admin app holds the Blazor script and the notices
@@ -590,6 +650,40 @@ jobs:
           fi
           grep -q "over the budget" "$RUNNER_TEMP/admin-size.log" || { cat "$RUNNER_TEMP/admin-size.log"; echo "::error::The size check did not say by how much the admin is over."; exit 1; }
           echo "Above the budget, the admin fails the check, as expected."
+
+      # The prebuilt static build of the admin (admin spec 6.3), made and checked as the Publish workflow makes it for a release,
+      # and uploaded with the packages.
+      - name: Make the static build of the admin
+        run: dotnet run eng/admin-zip.cs -- pack artifacts/admin "$PACKAGE_VERSION" artifacts/packages
+
+      # A copy of the zip without each file the check asks for, one with a compressed copy of index.html or config.json, one with
+      # a resource of a pseudo-culture and one with index.html twice, which the check must refuse and name.
+      - name: Check that a broken static build fails the check
+        shell: bash
+        run: |
+          built="$PWD/artifacts/packages/fluentcms-admin-$PACKAGE_VERSION.zip"
+          broken="$RUNNER_TEMP/broken-admin"
+          mkdir -p "$broken"
+          for name in index.html config.json _framework/blazor.webassembly.js LICENSE THIRD-PARTY-NOTICES.md README.txt index.html.br config.json.gz \
+              _framework/ar-XB/FluentCMS.Admin.resources.wasm twice; do
+            cp "$built" "$broken/build.zip"
+            case "$name" in
+              *.br | *.gz | */ar-XB/*)
+                (cd "$broken" && mkdir -p "$(dirname "$name")" && echo stale > "$name" && zip -q build.zip "$name" && rm -r "${name%%/*}")
+                expected="holds $name" ;;
+              twice)
+                python3 -W ignore -c "import sys, zipfile; zipfile.ZipFile(sys.argv[1], 'a').writestr('index.html', 'stale')" "$broken/build.zip"
+                expected="holds index.html twice" ;;
+              *) zip -q -d "$broken/build.zip" "$name"; expected="misses $name" ;;
+            esac
+            if dotnet run eng/admin-zip.cs -- check "$broken/build.zip" > "$broken/build.log"; then
+              cat "$broken/build.log"
+              echo "::error::The check passed a static build that $expected."
+              exit 1
+            fi
+            grep -qF "$expected" "$broken/build.log" || { cat "$broken/build.log"; echo "::error::The check did not say that the static build $expected."; exit 1; }
+            echo "A static build that $expected fails the check, as expected."
+          done
 
       # Packed beside the NuGet packages at their version. CI publishes neither; the Publish workflow does, from a tag.
       - name: Set up Node
@@ -635,6 +729,43 @@ jobs:
             echo "Without its $part, FluentCMS.Sdk fails the check, as expected."
           done
 
+      # A copy of FluentCMS.Admin.Hosting without the page or the Blazor script of its build, and one with a resource of a
+      # pseudo-culture, which the check must refuse and name.
+      - name: Check that the hosting package without the admin's build fails the check
+        shell: bash
+        run: |
+          package="FluentCMS.Admin.Hosting.$PACKAGE_VERSION"
+          for name in staticwebassets/index.html staticwebassets/_framework/blazor.webassembly.js staticwebassets/_framework/ar-XB/FluentCMS.Admin.resources.wasm; do
+            broken="$RUNNER_TEMP/broken-hosting/$(basename "$name")"
+            mkdir -p "$broken"
+            cp "artifacts/packages/$package.nupkg" "artifacts/packages/$package.snupkg" "$broken/"
+            case "$name" in
+              */ar-XB/*)
+                (cd "$broken" && mkdir -p "$(dirname "$name")" && echo stale > "$name" && zip -q "$package.nupkg" "$name" && rm -r staticwebassets)
+                expected="holds $name" ;;
+              *) zip -q -d "$broken/$package.nupkg" "$name"; expected="misses the first-party build's $name" ;;
+            esac
+            if dotnet run eng/check-packages.cs -- "$broken" "$PACKAGE_VERSION" > "$broken.log"; then
+              cat "$broken.log"
+              echo "::error::The check passed FluentCMS.Admin.Hosting where it $expected."
+              exit 1
+            fi
+            grep -qF "$expected" "$broken.log" || { cat "$broken.log"; echo "::error::The check did not say that FluentCMS.Admin.Hosting $expected."; exit 1; }
+            echo "FluentCMS.Admin.Hosting fails the check where it $expected, as expected."
+          done
+
+      # A host made of these packages, outside the repository: it serves the package's build at /admin, and an app project of its
+      # own when it references one, here the gather fixture with a half the first-party build does not have; it keeps the icon
+      # assemblies it references itself, and does not take a WebAssembly project that is no admin app for one.
+      - name: Serve the admin from a host made of packages
+        shell: bash
+        run: |
+          fixture=admin/tests/FluentCMS.Admin.GatherFixture/FluentCMS.Admin.GatherFixture.csproj
+          dotnet run eng/admin-package-host.cs -- artifacts/packages "$PACKAGE_VERSION" "$RUNNER_TEMP/admin-host/package"
+          dotnet run eng/admin-package-host.cs -- artifacts/packages "$PACKAGE_VERSION" "$RUNNER_TEMP/admin-host/app" app "$fixture" FluentCMS.Admin.Plugins.Sample
+          dotnet run eng/admin-package-host.cs -- artifacts/packages "$PACKAGE_VERSION" "$RUNNER_TEMP/admin-host/icons" icons "$fixture" FluentCMS.Admin.Plugins.Sample
+          dotnet run eng/admin-package-host.cs -- artifacts/packages "$PACKAGE_VERSION" "$RUNNER_TEMP/admin-host/client" client
+
       - name: Upload packages
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
@@ -644,8 +775,9 @@ jobs:
           retention-days: 7
 
   # The packages of this build in a folder feed, at the version of the run, and FluentCMS.Templates installed from it: every
-  # combination of the templates is created, built with warnings as errors and the plugin's tests run, the SQLite hosts start
-  # in Development, and a PostgreSQL host is brought up with `fluentcms migrations add Initial` and `fluentcms migrate`.
+  # combination of the templates is created, built with warnings as errors and the plugin's tests run, the admin app is
+  # published trimmed and takes the plugin's half, the SQLite hosts start in Development and serve the admin, one of them the
+  # template's app, and a PostgreSQL host is brought up with `fluentcms migrations add Initial` and `fluentcms migrate`.
   templates:
     name: Templates
     needs: plan
@@ -703,8 +835,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  # The compose file of the reference host with its smoke test, on pushes to main and manual runs that are not quick, not
-  # on pull requests or the nightly run. Pushes to feature branches run it from compose.yml itself.
+  # The compose file of the reference host with its smoke test, and the admin's end-to-end tests on the image, on pushes to
+  # main and manual runs that are not quick, not on pull requests or the nightly run. Pushes to feature branches run it from compose.yml itself.
   compose:
     name: Compose
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.quick)
@@ -722,7 +854,7 @@ jobs:
   # opens an issue.
   nightly-report:
     name: Report nightly failure
-    needs: [markdown, build, test, end-to-end, typescript, rich-text, build-test-windows, plan, data-tests, pack, templates]
+    needs: [markdown, build, test, end-to-end, end-to-end-browsers, typescript, rich-text, build-test-windows, plan, data-tests, pack, templates]
     if: (failure() || cancelled()) && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 5

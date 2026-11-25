@@ -33,6 +33,11 @@
     cursor: pointer;
 }
 
+/* The glyph is drawn as an icon is; a glyph of letters is in the button's name too (WCAG 2.5.3). */
+.rich-text-glyph::before {
+    content: attr(data-glyph);
+}
+
 .rich-text-button:hover {
     border-color: var(--cms-color-border);
 }

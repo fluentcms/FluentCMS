@@ -1,7 +1,7 @@
 @namespace FluentCMS.Admin.Components
 
 <FluentMenu Class="cms-menu">
-    <FluentMenuButton IconStart="@(Icon is { } icon ? CmsIcons.Get(icon) : null)">@Label</FluentMenuButton>
+    <FluentMenuButton IconStart="@(Icon is { } icon ? CmsIcons.Get(icon) : null)"><span class="cms-menu-label">@Label</span></FluentMenuButton>
     <FluentMenuList>
         @ChildContent
     </FluentMenuList>

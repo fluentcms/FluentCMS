@@ -127,4 +127,20 @@
     <value>This field is required</value>
     <comment>A text of the library under the set, under the library's key.</comment>
   </data>
+  <data name="Field_ErrorMessage" xml:space="preserve">
+    <value>An error occurred</value>
+    <comment>A text of the library under the set, under the library's key.</comment>
+  </data>
+  <data name="Field_WarningMessage" xml:space="preserve">
+    <value>Please, check this value</value>
+    <comment>A text of the library under the set, under the library's key.</comment>
+  </data>
+  <data name="LabelInfo_InfoText" xml:space="preserve">
+    <value>More information</value>
+    <comment>A text of the library under the set, under the library's key.</comment>
+  </data>
+  <data name="LabelInfo_InfoActionText" xml:space="preserve">
+    <value>Learn more</value>
+    <comment>A text of the library under the set, under the library's key.</comment>
+  </data>
 </root>

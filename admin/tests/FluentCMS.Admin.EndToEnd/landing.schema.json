@@ -1,7 +1,8 @@
 {
   // Beside the Blog sample: the smallest type with blocks and components to depth 3 (decision 20), for BlockTests, and memo,
   // whose entries BulkTests makes by the hundred, so that they crowd no list another case reads, and showcase, the one type with
-  // a preview template, for PreviewTests, so that no other case's form shows a Preview button (every form still mints a token).
+  // a preview template, for PreviewTests, so that no other case's form shows a Preview button (every form still mints a token),
+  // with the field types the Blog sample has not, whose editors the accessibility sweep checks on its form.
   "collections": [
     {
       "name": "memo",
@@ -13,7 +14,13 @@
     {
       "name": "showcase",
       "fields": [
-        { "name": "title", "type": "text" }
+        { "name": "title", "type": "text" },
+        { "name": "rating", "type": "integer" },
+        { "name": "featured", "type": "boolean" },
+        { "name": "opensOn", "type": "date" },
+        { "name": "contact", "type": "email" },
+        { "name": "notes", "type": "longText" },
+        { "name": "extra", "type": "json" }
       ]
     },
     {

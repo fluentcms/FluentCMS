@@ -31,7 +31,7 @@ public sealed class WebhooksTests(EndToEndHost host) : BrowserTest(host)
     [Fact]
     public async Task AnAdministratorMakesAWebhookForAPublishCopiesItsSecretReadsTheDeliverySendsItAgainAndPings()
     {
-        using var receiver = new Receiver();
+        using var receiver = new Receiver(Host.ServerAddress, Host.ServerHost);
         using var management = await Host.ManagementClientAsync();
         var name = $"Webhooks {Mark}";
         Guid? id = null;
@@ -58,7 +58,9 @@ public sealed class WebhooksTests(EndToEndHost host) : BrowserTest(host)
             await Expect(dialog.GetByText(Repository.ComponentText("SecretCopied"), new LocatorGetByTextOptions { Exact = true })).ToBeVisibleAsync();
             var secret = await tab.Page.EvaluateAsync<string>("() => navigator.clipboard.readText()");
             secret.ShouldStartWith("whsec_");
-            (await browser.SecretsAsync()).ShouldContain(secret);
+
+            // Given to the mask here: Chromium does not always keep the body of the answer that made the webhook (#3635).
+            browser.Mask(secret);
             await Ui.PressAsync(Ui.ButtonIn(dialog, Repository.ComponentText("SecretDone")), "Enter");
             await Expect(tab.ShownDialog(Text("Webhooks.Secret.CreatedTitle"))).ToHaveCountAsync(0);
             (await tab.Page.EvaluateAsync<bool>("secret => document.documentElement.outerHTML.includes(secret)", secret)).ShouldBeFalse();
@@ -194,21 +196,24 @@ public sealed class WebhooksTests(EndToEndHost host) : BrowserTest(host)
         return fetched;
     }
 
-    // A receiver on a loopback port of the test, which the host reaches since the run allows private networks to webhooks. It
+    // A receiver on a port of the test, on the address the host reaches the run's servers by, which the host reaches since the run allows private networks to webhooks. It
     // counts each connection and closes it at once, so the host's TLS handshake fails and the attempt is recorded as failed.
     private sealed class Receiver : IDisposable
     {
-        private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
+        private readonly TcpListener _listener;
         private readonly CancellationTokenSource _stop = new();
+        private readonly string _host;
         private int _connections;
 
-        public Receiver()
+        public Receiver(IPAddress address, string name)
         {
+            _listener = new TcpListener(address, 0);
+            _host = name;
             _listener.Start();
             _ = AcceptAsync();
         }
 
-        public string Url => $"https://{IPAddress.Loopback}:{((IPEndPoint)_listener.LocalEndpoint).Port}/hooks";
+        public string Url => $"https://{_host}:{((IPEndPoint)_listener.LocalEndpoint).Port}/hooks";
 
         public int Connections => Volatile.Read(ref _connections);
 

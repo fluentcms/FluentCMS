@@ -24,6 +24,11 @@ public sealed class AdminBrowser
     // The fields of the sign-in's forms and of the token endpoint's answer whose values are secrets.
     private static readonly string[] SecretFields = ["code", "code_verifier", "refresh_token", "access_token", "id_token", "token", "__RequestVerificationToken"];
 
+    // How many of the requests the browser gave up, and of the answers it could not give, are kept, the last ones.
+    private const int Kept = 20;
+
+    internal const string CancelledError = "net::ERR_ABORTED";
+
     private readonly EndToEndHost _host;
     private readonly IBrowserContext _context;
     private readonly string? _traces;
@@ -32,6 +37,9 @@ public sealed class AdminBrowser
     private readonly ConcurrentQueue<string> _violations = new();
     private readonly ConcurrentDictionary<string, bool> _secrets = new(StringComparer.Ordinal);
     private readonly ConcurrentBag<Task> _reads = [];
+    private readonly ConcurrentQueue<string> _givenUp = new();
+    private readonly ConcurrentQueue<string> _unread = new();
+    private int _cancelled;
     private bool _tracing;
 
     private AdminBrowser(EndToEndHost host, IBrowserContext context, string? traces)
@@ -43,6 +51,7 @@ public sealed class AdminBrowser
         _slow = SlowMode.For(context);
         context.Request += (_, request) => OnRequest(request);
         context.Response += (_, response) => OnResponse(response);
+        context.RequestFailed += (_, request) => OnRequestFailed(request);
         context.Console += (_, message) =>
         {
             if (message.Text.Contains("Content Security Policy", StringComparison.OrdinalIgnoreCase))
@@ -55,10 +64,21 @@ public sealed class AdminBrowser
     // The console messages of a Content-Security-Policy violation, in any tab.
     public IReadOnlyCollection<string> PolicyViolations => _violations;
 
+    // The last requests of any tab the browser gave up, each with the time in UTC, as the host's log has it, the browser's
+    // error, the method and the address with its query cut, as the host's log cuts it. Not masked: the output masks them.
+    // A request a page cancels as it navigates away (net::ERR_ABORTED) is only counted, since most cases have some.
+    internal IReadOnlyCollection<string> RequestsGivenUp => _givenUp;
+
+    internal int RequestsCancelled => Volatile.Read(ref _cancelled);
+
+    // The last answers of the host whose headers or body the browser could not give for the mask (ReadAsync), each with the
+    // method, the address with its query cut, the status, the time in UTC and the exception as Playwright gave it. Not masked.
+    internal IReadOnlyCollection<string> AnswersUnread => _unread;
+
     internal static async Task<AdminBrowser> OpenAsync(EndToEndHost host, IBrowser browser, string? traces)
     {
         SetDefaultExpectTimeout((float)Wait.TotalMilliseconds);
-        var context = await browser.NewContextAsync(new BrowserNewContextOptions { Locale = "en-US", ServiceWorkers = ServiceWorkerPolicy.Block });
+        var context = await browser.NewContextAsync(host.Engine.ContextOptions());
         context.SetDefaultTimeout((float)Wait.TotalMilliseconds);
         context.SetDefaultNavigationTimeout((float)Wait.TotalMilliseconds);
         if (traces is not null)
@@ -121,9 +141,18 @@ public sealed class AdminBrowser
     // A secret the test read from the page, as from the clipboard, so that a kept trace is masked of it and checked for it.
     public void Mask(string secret) => Keep(secret);
 
+    // The address of each page of the context, masked, for the output of a failed test.
+    internal IEnumerable<string> Addresses => _context.Pages.Select(page => Masked(page.Url));
+
+    // The text with every secret this context has seen replaced.
+    internal string Masked(string text) =>
+        _secrets.Keys.OrderByDescending(secret => secret.Length).Aggregate(text, (masked, secret) => masked.Replace(secret, "[masked]", StringComparison.Ordinal));
+
     // Lets the pages of the host read and write the clipboard, as a user who allows it does.
     public Task GrantClipboardAsync() =>
-        _context.GrantPermissionsAsync(["clipboard-read", "clipboard-write"], new BrowserContextGrantPermissionsOptions { Origin = _host.Origin.GetLeftPart(UriPartial.Authority) });
+        _host.Engine.ClipboardPermissions is { Length: > 0 } permissions
+            ? _context.GrantPermissionsAsync(permissions, new BrowserContextGrantPermissionsOptions { Origin = _host.Origin.GetLeftPart(UriPartial.Authority) })
+            : Task.CompletedTask;
 
     // Every secret this context has seen, for a test of a kept trace.
     public async Task<IReadOnlyCollection<string>> SecretsAsync()
@@ -187,7 +216,7 @@ public sealed class AdminBrowser
         return TabOf(page);
     }
 
-    private AdminTab TabOf(IPage page) => _tabs.GetOrAdd(page, created => new AdminTab(_host, created));
+    private AdminTab TabOf(IPage page) => _tabs.GetOrAdd(page, created => new AdminTab(_host, created, Masked));
 
     private void OnRequest(IRequest request)
     {
@@ -218,6 +247,8 @@ public sealed class AdminBrowser
             tab!.Saw(TokenRequest.Of(response));
         }
 
+        tab?.Answered(response);
+
         if (!response.Url.StartsWith(_host.Origin.AbsoluteUri, StringComparison.Ordinal))
         {
             return;
@@ -225,6 +256,37 @@ public sealed class AdminBrowser
 
         _reads.Add(ReadAsync(response, token ? tab : null, IsSecretAnswer(response)));
     }
+
+    private void OnRequestFailed(IRequest request)
+    {
+        var error = request.Failure ?? "no error";
+        if (PageOf(request) is { } page)
+        {
+            TabOf(page).Failed(request, error);
+        }
+
+        if (error == CancelledError)
+        {
+            Interlocked.Increment(ref _cancelled);
+            return;
+        }
+
+        KeepLast(_givenUp, $"{Now()} {error} {request.Method} {WithoutQuery(request.Url)}");
+    }
+
+    private static void KeepLast(ConcurrentQueue<string> queue, string entry)
+    {
+        queue.Enqueue(entry);
+        while (queue.Count > Kept)
+        {
+            queue.TryDequeue(out _);
+        }
+    }
+
+    internal static string Now() => DateTime.UtcNow.ToString("HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
+
+    internal static string WithoutQuery(string address) =>
+        address.IndexOf('?', StringComparison.Ordinal) is var query and >= 0 ? address[..query] + "?[query]" : address;
 
     // A Management call that may answer a secret shown once, as making or rotating an API key: a POST whose answer is JSON.
     private bool IsSecretAnswer(IResponse response) =>
@@ -236,6 +298,7 @@ public sealed class AdminBrowser
     // the requests that carry it, and a test keeps a secret it read from the page with Mask.
     private async Task ReadAsync(IResponse response, AdminTab? tab, bool secretAnswer)
     {
+        var step = "its headers";
         try
         {
             foreach (var cookie in await response.HeaderValuesAsync("set-cookie"))
@@ -247,26 +310,36 @@ public sealed class AdminBrowser
                 }
             }
 
-            if (tab is not null && response.Status == 200 && JsonNode.Parse(await response.TextAsync()) is JsonObject answer)
+            if (tab is not null && response.Status == 200)
             {
-                foreach (var field in SecretFields)
+                step = "its body, for the tokens";
+                if (JsonNode.Parse(await response.TextAsync()) is JsonObject answer)
                 {
-                    if (answer[field] is JsonValue value && value.TryGetValue<string>(out var text))
+                    foreach (var field in SecretFields)
                     {
-                        Keep(text);
+                        if (answer[field] is JsonValue value && value.TryGetValue<string>(out var text))
+                        {
+                            Keep(text);
+                        }
                     }
                 }
-
             }
 
-            if (secretAnswer && JsonNode.Parse(await response.TextAsync()) is JsonObject created && created["secret"] is JsonValue secret
-                && secret.TryGetValue<string>(out var shownOnce))
+            if (secretAnswer)
             {
-                Keep(shownOnce);
+                step = "its body, for the secret";
+                if (JsonNode.Parse(await response.TextAsync()) is JsonObject created && created["secret"] is JsonValue secret && secret.TryGetValue<string>(out var shownOnce))
+                {
+                    Keep(shownOnce);
+                }
             }
         }
         catch (Exception exception) when (exception is PlaywrightException or System.Text.Json.JsonException)
         {
+            // Still skipped, but why is kept for the output of a failed case, since it tells a body Chromium no longer had from
+            // one that was not JSON or a page that was gone (#3635).
+            var reason = exception.Message.ReplaceLineEndings(" ").Trim();
+            KeepLast(_unread, $"{response.Request.Method} {WithoutQuery(response.Url)} ({response.Status}) at {Now()}, {step}: {exception.GetType().Name}: {reason}");
         }
     }
 
@@ -300,18 +373,27 @@ public sealed class AdminBrowser
 }
 
 // One tab, with what it asked of the authorization server: the address of each authorize request, each login page shown, and
-// the grant and status of each token request, never a token or a code.
+// the grant and status of each token request, never a token or a code. It also keeps its last calls, frames included, for
+// the output of a wait for an answer that did not come (Ui.AnswerAsync).
 public sealed class AdminTab
 {
+    private const int CallsKept = 200;
+    private const int CallsShown = 40;
+    private const int CallsBeforeShown = 5;
+
     private readonly EndToEndHost _host;
+    private readonly Func<string, string> _masked;
     private readonly ConcurrentQueue<Uri> _authorizeRequests = new();
     private readonly ConcurrentQueue<string> _loginPages = new();
     private readonly ConcurrentQueue<TokenRequest> _tokenRequests = new();
+    private readonly ConcurrentQueue<Call> _calls = new();
+    private long _callsSeen;
     private long _lastGrant;
 
-    internal AdminTab(EndToEndHost host, IPage page)
+    internal AdminTab(EndToEndHost host, IPage page, Func<string, string> masked)
     {
         _host = host;
+        _masked = masked;
         Page = page;
     }
 
@@ -369,8 +451,79 @@ public sealed class AdminTab
     internal bool IsTokenRequest(IResponse response) =>
         response.Request.Method == "POST" && response.Url == new Uri(_host.Origin, "connect/token").AbsoluteUri;
 
+    // How many calls the tab has made, the mark a wait starts from.
+    internal long CallsSeen => Interlocked.Read(ref _callsSeen);
+
+    // The first calls since the mark, each with the time in UTC, the method, the address with its query cut, and the status
+    // of its answer, the error it failed with, or that neither was seen; masked. The first, since the call a wait is for is
+    // sent at its start.
+    internal string CallsSince(long mark)
+    {
+        var calls = _calls.Where(call => call.Number > mark).ToList();
+        if (calls.Count == 0)
+        {
+            return "none";
+        }
+
+        List<string> lines = calls[0].Number > mark + 1 ? [$"(the first {calls[0].Number - mark - 1} are not kept)"] : [];
+        lines.AddRange(calls.Take(CallsShown).Select(Line));
+        if (calls.Count > CallsShown)
+        {
+            lines.Add($"(and {calls.Count - CallsShown} later)");
+        }
+
+        return _masked(string.Join(Environment.NewLine, lines));
+    }
+
+    // The last calls up to the mark, in the same form, which show whether the call a wait is for was sent before it began.
+    internal string CallsBefore(long mark)
+    {
+        var calls = _calls.Where(call => call.Number <= mark).TakeLast(CallsBeforeShown).ToList();
+        return calls.Count == 0 ? "none" : _masked(string.Join(Environment.NewLine, calls.Select(Line)));
+    }
+
+    // A line for a wait that found nothing when the browser reported no call of the tab to the host after the answer of the
+    // sign-in's callback: the app makes many as it starts, so the browser lost its reports, not the page its calls (#3654).
+    internal string? SilentSinceSignIn()
+    {
+        var calls = _calls.ToArray();
+        var callback = Array.FindLastIndex(calls, call => new Uri(call.Request.Url).AbsolutePath.EndsWith("/authentication/login-callback", StringComparison.Ordinal));
+        if (callback < 0 || calls.Skip(callback + 1).Any(call => call.Request.Url.StartsWith(_host.Origin.AbsoluteUri, StringComparison.Ordinal)))
+        {
+            return null;
+        }
+
+        return $"The test browser reported none of the tab's calls to the host since the sign-in's return at {calls[callback].Time}; a route put on the page while it navigated does this.";
+    }
+
+    private static string Line(Call call) => $"{call.Time} {call.Request.Method} {AdminBrowser.WithoutQuery(call.Request.Url)} {call.Outcome ?? "no answer seen"}";
+
+    internal void Answered(IResponse response)
+    {
+        if (CallOf(response.Request) is { } call)
+        {
+            call.Outcome = response.Status.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+    }
+
+    internal void Failed(IRequest request, string error)
+    {
+        if (CallOf(request) is { } call)
+        {
+            call.Outcome = call.Outcome is null ? error : $"{call.Outcome}, then {error}";
+        }
+    }
+
+    private Call? CallOf(IRequest request) => _calls.LastOrDefault(call => ReferenceEquals(call.Request, request));
+
     internal void Saw(IRequest request)
     {
+        _calls.Enqueue(new Call(Interlocked.Increment(ref _callsSeen), AdminBrowser.Now(), request));
+        while (_calls.Count > CallsKept)
+        {
+            _calls.TryDequeue(out _);
+        }
+
         var url = new Uri(request.Url);
         if (url.AbsolutePath == "/connect/authorize")
         {
@@ -403,6 +556,23 @@ public sealed class AdminTab
         if (wait > TimeSpan.Zero)
         {
             await Task.Delay(wait, TestContext.Current.CancellationToken);
+        }
+    }
+
+    private sealed class Call(long number, string time, IRequest request)
+    {
+        private volatile string? _outcome;
+
+        public long Number => number;
+
+        public string Time => time;
+
+        public IRequest Request => request;
+
+        public string? Outcome
+        {
+            get => _outcome;
+            set => _outcome = value;
         }
     }
 }

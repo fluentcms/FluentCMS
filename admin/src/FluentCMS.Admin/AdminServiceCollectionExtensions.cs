@@ -2,6 +2,7 @@ using FluentCMS.Admin.Accessibility;
 using FluentCMS.Admin.Interop;
 using FluentCMS.Admin.Localization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 
 namespace FluentCMS.Admin;
 
@@ -10,8 +11,10 @@ internal static class AdminServiceCollectionExtensions
     public static IServiceCollection AddAdminLocalization(this IServiceCollection services, InterfaceCulture culture, FormatService formats)
     {
         services.AddLocalization();
+        services.AddTransient<IStringLocalizer<AdminResources>, AdminTextLocalizer>();
         services.AddSingleton(culture);
         services.AddSingleton(formats);
+        services.AddSingleton<IAdminFormats>(provider => provider.GetRequiredService<FormatService>());
         return services;
     }
 

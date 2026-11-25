@@ -231,6 +231,40 @@ public sealed class ContentListFilterTests : AdminTestContext
         app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldStartWith("filter[price][eq]=1.5&filter[price][in]=1.5,2&"));
     }
 
+    // A user may choose the culture of numbers apart from that of dates (A-41): a number of a filter is typed, shown and read
+    // back in the culture of numbers, and sent as the API writes it.
+    [Fact]
+    public void ANumberFollowsTheCultureOfNumbersWhenTheCultureOfDatesIsAnother()
+    {
+        var article = Article();
+        article["fields"]!.AsArray().Add(Field("price", "decimal"));
+        Management.SetTypes(MainSite, article);
+        Management.Preferences["dateFormat"] = "en-US";
+        Management.Preferences["numberFormat"] = "de-DE";
+        var german = System.Globalization.CultureInfo.GetCultureInfo("de-DE");
+        var app = Load(culture: "en-US");
+
+        Button(app, "Add filter").Click();
+        Choose(app, "Field", "price");
+        app.FindComponents<CmsNumberInput>().Single(found => found.Instance.Label == "Value").Find("input").Change(1.5m.ToString(german));
+        Button(app, "Apply filter").Click();
+
+        app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldStartWith("filter[price][eq]=1.5&"));
+        Chips(app).ShouldBe([$"Price is {1.5m.ToString(german)}"]);
+
+        Button(app, "Add filter").Click();
+        Choose(app, "Field", "price");
+        Choose(app, "Condition", "in");
+        Enter(app, "Values", $@"{1.5m.ToString(german).Replace(",", @"\,", StringComparison.Ordinal)}, 2");
+        Button(app, "Apply filter").Click();
+        app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldStartWith("filter[price][eq]=1.5&filter[price][in]=1.5,2&"));
+
+        Button(app, Chips(app)[1]).Click();
+
+        app.WaitForAssertion(() => app.FindComponents<CmsTextInput>().Single(found => found.Instance.Label == "Values").Instance.Value
+            .ShouldBe($@"{1.5m.ToString(german).Replace(",", @"\,", StringComparison.Ordinal)}, 2"));
+    }
+
     // A day given as an upper bound, or as the day after which, means its end.
     [Fact]
     public void ADayWithoutATimeIsTheEndOfTheDayForAnUpperBound()

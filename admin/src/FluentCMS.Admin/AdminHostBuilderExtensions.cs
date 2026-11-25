@@ -17,6 +17,14 @@ namespace FluentCMS.Admin;
 
 public static class AdminHostBuilderExtensions
 {
+    // The app's own resources name its content types: ContentType.{name} is read from TResources before the admin's.
+    public static Task AddFluentCmsAdmin<TResources>(this WebAssemblyHostBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Services.AddSingleton(new AdminAppResources(typeof(TResources)));
+        return builder.AddFluentCmsAdmin();
+    }
+
     // Asynchronous because it reads config.json before anything else registers (spec 2.5).
     public static async Task AddFluentCmsAdmin(this WebAssemblyHostBuilder builder)
     {
@@ -38,14 +46,15 @@ public static class AdminHostBuilderExtensions
         var startup = await reading;
 
         // At start the runtime has set the current culture to the browser's. The culture must be set before the host runs,
-        // which loads its resources.
+        // which loads its resources, and the user's preference is read after sign-in, so the start reads the browser's copy.
         var browser = CultureInfo.CurrentCulture;
-        var culture = new InterfaceCulture(InterfaceCulture.Choose(
-            new NoInterfaceCulturePreference().Culture, browser, InterfaceCultureOptions.From(startup.Configuration?.Cultures)));
+        var copy = await CultureStorageInterop.ReadAtStartAsync(builder.Services);
+        var culture = new InterfaceCulture(
+            InterfaceCulture.Choose(copy, browser, InterfaceCultureOptions.From(startup.Configuration?.Cultures)), browser, copy);
         culture.Apply(browser);
 
         builder.Services.AddSingleton(catalog);
-        builder.Services.AddAdminStartup(startup, culture, new FormatService(browser, TimeZoneInfo.Local));
+        builder.Services.AddAdminStartup(startup, culture, new FormatService(browser, TimeZoneInfo.Local, InterfaceCulture.UseFormats));
     }
 
     // The error page of an invalid configuration needs the culture and the document as well, so these register either way.
@@ -79,6 +88,8 @@ public static class AdminHostBuilderExtensions
         services.AddAdminPlugins();
         services.AddAdminShell();
         services.AddSingleton<IColumnStorage, ColumnStorageInterop>();
+        services.AddSingleton<ICultureStorage, CultureStorageInterop>();
+        services.AddScoped<IInterfaceLanguage, InterfaceLanguage>();
         services.AddFieldEditors();
         services.AddManagementApi();
         services.AddOptions<ManagementApiOptions>().Configure(options => options.ApiBaseUrl = configuration.ApiBaseUrl);

@@ -37,8 +37,8 @@ public sealed class ApiKeysTests(EndToEndHost host) : BrowserTest(host)
         var secret = await tab.Page.EvaluateAsync<string>("() => navigator.clipboard.readText()");
         secret.ShouldStartWith("fcms_dk_");
 
-        // The harness knows it from the answer that made the key, so a trace is masked of it; the page shows it nowhere.
-        (await browser.SecretsAsync()).ShouldContain(secret);
+        // Given to the mask here: Chromium does not always keep the body of the answer that made the key for the harness to
+        // read (#3635). The page shows it nowhere.
         browser.Mask(secret);
         (await tab.Page.EvaluateAsync<bool>("secret => document.documentElement.outerHTML.includes(secret)", secret)).ShouldBeFalse();
 

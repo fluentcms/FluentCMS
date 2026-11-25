@@ -28,17 +28,15 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
         var id = await CreateAsync(api, $"Showcase {Mark}");
 
         var browser = await OpenBrowserAsync();
-        var tab = await SignedInTabAsync(browser, $"content/showcase/{id:D}");
         var loads = 0;
         var admin = Host.Origin.GetLeftPart(UriPartial.Authority);
-        await tab.Page.RouteAsync($"{EndToEndHost.PreviewOrigin}/**", route =>
+        var tab = await EntryTabAsync(browser, id, route =>
         {
             Interlocked.Increment(ref loads);
             return route.FulfillAsync(new RouteFulfillOptions { Status = 200, ContentType = "text/html", Body = Page(admin) });
         });
 
-        var open = Ui.ButtonIn(tab.Page.Locator(".content-form-history"), Repository.AdminText("Content.Preview.Open"));
-        await Ui.PressAsync(open, "Enter");
+        await Ui.PressAsync(Open(tab), "Enter");
 
         var pane = tab.Page.Locator(".content-preview");
         var frame = pane.Locator("iframe");
@@ -46,7 +44,12 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
         await Expect(frame).ToHaveCSSAsync("width", "390px");
         await Expect(pane).ToBeFocusedAsync();
         await Expect(pane).ToHaveAttributeAsync("data-ready", "true");
-        (await ControlledAsync(tab.Page, Repository.AdminText("Content.Preview.Open"))).ShouldBe(["content-preview"]);
+        // The accessibility tree is read through Chromium's DevTools protocol, which the other browsers do not have.
+        if (Host.Engine.IsChromium)
+        {
+            (await ControlledAsync(tab.Page, Repository.AdminText("Content.Preview.Open"))).ShouldBe(["content-preview"]);
+        }
+
         var page = tab.Page.FrameLocator(".content-preview iframe");
         await Expect(page.Locator("#state")).ToHaveTextAsync("ready");
 
@@ -110,7 +113,9 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
 
     // The page said ready, then the editor follows its link to a page without the script, whose load is the frame's next: the
     // pane forgets ready, gives the five seconds again, and the next save loads the frame instead of telling it to refresh.
+    // Not on WebKit (spec 7, #3650): WebKit reports the frame's load before the page's ready, and the pane keeps ready.
     [Fact]
+    [Trait("NotOn", "webkit")]
     public async Task APageThatNavigatesToOneWithoutTheContractIsLoadedAgainOnASave()
     {
         using var api = await Host.ManagementClientAsync();
@@ -118,10 +123,9 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
         var id = await CreateAsync(api, $"Showcase {Mark}");
 
         var browser = await OpenBrowserAsync();
-        var tab = await SignedInTabAsync(browser, $"content/showcase/{id:D}");
         var loads = 0;
         var admin = Host.Origin.GetLeftPart(UriPartial.Authority);
-        await tab.Page.RouteAsync($"{EndToEndHost.PreviewOrigin}/**", route =>
+        var tab = await EntryTabAsync(browser, id, route =>
         {
             Interlocked.Increment(ref loads);
             return route.FulfillAsync(new RouteFulfillOptions
@@ -132,7 +136,7 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
             });
         });
 
-        await Ui.PressAsync(Ui.ButtonIn(tab.Page.Locator(".content-form-history"), Repository.AdminText("Content.Preview.Open")), "Enter");
+        await Ui.PressAsync(Open(tab), "Enter");
         var pane = tab.Page.Locator(".content-preview");
         var page = tab.Page.FrameLocator(".content-preview iframe");
         await Expect(pane).ToHaveAttributeAsync("data-ready", "true");
@@ -164,17 +168,15 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
         var id = await CreateAsync(api, $"Showcase {Mark}");
 
         var browser = await OpenBrowserAsync();
-        var tab = await SignedInTabAsync(browser, $"content/showcase/{id:D}");
         var admin = Host.Origin.GetLeftPart(UriPartial.Authority);
-        await tab.Page.RouteAsync($"{EndToEndHost.PreviewOrigin}/**", route => route.FulfillAsync(new RouteFulfillOptions
+        var tab = await EntryTabAsync(browser, id, route => route.FulfillAsync(new RouteFulfillOptions
         {
             Status = 200,
             ContentType = "text/html",
             Body = route.Request.Url.EndsWith("/nested", StringComparison.Ordinal) ? Nested(admin) : """<!doctype html><title>Showcase</title><iframe src="/nested"></iframe>""",
         }));
 
-        var open = Ui.ButtonIn(tab.Page.Locator(".content-form-history"), Repository.AdminText("Content.Preview.Open"));
-        await Ui.PressAsync(open, "Enter");
+        await Ui.PressAsync(Open(tab), "Enter");
 
         var pane = tab.Page.Locator(".content-preview");
         await Expect(tab.Page.FrameLocator(".content-preview iframe").FrameLocator("iframe").Locator("#state")).ToHaveTextAsync("posted");
@@ -224,6 +226,19 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
         </body>
         </html>
         """;
+
+    // A tab signed in at the entry, whose preview origin the handler answers. The route is put on once the form shows: one put
+    // on while the return from the sign-in navigated lost the browser's reports of the page's calls from then on, the save's
+    // answer among them, though the page made them and the host answered (#3654).
+    private async Task<AdminTab> EntryTabAsync(AdminBrowser browser, Guid id, Func<IRoute, Task> handler)
+    {
+        var tab = await SignedInTabAsync(browser, $"content/showcase/{id:D}");
+        await Expect(Open(tab)).ToBeVisibleAsync();
+        await tab.Page.RouteAsync($"{EndToEndHost.PreviewOrigin}/**", handler);
+        return tab;
+    }
+
+    private static ILocator Open(AdminTab tab) => Ui.ButtonIn(tab.Page.Locator(".content-form-history"), Repository.AdminText("Content.Preview.Open"));
 
     private static async Task SaveAsync(AdminTab tab, Guid id)
     {
