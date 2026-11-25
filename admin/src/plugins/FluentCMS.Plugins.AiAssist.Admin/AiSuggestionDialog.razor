@@ -11,7 +11,7 @@
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<AiAssistResources> L
 
-<CmsDialog Title="@Request.Label" Open="@open" OpenChanged="@(value => { if (!value) Close(null); })" OnClosed="Closed">
+<CmsDialog Title="@Request.Label" Open="@open" OpenChanged="@(value => { if (!value) Close(null); })" OnClosed="Closed" CloseButton="false">
     <ChildContent>
         @if (step == Step.Choose)
         {

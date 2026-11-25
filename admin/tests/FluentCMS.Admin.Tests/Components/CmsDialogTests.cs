@@ -126,6 +126,100 @@ public sealed class CmsDialogTests : ComponentTestContext
         dialog.Find("fluent-dialog").HasAttribute("blazor:ondialogbeforetoggle").ShouldBeTrue();
     }
 
+    // The close button hides the dialog as Escape does, so the library gives focus back and the toggle reports the close.
+    [Fact]
+    public async Task TheCloseButtonIsNamedAndClosesTheDialogAsEscapeDoes()
+    {
+        bool? open = null;
+        var dialog = Render<CmsDialog>(p => p
+            .Add(x => x.Title, "Discard changes?")
+            .Add(x => x.Open, true)
+            .Add(x => x.OpenChanged, v => open = v));
+        var host = dialog.Find("fluent-dialog");
+
+        var close = host.QuerySelector("fluent-button[aria-label='Close']").ShouldNotBeNull();
+        close.GetAttribute("title").ShouldBe("Close");
+        await close.ClickAsync(new());
+        JSInterop.Invocations.ShouldContain(i => i.Identifier == Hide && Equals(i.Arguments[0], host.Id));
+        await host.TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = host.Id, OldState = "open", NewState = "closed" });
+
+        open.ShouldBe(false);
+    }
+
+    // The library focuses the element with autofocus as the dialog opens; without it the close button, first in the document,
+    // would take focus, so every enabled wrapped control of the body and the actions carries it.
+    [Fact]
+    public void ADialogOpensOnItsFirstFieldAndADrawerOnItsFirstControlNotOnTheCloseButton()
+    {
+        Microsoft.AspNetCore.Components.RenderFragment fields = builder =>
+        {
+            builder.OpenComponent<CmsTextInput>(0);
+            builder.AddComponentParameter(1, nameof(CmsTextInput.Label), "Disabled");
+            builder.AddComponentParameter(2, nameof(CmsTextInput.Disabled), true);
+            builder.CloseComponent();
+            builder.OpenComponent<CmsTextInput>(3);
+            builder.AddComponentParameter(4, nameof(CmsTextInput.Label), "Value");
+            builder.CloseComponent();
+        };
+        Microsoft.AspNetCore.Components.RenderFragment apply = builder =>
+        {
+            builder.OpenComponent<CmsButton>(0);
+            builder.AddComponentParameter(1, nameof(CmsButton.ChildContent), (Microsoft.AspNetCore.Components.RenderFragment)(text => text.AddContent(0, "Apply")));
+            builder.CloseComponent();
+        };
+        var dialog = Render<CmsDialog>(p => p.Add(x => x.Title, "Add a filter").Add(x => x.ChildContent, fields).Add(x => x.Actions, apply));
+        var drawer = Render<CmsDrawer>(p => p.Add(x => x.Title, "Filters").Add(x => x.Actions, apply));
+
+        // The library focuses the first element with autofocus in the document: the enabled field, before the actions.
+        dialog.FindAll("[autofocus]")[0].Id.ShouldBe(dialog.FindAll("input")[1].Id);
+        dialog.FindAll("input")[0].HasAttribute("autofocus").ShouldBeFalse();
+        dialog.Find("fluent-button[aria-label='Close']").HasAttribute("autofocus").ShouldBeFalse();
+        drawer.FindAll("[autofocus]")[0].TextContent.Trim().ShouldBe("Apply");
+        drawer.Find("fluent-button[aria-label='Close']").HasAttribute("autofocus").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void TheDrawerHasTheCloseButtonTooAndADialogMayLeaveItOut()
+    {
+        var drawer = Render<CmsDrawer>(p => p.Add(x => x.Title, "Filters"));
+        var dialog = Render<CmsDialog>(p => p.Add(x => x.Title, "Your new key").Add(x => x.CloseButton, false));
+
+        drawer.FindAll("fluent-drawer fluent-button[aria-label='Close']").Count.ShouldBe(1);
+        dialog.FindAll("fluent-dialog fluent-button").ShouldBeEmpty();
+    }
+
+    // Removed from the page while open, the dialog raises no close of its own, so the wrapper hides it before its element goes
+    // and the library gives focus back to the opener as on any close.
+    [Fact]
+    public async Task ADialogRemovedWhileOpenIsHiddenSoFocusReturnsAndAClosedOneIsLeftAlone()
+    {
+        var open = Render<CmsDialog>(p => p.Add(x => x.Title, "Discard changes?").Add(x => x.Open, true));
+        var closed = Render<CmsDrawer>(p => p.Add(x => x.Title, "Filters"));
+        var (openId, closedId) = (open.Find("fluent-dialog").Id, closed.Find("fluent-drawer").Id);
+
+        await DisposeComponentsAsync();
+
+        JSInterop.Invocations.Count(i => i.Identifier == Hide && Equals(i.Arguments[0], openId)).ShouldBe(1);
+        JSInterop.Invocations.ShouldNotContain(i => i.Identifier == Hide && Equals(i.Arguments[0], closedId));
+    }
+
+    // A popover inside the dialog, such as a menu, toggles as the user works in it; the dialog's subtree is not drawn again.
+    [Fact]
+    public async Task AToggleInsideTheDialogDoesNotRenderItsSubtreeAgain()
+    {
+        var renders = 0;
+        var dialog = Render<CmsDialog>(p => p
+            .Add(x => x.Title, "Discard changes?")
+            .Add(x => x.Open, true)
+            .Add(x => x.ChildContent, builder => builder.AddContent(0, $"Drawn {++renders}")));
+        var drawn = renders;
+
+        await dialog.Find("fluent-dialog").TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = "menu", NewState = "open" });
+        await dialog.Find("fluent-dialog").TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = "menu", NewState = "closed" });
+
+        renders.ShouldBe(drawn);
+    }
+
     [Theory]
     [InlineData(CmsDrawerSide.End, "end")]
     [InlineData(CmsDrawerSide.Start, "start")]

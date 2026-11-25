@@ -6,7 +6,7 @@
 @inject IFocusService Focus
 @inject IStringLocalizer<AdminResources> L
 
-<CmsDrawer Side="CmsDrawerSide.End" Title="@AdminLabels.Type(Type, L)" Open="@shown" OpenChanged="OnDismissedAsync">
+<CmsDrawer Side="CmsDrawerSide.End" Title="@AdminLabels.Type(Type, L)" Open="@shown" OpenChanged="OnDismissedAsync" CloseButton="false">
     <ChildContent>
         @if (Open)
         {

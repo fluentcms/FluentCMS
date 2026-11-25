@@ -210,7 +210,7 @@ public sealed class ContentFormStatusTests : AdminTestContext
         var dialog = Dialog(app, "Discard the changes?");
         app.WaitForAssertion(() => dialog.Instance.Open.ShouldBeTrue());
         _content.Writes.ShouldBeEmpty();
-        dialog.FindAll("fluent-button").Select(button => button.TextContent.Trim()).ShouldBe(["Keep the changes", "Discard changes"]);
+        dialog.FindAll("fluent-button").Select(button => button.TextContent.Trim()).Where(text => text.Length > 0).ShouldBe(["Keep the changes", "Discard changes"]);
         DialogButton(dialog, "Keep the changes").Click();
         app.WaitForAssertion(() => dialog.Instance.Open.ShouldBeFalse());
         _content.Writes.ShouldBeEmpty();
@@ -247,7 +247,7 @@ public sealed class ContentFormStatusTests : AdminTestContext
         app.WaitForAssertion(() => dialog.Instance.Open.ShouldBeTrue());
         _content.Writes.ShouldBeEmpty();
         dialog.Find("p").TextContent.ShouldStartWith("The entry is taken off the site in en. Its other locales stay as they are");
-        dialog.FindAll("fluent-button").Select(button => button.TextContent.Trim()).ShouldBe(["Keep it published", "Unpublish"]);
+        dialog.FindAll("fluent-button").Select(button => button.TextContent.Trim()).Where(text => text.Length > 0).ShouldBe(["Keep it published", "Unpublish"]);
         DialogButton(dialog, "Unpublish").Click();
 
         app.WaitForAssertion(() => Badges(app).ShouldBe(["en Unpublished"]));

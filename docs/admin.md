@@ -9,6 +9,7 @@ This page says which distribution to take and how to sign in the first time. The
 | [Admin configuration](admin-configuration.md) | `config.json`, how a host builds it from `FluentCms:Admin`, an admin on another origin, the client `fluentcms-admin`, branding, cultures, preview and the rate limits |
 | [Writing an admin half](admin-plugins.md) | the admin half of a plugin, from `dotnet new fluentcms-plugin` |
 | [Translating the admin](admin-translating.md) | the resource files of a translation, the test of the keys and the pseudo-cultures |
+| [Accessibility of the admin](admin-accessibility.md) | what CI checks against WCAG 2.2, and the script and result table of the screen reader pass |
 | [Hosting the admin](admin-hosting.md) | the prebuilt static build on a static host or a CDN, with recipes |
 | [Host configuration](host-configuration.md#admin) | every key of `FluentCms:Admin`, what the host serves at `/admin` and the headers of the page |
 | [Run with Docker](docker.md#the-admin) | the admin in the reference image |

@@ -40,8 +40,8 @@ public sealed class RichTextFieldEditorTests : BunitContext
         var buttons = toolbar.QuerySelectorAll("button");
         buttons.Length.ShouldBe(RichTextFieldEditor.Buttons.Length - 1);
         buttons.Select(button => button.GetAttribute("aria-label")).ShouldBe(
-            ["Bold", "Italic", "Underline", "Strikethrough", "Code", "Paragraph", "Heading 1", "Heading 2", "Heading 3", "Bulleted list",
-                "Numbered list", "Quote", "Code block", "Horizontal line", "Link", "Link to an entry", "Embed media", "Undo", "Redo"]);
+            ["Bold, B", "Italic, I", "Underline, U", "Strikethrough, S", "Code", "Paragraph", "Heading 1, H1", "Heading 2, H2",
+                "Heading 3, H3", "Bulleted list", "Numbered list", "Quote", "Code block", "Horizontal line", "Link", "Link to an entry", "Embed media", "Undo", "Redo"]);
         buttons.ShouldAllBe(button => !string.IsNullOrEmpty(button.GetAttribute("aria-keyshortcuts")));
         buttons[0].GetAttribute("title").ShouldBe("Bold (Ctrl+B)");
         buttons[0].GetAttribute("aria-pressed").ShouldBe("false");
@@ -54,7 +54,7 @@ public sealed class RichTextFieldEditorTests : BunitContext
         var localizer = Services.GetRequiredService<IStringLocalizer<RichTextResources>>();
 
         foreach (var name in RichTextFieldEditor.Buttons.Select(button => button.Resource).Concat(
-            ["RichText.Toolbar.Label", "RichText.Toolbar.Shortcut", "RichText.Toolbar.Hint", "RichText.Link.Address", "RichText.Link.Help", "RichText.Link.Apply",
+            ["RichText.Toolbar.Label", "RichText.Toolbar.Shortcut", "RichText.Toolbar.Lettered", "RichText.Toolbar.Hint", "RichText.Link.Address", "RichText.Link.Help", "RichText.Link.Apply",
                 "RichText.Link.Remove", "RichText.Link.Cancel", "RichText.Link.Unsafe", "RichText.Kept.Media", "RichText.Kept.InlineBlock", "RichText.Editor.Unavailable",
                 "RichText.EntryLink.Label", "RichText.EntryLink.Type", "RichText.EntryLink.Choose", "RichText.EntryLink.Remove", "RichText.EntryLink.NoTypes",
                 "RichText.EntryLink.Current", "RichText.EntryLink.Title", "RichText.EntryLink.Missing", "RichText.EntryLink.Unreadable", "RichText.EntryLink.Unknown",

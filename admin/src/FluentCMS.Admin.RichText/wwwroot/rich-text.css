@@ -33,7 +33,7 @@
     cursor: pointer;
 }
 
-/* The glyph is drawn as an icon is, so that the button's name is its whole name alone (WCAG 2.5.3). */
+/* The glyph is drawn as an icon is; a glyph of letters is in the button's name too (WCAG 2.5.3). */
 .rich-text-glyph::before {
     content: attr(data-glyph);
 }

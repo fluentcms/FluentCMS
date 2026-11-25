@@ -30,6 +30,11 @@
     pointer-events: none;
 }
 
+/* The browser's slider is shorter than a target (WCAG 2.5.8). */
+.media-focal-sliders input[type="range"] {
+    block-size: var(--cms-target-size);
+}
+
 .media-focal-sliders {
     display: flex;
     flex-wrap: wrap;

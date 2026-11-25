@@ -32,12 +32,23 @@ export function returnFocus(opener) {
 
 // A delay lets a timer that gives focus back to a dialog's opener run first; timers of the page run in the order they expire.
 export function focusHeading(delay) {
-    setTimeout(() => {
-        const heading = document.querySelector("main h1");
-        if (heading instanceof HTMLElement) {
-            heading.focus();
-        }
-    }, delay);
+    setTimeout(() => focusShownHeading(document.activeElement, Date.now() + 2000), delay);
+}
+
+// A page may draw its heading only once it has read what it needs, as a list after an entry's form does, so the heading is
+// waited for, frame by frame, for two seconds at most, and taken only while focus is still where the route change left it.
+function focusShownHeading(left, until) {
+    // Focus on the body is focus lost with an element the page removed, not a place the user chose.
+    if (document.activeElement !== left && document.activeElement !== document.body) {
+        return;
+    }
+
+    const heading = document.querySelector("main h1");
+    if (heading instanceof HTMLElement) {
+        heading.focus();
+    } else if (Date.now() < until) {
+        requestAnimationFrame(() => focusShownHeading(left, until));
+    }
 }
 
 // The browser asks before the tab closes or reloads while a form has unsaved changes; the admin's own redirects turn it off

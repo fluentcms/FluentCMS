@@ -1,17 +1,26 @@
+using FluentCMS.Admin.Components.Resources;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace FluentCMS.Admin.Components;
 
 /// <summary>
 /// The parameters and the open state shared by <see cref="CmsDialog"/> and <see cref="CmsDrawer"/>: a modal dialog named by its
-/// title, which takes focus when it opens and gives it back to the control that opened it.
+/// title, which takes focus on its first control when it opens and gives it back to the control that opened it, also when it
+/// is removed from the page while open. Only the wrapped set derives from it.
 /// </summary>
-public abstract class CmsDialogBase : ComponentBase
+public abstract class CmsDialogBase : ComponentBase, IHandleEvent, IAsyncDisposable
 {
     private bool _shown;
     private bool _appliedOpen;
     private EventCallback<DialogToggleEventArgs>? _onToggle;
+    private RenderFragment? _closeTemplate;
+
+    // Only the set's two sealed dialogs derive from it (CmsDialogs.cs).
+    private protected CmsDialogBase()
+    {
+    }
 
     /// <summary>Gets or sets the title, shown at the top and naming the dialog for assistive technology.</summary>
     [Parameter, EditorRequired]
@@ -21,13 +30,20 @@ public abstract class CmsDialogBase : ComponentBase
     [Parameter]
     public bool Open { get; set; }
 
-    /// <summary>Gets or sets the callback raised when the user closes the dialog, by Escape or outside it.</summary>
+    /// <summary>Gets or sets the callback raised when the user closes the dialog, by Escape, outside it or by its close button.</summary>
     [Parameter]
     public EventCallback<bool> OpenChanged { get; set; }
 
     /// <summary>Gets or sets the callback raised once the dialog has closed, by the user or by <see cref="Open"/>.</summary>
     [Parameter]
     public EventCallback OnClosed { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the title shows a close button, which closes the dialog as Escape does. The default is
+    /// <see langword="true"/>; a dialog that the user leaves by one of its actions only leaves it out.
+    /// </summary>
+    [Parameter]
+    public bool CloseButton { get; set; } = true;
 
     /// <summary>Gets or sets the body of the dialog.</summary>
     [Parameter]
@@ -36,6 +52,9 @@ public abstract class CmsDialogBase : ComponentBase
     /// <summary>Gets or sets the actions at the bottom of the dialog, usually <see cref="CmsButton"/>s.</summary>
     [Parameter]
     public RenderFragment? Actions { get; set; }
+
+    [Inject]
+    private ICmsTextSource Texts { get; set; } = default!;
 
     internal FluentDialog? Dialog { get; set; }
 
@@ -49,12 +68,44 @@ public abstract class CmsDialogBase : ComponentBase
         builder.CloseElement();
     };
 
+    internal RenderFragment? CloseTemplate => !CloseButton ? null : _closeTemplate ??= builder =>
+    {
+        builder.OpenComponent<CmsButton>(0);
+        builder.AddComponentParameter(1, nameof(CmsButton.Appearance), CmsButtonAppearance.Subtle);
+        builder.AddComponentParameter(2, nameof(CmsButton.Icon), (CmsIconName?)CmsIconName.Dismiss);
+        builder.AddComponentParameter(3, nameof(CmsButton.Label), Texts.Text(CmsStrings.Close));
+        builder.AddComponentParameter(4, nameof(CmsButton.OnClick), EventCallback.Factory.Create(this, CloseAsync));
+        builder.CloseComponent();
+    };
+
+    // The body and the actions, whose wrapped controls carry autofocus (CmsDialogFocus); the close button is outside them.
+    internal RenderFragment? Content => ChildContent is null ? null : builder => Cascade(builder, ChildContent);
+
+    internal RenderFragment? ActionsContent => Actions is null ? null : builder => Cascade(builder, Actions);
+
     // The library raises OnStateChange only for dialogs opened through its service, so the toggle event is handled here.
     internal Dictionary<string, object> DialogAttributes => new(StringComparer.Ordinal)
     {
         ["aria-label"] = Title,
         ["ondialogtoggle"] = _onToggle ??= EventCallback.Factory.Create<DialogToggleEventArgs>(this, OnToggleAsync),
     };
+
+    /// <summary>
+    /// Hides a dialog that is removed from the page while open, before its element goes, so that the library gives focus
+    /// back to the control that opened it as on any close.
+    /// </summary>
+    /// <returns>A task that completes once the dialog is hidden.</returns>
+    public async ValueTask DisposeAsync()
+    {
+        GC.SuppressFinalize(this);
+        if (!_shown || Dialog is null)
+        {
+            return;
+        }
+
+        _shown = false;
+        await Dialog.HideAsync();
+    }
 
     /// <inheritdoc />
     protected override void OnParametersSet() => CmsGuard.Named(Title, GetType().Name, nameof(Title));
@@ -74,6 +125,21 @@ public abstract class CmsDialogBase : ComponentBase
             _shown = Open;
             await (Open ? Dialog.ShowAsync() : Dialog.HideAsync());
         }
+    }
+
+    // The toggle of a popover inside the dialog, such as a menu, and the close button change nothing the dialog draws, so
+    // they do not render its subtree again; the callbacks they raise render their own receivers.
+    Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem callback, object? arg) => callback.InvokeAsync(arg);
+
+    private Task CloseAsync() => Dialog?.HideAsync() ?? Task.CompletedTask;
+
+    private static void Cascade(RenderTreeBuilder builder, RenderFragment content)
+    {
+        builder.OpenComponent<CascadingValue<CmsDialogFocus>>(0);
+        builder.AddComponentParameter(1, nameof(CascadingValue<CmsDialogFocus>.Value), CmsDialogFocus.Instance);
+        builder.AddComponentParameter(2, nameof(CascadingValue<CmsDialogFocus>.IsFixed), true);
+        builder.AddComponentParameter(3, nameof(CascadingValue<CmsDialogFocus>.ChildContent), content);
+        builder.CloseComponent();
     }
 
     private async Task OnToggleAsync(DialogToggleEventArgs args)

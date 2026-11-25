@@ -3,27 +3,28 @@
 @inject IStringLocalizer<RolesResources> L
 
 <div data-grant="@Grant.Permission">
+    @* The spaces keep the name and each description apart, read and on the screen, and let a narrow window wrap the line. *@
     <p>
         <strong>@Grant.Permission</strong>
         @if (Catalogue.Entry(Grant.Permission) is { } entry)
         {
-            <span>@entry.Description</span>
+            @(" ")<span>@entry.Description</span>
             @if (Catalogue.PluginOf(Grant.Permission) is { } plugin)
             {
-                <span>@L["Roles.Grants.OfPlugin", plugin]</span>
+                @(" ")<span>@L["Roles.Grants.OfPlugin", plugin]</span>
             }
         }
         else if (Grant.Permission == GrantCatalogue.Everything)
         {
-            <span>@L["Roles.Grants.EverythingDescribed"]</span>
+            @(" ")<span>@L["Roles.Grants.EverythingDescribed"]</span>
         }
         else if (Catalogue.Matches(Grant.Permission).Count is var count and > 0)
         {
-            <span>@(count == 1 ? L["Roles.Grants.MatchesOne"] : L["Roles.Grants.Matches", count])</span>
+            @(" ")<span>@(count == 1 ? L["Roles.Grants.MatchesOne"] : L["Roles.Grants.Matches", count])</span>
         }
         else
         {
-            <span>@L["Roles.Grants.NotInCatalogue"]</span>
+            @(" ")<span>@L["Roles.Grants.NotInCatalogue"]</span>
         }
     </p>
     @if (!Catalogue.Holds(Grant.Permission, RoleSite))

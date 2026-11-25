@@ -5,7 +5,7 @@
 
 @* A link of a CmsNavigationSection, marked as the current page for assistive technology as well as by its look. *@
 <li>
-    <a class="cms-nav-link" href="@Href" aria-current="@(IsCurrent ? "page" : null)">
+    <a class="cms-nav-link" href="@Href" aria-current="@(IsCurrent ? "page" : null)" autofocus="@(DialogFocus is null ? null : true)">
         <span class="cms-nav-link-text">@ChildContent</span>
         @if (!string.IsNullOrEmpty(Badge))
         {
@@ -16,6 +16,10 @@
 </li>
 
 @code {
+    // In a drawer, the first control takes focus as it opens (CmsDialogFocus).
+    [CascadingParameter]
+    private CmsDialogFocus? DialogFocus { get; set; }
+
     // Relative to the app's base, such as "content/article"; "" is the start page.
     [Parameter, EditorRequired]
     public string Href { get; set; } = string.Empty;

@@ -14,17 +14,7 @@
     <CmsMenuItem Icon="CmsIconName.Person" OnClick="@(() => Navigation.NavigateTo(AccountRoute))">@L["Shell.UserMenu.Account"]</CmsMenuItem>
     @foreach (var (mode, key) in Themes)
     {
-        <CmsMenuItem @key="mode" Icon="@(Theme.Mode == mode ? CmsIconName.Checkmark : null)" OnClick="@(() => Theme.ChooseAsync(mode))">
-            @if (Theme.Mode == mode)
-            {
-                <span aria-hidden="true">@L[key]</span>
-                <span class="cms-visually-hidden">@L["Shell.UserMenu.CurrentTheme", L[key]]</span>
-            }
-            else
-            {
-                @L[key]
-            }
-        </CmsMenuItem>
+        <CmsMenuItem @key="mode" Checked="@(Theme.Mode == mode)" OnClick="@(() => Theme.ChooseAsync(mode))">@L[key]</CmsMenuItem>
     }
     <CmsMenuItem OnClick="SignOutAsync">@L["Shell.UserMenu.SignOut"]</CmsMenuItem>
 </CmsMenu>
@@ -41,8 +31,7 @@
 @code {
     public const string AccountRoute = AdministrationAreas.AccountRoute;
 
-    // The current theme is marked by a check and, for assistive technology, by text: the library raises the change of a
-    // checkbox or radio item again when its state is set back, so the items are plain ones.
+    // Radio items of the wrapped set, which act only on the user's choice (#3178).
     private static readonly (CmsThemeMode Mode, string Key)[] Themes =
     [
         (CmsThemeMode.System, "Shell.UserMenu.ThemeSystem"),

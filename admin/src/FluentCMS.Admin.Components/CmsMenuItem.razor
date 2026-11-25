@@ -1,8 +1,14 @@
 @namespace FluentCMS.Admin.Components
 
+@* With Checked, a radio item of its menu (menuitemradio with aria-checked), which acts only when the user checks it: the
+   library raises its change again when a sibling is checked or the state is set back, which made a choice flip back. *@
 <FluentMenuItem Disabled="@Disabled"
+                Role="@(Checked is null ? MenuItemRole.MenuItem : MenuItemRole.Radio)"
+                Checked="@(Checked == true)"
+                CheckedChanged="@OnCheckedChangedAsync"
+                aria-checked="@(Checked is { } chosen ? (chosen ? "true" : "false") : null)"
                 IconStart="@(Icon is { } icon ? CmsIcons.Get(icon) : null)"
-                OnClick="@(() => OnClick.InvokeAsync())">@ChildContent</FluentMenuItem>
+                OnClick="@(() => Checked is null ? OnClick.InvokeAsync() : Task.CompletedTask)">@ChildContent</FluentMenuItem>
 
 @code {
     [Parameter]
@@ -14,6 +20,13 @@
     [Parameter]
     public bool Disabled { get; set; }
 
+    // Whether this radio item is the chosen one of its group, which separators bound; null for a plain item.
+    [Parameter]
+    public bool? Checked { get; set; }
+
+    // A plain item's choice, or a radio item's once the user checks it.
     [Parameter]
     public EventCallback OnClick { get; set; }
+
+    private Task OnCheckedChangedAsync(bool? value) => value == true && Checked == false ? OnClick.InvokeAsync() : Task.CompletedTask;
 }

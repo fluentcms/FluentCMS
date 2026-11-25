@@ -14,7 +14,8 @@ namespace FluentCMS.Admin.EndToEnd;
 // The accessibility sweep (spec 4.18, 7): axe-core checks every view of AccessibilityViews in the light and the dark theme,
 // signed in once as a Super Admin and walking the views by the app's own navigation, and once more right to left under ar-XB,
 // which needs a publish with the pseudo-cultures. A violation that AccessibilityExceptions does not cover fails the sweep,
-// which names each one with its view, rule and element.
+// which names each one with its view, rule and element. The light and the right-to-left sweeps also ask the checks of
+// Wcag22 of each view, which the theme does not change: the size of every target, no motion, and a page at 320 pixels.
 public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
 {
     private const string PreviewTemplate = EndToEndHost.PreviewOrigin + "/showcase/{id}?preview={token}";
@@ -48,10 +49,10 @@ public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
     }
 
     [Fact]
-    public Task EveryViewPassesInTheLightTheme() => SweepAsync("light", culture: null);
+    public Task EveryViewPassesInTheLightTheme() => SweepAsync("light", culture: null, wcag22: true);
 
     [Fact]
-    public Task EveryViewPassesInTheDarkTheme() => SweepAsync("dark", culture: null);
+    public Task EveryViewPassesInTheDarkTheme() => SweepAsync("dark", culture: null, wcag22: false);
 
     // The image ships English alone, so the run on the image leaves this case out by its trait.
     [Fact]
@@ -60,7 +61,7 @@ public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
     {
         Assert.SkipUnless(Repository.PseudoCultures, "The host is published without the pseudo-cultures: build with -p:FluentCmsAdminPseudoCultures=true.");
         Assert.SkipUnless(EndToEndHost.Culture == PseudoCulture.RightToLeft, $"The run's culture is {EndToEndHost.Culture}, not {PseudoCulture.RightToLeft}.");
-        await SweepAsync("light", PseudoCulture.RightToLeft);
+        await SweepAsync("light", PseudoCulture.RightToLeft, wcag22: true);
     }
 
     // The branding's accent as an operator sets it in config.json (spec 2.5): the color on a primary button is black or white,
@@ -160,7 +161,7 @@ public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
     private static double Linear(double channel) =>
         channel / 255 <= 0.04045 ? channel / 255 / 12.92 : Math.Pow(((channel / 255) + 0.055) / 1.055, 2.4);
 
-    private async Task SweepAsync(string theme, string? culture)
+    private async Task SweepAsync(string theme, string? culture, bool wcag22)
     {
         var (data, administrator, withoutSite) = await DataAsync();
         var browser = await OpenBrowserAsync();
@@ -215,6 +216,16 @@ public sealed class AccessibilityTests(EndToEndHost host) : BrowserTest(host)
             }
 
             violations.AddRange(await Axe.ViolationsAsync(sweep.Checked, view.Name));
+            if (wcag22)
+            {
+                violations.AddRange(await Wcag22.TargetSizeAsync(sweep.Checked, view.Name));
+                violations.AddRange(await Wcag22.MotionAsync(sweep.Checked, view.Name));
+                if (view.Routes.Count > 0)
+                {
+                    violations.AddRange(await Wcag22.ReflowAsync(sweep.Checked, view.Name));
+                }
+            }
+
             if (sweep.Checked != tab.Page)
             {
                 await sweep.Checked.CloseAsync();
