@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using FluentCMS.Admin.Hosting;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Identity;
 using FluentCMS.Data.Sqlite;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -24,6 +25,12 @@ public sealed class HostingStartTests : IAsyncDisposable
     private const string AdminClientId = "fluentcms-admin";
 
     private const string OtherClientId = "website";
+
+    private const string ThirdClientId = "kiosk";
+
+    // Core's log events of the clients the options no longer list: deleted, and kept for a list of none.
+    private const int ClientDeleted = 9002;
+    private const int ClientsKept = 9003;
 
     private readonly DirectoryInfo _directory = Directory.CreateTempSubdirectory("fluentcms-admin-hosting-start-");
 
@@ -143,6 +150,135 @@ public sealed class HostingStartTests : IAsyncDisposable
         (await ClientAsync(OtherClientId)).ShouldBe(other);
     }
 
+    // A start that lost FluentCms:Clients, with the admin on by default: the client the admin adds does not make the list one
+    // of the operator's, so the host keeps the clients it registered, with their sessions and tokens, as it did without it.
+    [Fact]
+    public async Task LosingTheClientsSectionKeepsTheConfiguredClientsWithTheAdminOnByDefault()
+    {
+        await StartAsync(WithAnotherClient(Unset()));
+        var other = (await ClientAsync(OtherClientId)).ShouldNotBeNull();
+        var (authorization, token) = await GrantAsync(OtherClientId);
+
+        var logs = new LogCapture();
+        await StartAsync(Unset(), logs);
+
+        (await ClientAsync(OtherClientId)).ShouldBe(other);
+        (await AdminClientAsync()).ShouldNotBeNull();
+        (await ExistsAsync(authorization, token)).ShouldBe((true, true));
+        logs.Entries.ShouldContain((ClientsKept, LogLevel.Warning));
+        logs.Entries.ShouldNotContain(entry => entry.Id == ClientDeleted);
+    }
+
+    // The control: while the operator still lists a client, one it no longer lists goes, with the admin on as with it off.
+    [Fact]
+    public async Task WithAClientStillListedOneNoLongerListedIsDeletedWithTheAdminOn()
+    {
+        var both = WithAnotherClient(Unset());
+        both[$"FluentCms:Clients:Applications:{ThirdClientId}:RedirectUris:0"] = "https://kiosk.example.com/callback";
+        both[$"FluentCms:Clients:Applications:{ThirdClientId}:Scopes:0"] = "openid";
+        await StartAsync(both);
+        var other = (await ClientAsync(OtherClientId)).ShouldNotBeNull();
+        (await ClientAsync(ThirdClientId)).ShouldNotBeNull();
+        var (authorization, token) = await GrantAsync(ThirdClientId);
+
+        await StartAsync(WithAnotherClient(Unset()));
+
+        (await ClientAsync(OtherClientId)).ShouldBe(other);
+        (await ClientAsync(ThirdClientId)).ShouldBeNull();
+        (await ExistsAsync(authorization, token)).ShouldBe((false, false));
+    }
+
+    // A deployment that lived with a list of none before the upgrade, the admin off as it was by default, keeps its clients
+    // at the first start with the admin on.
+    [Fact]
+    public async Task AListOfNoneBeforeTheUpgradeKeepsItsClientsWithTheAdminOn()
+    {
+        await StartAsync(WithAnotherClient(Settings(enabled: false)));
+        var other = (await ClientAsync(OtherClientId)).ShouldNotBeNull();
+        await StartAsync(Settings(enabled: false));
+        (await ClientAsync(OtherClientId)).ShouldBe(other);
+
+        await StartAsync(Unset());
+
+        (await ClientAsync(OtherClientId)).ShouldBe(other);
+        (await AdminClientAsync()).ShouldNotBeNull();
+    }
+
+    // A client the host lists in code with Configure<ClientOptions>, after the binding of the section, counts as listed.
+    [Fact]
+    public async Task AClientTheHostListsWithConfigureCountsAsListed()
+    {
+        await StartAsync(WithAnotherClient(Unset()));
+        (await ClientAsync(OtherClientId)).ShouldNotBeNull();
+
+        await StartAsync(Unset(), services: services => services.Configure<ClientOptions>(options => options.Applications[ThirdClientId] = Public(ThirdClientId)));
+
+        (await ClientAsync(ThirdClientId)).ShouldNotBeNull();
+        (await ClientAsync(OtherClientId)).ShouldBeNull();
+    }
+
+    // Clients the host lists in a post-configure of its own are the operator's too, whatever order it runs in: one it drops
+    // goes, with its session, as one dropped from the configuration does.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AClientDroppedFromTheHostsPostConfigureIsDeleted(bool adminOn)
+    {
+        var settings = adminOn ? Unset() : Settings(enabled: false);
+        await StartAsync(settings, services: PostConfigured(OtherClientId, ThirdClientId));
+        var other = (await ClientAsync(OtherClientId)).ShouldNotBeNull();
+        var (authorization, token) = await GrantAsync(ThirdClientId);
+
+        var logs = new LogCapture();
+        await StartAsync(settings, logs, PostConfigured(OtherClientId));
+
+        (await ClientAsync(OtherClientId)).ShouldBe(other);
+        (await ClientAsync(ThirdClientId)).ShouldBeNull();
+        (await ExistsAsync(authorization, token)).ShouldBe((false, false));
+        logs.Entries.ShouldContain((ClientDeleted, LogLevel.Warning));
+        logs.Entries.ShouldNotContain(entry => entry.Id == ClientsKept);
+    }
+
+    // A container built over the same services before the host's own, as a host's code may build one, runs the admin's
+    // post-configure on the same options first; a lost section still keeps the clients.
+    [Fact]
+    public async Task ASecondContainerBeforeTheHostsKeepsTheClientsOfALostSection()
+    {
+        await StartAsync(WithAnotherClient(Unset()));
+        var other = (await ClientAsync(OtherClientId)).ShouldNotBeNull();
+        var (authorization, token) = await GrantAsync(OtherClientId);
+
+        var logs = new LogCapture();
+        await StartAsync(Unset(), logs, services =>
+        {
+            using var early = services.BuildServiceProvider();
+            early.GetRequiredService<ClientOptions>().Applications.ShouldContainKey(AdminClientId);
+        });
+
+        (await ClientAsync(OtherClientId)).ShouldBe(other);
+        (await ExistsAsync(authorization, token)).ShouldBe((true, true));
+        logs.Entries.ShouldContain((ClientsKept, LogLevel.Warning));
+        logs.Entries.ShouldNotContain(entry => entry.Id == ClientDeleted);
+    }
+
+    // The admin's client under a new id is the package's only client, so the options list none of the operator's and the row
+    // under the old id is kept, a public client whose addresses are the host's own, as for a lost section.
+    [Fact]
+    public async Task AChangedAdminClientIdKeepsTheRowOfTheOldOne()
+    {
+        await StartAsync(Unset());
+        var old = (await AdminClientAsync()).ShouldNotBeNull();
+
+        var renamed = Unset();
+        renamed["FluentCms:Clients:AdminClientId"] = "team-admin";
+        var logs = new LogCapture();
+        await StartAsync(renamed, logs);
+
+        (await AdminClientAsync()).ShouldBe(old);
+        (await ClientAsync("team-admin")).ShouldNotBeNull();
+        logs.Entries.ShouldContain((ClientsKept, LogLevel.Warning));
+    }
+
     [Theory]
     [InlineData("/..")]
     [InlineData("/.")]
@@ -212,6 +348,70 @@ public sealed class HostingStartTests : IAsyncDisposable
         ["FluentCms:Admin:Enabled"] = enabled ? "true" : "false",
     };
 
+    // Nothing set about the admin, so that it is on by its default.
+    private static Dictionary<string, string?> Unset()
+    {
+        var settings = Settings(enabled: true);
+        settings.Remove("FluentCms:Admin:Enabled");
+        return settings;
+    }
+
+    private static ClientRegistration Public(string clientId)
+    {
+        var client = new ClientRegistration();
+        client.RedirectUris.Add($"https://{clientId}.example.com/callback");
+        client.Scopes.Add("openid");
+        return client;
+    }
+
+    // The host's own post-configure of the clients, which lists these.
+    private static Action<IServiceCollection> PostConfigured(params string[] clientIds) => services => services.PostConfigure<ClientOptions>(options =>
+    {
+        foreach (var clientId in clientIds)
+        {
+            options.Applications[clientId] = Public(clientId);
+        }
+    });
+
+    // A session of the client: a permanent authorization and a refresh token under it.
+    private async Task<(string Authorization, string Token)> GrantAsync(string clientId)
+    {
+        await using var scope = _app!.Services.CreateAsyncScope();
+        var applications = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var authorizations = scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
+        var tokens = scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>();
+        var application = (await applications.FindByClientIdAsync(clientId, AdminHost.Token)).ShouldNotBeNull();
+        var applicationId = await applications.GetIdAsync(application, AdminHost.Token);
+        var now = DateTimeOffset.UtcNow;
+        var authorization = await authorizations.CreateAsync(new OpenIddictAuthorizationDescriptor
+        {
+            ApplicationId = applicationId,
+            Subject = "editor",
+            Status = OpenIddictConstants.Statuses.Valid,
+            Type = OpenIddictConstants.AuthorizationTypes.Permanent,
+            CreationDate = now,
+        }, AdminHost.Token);
+        var authorizationId = (await authorizations.GetIdAsync(authorization, AdminHost.Token)).ShouldNotBeNull();
+        var token = await tokens.CreateAsync(new OpenIddictTokenDescriptor
+        {
+            ApplicationId = applicationId,
+            AuthorizationId = authorizationId,
+            Subject = "editor",
+            Status = OpenIddictConstants.Statuses.Valid,
+            Type = OpenIddictConstants.TokenTypeHints.RefreshToken,
+            CreationDate = now,
+            ExpirationDate = now.AddDays(1),
+        }, AdminHost.Token);
+        return (authorizationId, (await tokens.GetIdAsync(token, AdminHost.Token)).ShouldNotBeNull());
+    }
+
+    private async Task<(bool Authorization, bool Token)> ExistsAsync(string authorization, string token)
+    {
+        await using var scope = _app!.Services.CreateAsyncScope();
+        return (await scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>().FindByIdAsync(authorization, AdminHost.Token) is not null,
+            await scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>().FindByIdAsync(token, AdminHost.Token) is not null);
+    }
+
     private static List<FluentCmsConfigurationException> Refusals(Exception exception) => exception switch
     {
         AggregateException aggregate => [.. aggregate.InnerExceptions.SelectMany(Refusals)],
@@ -257,7 +457,7 @@ public sealed class HostingStartTests : IAsyncDisposable
     private string ConnectionString => $"Data Source={Path.Combine(_directory.FullName, "cms.db")}";
 
     // Stops the host a test started before, if any, and starts it again on the same database.
-    private async Task<HttpClient> StartAsync(Dictionary<string, string?> settings, LogCapture? logs = null)
+    private async Task<HttpClient> StartAsync(Dictionary<string, string?> settings, LogCapture? logs = null, Action<IServiceCollection>? services = null)
     {
         await StopAsync();
 
@@ -276,6 +476,7 @@ public sealed class HostingStartTests : IAsyncDisposable
         }
 
         builder.Services.AddFluentCms(cms => cms.UseSqlite(ConnectionString).AddAdmin());
+        services?.Invoke(builder.Services);
 
         _app = builder.Build();
         _app.UseFluentCms();

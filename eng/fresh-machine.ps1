@@ -265,7 +265,7 @@ function Assert-TemplateVersions([string] $directory) {
 }
 
 function New-Host([string] $name, [string] $provider, [string] $directory) {
-    Invoke-Checked dotnet (@('new', 'fluentcms', '-n', $name, '-o', $directory, '--provider', $provider, '--sample', 'blog', '--debug:custom-hive', $hive) + $script:hostArguments)
+    Invoke-Checked dotnet @('new', 'fluentcms', '-n', $name, '-o', $directory, '--provider', $provider, '--sample', 'blog', '--debug:custom-hive', $hive)
 }
 
 # Whether the installed template has the option, which a template of an earlier release may not.
@@ -758,11 +758,8 @@ try {
         Invoke-Checked dotnet @('new', 'install', "FluentCMS.Templates@$Version", '--debug:custom-hive', $hive)
     }
 
-    # A release before A-47 publishes no admin package, so a host with the admin cannot restore from a URL feed and is made
-    # with --admin false there. The template of 1.0.0-preview.1 has no --admin, and its host no admin.
-    $hostKnowsAdmin = Test-TemplateOption 'fluentcms' '--admin'
-    $script:hostArguments = if ($feedIsUrl -and $hostKnowsAdmin) { @('--admin', 'false') } else { @() }
-    $script:hostHasAdmin = $hostKnowsAdmin -and -not $feedIsUrl
+    # The template of 1.0.0-preview.1 has no --admin, and its host no admin to read.
+    $script:hostHasAdmin = Test-TemplateOption 'fluentcms' '--admin'
 
     Test-Provider 'sqlite' @{} @{}
     if ($withPostgreSql) {
@@ -772,14 +769,8 @@ try {
     $plugin = 'Acme.FreshMachine'
     $pluginDirectory = Join-Path $WorkDirectory $plugin
     Start-Step "dotnet new fluentcms-plugin -n $plugin, built and tested"
-    $pluginArguments = @('new', 'fluentcms-plugin', '-n', $plugin, '-o', $pluginDirectory, '--debug:custom-hive', $hive)
-    # A release before A-47 publishes no admin package, so the admin half cannot restore from a URL feed. The template of
-    # 1.0.0-preview.1 has neither the half nor --admin.
-    if ($feedIsUrl -and (Test-TemplateOption 'fluentcms-plugin' '--admin')) {
-        $pluginArguments += @('--admin', 'false')
-    }
     Use-Location $WorkDirectory {
-        Invoke-Checked dotnet $pluginArguments
+        Invoke-Checked dotnet @('new', 'fluentcms-plugin', '-n', $plugin, '-o', $pluginDirectory, '--debug:custom-hive', $hive)
     }
     Assert-TemplateVersions $pluginDirectory
     Invoke-Checked dotnet @('restore', (Join-Path $pluginDirectory "$plugin.slnx"))

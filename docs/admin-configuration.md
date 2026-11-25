@@ -52,7 +52,7 @@ A host with `FluentCMS.Admin.Hosting` answers `/admin/config.json` itself, with 
 
 | Key | Gives |
 | --- | --- |
-| `FluentCms:Admin:Enabled` | Whether the host serves the admin and registers its client at all. |
+| `FluentCms:Admin:Enabled` | Whether the host serves the admin and registers its client at all; true unless set to false. |
 | `FluentCms:Admin:ApiBaseUrl` | `apiBaseUrl`. Unset, it is `FluentCms:PublicOrigin` with the path base, or the request's scheme, host and path base in Development. |
 | `FluentCms:Admin:Branding:Name` | `branding.name` |
 | `FluentCms:Admin:Branding:LogoUrl` | `branding.logoUrl`; the origin of an absolute URL joins the page's `img-src`. |
@@ -121,6 +121,8 @@ While `FluentCms:Admin:Enabled` is true, `cms.AddAdmin()` registers the admin's 
 - **The redirect URIs of each admin that signs in with it**: `{base}authentication/login-callback` among `RedirectUris` and `{base}` among `PostLogoutRedirectUris`, where `{base}` is the address the admin is served at, with its trailing slash, such as `https://cms.example.com/admin/` for the admin of the host itself.
 - **The admin pool.** `Pool` stays at its default, `Admins`; a client of the member pool under the admin's id stops the host at start.
 - **No consent page.** `RequireConsent` stays at its default, false.
+
+While the admin is on, the host starts with a listed client that breaks the first three, and its startup report (event id 9131, and `GET /api/management/v1/system/diagnostics`) names each: `admin-client-secret` for a `Secret`, `admin-client-scopes` with those of `profile`, `email` and `management` it lacks, and `admin-client-redirect-uri` when its `RedirectUris` hold none of the admin at `/admin`. The report never shows the secret. A host that serves no admin of its own, since its admin is on another origin, sets `FluentCms:Admin:Enabled` to false and gets none of them.
 
 Decision record [0007](decisions/0007-admin-sign-in-flow.md) has the admin's side of the sign-in, and [authorization server](host-configuration.md#authorization-server) the server's.
 

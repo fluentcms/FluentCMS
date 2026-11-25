@@ -8,14 +8,17 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Admin.Hosting;
 
 // What MapFluentCmsAdmin answers besides the app's files: index.html with its base set, config.json from FluentCms:Admin,
 // and the page's Content-Security-Policy. The addresses come from FluentCms:PublicOrigin, or from the request in
-// Development only, so that a forged Host never reaches a document; AdminClientRegistration stops the host at start when
-// neither is there.
-internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origin, ReverseProxyOptions proxy, ClientOptions clients, IWebHostEnvironment environment)
+// Development only, so that a forged Host never reaches a document; without either the host does not start, refused with
+// FCMS1105, or by AdminClientRegistration with FCMS1101 once AllowRequestOrigin lifts that one. The client options are
+// read at the first config.json and not when the admin is mapped, so that a host building for a command, such as an init
+// container's migrate, needs no public origin.
+internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origin, ReverseProxyOptions proxy, IOptions<ClientOptions> clients, IWebHostEnvironment environment)
 {
     public const string Path = "/admin";
     public const string CallbackPath = "/authentication/login-callback";
@@ -41,7 +44,7 @@ internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origi
             json.WriteStartObject();
             json.WriteString("apiBaseUrl", ApiBaseUrl(request));
             json.WriteString("authority", Authority(request));
-            json.WriteString("clientId", clients.AdminClientId);
+            json.WriteString("clientId", clients.Value.AdminClientId);
             json.WriteStartArray("scopes");
             foreach (var scope in Scopes)
             {

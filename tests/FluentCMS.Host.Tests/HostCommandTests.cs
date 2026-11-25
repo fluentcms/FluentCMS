@@ -90,6 +90,8 @@ public sealed class HostCommandTests : IDisposable
         // As the image sets it, with the database in the test's directory, and the logs on standard error, as the tool asks.
         start.Environment["ConnectionStrings__FluentCms"] = $"Data Source={Path.Combine(_directory.FullName, "cms.db")};Pooling=False";
         start.Environment["Logging__Console__LogToStandardErrorThreshold"] = "Trace";
+        // The admin's files are in the content root of the image's publish, and not in this one of a build.
+        start.Environment["FluentCms__Admin__Enabled"] = "false";
         start.Environment.Remove("ASPNETCORE_ENVIRONMENT");
         start.Environment.Remove("DOTNET_ENVIRONMENT");
         foreach (var (name, value) in variables)

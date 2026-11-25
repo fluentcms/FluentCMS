@@ -1,0 +1,29 @@
+#nullable enable
+const FluentCMS.Admin.Hosting.AdminOptions.Section = "Admin" -> string!
+FluentCMS.Admin.Hosting.AdminBrandingOptions
+FluentCMS.Admin.Hosting.AdminBrandingOptions.AccentColor.get -> string?
+FluentCMS.Admin.Hosting.AdminBrandingOptions.AccentColor.set -> void
+FluentCMS.Admin.Hosting.AdminBrandingOptions.AdminBrandingOptions() -> void
+FluentCMS.Admin.Hosting.AdminBrandingOptions.FaviconUrl.get -> string?
+FluentCMS.Admin.Hosting.AdminBrandingOptions.FaviconUrl.set -> void
+FluentCMS.Admin.Hosting.AdminBrandingOptions.LogoUrl.get -> string?
+FluentCMS.Admin.Hosting.AdminBrandingOptions.LogoUrl.set -> void
+FluentCMS.Admin.Hosting.AdminBrandingOptions.Name.get -> string?
+FluentCMS.Admin.Hosting.AdminBrandingOptions.Name.set -> void
+FluentCMS.Admin.Hosting.AdminCultureOptions
+FluentCMS.Admin.Hosting.AdminCultureOptions.AdminCultureOptions() -> void
+FluentCMS.Admin.Hosting.AdminCultureOptions.Default.get -> string?
+FluentCMS.Admin.Hosting.AdminCultureOptions.Default.set -> void
+FluentCMS.Admin.Hosting.AdminCultureOptions.Offered.get -> System.Collections.Generic.IList<string!>!
+FluentCMS.Admin.Hosting.AdminHostingExtensions
+FluentCMS.Admin.Hosting.AdminOptions
+FluentCMS.Admin.Hosting.AdminOptions.AdminOptions() -> void
+FluentCMS.Admin.Hosting.AdminOptions.ApiBaseUrl.get -> string?
+FluentCMS.Admin.Hosting.AdminOptions.ApiBaseUrl.set -> void
+FluentCMS.Admin.Hosting.AdminOptions.Branding.get -> FluentCMS.Admin.Hosting.AdminBrandingOptions!
+FluentCMS.Admin.Hosting.AdminOptions.Cultures.get -> FluentCMS.Admin.Hosting.AdminCultureOptions!
+FluentCMS.Admin.Hosting.AdminOptions.Enabled.get -> bool
+FluentCMS.Admin.Hosting.AdminOptions.Enabled.set -> void
+FluentCMS.Admin.Hosting.AdminOptions.PreviewOrigins.get -> System.Collections.Generic.IList<string!>!
+static FluentCMS.Admin.Hosting.AdminHostingExtensions.AddAdmin(this FluentCMS.Core.DependencyInjection.FluentCmsBuilder! cms, System.Action<FluentCMS.Admin.Hosting.AdminOptions!>? configure = null) -> FluentCMS.Core.DependencyInjection.FluentCmsBuilder!
+static FluentCMS.Admin.Hosting.AdminHostingExtensions.MapFluentCmsAdmin(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string? staticAssetsManifestPath = null) -> Microsoft.AspNetCore.Builder.IEndpointConventionBuilder!

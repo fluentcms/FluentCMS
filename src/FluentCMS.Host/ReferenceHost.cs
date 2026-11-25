@@ -66,7 +66,7 @@ public static class ReferenceHost
             cms.AddPlugin<AiAssistPlugin>();
             cms.AddPlugin<SearchPlugin>();
 
-            // Off until FluentCms:Admin:Enabled is true; on, the admin client is registered and the app served at /admin.
+            // On unless FluentCms:Admin:Enabled is false: the admin client is registered and the app served at /admin.
             cms.AddAdmin();
 
             // Types that are data have no compiled migrations, so on SQLite their tables follow the schema at start (Q2).

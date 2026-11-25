@@ -1,6 +1,7 @@
 using System.Text;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity;
+using FluentCMS.Diagnostics;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -18,8 +19,9 @@ public static class AdminHostingExtensions
     private const string Surface = "admin";
 
     // The admin of admin spec 6.1, with FluentCms:Admin from configuration winning over what configure sets. While
-    // FluentCms:Admin:Enabled is true it registers the admin's client under cms.Clients.AdminClientId, unless the host or
-    // FluentCms:Clients lists one there, which then wins whole. While it is false and the options list no client, it deletes
+    // FluentCms:Admin:Enabled is true, its default, it registers the admin's client under cms.Clients.AdminClientId, unless the
+    // host or FluentCms:Clients lists one there, which then wins whole and which the startup report names when the admin cannot
+    // sign in with it. While it is false and the options list no client, it deletes
     // the client it registered before; while they list any, the host deletes it, as any client they no longer list.
     public static FluentCmsBuilder AddAdmin(this FluentCmsBuilder cms, Action<AdminOptions>? configure = null)
     {
@@ -33,7 +35,9 @@ public static class AdminHostingExtensions
         var options = new AdminOptions();
         configure?.Invoke(options);
         cms.Services.AddFluentCmsOptions(AdminOptions.Section, options, admin => admin.Validate());
-        cms.Services.AddSingleton<IPostConfigureOptions<ClientOptions>, AdminClientRegistration>();
+        cms.Services.AddSingleton<AdminClientRegistration>();
+        cms.Services.AddSingleton<IPostConfigureOptions<ClientOptions>>(services => services.GetRequiredService<AdminClientRegistration>());
+        cms.Services.AddSingleton<IInsecureDefaultSource, AdminClientReport>();
         cms.Services.AddHostedService<AdminClientRemoval>();
         cms.Services.AddSingleton<AdminSite>();
         return cms;

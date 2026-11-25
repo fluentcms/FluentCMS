@@ -84,6 +84,8 @@ public sealed class ReferenceHostSchemaApplyTests : IDisposable
             ["FluentCms:Security:AllowGeneratedSigningKey"] = "true",
             ["FluentCms:Security:AllowUnencryptedKeyRing"] = "true",
             ["FluentCms:Security:AllowRequestOrigin"] = "true",
+            // The admin needs a public origin, and this host has no build of it to serve.
+            ["FluentCms:Admin:Enabled"] = "false",
         };
 
         if (types == ReferenceHost.SchemaVariable)

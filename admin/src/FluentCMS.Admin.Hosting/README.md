@@ -15,7 +15,7 @@ app.MapFluentCms();
 app.MapFluentCmsAdmin();
 ```
 
-Turn the admin on with `FluentCms:Admin:Enabled`. Which app the host serves depends on its project file:
+The admin is on unless `FluentCms:Admin:Enabled` is false. Which app the host serves depends on its project file:
 
 - **The package's first-party build.** A host that references this package and no admin app's project serves the build the package carries: `FluentCMS.Admin.App` with the first-party admin halves, the same files as `fluentcms-admin-{version}.zip` of the release. They become the host's static web assets, so its build serves them, as `dotnet run` does, and its publish copies them into `wwwroot` with their compressed copies.
 - **An app project of the host's own.** A host that also references an admin app's project, such as one made with `dotnet new fluentcms-admin` to hold a team's own admin halves, serves that app, and the package's build stays out of the host. The package tells an admin app by `fluentcms-admin.plugins.json`, the manifest the app's build gathers from its halves, so the reference itself is the switch: remove it and the host serves the package's build again. A WebAssembly project that is no admin app, such as the `.Client` project of a Blazor Web App, is not taken for one.

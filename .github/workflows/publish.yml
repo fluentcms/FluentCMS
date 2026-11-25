@@ -218,15 +218,7 @@ jobs:
       - name: Pack
         run: dotnet pack FluentCMS.slnx -c Release -o artifacts/packages -p:Version="$VERSION" -p:FluentCmsAdminPublishDir="$PWD/artifacts/admin"
 
-      # The admin is not part of a release yet, so its packages and the admin halves of the plugins, which depend on them, are
-      # packed but never pushed. A-47 removes this step.
-      - name: Leave out the admin packages
-        shell: bash
-        run: |
-          rm -f artifacts/packages/FluentCMS.Admin*.nupkg artifacts/packages/FluentCMS.Admin*.snupkg
-          rm -f artifacts/packages/FluentCMS.Plugins.*.Admin.[0-9]*.nupkg artifacts/packages/FluentCMS.Plugins.*.Admin.[0-9]*.snupkg
-
-      - name: Check that no package depends on one left out
+      - name: Check that no package depends on one that is not packed
         run: dotnet run eng/check-dependencies.cs -- artifacts/packages
 
       - name: Set up Node
