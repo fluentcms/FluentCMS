@@ -335,12 +335,17 @@ internal sealed class RefusedCount
     };
 
     // Why the wait ended, with the tab's calls from its start and its last ones before it, which show whether the browser sent
-    // the call and saw an answer.
+    // the call and saw an answer, and whether the browser stopped reporting the tab's calls at the sign-in's return.
     public Exception Explained(Exception timeout, AdminTab tab, long from)
     {
         var why = Count > 0
             ? $"The call was answered 401 {Count} time(s), and the admin did not send it again after a refresh within {AdminBrowser.Wait.TotalSeconds:0} s."
             : $"No answer that matched came within {AdminBrowser.Wait.TotalSeconds:0} s.";
+        if (tab.SilentSinceSignIn() is { } silent)
+        {
+            why += Environment.NewLine + silent;
+        }
+
         return new TimeoutException(
             string.Join(Environment.NewLine, why, "The tab's calls from the start of the wait:", tab.CallsSince(from), "Its last calls before the wait:", tab.CallsBefore(from)),
             timeout);
