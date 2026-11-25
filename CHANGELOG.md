@@ -6,9 +6,11 @@ The releases of FluentCMS, newest first. Each links to its notes, which name eve
 
 Every package, the image of the reference host and `@fluentcms/client` carry one version. A version with a pre-release part, such as `1.0.0-preview.1`, is a preview: it may break the public contract and makes no promise to upgrade a database. From 1.0.0 the contract packages (`FluentCMS.Sdk`, `FluentCMS.Plugins.Abstractions`, `FluentCMS.Admin.Abstractions` and `FluentCMS.Admin.Components`) follow semantic versioning. [Releasing](docs/releasing.md) has the details.
 
-## 1.0.0-preview.2 (not released yet)
+## 1.0.0-preview.2 (25 Nov 2026)
 
-The second preview, the first with the admin. Notes in progress: [1.0.0-preview.2](docs/releases/1.0.0-preview.2.md).
+The second preview, the first with the admin, in its three distributions: served at `/admin` by the reference image and by a host of `dotnet new fluentcms`, a prebuilt static build on the GitHub release, and an app of your own from `dotnet new fluentcms-admin`.
+
+[Notes](docs/releases/1.0.0-preview.2.md) and [GitHub release](https://github.com/fluentcms/FluentCMS/releases/tag/v1.0.0-preview.2).
 
 ## 1.0.0-preview.1 (16 Nov 2026)
 

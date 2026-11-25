@@ -4,7 +4,7 @@ What the project's own planning documents say comes next. It gives no dates. The
 
 ## Now
 
-- **The second preview, `1.0.0-preview.2`, with the admin** in its three distributions: served at `/admin` by the reference image and by a host of `dotnet new fluentcms`, a prebuilt static build, and an app of your own from `dotnet new fluentcms-admin` ([#3465](https://github.com/fluentcms/FluentCMS/issues/3465), [the admin](docs/admin.md#distributions)).
+- **The way from the second preview to 1.0.0.** `1.0.0-preview.2` is out, the first preview with the admin ([notes](docs/releases/1.0.0-preview.2.md), [the admin](docs/admin.md#distributions)); the work now is what "Before 1.0.0" lists below.
 
 ## Before 1.0.0
 

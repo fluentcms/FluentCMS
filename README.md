@@ -23,7 +23,7 @@
   <a href="https://discord.gg/WyqYuC6YbY"><img src="https://img.shields.io/discord/1165300406902067280?label=Discord&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
-> **Preview.** FluentCMS is in preview: the public contract can still change between previews, and a preview makes no promise to upgrade a database. The latest release is `1.0.0-preview.1`, the backend alone; the admin comes with `1.0.0-preview.2`, which is not released yet ([change log](CHANGELOG.md)).
+> **Preview.** FluentCMS is in preview: the public contract can still change between previews, and a preview makes no promise to upgrade a database. The latest release is `1.0.0-preview.2`, the first with the admin ([change log](CHANGELOG.md)).
 
 ## What is FluentCMS
 
@@ -60,15 +60,15 @@ FluentCMS is a headless CMS for .NET teams. It comes as NuGet packages that you 
 With the .NET 10 SDK, from nuget.org:
 
 ```bash
-dotnet new install FluentCMS.Templates@1.0.0-preview.1
+dotnet new install FluentCMS.Templates@1.0.0-preview.2
 dotnet new fluentcms -n MyCms --sample blog
 cd MyCms
 dotnet run
 ```
 
-The host runs on SQLite with the Blog sample, at `https://localhost:5443`. The [template's README](https://github.com/fluentcms/FluentCMS/blob/v1.0.0-preview.1/templates/fluentcms/README.md) of that release covers PostgreSQL and SQL Server, migrations, and [the first administrator and a key](https://github.com/fluentcms/FluentCMS/blob/v1.0.0-preview.1/templates/fluentcms/README.md#the-first-administrator-and-a-key). A host of a release with the admin serves it at `https://localhost:5443/admin/`, with the development certificate trusted ([the first sign-in](docs/admin.md#the-first-sign-in)).
+The host runs on SQLite with the Blog sample, at `https://localhost:5443`. The [template's README](https://github.com/fluentcms/FluentCMS/blob/v1.0.0-preview.2/templates/fluentcms/README.md) of that release covers PostgreSQL and SQL Server, migrations, and [the first administrator and a key](https://github.com/fluentcms/FluentCMS/blob/v1.0.0-preview.2/templates/fluentcms/README.md#the-first-administrator-and-a-key). The host serves the admin at `https://localhost:5443/admin/`, with the development certificate trusted ([the first sign-in](docs/admin.md#the-first-sign-in)).
 
-With Docker, the compose file of the reference host runs the published image on PostgreSQL, with its media in MinIO. In `src/FluentCMS.Host` of a clone of this repository, copy `.env.example` to `.env`, fill in every empty value, uncomment the two evaluation opt-ins, set `FLUENTCMS_IMAGE=ghcr.io/fluentcms/fluentcms:1.0.0-preview.1`, and start:
+With Docker, the compose file of the reference host runs the published image on PostgreSQL, with its media in MinIO. In `src/FluentCMS.Host` of a clone of this repository, copy `.env.example` to `.env`, fill in every empty value, uncomment the two evaluation opt-ins, set `FLUENTCMS_IMAGE=ghcr.io/fluentcms/fluentcms:1.0.0-preview.2`, and start:
 
 ```bash
 docker compose pull

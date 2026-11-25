@@ -4,10 +4,10 @@ The reference host, `src/FluentCMS.Host`, is FluentCMS as one container: the Del
 
 ## The published image
 
-Each release pushes the image to `ghcr.io/fluentcms/fluentcms`, for `linux/amd64` and `linux/arm64`, with three kinds of tag: the version, such as `1.0.0-preview.1`; `preview`, the newest preview; and `latest`, the newest release that is not a preview, which comes with 1.0.0. Pin a version in production. The commands on this page name the image `fluentcms`, as a local build tags it; use the published name in its place:
+Each release pushes the image to `ghcr.io/fluentcms/fluentcms`, for `linux/amd64` and `linux/arm64`, with three kinds of tag: the version, such as `1.0.0-preview.2`; `preview`, the newest preview; and `latest`, the newest release that is not a preview, which comes with 1.0.0. Pin a version in production. The commands on this page name the image `fluentcms`, as a local build tags it; use the published name in its place:
 
 ```bash
-docker pull ghcr.io/fluentcms/fluentcms:1.0.0-preview.1
+docker pull ghcr.io/fluentcms/fluentcms:1.0.0-preview.2
 ```
 
 The `Publish` workflow builds it once from the tag, with the version of the packages in the host, runs the compose smoke test below on that build, and pushes the digest the smoke test ran: the version and its channel tag name that one digest ([releasing](releasing.md)). A version is never pushed again with another image.
@@ -20,7 +20,7 @@ Build the image from the repository root:
 docker build -f src/FluentCMS.Host/Dockerfile -t fluentcms .
 ```
 
-The Dockerfile builds for the platform it runs on, and for both `linux/amd64` and `linux/arm64` with `docker buildx build --platform linux/amd64,linux/arm64`. The SDK compiles for the target on the build machine, so no emulation is needed. A local build is version `1.0.0-dev`; `--build-arg VERSION=1.0.0-preview.1` gives another, as the `Publish` workflow does. The image is `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra`, pinned with the SDK image by digest, which Dependabot moves on: no shell and no package manager, ICU and time zone data for localized content and schedules, and the non-root user `app` (uid 1654).
+The Dockerfile builds for the platform it runs on, and for both `linux/amd64` and `linux/arm64` with `docker buildx build --platform linux/amd64,linux/arm64`. The SDK compiles for the target on the build machine, so no emulation is needed. A local build is version `1.0.0-dev`; `--build-arg VERSION=1.0.0-preview.2` gives another, as the `Publish` workflow does. The image is `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra`, pinned with the SDK image by digest, which Dependabot moves on: no shell and no package manager, ICU and time zone data for localized content and schedules, and the non-root user `app` (uid 1654).
 
 The image runs in the Production environment, which, like every environment but Development, refuses to start on the defaults that are only safe for a trial. Run with nothing set, it stops before it touches the database, exits with code 1 and prints one line per refusal, each naming the setting and the key that lifts it:
 
@@ -316,7 +316,7 @@ docker compose up -d --build
 
 `docker compose` refuses to start while a value is missing or empty, and names it. The example names the two opt-ins of an evaluation, `FLUENTCMS_ALLOW_GENERATED_SIGNING_KEY` and `FLUENTCMS_ALLOW_UNENCRYPTED_KEY_RING`, commented out, so a copy of it lifts no refusal: the host stops with `FCMS1102` and `FCMS1106` until you mount the certificates of [before production](#before-production) or, to evaluate, uncomment both. The public origin is `https://localhost` and `AllowedHosts` is `localhost` unless `FLUENTCMS_PUBLIC_ORIGIN` and `FLUENTCMS_ALLOWED_HOSTS` say otherwise. The admin is served at `/admin/`, with its client registered for that origin, unless `FluentCms__Admin__Enabled: "false"` is added to the environment of `cms` ([the admin](#the-admin)); its sign-in, like every one, waits for https. `GET http://localhost:8080/health/ready` answers `Healthy` once the database, the job runner and the bucket (`media-storage`) answer. PostgreSQL takes its password when it creates its volume, so a changed `FLUENTCMS_POSTGRES_PASSWORD` needs `docker compose down -v`, which deletes the data too.
 
-To run the published image instead of building one, set `FLUENTCMS_IMAGE=ghcr.io/fluentcms/fluentcms:1.0.0-preview.1` in `.env` and start without a build; `migrate`, `schema-apply` and `cms` all run it:
+To run the published image instead of building one, set `FLUENTCMS_IMAGE=ghcr.io/fluentcms/fluentcms:1.0.0-preview.2` in `.env` and start without a build; `migrate`, `schema-apply` and `cms` all run it:
 
 ```bash
 docker compose pull
@@ -330,7 +330,7 @@ docker compose run --rm -T --no-deps cms fluentcms user create --email ada@examp
 docker compose run --rm -T --no-deps cms fluentcms apikey create --name deploy --class management --role "Super Admin"
 ```
 
-The key works over plain http at once. Signing in on the hosted pages needs https, so it waits for the proxy below. The `Compose` workflow in CI starts this file with throwaway values on every push to `main` and to a `feature/*` branch, signs an administrator in through the hosted pages with a proxy's forwarded headers, publishes an article through the Management API, reads it through the Delivery API, uploads an image that it reads back from MinIO, and, with nothing set about the admin, reads `/admin/` and `/admin/config.json` and signs the administrator in with the admin's client and PKCE. **Actions → Compose → Run workflow** with an image, such as `ghcr.io/fluentcms/fluentcms:1.0.0-preview.1`, runs the same test on the published image instead of a build. The `Publish` workflow runs it too, before a release and on the pull requests that change the packaging, on the image it built, loaded from the run's archive.
+The key works over plain http at once. Signing in on the hosted pages needs https, so it waits for the proxy below. The `Compose` workflow in CI starts this file with throwaway values on every push to `main` and to a `feature/*` branch, signs an administrator in through the hosted pages with a proxy's forwarded headers, publishes an article through the Management API, reads it through the Delivery API, uploads an image that it reads back from MinIO, and, with nothing set about the admin, reads `/admin/` and `/admin/config.json` and signs the administrator in with the admin's client and PKCE. **Actions → Compose → Run workflow** with an image, such as `ghcr.io/fluentcms/fluentcms:1.0.0-preview.2`, runs the same test on the published image instead of a build. The `Publish` workflow runs it too, before a release and on the pull requests that change the packaging, on the image it built, loaded from the run's archive.
 
 What to change for production:
 
