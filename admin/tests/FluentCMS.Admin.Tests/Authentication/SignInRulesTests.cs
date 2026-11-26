@@ -203,7 +203,7 @@ public sealed class SignInRulesTests
             texts[$"Authentication.Callback.{failure}"].ResourceNotFound.ShouldBeFalse(failure.ToString());
         }
 
-        foreach (var gate in new[] { "Unavailable", "EndedAfterSignIn" })
+        foreach (var gate in new[] { "Unavailable", "EndedAfterSignIn", "StorageRefused" })
         {
             texts[$"Authentication.Gate.{gate}Heading"].ResourceNotFound.ShouldBeFalse(gate);
             texts[$"Authentication.Gate.{gate}Text"].ResourceNotFound.ShouldBeFalse(gate);

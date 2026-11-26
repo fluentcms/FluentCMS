@@ -47,6 +47,9 @@ internal enum SignInFailure
 
     // The authorization server could not be reached.
     Unreachable,
+
+    // The browser refused the tab's sessionStorage, which holds the secrets of the sign-in and the session.
+    StorageRefused,
 }
 
 // The server ended the session within AdminSession.RepeatWindow of its sign-in, so the tab does not sign in again on its own;

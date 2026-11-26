@@ -156,6 +156,18 @@
   <data name="Authentication.Gate.MisconfiguredText" xml:space="preserve">
     <value>The server that answered is not the one the admin is configured to sign in with, or it does not offer what the admin needs. An administrator can check the authority in the configuration of the admin.</value>
   </data>
+  <data name="Authentication.Gate.StorageRefusedHeading" xml:space="preserve">
+    <value>The browser blocks the storage of this tab</value>
+  </data>
+  <data name="Authentication.Gate.StorageRefusedText" xml:space="preserve">
+    <value>The admin keeps your sign-in in the storage of this tab, which the browser refuses, so it cannot sign you in. Allow this site to keep data in the browser's settings, then reload the page.</value>
+  </data>
+  <data name="Authentication.Callback.StorageRefused" xml:space="preserve">
+    <value>The browser blocks the storage of this tab, which the admin needs to keep your sign-in. Allow this site to keep data in the browser's settings, then start again.</value>
+  </data>
+  <data name="Authentication.Callback.StartAgain" xml:space="preserve">
+    <value>Start again</value>
+  </data>
   <data name="Shell.Layout.OpenNavigation" xml:space="preserve">
     <value>Open the navigation</value>
   </data>
