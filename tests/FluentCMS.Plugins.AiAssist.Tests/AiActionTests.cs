@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Plugins.Media;
+using FluentCMS.Schema;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
@@ -223,15 +224,18 @@ public sealed class AiActionTests : IClassFixture<AiHost>
         using var admin = await _ai.AdminAsync(site);
         var image = await UploadAsync(admin, "harbour.png", Picture(2000, 1000));
         var document = await UploadAsync(admin, "notes.pdf", "%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n"u8.ToArray());
+        var entry = await ArticleAsync(admin, new { title = "Harbour", summary = "The old alt text.", image });
+        var notes = await ArticleAsync(admin, new { title = "Notes", image = document });
         using var blind = await _ai.CallerAsync(site, (AiPermissions.Use, null), ("content.article.read", null), ("content.article.update", null));
         _ai.Chat.Answer = "Ships in a harbour at dawn.";
 
-        var answer = await SuggestAsync(admin, "altText", new { type = "article", field = "summary", locale = "en", options = new { mediaId = image } });
-        using var noMedia = await ActAsync(admin, "altText", new { type = "article", field = "summary" });
-        using var notAnImage = await ActAsync(admin, "altText", new { type = "article", field = "summary", options = new { mediaId = document } });
-        using var noAsset = await ActAsync(admin, "altText", new { type = "article", field = "summary", options = new { mediaId = Guid.CreateVersion7() } });
-        using var mayNotRead = await ActAsync(blind, "altText", new { type = "article", field = "summary", options = new { mediaId = image } });
+        var answer = await SuggestAsync(admin, "altText", new { type = "article", field = "summary", locale = "en", documentId = entry, options = new { mediaId = image } });
+        using var noMedia = await ActAsync(admin, "altText", new { type = "article", field = "summary", documentId = entry });
+        using var notAnImage = await ActAsync(admin, "altText", new { type = "article", field = "summary", documentId = notes, options = new { mediaId = document } });
+        using var noAsset = await ActAsync(admin, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = Guid.CreateVersion7() } });
+        using var mayNotRead = await ActAsync(blind, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = image } });
 
+        // The image alone is sent: the field's draft is not read for altText.
         answer["suggestion"]!.GetValue<string>().ShouldBe("Ships in a harbour at dawn.");
         var call = _ai.Chat.Calls.ShouldHaveSingleItem();
         Text(call.Messages[0]).ShouldContain("alternative text");
@@ -359,6 +363,138 @@ public sealed class AiActionTests : IClassFixture<AiHost>
         _ai.Chat.Calls.ShouldBeEmpty();
     }
 
+    // #3600: altText for a field asks on the image what the asset route asks, the check of PATCH /media/{id}: a caller who
+    // may only read the image is refused whatever the id, and one whose grant is limited to other folders finds no image, as
+    // for one that does not exist.
+    [Fact]
+    public async Task AltTextForAFieldNeedsTheRightToUpdateTheImage()
+    {
+        var site = await _ai.SiteAsync(settings => settings.AssetAltText = true);
+        using var admin = await _ai.AdminAsync(site);
+        var harbour = await FolderAsync(admin, $"harbour-{Guid.NewGuid():N}");
+        var fields = await FolderAsync(admin, $"fields-{Guid.NewGuid():N}");
+        var image = await UploadAsync(admin, "harbour.png", Picture(40, 20), harbour);
+        var entry = await ArticleAsync(admin, new { title = "Harbour", image });
+        var missing = Guid.CreateVersion7();
+        (string, PermissionConstraints?)[] editor = [(AiPermissions.Use, null), ("content.article.read", null), ("content.article.update", null), ("media.read", null)];
+        using var readers = await _ai.CallerAsync(site, editor);
+        using var elsewhere = await _ai.CallerAsync(site, [.. editor, ("media.update", new PermissionConstraints { Resources = [fields.ToString("D")] })]);
+        using var inTheFolder = await _ai.CallerAsync(site, [.. editor, ("media.update", new PermissionConstraints { Resources = [harbour.ToString("D")] })]);
+
+        foreach (var (caller, status, code) in new[] { (readers, HttpStatusCode.Forbidden, "FCMS3103"), (elsewhere, HttpStatusCode.NotFound, "FCMS1585") })
+        {
+            using var existing = await ActAsync(caller, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = image } });
+            using var absent = await ActAsync(caller, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = missing } });
+            var (one, other) = (await JsonAsync(existing, status), await JsonAsync(absent, status));
+            one["code"]!.GetValue<string>().ShouldBe(code);
+            other["code"]!.GetValue<string>().ShouldBe(code);
+            one["detail"]!.GetValue<string>().Replace(image.ToString("D"), "{id}", StringComparison.Ordinal)
+                .ShouldBe(other["detail"]!.GetValue<string>().Replace(missing.ToString("D"), "{id}", StringComparison.Ordinal));
+        }
+
+        _ai.Chat.Calls.ShouldBeEmpty();
+        (await _ai.UsageAsync(site)).ShouldBeEmpty();
+        (await SuggestAsync(inTheFolder, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = image } }))["suggestion"]!.GetValue<string>().ShouldBe("A suggestion.");
+    }
+
+    // #3600: altText for a field needs documentId, and describes an image the entry's draft refers to, by a media field or a
+    // media node of a rich text field, read as the caller. An image the draft does not refer to is refused on options.mediaId,
+    // and one that does not exist is not found by the check of the image before the entry is asked.
+    [Fact]
+    public async Task AltTextForAFieldDescribesAnImageTheEntryRefersTo()
+    {
+        var site = await _ai.SiteAsync(settings => settings.AssetAltText = true);
+        using var admin = await _ai.AdminAsync(site);
+        var hero = await UploadAsync(admin, "hero.png", Picture(40, 20));
+        var inline = await UploadAsync(admin, "inline.png", Picture(40, 20));
+        var elsewhere = await UploadAsync(admin, "elsewhere.png", Picture(40, 20));
+        var entry = await ArticleAsync(admin, new { title = "Harbour", image = hero, body = Showing(inline) });
+        var other = await ArticleAsync(admin, new { title = "Elsewhere", image = elsewhere });
+        using var titles = await _ai.CallerAsync(
+            site,
+            (AiPermissions.Use, null),
+            ("content.article.read", new PermissionConstraints { Fields = ["title", "summary"] }),
+            ("content.article.update", new PermissionConstraints { Fields = ["summary"] }),
+            ("media.read", null),
+            ("media.update", null));
+
+        using var byField = await ActAsync(admin, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = hero } });
+        using var byNode = await ActAsync(admin, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = inline } });
+        using var noDocument = await ActAsync(admin, "altText", new { type = "article", field = "summary", options = new { mediaId = hero } });
+        using var withText = await ActAsync(admin, "altText", new { type = "article", field = "summary", text = "The harbour.", options = new { mediaId = hero } });
+        using var notReferred = await ActAsync(admin, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = elsewhere } });
+        using var noEntry = await ActAsync(admin, "altText", new { type = "article", field = "summary", documentId = Guid.CreateVersion7(), options = new { mediaId = hero } });
+        using var unreadField = await ActAsync(titles, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = hero } });
+
+        (await JsonAsync(byField))["suggestion"]!.GetValue<string>().ShouldBe("A suggestion.");
+        (await JsonAsync(byNode))["suggestion"]!.GetValue<string>().ShouldBe("A suggestion.");
+        (await JsonAsync(noDocument, HttpStatusCode.UnprocessableEntity))["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("documentId");
+        (await JsonAsync(withText, HttpStatusCode.UnprocessableEntity))["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("documentId");
+        var refused = await JsonAsync(notReferred, HttpStatusCode.UnprocessableEntity);
+        refused["code"]!.GetValue<string>().ShouldBe("FCMS1680");
+        refused["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("options.mediaId");
+        noEntry.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await JsonAsync(unreadField, HttpStatusCode.UnprocessableEntity))["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("options.mediaId");
+
+        // An image that does not exist is not found by the check of the image, before the entry is asked; the image of
+        // another entry is that entry's.
+        using var absent = await ActAsync(admin, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = Guid.CreateVersion7() } });
+        absent.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await SuggestAsync(admin, "altText", new { type = "article", field = "summary", documentId = other, options = new { mediaId = elsewhere } }))["suggestion"]!.GetValue<string>().ShouldBe("A suggestion.");
+
+        _ai.Chat.Calls.Count.ShouldBe(3);
+        (await _ai.UsageAsync(site)).Count.ShouldBe(3);
+    }
+
+    // Rich text is read as deep as core stores it, past the default depth of a JSON reader.
+    [Fact]
+    public async Task AltTextForAFieldFindsAnImageDeepInRichText()
+    {
+        var site = await _ai.SiteAsync(settings => settings.AssetAltText = true);
+        using var admin = await _ai.AdminAsync(site);
+        var image = await UploadAsync(admin, "deep.png", Picture(40, 20));
+        var body = $$$"""{"type":"media","attrs":{"mediaId":"{{{image:D}}}"}}""";
+        for (var level = 0; level < 40; level++)
+        {
+            body = $$"""{"type":"blockquote","content":[{{body}}]}""";
+        }
+
+        // Through the content service, since the answer of the Management API's create stops at 64 levels.
+        Guid entry;
+        await using (var scope = _ai.Services.CreateAsyncScope())
+        {
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(site));
+            var article = new Article { Title = "Deep", Body = new RichText($$$"""{"type":"doc","content":[{{{body}}}]}""") };
+            entry = (await scope.ServiceProvider.GetRequiredService<IContentService<Article>>().CreateAsync(article, Token)).Id;
+        }
+
+        (await SuggestAsync(admin, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = image } }))["suggestion"]!.GetValue<string>().ShouldBe("A suggestion.");
+    }
+
+    // The draft is read in the locale of the suggestion: an image of the French body is not the English draft's.
+    [Fact]
+    public async Task AltTextForAFieldAsksForTheImageInTheLocaleOfTheSuggestion()
+    {
+        var site = await _ai.SiteAsync(settings => settings.AssetAltText = true, "fr");
+        using var admin = await _ai.AdminAsync(site);
+        var image = await UploadAsync(admin, "port.png", Picture(40, 20));
+        var entry = await ArticleAsync(admin, new { title = "Harbour" });
+        using var french = new HttpRequestMessage(HttpMethod.Put, new Uri($"/api/management/v1/content/article/{entry:D}?locale=fr", UriKind.Relative))
+        {
+            Content = JsonContent.Create(new { title = "Port", body = Showing(image) }),
+        };
+        french.Headers.IfMatch.Add(new EntityTagHeaderValue("\"0\""));
+        using var added = await admin.SendAsync(french, Token);
+        added.StatusCode.ShouldBe(HttpStatusCode.OK, await added.Content.ReadAsStringAsync(Token));
+
+        using var inFrench = await ActAsync(admin, "altText", new { type = "article", field = "summary", locale = "fr", documentId = entry, options = new { mediaId = image } });
+        using var inEnglish = await ActAsync(admin, "altText", new { type = "article", field = "summary", locale = "en", documentId = entry, options = new { mediaId = image } });
+
+        (await JsonAsync(inFrench))["suggestion"]!.GetValue<string>().ShouldBe("A suggestion.");
+        Text(_ai.Chat.Calls.ShouldHaveSingleItem().Messages[0]).ShouldContain("locale \"fr\"");
+        (await JsonAsync(inEnglish, HttpStatusCode.UnprocessableEntity))["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("options.mediaId");
+    }
+
     // #3449: altText sends an image of the media library that no field opted in, for an asset alone or for a field, so the
     // site turns it on with assetAltText, which is off by default. Off, the call is refused as a field that is not opted in
     // before the asset is looked at: the answer is the same for an asset that does not exist, the media library is not read,
@@ -392,8 +528,9 @@ public sealed class AiActionTests : IClassFixture<AiHost>
         (await ai.UsageAsync(site)).ShouldBeEmpty();
         await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = "Ships are big boats." });
 
+        var entryOn = await ArticleAsync(adminOn, new { title = "Harbour", image = imageOn });
         await SuggestAsync(adminOn, "altText", new { options = new { mediaId = imageOn } });
-        await SuggestAsync(adminOn, "altText", new { type = "article", field = "summary", options = new { mediaId = imageOn } });
+        await SuggestAsync(adminOn, "altText", new { type = "article", field = "summary", documentId = entryOn, options = new { mediaId = imageOn } });
         reads.Count.ShouldBeGreaterThan(0);
         ai.Chat.Calls.Count(call => call.Messages[1].Contents.OfType<DataContent>().Any()).ShouldBe(2);
     }
@@ -458,9 +595,10 @@ public sealed class AiActionTests : IClassFixture<AiHost>
         var site = await _ai.SiteAsync(settings => settings.AssetAltText = true);
         using var admin = await _ai.AdminAsync(site);
         var image = await UploadAsync(admin, "harbour.png", Picture(40, 20));
+        var entry = await ArticleAsync(admin, new { title = "Harbour", image });
         await _ai.SetEnabledAsync("media", site, false);
 
-        using var refused = await ActAsync(admin, "altText", new { type = "article", field = "summary", options = new { mediaId = image } });
+        using var refused = await ActAsync(admin, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = image } });
 
         (await RefusedAsync(refused, HttpStatusCode.UnprocessableEntity)).ShouldBe("FCMS1691");
         _ai.Chat.Calls.ShouldBeEmpty();
@@ -476,6 +614,10 @@ public sealed class AiActionTests : IClassFixture<AiHost>
 
         (await RefusedAsync(response, HttpStatusCode.NotFound)).ShouldBe("FCMS1681");
     }
+
+    // A rich text document with the image as a media node inside a paragraph.
+    private static JsonNode Showing(Guid image) =>
+        JsonNode.Parse($$$"""{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"The harbour "},{"type":"media","attrs":{"mediaId":"{{{image:D}}}"}}]}]}""")!;
 
     private static async Task<Guid> FolderAsync(HttpClient client, string name)
     {

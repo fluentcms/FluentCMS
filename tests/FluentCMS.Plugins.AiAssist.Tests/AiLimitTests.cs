@@ -101,17 +101,20 @@ public sealed class AiLimitTests : IClassFixture<AiHost>
         (await RefusedAsync(stillOver, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1687");
     }
 
-    // The limit is asked before the draft is read or an image decoded, so a caller over it gets no work done for it: an
-    // entry or an image that is not there is not found only once the caller is under the limit again.
+    // The limit is asked before the text of a draft is read or an image decoded, so a caller over it gets no work done for
+    // it: an entry that is not there is not found only once the caller is under the limit again. altText's checks of the
+    // image and of the entry that refers to it come before the limit, and its image is still not decoded.
     [Fact]
-    public async Task ACallerOverTheLimitIsRefusedBeforeTheDraftIsReadOrAnImageDecoded()
+    public async Task ACallerOverTheLimitIsRefusedBeforeTheTextOfADraftIsReadOrAnImageDecoded()
     {
         var site = await _ai.SiteAsync(settings => (settings.CallsPerMinute, settings.AssetAltText) = (1, true));
         using var admin = await _ai.AdminAsync(site);
+        var picture = await UploadAsync(admin, "harbour.png", Picture(40, 20));
+        var entry = await ArticleAsync(admin, new { title = "Harbour", image = picture });
 
         await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = "Ships are big boats." });
         using var draft = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", documentId = Guid.NewGuid() });
-        using var image = await ActAsync(admin, "altText", new { type = "article", field = "summary", options = new { mediaId = Guid.NewGuid() } });
+        using var image = await ActAsync(admin, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = picture } });
         _ai.Host.Time.Advance(TimeSpan.FromSeconds(61));
         using var underAgain = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", documentId = Guid.NewGuid() });
 

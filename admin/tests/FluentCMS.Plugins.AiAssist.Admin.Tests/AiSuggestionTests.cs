@@ -132,18 +132,24 @@ public sealed class AiSuggestionTests : AiTestContext
         (await result).Value!.GetValue<string>().ShouldBe("Where ships sail.");
     }
 
+    // The images are those of the saved draft in the form's locale, which the server describes, and not one the form holds
+    // unsaved; the call names the entry.
     [Fact]
     public async Task AltTextIsSuggestedForAnImageOfTheEntryChosenAmongItsMediaFields()
     {
         var hero = Server.AddImage("hero.png");
         var photo = Server.AddImage("photo.jpg", mimeType: "image/jpeg");
         var paper = Server.AddImage("paper.pdf", mimeType: "application/pdf");
-        var document = new JsonObject { ["title"] = "", ["hero"] = hero.ToString("D"), ["gallery"] = new JsonArray(photo.ToString("D"), paper.ToString("D")) };
-        var action = new AltTextAction(Overlays, Texts);
-        (await action.AppliesToAsync(Context("title", document), Token)).ShouldBeTrue();
-        (await action.AppliesToAsync(Context("title", new JsonObject { ["title"] = "Ships" }), Token)).ShouldBeFalse();
+        var unsaved = Server.AddImage("unsaved.png");
+        var entry = Guid.CreateVersion7();
+        Server.Drafts[(entry, "en")] = new JsonObject { ["id"] = entry, ["hero"] = Read(hero), ["gallery"] = new JsonArray(Read(photo), Read(paper)) };
+        var document = new JsonObject { ["title"] = "", ["hero"] = unsaved.ToString("D"), ["gallery"] = new JsonArray(photo.ToString("D"), paper.ToString("D")) };
+        var action = new AltTextAction(Overlays, Texts, Server);
+        (await action.AppliesToAsync(Context("title", document, entryId: entry), Token)).ShouldBeTrue();
+        var draftRead = Server.Requests.Single(request => request.Path.StartsWith("content/", StringComparison.Ordinal));
+        (draftRead.Path, draftRead.Locale).ShouldBe(($"content/article/{entry:D}?fallback=none&fields=hero,gallery", "en"));
 
-        var (result, panel) = Run(action, Context("title", document));
+        var (result, panel) = Run(action, Context("title", document, entryId: entry));
         panel.WaitForAssertion(() => panel.FindAll("select option").Select(option => option.TextContent).ShouldBe(["", "hero.png", "photo.jpg"]));
         panel.Find("select").Change(photo.ToString("D"));
         Button(panel, "Suggest").Click();
@@ -154,8 +160,46 @@ public sealed class AiSuggestionTests : AiTestContext
 
         (await result).Value!.GetValue<string>().ShouldBe("A ship at sea.");
         var sent = Server.Requests.Single(request => request.Path == "ai/actions/altText");
-        JsonNode.DeepEquals(sent.Body, new JsonObject { ["type"] = "article", ["field"] = "title", ["locale"] = "en", ["options"] = new JsonObject { ["mediaId"] = photo } }).ShouldBeTrue(sent.Body!.ToJsonString());
+        JsonNode.DeepEquals(sent.Body, new JsonObject { ["type"] = "article", ["field"] = "title", ["locale"] = "en", ["documentId"] = entry, ["options"] = new JsonObject { ["mediaId"] = photo } }).ShouldBeTrue(sent.Body!.ToJsonString());
     }
+
+    // Where the call cannot pass, the action is not offered: an entry not created yet, one not saved in the form's locale, and
+    // one whose saved draft holds no image, whatever the form holds unsaved.
+    [Fact]
+    public async Task AltTextIsNotOfferedWhereTheSavedDraftHasNoImage()
+    {
+        var hero = Server.AddImage("hero.png");
+        var entry = Guid.CreateVersion7();
+        var bare = Guid.CreateVersion7();
+        Server.Drafts[(entry, "en")] = new JsonObject { ["id"] = entry, ["hero"] = Read(hero), ["gallery"] = new JsonArray() };
+        Server.Drafts[(bare, "en")] = new JsonObject { ["id"] = bare, ["hero"] = null, ["gallery"] = new JsonArray() };
+        var document = new JsonObject { ["title"] = "Ships", ["hero"] = hero.ToString("D") };
+        var action = new AltTextAction(Overlays, Texts, Server);
+
+        (await action.AppliesToAsync(Context("title", document, created: false), Token)).ShouldBeFalse();
+        Server.Requests.ShouldBeEmpty();
+        (await action.AppliesToAsync(Context("title", document, locale: "fr", entryId: entry), Token)).ShouldBeFalse();
+        (await action.AppliesToAsync(Context("title", document, entryId: bare), Token)).ShouldBeFalse();
+        (await action.AppliesToAsync(Context("title", document, entryId: entry), Token)).ShouldBeTrue();
+    }
+
+    // The server asks the right to update the image, so a caller without media.update, as the built-in Author, to whom
+    // GET /ai/fields answers no assets, is not offered the action, and its draft is not read.
+    [Fact]
+    public async Task AltTextIsNotOfferedToACallerWhoMayNotUpdateImages()
+    {
+        var hero = Server.AddImage("hero.png");
+        var entry = Guid.CreateVersion7();
+        Server.Drafts[(entry, "en")] = new JsonObject { ["id"] = entry, ["hero"] = Read(hero), ["gallery"] = new JsonArray() };
+        Server.MayDescribeAssets = false;
+
+        (await new AltTextAction(Overlays, Texts, Server).AppliesToAsync(Context("title", new JsonObject { ["title"] = "Ships", ["hero"] = hero.ToString("D") }, entryId: entry), Token)).ShouldBeFalse();
+
+        Server.Requests.Select(request => request.Path).ShouldBe(["ai/fields"]);
+    }
+
+    // A media field as a read gives it.
+    private static JsonObject Read(Guid asset) => new() { ["id"] = asset, ["type"] = "media" };
 
     // The asset's own alt text is the asset's, saved on it as the media field saves it; the entry's draft stays as it was.
     [Fact]

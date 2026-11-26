@@ -222,6 +222,7 @@
         Field = Request.ForAsset ? null : Request.Field,
         Locale = Request.Locale,
         Text = AsksForImage ? null : Request.Text,
+        DocumentId = Request.ForAsset ? null : Request.DocumentId,
         Options = Request.Action switch
         {
             AiActionNames.AltText => new AiActionOptions { MediaId = image },
