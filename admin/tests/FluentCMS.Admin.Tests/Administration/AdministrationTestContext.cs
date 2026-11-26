@@ -165,7 +165,7 @@ public abstract class AdministrationTestContext : AdminTestContext
 
         Navigation.NavigateTo(route);
         app.WaitForAssertion(() => Navigation.Uri.ShouldBe(Navigation.ToAbsoluteUri(route).AbsoluteUri));
-        app.FindComponents<CmsDialog>().ShouldNotContain(found => found.Instance.Open);
+        app.InvokeAsync(() => app.FindComponents<CmsDialog>().ShouldNotContain(found => found.Instance.Open)).GetAwaiter().GetResult();
     }
 
     private string LeaveTitle => Localized<CommonResources>("Common.Leave.Title");
