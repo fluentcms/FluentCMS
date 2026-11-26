@@ -1,5 +1,6 @@
 using System.Net;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
@@ -159,6 +160,8 @@ public sealed class HostRegistrationTests : IAsyncDisposable
     [InlineData("FluentCms:Security:AllowGeneratedSigningKey", "yes", "FCMS1101")]
     [InlineData("FluentCms:Security:AllowRequestOrigin", "yes", "FCMS1101")]
     [InlineData("FluentCms:Security:AllowUnencryptedKeyRing", "yes", "FCMS1101")]
+    [InlineData("FluentCms:Security:KeyRotation:Enabled", "yes", "FCMS1101")]
+    [InlineData("FluentCms:Security:KeyRotation:Interval", "quarterly", "FCMS1101")]
     public async Task AValueThatDoesNotBindStopsTheHostAndNamesTheKey(string key, string value, string code)
     {
         var app = _host.Build(Environments.Production, new Dictionary<string, string?> { [key] = value });
@@ -167,6 +170,79 @@ public sealed class HostRegistrationTests : IAsyncDisposable
 
         exception.Code.ShouldBe(code);
         exception.Message.ShouldContain(key);
+    }
+
+    // A new key is published before it signs for at least the 10 minutes in which every instance reads it, a key signs for
+    // longer than that, and it is accepted for at least the longest lifetime of a token after its successor signs.
+    [Theory]
+    [InlineData("PublishLead", "00:09:59")]
+    [InlineData("Interval", "1.00:00:00")]
+    [InlineData("Overlap", "00:00:00")]
+    [InlineData("Overlap", "14.00:05:29")]
+    public async Task AKeyRotationOptionOutOfItsRangeStopsTheHost(string option, string value)
+    {
+        var key = $"FluentCms:Security:KeyRotation:{option}";
+        var app = _host.Build(Environments.Production, new Dictionary<string, string?> { [key] = value });
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => app.StartAsync(Token));
+
+        exception.Code.ShouldBe("FCMS1101");
+        exception.Message.ShouldStartWith($"FCMS1101: {key} is {value}");
+        File.Exists(_host.DatabaseFile).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task TheKeyRotationOptionsBindAndTheShortestOverlapIsTheLongestLifetimeOfAToken()
+    {
+        var app = _host.Build(Environments.Production, new Dictionary<string, string?>
+        {
+            ["FluentCms:Security:KeyRotation:Enabled"] = "true",
+            ["FluentCms:Security:KeyRotation:Interval"] = "30.00:00:00",
+            ["FluentCms:Security:KeyRotation:PublishLead"] = "00:10:00",
+            ["FluentCms:Security:KeyRotation:Overlap"] = "14.00:05:30",
+        });
+
+        await app.StartAsync(Token);
+
+        var rotation = app.Services.GetRequiredService<SecurityOptions>().KeyRotation;
+        rotation.Enabled.ShouldBeTrue();
+        rotation.Interval.ShouldBe(TimeSpan.FromDays(30));
+        rotation.PublishLead.ShouldBe(TimeSpan.FromMinutes(10));
+        rotation.Overlap.ShouldBe(TimeSpan.FromDays(14) + TimeSpan.FromMinutes(5) + TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void RoutineRotationIsOffByDefault()
+    {
+        var rotation = _host.Build(Environments.Development).Services.GetRequiredService<SecurityOptions>().KeyRotation;
+
+        rotation.Enabled.ShouldBeFalse();
+        rotation.Interval.ShouldBe(TimeSpan.FromDays(90));
+        rotation.PublishLead.ShouldBe(TimeSpan.FromDays(1));
+        rotation.Overlap.ShouldBeNull();
+    }
+
+    // The report is where an operator who accepted a generated key learns that it never changes.
+    [Theory]
+    [InlineData("Production", null, true, true)]
+    [InlineData("Production", "true", true, false)]
+    [InlineData("Production", null, false, false)]
+    [InlineData("Development", null, true, false)]
+    public async Task AGeneratedKeyThatIsNeverRotatedIsReportedOutsideDevelopment(string environment, string? enabled, bool generated, bool listed)
+    {
+        var app = _host.Build(
+            environment,
+            new Dictionary<string, string?> { ["FluentCms:Security:AllowGeneratedSigningKey"] = "true", ["FluentCms:Security:KeyRotation:Enabled"] = enabled },
+            builder => builder.Services.AddSingleton<ISigningKeyStatus>(new SigningKey(generated)));
+
+        await app.StartAsync(Token);
+
+        var insecure = app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults;
+        insecure.Any(item => item.Id == "signing-key-rotation-off").ShouldBe(listed);
+        if (listed)
+        {
+            insecure.Single(item => item.Id == "signing-key-rotation-off").Message.ShouldContain("FluentCms:Security:KeyRotation:Enabled");
+        }
     }
 
     [Fact]

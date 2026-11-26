@@ -286,6 +286,8 @@ public static class FluentCmsServiceCollectionExtensions
 
         builder.Jobs.AddJob<OidcPruneJob, OidcPrunePayload>(OidcPruneJob.Type, OidcPruneJob.AttemptTimeout);
         services.AddHostedService<OidcPruneScheduleService>();
+        builder.Jobs.AddJob<OidcKeysJob, OidcKeysPayload>(OidcKeysJob.Type, OidcKeysJob.AttemptTimeout);
+        services.AddHostedService<OidcKeysScheduleService>();
         builder.Jobs.AddJob<UnverifiedMembersJob, UnverifiedMembersPayload>(UnverifiedMembersJob.Type, UnverifiedMembersJob.AttemptTimeout);
         builder.Jobs.Options.Queues.TryAdd(AccountMail.Queue, AccountMail.Workers);
         builder.Jobs.AddJob<MemberMailJob, MemberMailRequest>(MemberMailJob.Type, AccountMail.AttemptTimeout);

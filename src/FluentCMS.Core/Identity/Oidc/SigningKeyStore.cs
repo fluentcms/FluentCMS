@@ -4,6 +4,7 @@ using FluentCMS.Core.Storage;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 
 namespace FluentCMS.Core.Identity.Oidc;
@@ -12,7 +13,7 @@ namespace FluentCMS.Core.Identity.Oidc;
 // its keys is left that has not retired; that key is active at once. Instances that start together on an empty table race
 // for one row: each inserts the next sequence of the use, the unique index lets one in, and the others read the winner's
 // key. The ids are random, so a kid never names two keys.
-internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtectionProvider protection, TimeProvider time)
+internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtectionProvider protection, TimeProvider time, ILogger<SigningKeyStore> logger)
 {
     private const int RsaKeySize = 2048;
     private const int EncryptionKeySize = 32;
@@ -32,6 +33,7 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
             try
             {
                 context.SaveChanges();
+                OidcLog.KeyMade(logger, generated.Id, generated.Use, generated.Sequence, generated.ActiveFrom);
             }
             catch (DbUpdateException) when (Exists(generated))
             {
@@ -57,6 +59,7 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
             try
             {
                 await context.SaveChangesAsync(cancellationToken);
+                OidcLog.KeyMade(logger, generated.Id, generated.Use, generated.Sequence, generated.ActiveFrom);
             }
             catch (DbUpdateException) when (Exists(generated))
             {
@@ -67,6 +70,113 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
         }
 
         return stored;
+    }
+
+    // Makes the successor of the active key of a use: accepted from now and active after the lead, with the keys it follows
+    // retiring an overlap after that. While a key of the use is upcoming it makes none and returns that one, so of two that
+    // rotate at once, the job on two instances or the job and a command, the second finds the first's key.
+    public async Task<KeyRotation> RotateAsync(string use, TimeSpan lead, TimeSpan overlap, CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var keys = await context.Set<SigningKey>().Where(key => key.Use == use).OrderBy(key => key.Sequence).ToListAsync(cancellationToken);
+        var now = time.GetUtcNow();
+        var accepted = keys.Where(key => !SigningKeyStates.IsRetired(key, now)).ToList();
+        if (accepted.Find(key => key.ActiveFrom > now) is { } upcoming)
+        {
+            return new KeyRotation(upcoming, Made: false);
+        }
+
+        // With no key to follow there is nothing to publish it ahead of.
+        var made = Generate(use, NextSequence(keys, use), now, accepted.Count == 0 ? now : now + lead);
+        var retires = made.ActiveFrom + overlap;
+        List<SigningKey> followed = [];
+        foreach (var key in accepted)
+        {
+            // A key that has its date keeps it. Only the newest can have one too early: a generated key that a certificate
+            // replaced and that signs again.
+            if (key.RetiredAt is null || (key == keys[^1] && key.RetiredAt < retires))
+            {
+                key.RetiredAt = retires;
+                followed.Add(key);
+            }
+        }
+
+        context.Add(made);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException) when (Exists(made))
+        {
+            await using var again = scopes.CreateAsyncScope();
+            var winner = await again.ServiceProvider.GetRequiredService<SystemDbContext>().Set<SigningKey>().AsNoTracking()
+                .SingleAsync(key => key.Use == use && key.Sequence == made.Sequence, cancellationToken);
+            return new KeyRotation(winner, Made: false);
+        }
+
+        OidcLog.KeyMade(logger, made.Id, made.Use, made.Sequence, made.ActiveFrom);
+        foreach (var key in followed)
+        {
+            OidcLog.KeyRetirementSet(logger, key.Id, key.Use, retires);
+        }
+
+        return new KeyRotation(made, Made: true);
+    }
+
+    // What the job does that needs no new key. It removes the rows that have retired, material included. While a certificate
+    // signs it gives each generated signing key without a date the overlap from this run. And it moves the retirement of a
+    // key later when the overlap has grown since its successor was made, never earlier. A key that retired no later than its
+    // successor became active was revoked, and is given no more time, whatever this instance's clock says.
+    public async Task UpkeepAsync(bool certificateSigns, TimeSpan overlap, CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var keys = await context.Set<SigningKey>().OrderBy(key => key.Use).ThenBy(key => key.Sequence).ToListAsync(cancellationToken);
+        var now = time.GetUtcNow();
+
+        var removed = keys.Where(key => SigningKeyStates.IsRetired(key, now)).ToList();
+        context.RemoveRange(removed);
+
+        List<SigningKey> moved = [];
+        foreach (var use in SigningKey.Uses)
+        {
+            var kept = keys.Where(key => key.Use == use && !SigningKeyStates.IsRetired(key, now)).ToList();
+            for (var index = 0; index < kept.Count; index++)
+            {
+                var key = kept[index];
+                DateTimeOffset? retires = null;
+                if (index + 1 < kept.Count)
+                {
+                    var successor = kept[index + 1];
+                    if (key.RetiredAt is null || (key.RetiredAt > successor.ActiveFrom && key.RetiredAt < successor.ActiveFrom + overlap))
+                    {
+                        retires = successor.ActiveFrom + overlap;
+                    }
+                }
+                else if (key.RetiredAt is null && certificateSigns && use == SigningKey.Signing)
+                {
+                    retires = now + overlap;
+                }
+
+                if (retires is not null)
+                {
+                    key.RetiredAt = retires;
+                    moved.Add(key);
+                }
+            }
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        foreach (var key in removed)
+        {
+            OidcLog.KeyRemoved(logger, key.Id, key.Use, key.CreatedAt, key.RetiredAt!.Value);
+        }
+
+        foreach (var key in moved)
+        {
+            OidcLog.KeyRetirementSet(logger, key.Id, key.Use, key.RetiredAt!.Value);
+        }
     }
 
     // The key of a row, or null when the key ring cannot read it: the ring key that protected it is gone, or the row is
@@ -158,6 +268,9 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
         }
     }
 }
+
+// The upcoming key of a use: the one a rotation made, or the one that was there already.
+internal sealed record KeyRotation(SigningKey Key, bool Made);
 
 // Whether tokens are signed with a key the server generated, which Production refuses unless the host allows it.
 internal sealed class SigningKeyStatus(SecurityOptions security) : ISigningKeyStatus

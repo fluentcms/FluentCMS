@@ -142,6 +142,7 @@ internal static class AuthorizationServerRegistration
         });
 
         services.AddSingleton<SigningKeyStore>();
+        services.AddSingleton<IValidateOptions<SecurityOptions>, KeyOverlapCheck>();
         services.AddSingleton<SigningKeyRing>();
         services.AddSingleton<IOptionsChangeTokenSource<OpenIddictServerOptions>>(provider => provider.GetRequiredService<SigningKeyRing>().ServerChanges);
         services.AddSingleton<IOptionsChangeTokenSource<OpenIddictValidationOptions>>(provider => provider.GetRequiredService<SigningKeyRing>().ValidationChanges);

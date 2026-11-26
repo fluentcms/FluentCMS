@@ -33,6 +33,10 @@ public sealed class SecurityOptions
     // The certificate the authorization server signs tokens with. Without one it signs with a key it generates and stores.
     public SigningCertificateOptions SigningCertificate { get; } = new();
 
+    // When the keys the authorization server generates are replaced, and how long a key is published before it signs and
+    // accepted after it stopped.
+    public KeyRotationOptions KeyRotation { get; } = new();
+
     public SecurityCorsOptions Cors { get; } = new();
 
     // The Referrer-Policy header of FluentCMS responses.
@@ -58,6 +62,7 @@ public sealed class SecurityOptions
         }
 
         SigningCertificate.Validate();
+        KeyRotation.Validate();
         Cors.Delivery.Validate("Cors:Delivery");
         Cors.Management.Validate("Cors:Management");
         Cors.Members.Validate("Cors:Members");
@@ -108,6 +113,55 @@ public sealed class SigningCertificateOptions
         if (IsConfigured)
         {
             Load().Dispose();
+        }
+    }
+}
+
+// FluentCms:Security:KeyRotation (ADR 0008). The keys in cms_signing_key are replaced by 'fluentcms keys rotate' and, when
+// Enabled, by the job oidc.keys; PublishLead and Overlap hold for both.
+public sealed class KeyRotationOptions
+{
+    internal const string Section = "KeyRotation";
+
+    // Every instance reads the keys within 30 seconds, so each has a new key before any signs with it.
+    internal static readonly TimeSpan MinimumPublishLead = TimeSpan.FromMinutes(10);
+
+    private static readonly TimeSpan Maximum = TimeSpan.FromDays(3650);
+
+    // Turns the routine rotation on. Off by default: a validator outside the host that pinned a key breaks at the first one.
+    public bool Enabled { get; set; }
+
+    // How long a key signs or encrypts before its successor does.
+    public TimeSpan Interval { get; set; } = TimeSpan.FromDays(90);
+
+    // How long a new key is accepted, and a signing key listed in the key set, before it signs or encrypts.
+    public TimeSpan PublishLead { get; set; } = TimeSpan.FromDays(1);
+
+    // How long a key is still accepted after its successor signs. Unset, it is the longest lifetime of a token, the 30
+    // seconds in which a used refresh token is taken again and 5 minutes for clocks; a shorter one stops the host.
+    public TimeSpan? Overlap { get; set; }
+
+    internal void Validate()
+    {
+        if (PublishLead < MinimumPublishLead || PublishLead > Maximum)
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.InvalidOption,
+                $"{Section}:{nameof(PublishLead)} is {PublishLead}; it must be from {MinimumPublishLead} to {Maximum.TotalDays:0} days, so that every instance has read a new key before one signs with it.");
+        }
+
+        if (Interval <= PublishLead || Interval > Maximum)
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.InvalidOption,
+                $"{Section}:{nameof(Interval)} is {Interval}; it must be more than {nameof(PublishLead)} ({PublishLead}) and at most {Maximum.TotalDays:0} days.");
+        }
+
+        if (Overlap is { } overlap && (overlap <= TimeSpan.Zero || overlap > Maximum))
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.InvalidOption,
+                $"{Section}:{nameof(Overlap)} is {overlap}; it must be more than zero and at most {Maximum.TotalDays:0} days, or left unset for the longest lifetime of a token.");
         }
     }
 }

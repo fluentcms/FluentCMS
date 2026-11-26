@@ -1,11 +1,16 @@
 using System.Data.Common;
 using System.Net;
 using System.Security.Cryptography;
+using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Core.IntegrationTests.Diagnostics;
+using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
+using FluentCMS.Jobs;
+using FluentCMS.Sites;
 using FluentCMS.Testing;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -292,6 +297,156 @@ public sealed partial class AuthorizationServerTests
         (await issuer.ValidateAsync(token, PreviewTokenAuthentication.Scheme)).Failure.ShouldBe(PreviewTokenFailure.Invalid);
     }
 
+    // The acceptance of #3313: a token issued before a rotation validates until it expires, the key set lists both keys
+    // during the overlap, and the retired key is removed after it.
+    [Fact]
+    public async Task TheJobRotatesAKeyThatIsDueAndRemovesItOnceWhatItSignedHasExpired()
+    {
+        var logs = new LogCapture();
+        await using var host = NewHost().WithServices(services =>
+        {
+            services.AddLogging(logging => logging.AddProvider(logs));
+            services.Configure<SecurityOptions>(security => security.KeyRotation.Enabled = true);
+        });
+        var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        await host.SignInAsync(editor);
+        var started = host.Time.GetUtcNow();
+        var first = SigningKeys(host).Single(key => key.Use == SigningKey.Signing);
+        var firstEncryption = SigningKeys(host).Single(key => key.Use == SigningKey.Encryption);
+        using var client = host.CreateSecureClient();
+
+        // A key signs for the interval of 90 days, so its successor is made a publish lead of a day before that.
+        host.Time.Set(first.ActiveFrom.AddDays(89).AddSeconds(-1));
+        await RunKeysJobAsync(host);
+        SigningKeys(host).Count.ShouldBe(2);
+
+        host.Time.Advance(TimeSpan.FromSeconds(1));
+        await RunKeysJobAsync(host);
+        await RunKeysJobAsync(host);
+        var made = host.Time.GetUtcNow();
+        var keys = SigningKeys(host);
+        keys.Count.ShouldBe(4);
+        var second = keys.Single(key => key.Use == SigningKey.Signing && key.Id != first.Id);
+        var secondEncryption = keys.Single(key => key.Use == SigningKey.Encryption && key.Id != firstEncryption.Id);
+        var overlap = TimeSpan.FromDays(14) + TimeSpan.FromSeconds(30) + TimeSpan.FromMinutes(5);
+        foreach (var (successor, predecessor) in new[] { (second, keys.Single(key => key.Id == first.Id)), (secondEncryption, keys.Single(key => key.Id == firstEncryption.Id)) })
+        {
+            successor.Sequence.ShouldBe(2);
+            successor.CreatedAt.ShouldBe(made);
+            successor.ActiveFrom.ShouldBe(made.AddDays(1));
+            successor.RetiredAt.ShouldBeNull();
+            predecessor.RetiredAt.ShouldBe(successor.ActiveFrom + overlap);
+        }
+
+        logs.Entries.Where(entry => entry.EventId.Id == OidcLog.KeyMadeId && (int)entry.State["Sequence"]! == 2).Select(entry => entry.State["KeyId"])
+            .ShouldBe([second.Id, secondEncryption.Id], ignoreOrder: true);
+        (await KeySetAsync(client)).ShouldBe([KeyId(first), KeyId(second)], ignoreOrder: true);
+
+        // The last tokens of the first key, issued a second before the second one signs.
+        host.Time.Set(second.ActiveFrom.AddSeconds(-1));
+        var last = await host.SignInAsync(editor, "openid", "offline_access", "management");
+        Header(last.AccessToken).GetProperty("kid").GetString().ShouldBe(KeyId(first));
+
+        host.Time.Advance(TimeSpan.FromSeconds(1));
+        Header((await host.SignInAsync(editor)).AccessToken).GetProperty("kid").GetString().ShouldBe(KeyId(second));
+
+        // They are good until they expire: the access token after its hour less a minute, the refresh token after 14 days.
+        host.Time.Set(second.ActiveFrom.AddMinutes(58));
+        using (var api = Bearer(last.AccessToken, host))
+        {
+            (await WhoAmIAsync(api)).GetProperty("id").GetGuid().ShouldBe(editor.Id);
+        }
+
+        host.Time.Set(second.ActiveFrom.AddDays(14).AddMinutes(-1));
+        await RunKeysJobAsync(host);
+        (await KeySetAsync(client)).ShouldBe([KeyId(first), KeyId(second)], ignoreOrder: true);
+        var refreshed = await TokenAsync(client, Refresh(last.RefreshToken!), Token);
+        Header(refreshed.AccessToken).GetProperty("kid").GetString().ShouldBe(KeyId(second));
+
+        // After the overlap the instance stops accepting the first keys, and the job's next run removes their rows.
+        host.Time.Set(second.ActiveFrom + overlap);
+        (await KeySetAsync(client)).ShouldBe([KeyId(second)]);
+        SigningKeys(host).Count.ShouldBe(4);
+        await RunKeysJobAsync(host);
+        SigningKeys(host).Select(key => key.Id).ShouldBe([second.Id, secondEncryption.Id], ignoreOrder: true);
+        var removed = logs.Entries.Where(entry => entry.EventId.Id == OidcLog.KeyRemovedId).ToList();
+        removed.Select(entry => entry.State["KeyId"]).ShouldBe([first.Id, firstEncryption.Id], ignoreOrder: true);
+        started.ShouldBeLessThan(made);
+    }
+
+    [Fact]
+    public async Task WithRotationOffTheJobMakesNoSuccessorAndStillRemovesWhatRetired()
+    {
+        await using var host = NewHost();
+        var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        await host.SignInAsync(editor);
+        var first = SigningKeys(host).Single(key => key.Use == SigningKey.Signing);
+
+        host.Time.Advance(TimeSpan.FromDays(400));
+        await RunKeysJobAsync(host);
+        SigningKeys(host).Count.ShouldBe(2);
+
+        var now = host.Time.GetUtcNow();
+        var retired = AddKey(host, SigningKey.Signing, sequence: 0, now.AddDays(-500), retiredAt: now);
+        var retiring = AddKey(host, SigningKey.Signing, sequence: -1, now.AddDays(-600), retiredAt: now.AddSeconds(1));
+        await RunKeysJobAsync(host);
+
+        SigningKeys(host).Where(key => key.Use == SigningKey.Signing).Select(key => key.Id).ShouldBe([first.Id, retiring.Id], ignoreOrder: true);
+        retired.RetiredAt.ShouldBe(now);
+    }
+
+    [Fact]
+    public async Task TheJobMovesARetirementLaterAndNeverEarlierAndGivesARevokedKeyNoMoreTime()
+    {
+        await using var host = NewHost();
+        var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        await host.SignInAsync(editor);
+        var now = host.Time.GetUtcNow();
+        var overlap = TimeSpan.FromDays(14) + TimeSpan.FromSeconds(30) + TimeSpan.FromMinutes(5);
+        var encryption = SigningKeys(host).Single(key => key.Use == SigningKey.Encryption);
+        var first = SigningKeys(host).Single(key => key.Use == SigningKey.Signing);
+
+        // Made when the longest lifetime was three days: too short now.
+        var second = AddKey(host, SigningKey.Signing, sequence: 2, now.AddDays(-2));
+        Retire(host, first.Id, second.ActiveFrom.AddDays(3));
+        // Given more than the overlap, which it keeps.
+        var third = AddKey(host, SigningKey.Signing, sequence: 3, now.AddDays(-1));
+        Retire(host, second.Id, third.ActiveFrom.AddDays(30));
+        // Revoked by a machine whose clock is a minute ahead: retired when its successor became active.
+        var fourth = AddKey(host, SigningKey.Signing, sequence: 4, now.AddMinutes(1));
+        Retire(host, third.Id, fourth.ActiveFrom);
+
+        await RunKeysJobAsync(host);
+
+        var keys = SigningKeys(host).ToDictionary(key => key.Id);
+        keys[first.Id].RetiredAt.ShouldBe(second.ActiveFrom + overlap);
+        keys[second.Id].RetiredAt.ShouldBe(third.ActiveFrom.AddDays(30));
+        keys[third.Id].RetiredAt.ShouldBe(fourth.ActiveFrom);
+        keys[fourth.Id].RetiredAt.ShouldBeNull();
+        keys[encryption.Id].RetiredAt.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task OfTwoThatRotateAtOnceOneMakesTheSuccessorAndTheOtherFindsIt()
+    {
+        await InDatabaseFileAsync(async file =>
+        {
+            await using var first = NewHost().UseSqlite(file);
+            await first.SignInAsync(await first.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
+            await using var second = NewHost().UseSqlite(file);
+            _ = second.Services;
+
+            var stores = new[] { first, second, first, second }.Select(host => host.Services.GetRequiredService<SigningKeyStore>()).ToArray();
+            var rotations = await Task.WhenAll(stores.Select(store => Task.Run(() => store.RotateAsync(SigningKey.Signing, TimeSpan.FromDays(1), TimeSpan.FromDays(14), Token))));
+
+            rotations.Count(rotation => rotation.Made).ShouldBe(1);
+            rotations.Select(rotation => rotation.Key.Id).Distinct().ShouldHaveSingleItem();
+            var keys = SigningKeys(first).Where(key => key.Use == SigningKey.Signing).OrderBy(key => key.Sequence).ToList();
+            keys.Select(key => key.Sequence).ShouldBe([1, 2]);
+            keys[0].RetiredAt.ShouldBe(keys[1].ActiveFrom.AddDays(14));
+        });
+    }
+
     private static string KeyId(SigningKey key) => key.Id.ToString("N");
 
     private static async Task<List<string>> KeySetAsync(HttpClient client)
@@ -299,6 +454,15 @@ public sealed partial class AuthorizationServerTests
         using var response = await client.GetAsync("/.well-known/jwks", Token);
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         return [.. (await JsonAsync(response)).GetProperty("keys").EnumerateArray().Select(key => key.GetProperty("kid").GetString()!)];
+    }
+
+    private static async Task RunKeysJobAsync(FluentCmsTestHost host)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var operation = new OperationContext(Principal.System, Origin.Job, new SiteId(DefaultSite.Id), DefaultSite.Locale, null, "keys", host.Time.GetUtcNow());
+        await scope.ServiceProvider.GetRequiredService<OidcKeysJob>().ExecuteAsync(
+            new OidcKeysPayload(),
+            new JobContext(Guid.CreateVersion7(), OidcKeysJob.Type, "default", 1, 3, operation, Token));
     }
 
     // A row as SigningKeyStore writes one, in a state of the test's choosing.
