@@ -832,6 +832,7 @@ internal sealed partial class ContentService(
                 composer.CarryProtected(type, stored, working, includingGroups: !isPatch || !write.Permissions.IsSystem, unseen);
                 await KeepUnreadableTargetsAsync(write, stored, shown, working, isPatch, cancellationToken);
 
+                var movedBefore = _moved.Count;
                 (working, var fields) = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, Client(refused), writable, document), cancellationToken);
 
                 var sharedChanged = SharedChanged(type, fields, stored);
@@ -843,7 +844,7 @@ internal sealed partial class ContentService(
 
                 // Adding a locale writes the shared row as this write read it, so it moves the other locales as a change would.
                 var movesShared = sharedChanged || addsLocale;
-                var advanced = await AdvanceVersionsAsync(write, id, addsLocale ? null : document, expectedVersion, status, movesShared ? documents : [], cancellationToken, decide: addsLocale ? null : StatusOf(write, fields, cancellationToken));
+                var advanced = await AdvanceVersionsAsync(write, id, addsLocale ? null : document, expectedVersion, status, movesShared ? documents : [], cancellationToken, decide: addsLocale ? null : StatusOf(write, fields, cancellationToken), movedBefore: movedBefore);
                 if (addsLocale)
                 {
                     document.DraftVersion = next;
