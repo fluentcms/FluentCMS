@@ -717,9 +717,9 @@ public sealed class UserStoreTests : IDisposable
 
     // Saves that keep losing, as under a flood of other saves of the user. A guess whose place in the count is never saved
     // is never checked: it ends with the concurrency failure after the same saves whether it was right or wrong. A guess
-    // that holds its place is checked once, and a wrong one is answered then; a right one checks the password and hashes the
-    // new one again on every try of its save, and when they run out it is answered as a wrong one, its place counted. The
-    // answers are the same, the work is not, and only a guess that holds a place does more (#3447).
+    // that holds its place hashes the new password and is checked, once each: a wrong one is answered then, and a right one
+    // keeps the hash for every try of its save, which lost to no other password, and when they run out it is answered as a
+    // wrong one, its place counted. The answers, the saves and the work are the same (#3447, #3601).
     [Fact]
     public async Task AChangeWhoseSavesKeepLosingAnswersTheSameForARightAndAWrongPassword()
     {
@@ -747,13 +747,66 @@ public sealed class UserStoreTests : IDisposable
 
         right = await ChangeAsync(Password, passing: 1);
         wrong = await ChangeAsync("wrong", passing: 1);
-        right.ShouldBe((nameof(IdentityErrorDescriber.PasswordMismatch), 1 + tries, tries, tries));
-        wrong.ShouldBe((nameof(IdentityErrorDescriber.PasswordMismatch), 1 + tries, 1, 0));
+        right.ShouldBe((nameof(IdentityErrorDescriber.PasswordMismatch), 1 + tries, 1, 1));
+        wrong.ShouldBe(right);
 
         var stored = await fixture.FindAsync(user.Id);
         stored.AccessFailedCount.ShouldBe(0);
         (await fixture.UsersAsync(users => users.GetAuthenticationTokenAsync(stored, "[AspNetUserStore]", "SignedInFailures"))).ShouldBe("2:");
         (await fixture.UsersAsync(users => users.CheckPasswordAsync(stored, Password))).ShouldBeTrue();
+    }
+
+    // A right and a wrong current password each make the same key derivations, one hash of the new password and one check,
+    // so that the time of the answer tells them apart no more than the answer does (#3601).
+    [Fact]
+    public async Task ARightAndAWrongCurrentPasswordDoTheSameKeyDerivations()
+    {
+        var hasher = new CountingHasher();
+        using var fixture = new IdentityFixture(cms => cms.Services.AddSingleton<IPasswordHasher<CmsUser>>(hasher));
+        var user = await fixture.CreateUserAsync("ann");
+        async Task<(string Answer, int Derivations)> ChangeAsync(string current)
+        {
+            hasher.Clear();
+            var result = await fixture.UsersAsync(async users => await users.ChangePasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, current, "Another-horse-2"));
+            return (result.Succeeded ? "" : result.Errors.ShouldHaveSingleItem().Code, hasher.Verified.Count + hasher.Hashed);
+        }
+
+        var wrong = await ChangeAsync("wrong");
+        var right = await ChangeAsync(Password);
+
+        wrong.ShouldBe((nameof(IdentityErrorDescriber.PasswordMismatch), 2));
+        right.ShouldBe(("", 2));
+        (await fixture.UsersAsync(async users => await users.CheckPasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, "Another-horse-2"))).ShouldBeTrue();
+    }
+
+    // A right current password whose save lost is checked again only when the save lost to another password. Its save made
+    // again over another save of the user keeps the one hash and check it made; over a password an operator set meanwhile,
+    // the guess is checked against that one, and answered and counted as a wrong one (#3601).
+    [Fact]
+    public async Task ACurrentPasswordIsCheckedAgainOnlyWhenTheSaveLostToAnotherPassword()
+    {
+        var hasher = new CountingHasher();
+        using var fixture = new IdentityFixture(cms => cms.Services.AddSingleton<IPasswordHasher<CmsUser>>(hasher));
+        var user = await fixture.CreateUserAsync("ann");
+        var operators = new PasswordHasher<CmsUser>().HashPassword(new CmsUser(), "Operator-horse-3");
+        async Task<(string Answer, int Checks, int Hashes)> AfterAnotherSaveAsync(string? hash)
+        {
+            hasher.Clear();
+            hasher.AfterNextCheck(() => fixture.Read(context => context.Set<CmsUser>().Where(row => row.Id == user.Id).ExecuteUpdate(setters => setters
+                .SetProperty(row => row.PasswordHash, row => hash ?? row.PasswordHash)
+                .SetProperty(row => row.ConcurrencyStamp, Guid.NewGuid().ToString()))));
+            var result = await fixture.UsersAsync(async users => await users.ChangePasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, Password, "Another-horse-2"));
+            return (result.Succeeded ? "" : result.Errors.ShouldHaveSingleItem().Code, hasher.Verified.Count, hasher.Hashed);
+        }
+
+        (await AfterAnotherSaveAsync(null)).ShouldBe(("", 1, 1));
+        Succeeded(await fixture.UsersAsync(async users => await users.SetPasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, Password)));
+        (await AfterAnotherSaveAsync(operators)).ShouldBe((nameof(IdentityErrorDescriber.PasswordMismatch), 2, 1));
+
+        var stored = await fixture.FindAsync(user.Id);
+        stored.PasswordHash.ShouldBe(operators);
+        stored.AccessFailedCount.ShouldBe(1);
+        (await fixture.UsersAsync(users => users.GetAuthenticationTokenAsync(stored, "[AspNetUserStore]", "SignedInFailures"))).ShouldBe("1:");
     }
 
     // Far more guesses than the tries of a save, sent at once with the right one among them. A guess takes its place in the
@@ -791,6 +844,11 @@ public sealed class UserStoreTests : IDisposable
         {
             checkedGuesses.ShouldBeEmpty();
             answers[0].Answer.ShouldContain(nameof(IdentityErrorDescriber.PasswordTooShort));
+        }
+        else
+        {
+            // The first place saved is a guess's, which is then checked.
+            checkedGuesses.ShouldNotBeEmpty(string.Join(", ", answers));
         }
     }
 
@@ -871,6 +929,7 @@ public sealed class UserStoreTests : IDisposable
         }))).WaitAsync(TimeSpan.FromMinutes(2), Token);
 
         var checks = counting.Checked.ToList();
+        checks.ShouldNotBeEmpty(string.Join(", ", answers));
         checks.TakeWhile(check => !check.Right).Count().ShouldBeLessThanOrEqualTo(limit, string.Join(", ", checks));
         answers.Count(answer => answer == "").ShouldBe(checks.Count(check => check.Right));
         answers.Where(answer => answer != "").ShouldAllBe(answer => answer == IdentityErrorCodes.InvalidTwoFactorCode || answer == IdentityErrorCodes.InvalidUser, string.Join(", ", answers));
@@ -1016,6 +1075,8 @@ public sealed class UserStoreTests : IDisposable
         private readonly PasswordHasher<CmsUser> _inner = new();
         private int _hashed;
 
+        private Action? _afterNextCheck;
+
         public System.Collections.Concurrent.ConcurrentQueue<(string Hash, string Provided)> Verified { get; } = new();
 
         public int Hashed => Volatile.Read(ref _hashed);
@@ -1032,10 +1093,15 @@ public sealed class UserStoreTests : IDisposable
             return _inner.HashPassword(user, password);
         }
 
+        // Another request's save, made once just after the next check, as it would come between the check and the save.
+        public void AfterNextCheck(Action other) => Volatile.Write(ref _afterNextCheck, other);
+
         public PasswordVerificationResult VerifyHashedPassword(CmsUser user, string hashedPassword, string providedPassword)
         {
             Verified.Enqueue((hashedPassword, providedPassword));
-            return _inner.VerifyHashedPassword(user, hashedPassword, providedPassword);
+            var result = _inner.VerifyHashedPassword(user, hashedPassword, providedPassword);
+            Interlocked.Exchange(ref _afterNextCheck, null)?.Invoke();
+            return result;
         }
     }
 
