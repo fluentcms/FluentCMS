@@ -1,5 +1,5 @@
 using System.Data.Common;
-using FluentCMS.Core.Jobs;
+using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Providers;
@@ -406,11 +406,11 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
             // then, not under one still running.
             try
             {
-                await _owner.WaitAsync(loss, JobRunner.DisposeWait);
+                await _owner.WaitAsync(loss, DisposeWait.Bound);
             }
             catch (TimeoutException)
             {
-                LockLog.LostCallbackSlow(_owner.Logger, Name, JobRunner.DisposeWait);
+                LockLog.LostCallbackSlow(_owner.Logger, Name, DisposeWait.Bound);
                 _ = loss.ContinueWith(_ => _lost.Dispose(), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
                 return;
             }

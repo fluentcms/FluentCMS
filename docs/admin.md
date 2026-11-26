@@ -52,7 +52,7 @@ The admin is built for the last two versions of Chrome, Edge, Firefox and Safari
 
 The repository's end-to-end tests drive the admin in Chromium, against a publish of the reference host and against its image, and check every view with axe-core in the light and the dark theme, and on the publish right to left as well. Some cases also run at the width of a tablet.
 
-Every night the same tests run in Firefox and in WebKit, Safari's engine, against the publish. Three cases are left out in WebKit, each with an issue: closing a tab with nothing unsaved ([#3648](https://github.com/fluentcms/FluentCMS/issues/3648)) and the loading state on the reload of a lazily loaded page, in two cases ([#3649](https://github.com/fluentcms/FluentCMS/issues/3649)). The list is in section 7 of the [admin technical specification](planning/admin-technical-spec.md#7-testing).
+Every night the same tests run in Firefox and in WebKit, Safari's engine, against the publish, with no case left out. Where a browser cannot run a case, section 7 of the [admin technical specification](planning/admin-technical-spec.md#7-testing) lists it.
 
 ## Language and formats
 

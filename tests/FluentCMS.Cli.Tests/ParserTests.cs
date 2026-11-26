@@ -170,8 +170,8 @@ public sealed partial class ParserTests : IDisposable
         await RunAsync("export", "--output", "out.zip", "--site", "blog", "--types", "article,tag", "--published-only", "--roles", "--media-files", "--assembly", ToolRun.HostAssembly);
         _launcher.Arguments.ShouldBe(["export", "--output", Path.GetFullPath("out.zip"), "--site", "blog", "--types", "article,tag", "--published-only", "--roles", "--media-files"]);
 
-        await RunAsync("import", "in.zip", "--json", "--dry-run", "--missing-locales", "skip", "--authors", "importer", "--overwrite", "--webhooks", "--roles", "--assembly", ToolRun.HostAssembly);
-        _launcher.Arguments.ShouldBe(["import", Path.GetFullPath("in.zip"), "--dry-run", "--overwrite", "--webhooks", "--missing-locales", "skip", "--authors", "importer", "--roles", "--json"]);
+        await RunAsync("import", "in.zip", "--json", "--dry-run", "--missing-locales", "skip", "--authors", "importer", "--overwrite", "--webhooks", "--roles", "--media-name-keys", "--assembly", ToolRun.HostAssembly);
+        _launcher.Arguments.ShouldBe(["import", Path.GetFullPath("in.zip"), "--dry-run", "--overwrite", "--webhooks", "--missing-locales", "skip", "--authors", "importer", "--roles", "--media-name-keys", "--json"]);
 
         await RunAsync("backup", "--output", "backup.zip", "--assembly", ToolRun.HostAssembly);
         _launcher.Arguments.ShouldBe(["backup", "--output", Path.GetFullPath("backup.zip")]);

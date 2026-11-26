@@ -1,3 +1,4 @@
+using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Health;
 using FluentCMS.Core.Telemetry;
 using FluentCMS.Jobs;
@@ -15,8 +16,6 @@ internal sealed class JobRunner(
     TimeProvider time,
     ILogger<JobRunner> logger) : IJobRunner, IDisposable
 {
-    internal static readonly TimeSpan DisposeWait = TimeSpan.FromSeconds(5);
-
     private readonly CancellationTokenSource _stopping = new();
 
     // One for each worker, whose callbacks CancelAsync runs as a thread-pool work item of their own: a job's await can end
@@ -99,7 +98,7 @@ internal sealed class JobRunner(
 
         try
         {
-            if (_loops?.Wait(DisposeWait) == false)
+            if (_loops?.Wait(DisposeWait.Bound) == false)
             {
                 return;
             }

@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Events;
@@ -11,7 +10,6 @@ public static class MemberProviderTypes
     public const string Google = "Google";
     public const string Microsoft = "Microsoft";
     public const string GitHub = "GitHub";
-    public const string Apple = "Apple";
     public const string Oidc = "Oidc";
 }
 
@@ -20,7 +18,6 @@ internal enum MemberProviderKind
     Google,
     Microsoft,
     GitHub,
-    Apple,
     Oidc,
 }
 
@@ -48,8 +45,7 @@ public sealed partial class MemberProvider
 
     public string? ClientId { get; set; }
 
-    // Required for Google, Microsoft and GitHub, optional for generic OIDC, and not used for Apple, whose secret the
-    // handler makes from PrivateKey.
+    // Required for Google, Microsoft and GitHub, optional for generic OIDC.
     public string? ClientSecret { get; set; }
 
     // Asked for after the scopes the type needs for the address.
@@ -60,13 +56,6 @@ public sealed partial class MemberProvider
 
     // Generic OIDC: http for the authority, for a provider on the developer's machine.
     public bool RequireHttpsMetadata { get; set; } = true;
-
-    // Apple: the team id, the id of the Sign in with Apple key, and the key itself, the PEM text of its .p8 file.
-    public string? TeamId { get; set; }
-
-    public string? KeyId { get; set; }
-
-    public string? PrivateKey { get; set; }
 
     // A first sign-in whose address belongs to a member with no login of this provider links that member, when the
     // provider says the address is verified. Off, the sign-in is refused, so that a provider cannot take over an
@@ -82,7 +71,6 @@ public sealed partial class MemberProvider
         MemberProviderKind.Google => "Google",
         MemberProviderKind.Microsoft => "Microsoft",
         MemberProviderKind.GitHub => "GitHub",
-        MemberProviderKind.Apple => "Apple",
         _ => name,
     };
 
@@ -106,12 +94,6 @@ public sealed partial class MemberProvider
                 Require(
                     authority is not null && (authority.Scheme == Uri.UriSchemeHttps || (!RequireHttpsMetadata && authority.Scheme == Uri.UriSchemeHttp)) && string.IsNullOrEmpty(authority.Query) && string.IsNullOrEmpty(authority.Fragment),
                     $"{key}:{nameof(Authority)} is '{Authority}'; it is an https URL with no query, and http needs {nameof(RequireHttpsMetadata)} off.");
-                break;
-            case MemberProviderKind.Apple:
-                Require(!string.IsNullOrWhiteSpace(TeamId), $"{key}:{nameof(TeamId)} is required for Apple.");
-                Require(!string.IsNullOrWhiteSpace(KeyId), $"{key}:{nameof(KeyId)} is required for Apple.");
-                Require(string.IsNullOrEmpty(ClientSecret), $"{key}:{nameof(ClientSecret)} is not used for Apple; the handler makes the secret from {nameof(PrivateKey)}.");
-                Require(IsPrivateKey(PrivateKey), $"{key}:{nameof(PrivateKey)} is required for Apple and is the PEM text of the key's .p8 file, not its path.");
                 break;
             default:
                 Require(!string.IsNullOrWhiteSpace(ClientSecret), $"{key}:{nameof(ClientSecret)} is required for {kind}.");
@@ -144,26 +126,6 @@ public sealed partial class MemberProvider
 
         kind = default;
         return false;
-    }
-
-    // The key is tried the way the handler reads it, so a key that is not one stops the host and not the first sign-in.
-    private static bool IsPrivateKey(string? pem)
-    {
-        if (string.IsNullOrWhiteSpace(pem))
-        {
-            return false;
-        }
-
-        try
-        {
-            using var key = ECDsa.Create();
-            key.ImportFromPem(pem);
-            return true;
-        }
-        catch (Exception exception) when (exception is ArgumentException or CryptographicException)
-        {
-            return false;
-        }
     }
 
     [GeneratedRegex("^[a-z0-9-]{1,64}$")]

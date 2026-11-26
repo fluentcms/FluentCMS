@@ -181,6 +181,35 @@ public sealed partial class SchemaApplyTests : IDisposable
         indexes.ShouldNotContain("ix_hand_title");
     }
 
+    // A rebuild makes the table again from the model, which has no index of expressions, so one made by hand is lost with
+    // the old table and has to be made again after the run, which then keeps it (#3562).
+    [Fact]
+    public async Task ATableRebuildOnSqliteLosesAnIndexOfAnExpressionMadeByHand()
+    {
+        Assert.SkipUnless(TestProvider.IsSqlite, "Only SQLite rebuilds a table to add a check.");
+        await MigrateAndApplyAsync(ArticleSchemas.Titled);
+        InsertArticle("Kept");
+        const string Create = "create index ix_hand_lower on cms_article (lower(title))";
+        _database.Execute(Create);
+        var withBody = SampleSchema.NewBuilder()
+            .AddCollection("article", type => type.Field("title", "text").Field("body", "richText"))
+            .Build();
+
+        (await RunAsync(withBody, "schema", "apply", "--script")).Output.ShouldContain("CREATE TABLE \"ef_temp_cms_article\"");
+        var (exitCode, _, error) = await RunAsync(withBody, "schema", "apply");
+
+        exitCode.ShouldBe(0, error);
+        _database.ReadStrings("select title from cms_article").ShouldBe(["Kept"]);
+        Indexes().ShouldNotContain("ix_hand_lower");
+        (await RunAsync(withBody, "schema", "apply")).Output.ShouldStartWith("Nothing to apply;");
+
+        _database.Execute(Create);
+        (await RunAsync(withBody, "schema", "apply")).Output.ShouldStartWith("Nothing to apply;");
+        Indexes().ShouldContain("ix_hand_lower");
+
+        List<string> Indexes() => _database.ReadStrings("select name from sqlite_master where type = 'index' and tbl_name = 'cms_article'");
+    }
+
     // A content table made before the model gave its text a collation (#2874, #3308) keeps the one it has, which the plan
     // names; the column's type and nullability are the model's, so nothing is applied (#3476).
     [Fact]

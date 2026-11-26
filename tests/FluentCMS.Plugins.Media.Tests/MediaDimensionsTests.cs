@@ -92,19 +92,19 @@ public sealed class MediaDimensionsTests(MediaHost media) : IClassFixture<MediaH
     {
         await StartedAsync();
         await using var scope = media.Services.CreateAsyncScope();
-        var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+        var store = scope.ServiceProvider.GetRequiredService<IPluginStore<MediaPlugin>>();
         var scheduler = media.Services.GetRequiredService<IJobScheduler>();
-        await database.Set<SigningKey>().Where(row => row.Id == MediaDimensionsJob.StateId).ExecuteDeleteAsync(Token);
+        await store.DeleteAsync(MediaDimensionsJob.StateKey, cancellationToken: Token);
 
-        var fresh = await new MediaDimensionsStart(scheduler, media.Host.Time).RunAsync(database, Token);
-        var claimed = await new MediaDimensionsStart(scheduler, media.Host.Time).RunAsync(database, Token);
+        var fresh = await new MediaDimensionsStart(scheduler, media.Host.Time).RunAsync(store, Token);
+        var claimed = await new MediaDimensionsStart(scheduler, media.Host.Time).RunAsync(store, Token);
         media.Host.Time.Advance(MediaDimensionsJob.Lease + TimeSpan.FromMinutes(1));
-        var stale = await new MediaDimensionsStart(scheduler, media.Host.Time).RunAsync(database, Token);
+        var stale = await new MediaDimensionsStart(scheduler, media.Host.Time).RunAsync(store, Token);
         var pending = await PendingAsync();
         await RunJobsAsync();
         await StateAsync(MediaDimensionsJob.Done);
         media.Host.Time.Advance(MediaDimensionsJob.Lease + TimeSpan.FromMinutes(1));
-        var done = await new MediaDimensionsStart(scheduler, media.Host.Time).RunAsync(database, Token);
+        var done = await new MediaDimensionsStart(scheduler, media.Host.Time).RunAsync(store, Token);
 
         (fresh, claimed, stale, done).ShouldBe((true, false, true, false));
         pending.ShouldBe(2);
@@ -118,12 +118,12 @@ public sealed class MediaDimensionsTests(MediaHost media) : IClassFixture<MediaH
     {
         await StartedAsync();
         await using var scope = media.Services.CreateAsyncScope();
-        var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
-        await database.Set<SigningKey>().Where(row => row.Id == MediaDimensionsJob.StateId).ExecuteDeleteAsync(Token);
+        var store = scope.ServiceProvider.GetRequiredService<IPluginStore<MediaPlugin>>();
+        await store.DeleteAsync(MediaDimensionsJob.StateKey, cancellationToken: Token);
         var start = new MediaDimensionsStart(new FailingOnce(media.Services.GetRequiredService<IJobScheduler>()), media.Host.Time);
 
-        await Should.ThrowAsync<InvalidOperationException>(() => start.RunAsync(database, Token));
-        var retried = await start.RunAsync(database, Token);
+        await Should.ThrowAsync<InvalidOperationException>(() => start.RunAsync(store, Token));
+        var retried = await start.RunAsync(store, Token);
 
         retried.ShouldBeTrue();
         (await PendingAsync()).ShouldBe(1);
@@ -227,14 +227,51 @@ public sealed class MediaDimensionsTests(MediaHost media) : IClassFixture<MediaH
     {
         var refusing = new RefusingClaim();
         await using var host = new MediaHost();
-        host.Host.Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(refusing)));
+        host.Host.Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(refusing)));
         await host.Services.GetServices<IHostedService>().OfType<MediaStartup>().Single().ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(30), Token);
         await using var scope = host.Services.CreateAsyncScope();
-        var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
-        await database.Set<SigningKey>().Where(row => row.Id == MediaDimensionsJob.StateId).ExecuteDeleteAsync(Token);
+        var store = scope.ServiceProvider.GetRequiredService<IPluginStore<MediaPlugin>>();
+        await store.DeleteAsync(MediaDimensionsJob.StateKey, cancellationToken: Token);
         refusing.Armed = true;
 
-        await Should.ThrowAsync<DbUpdateException>(() => MediaDimensionsJob.ClaimAsync(database, host.Host.Time, Token));
+        await Should.ThrowAsync<DbUpdateException>(() => MediaDimensionsJob.ClaimAsync(store, host.Host.Time, Token));
+    }
+
+    // A start takes over a stale claim while a run of the chain that held it reads its batch: the run loses its write and
+    // enqueues nothing, and the value keeps the version of the new claim, whose chain reads that batch again.
+    [Fact]
+    public async Task ARunOfAChainWhoseClaimWasTakenOverLosesItsWriteAndEndsThere()
+    {
+        await StartedAsync();
+        using var admin = await media.AdminAsync();
+        var marker = await UploadAsync(admin, TurnedJpeg(400, 100), "taken-marker.jpg");
+        var taken = await UploadAsync(admin, TurnedJpeg(400, 100), "taken.jpg");
+        await StoreAsync(taken.Id, 400, 100);
+        var cursor = marker.Id.ToString("D");
+        await StateAsync(cursor);
+        long? claim = null;
+        var processor = new WatchedProcessor(media.Services.GetRequiredService<IImageProcessor>())
+        {
+            Identifying = async () =>
+            {
+                if (claim is not null)
+                {
+                    return;
+                }
+
+                media.Host.Time.Advance(MediaDimensionsJob.Lease + TimeSpan.FromMinutes(1));
+                await using var scope = media.Services.CreateAsyncScope();
+                claim = await MediaDimensionsJob.ClaimAsync(scope.ServiceProvider.GetRequiredService<IPluginStore<MediaPlugin>>(), media.Host.Time, Token);
+            },
+        };
+
+        await ExecuteAsync(processor, batchSize: 1);
+
+        claim.ShouldNotBeNull();
+        await using var check = media.Services.CreateAsyncScope();
+        var state = await check.ServiceProvider.GetRequiredService<IPluginStore<MediaPlugin>>().GetAsync(MediaDimensionsJob.StateKey, Token);
+        state.ShouldNotBeNull().ShouldSatisfyAllConditions(value => value.Value.ShouldBe(cursor), value => value.Version.ShouldBe(claim.Value));
+        (await PendingAsync()).ShouldBe(0);
     }
 
     // A replace saved between the read of the image and the write of its size keeps the size of its new file.
@@ -309,21 +346,21 @@ public sealed class MediaDimensionsTests(MediaHost media) : IClassFixture<MediaH
     }
 
     // One run of the check over the rest of the library, with the processor, storage and logs given.
-    private async Task ExecuteAsync(IImageProcessor? processor = null, IFileStorage? storage = null, CapturedLogs? logs = null, int attempt = 1)
+    private async Task ExecuteAsync(IImageProcessor? processor = null, IFileStorage? storage = null, CapturedLogs? logs = null, int attempt = 1, int batchSize = 10_000)
     {
         await using var scope = media.Services.CreateAsyncScope();
         var services = scope.ServiceProvider;
         using var factory = LoggerFactory.Create(builder => builder.AddProvider(logs ?? new CapturedLogs()));
         var job = new MediaDimensionsJob(
             services.GetRequiredService<PluginDbContext<MediaPlugin>>(),
+            services.GetRequiredService<IPluginStore<MediaPlugin>>(),
             storage is null ? services.GetRequiredService<MediaStorage>() : new MediaStorage(storage, services),
             processor ?? services.GetRequiredService<IImageProcessor>(),
             services.GetRequiredService<MediaCache>(),
             media.Services.GetRequiredService<IJobScheduler>(),
-            media.Host.Time,
             factory.CreateLogger<MediaDimensionsJob>());
         var operation = new OperationContext(Principal.System, Origin.Job, new SiteId(DefaultSite.Id), "", null, Guid.NewGuid().ToString("N"), media.Host.Time.GetUtcNow());
-        await job.ExecuteAsync(new MediaDimensionsPayload(10_000), new JobContext(Guid.NewGuid(), MediaDimensionsJob.Type, JobRunnerOptions.DefaultQueue, attempt, 3, operation, Token));
+        await job.ExecuteAsync(new MediaDimensionsPayload(batchSize), new JobContext(Guid.NewGuid(), MediaDimensionsJob.Type, JobRunnerOptions.DefaultQueue, attempt, 3, operation, Token));
     }
 
     private async Task<int> PendingAsync()
@@ -333,16 +370,20 @@ public sealed class MediaDimensionsTests(MediaHost media) : IClassFixture<MediaH
             .CountAsync(job => job.Type == MediaDimensionsJob.Type && job.Status == JobClaimStatus.Pending, Token);
     }
 
+    // Sets the value of the check, at whatever version it has, when set is given; answers the value.
     private async Task<string?> StateAsync(string? set = null)
     {
         await using var scope = media.Services.CreateAsyncScope();
-        var states = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<SigningKey>().Where(row => row.Id == MediaDimensionsJob.StateId);
+        var store = scope.ServiceProvider.GetRequiredService<IPluginStore<MediaPlugin>>();
+        var state = await store.GetAsync(MediaDimensionsJob.StateKey, Token);
         if (set is not null)
         {
-            await states.ExecuteUpdateAsync(row => row.SetProperty(item => item.Key, set), Token);
+            state = state is null
+                ? await store.TryAddAsync(MediaDimensionsJob.StateKey, set, Token)
+                : await store.TrySetAsync(MediaDimensionsJob.StateKey, set, state.Version, Token);
         }
 
-        return await states.Select(row => row.Key).SingleOrDefaultAsync(Token);
+        return state?.Value;
     }
 
     // The size an image had before it was read through the processor: that of its header, before the orientation.
@@ -383,13 +424,13 @@ public sealed class MediaDimensionsTests(MediaHost media) : IClassFixture<MediaH
             where TJob : class, IJob<TPayload> => inner.AddRecurringAsync<TJob, TPayload>(name, cron, payload, queue, cancellationToken);
     }
 
-    // A save that adds the row of the check fails as a database out of reach does, once armed.
+    // A save that adds the value of the check fails as a database out of reach does, once armed.
     private sealed class RefusingClaim : SaveChangesInterceptor
     {
         public bool Armed { get; set; }
 
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default) =>
-            Armed && eventData.Context!.ChangeTracker.Entries<SigningKey>().Any(entry => entry.State == EntityState.Added && entry.Entity.Id == MediaDimensionsJob.StateId)
+            Armed && eventData.Context!.ChangeTracker.Entries<PluginStoreRow>().Any(entry => entry.State == EntityState.Added && entry.Entity.Key == MediaDimensionsJob.StateKey)
                 ? throw new DbUpdateException("The database is out of reach.")
                 : base.SavingChangesAsync(eventData, result, cancellationToken);
     }

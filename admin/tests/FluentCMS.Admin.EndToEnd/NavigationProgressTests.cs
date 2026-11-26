@@ -20,13 +20,11 @@ public sealed class NavigationProgressTests(EndToEndHost host) : BrowserTest(hos
     // Past the shell's limit for the reads of a new content locale, 75 s, and short of the client's 100 s per attempt.
     private static readonly LocatorAssertionsToBeVisibleOptions PastTheLimit = new() { Timeout = 95_000 };
 
-    // Not on WebKit (spec 7, #3649): WebKit takes the assembly from its cache on the reload, and the route that holds it never sees it.
     [Fact]
-    [Trait("NotOn", "webkit")]
     public async Task AReloadOfAnAdministrationRouteShowsTheShellAndALoadingStateBeforeThePage()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await SignedInTabAsync(browser, "users", await Host.CreateEditorAsync("Super Admin"));
+        var tab = await SignedInTabNotStoringAsync(browser, "users", Administration);
         await Expect(AreaHeading(tab, "Users")).ToBeVisibleAsync();
         var fetched = Requests(tab, Administration);
         var download = await HoldAsync(tab, url => Administration.IsMatch(url.AbsolutePath));
@@ -45,13 +43,11 @@ public sealed class NavigationProgressTests(EndToEndHost host) : BrowserTest(hos
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
-    // Not on WebKit, as the case above.
     [Fact]
-    [Trait("NotOn", "webkit")]
     public async Task AReloadOfAHalfsRouteShowsTheShellAndALoadingStateBeforeThePage()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await SignedInTabAsync(browser, "media", await Host.CreateEditorAsync("Super Admin"));
+        var tab = await SignedInTabNotStoringAsync(browser, "media", MediaHalf);
         await Expect(MediaHeading(tab)).ToBeVisibleAsync();
         var fetched = Requests(tab, MediaHalf);
         var download = await HoldAsync(tab, url => MediaHalf.IsMatch(url.AbsolutePath));
@@ -153,6 +149,30 @@ public sealed class NavigationProgressTests(EndToEndHost host) : BrowserTest(hos
         await Expect(Loading(tab)).ToHaveCountAsync(0);
         await Expect(heading).ToBeVisibleAsync();
         await Expect(tab.Page).ToHaveURLAsync(new Regex(Regex.Escape(route) + "$"));
+    }
+
+    // A tab signed in at the route. On WebKit its assembly is answered as not to be stored, so that a reload downloads it again:
+    // WebKit would take it from its cache, and the route that holds it would never see it (#3649). Not on Chromium, which
+    // accepts the host's certificate by its key alone, a flag Playwright's own fetch of the answer does not have.
+    private async Task<AdminTab> SignedInTabNotStoringAsync(AdminBrowser browser, string path, Regex file)
+    {
+        var tab = await browser.NewTabAsync();
+        if (Host.Engine == BrowserEngine.WebKit)
+        {
+            await tab.Page.RouteAsync(url => file.IsMatch(new Uri(url).AbsolutePath), async route =>
+            {
+                var response = await route.FetchAsync();
+                await route.FulfillAsync(new RouteFulfillOptions
+                {
+                    Response = response,
+                    Headers = new Dictionary<string, string> { ["content-type"] = response.Headers["content-type"], ["cache-control"] = "no-store" },
+                });
+            });
+        }
+
+        await tab.Page.GotoAsync(new Uri(Host.Admin, path).AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, await Host.CreateEditorAsync("Super Admin"));
+        return tab;
     }
 
     // The requests the predicate matches wait until the returned source is set; one the page has given up on meanwhile is

@@ -62,6 +62,10 @@ public static class TestProvider
     public static bool IsUpdateOf(string sql, string table) =>
         Regex.IsMatch(sql, IsSqlServer ? $@"^UPDATE \[(\w+)\]\s+SET\s.*\sFROM {Regex.Escape(Quote(table))} AS \[\1\](\s|$)" : $@"^UPDATE {Regex.Escape(Quote(table))}(\s|$)", RegexOptions.Singleline);
 
+    // Whether a command locks rows of the table by a read, as a hold does on PostgreSQL: SELECT ... FOR NO KEY UPDATE.
+    public static bool IsLockingReadOf(string sql, string table) =>
+        Regex.IsMatch(sql, $@"^SELECT\s.*\sFROM {Regex.Escape(Quote(table))}\s.*\sFOR NO KEY UPDATE\s*$", RegexOptions.Singleline);
+
     // Whether a command that SaveChanges built inserts into the table. SQL Server sends SET NOCOUNT ON before it.
     public static bool IsInsertInto(string sql, string table) =>
         Regex.IsMatch(sql, $@"(?m)^INSERT INTO {Regex.Escape(Quote(table))}(\s|$)");

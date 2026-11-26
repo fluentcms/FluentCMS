@@ -21,7 +21,6 @@ What the project's own planning documents say comes next. It gives no dates. The
 - **Plugin data in transfer packages** for the first-party plugins other than media, in a minor release (P11 of the [backend technical specification](docs/planning/backend-technical-spec.md)).
 - **The `fluentcms` tool as standalone binaries, with an interactive login** (P3 and P12 of the [backend technical specification](docs/planning/backend-technical-spec.md)).
 - **The other Should rows of the specification**, such as autosave, saved views, passkeys, SAML 2.0 and semantic search ([admin UI](docs/planning/specification/03-admin-ui.md), [identity](docs/planning/specification/04-identity-permissions.md), [AI and agents](docs/planning/specification/09-ai-agents.md)). Their order is not decided.
-- **Member sign-in with Apple, run against the real service** ([#3165](https://github.com/fluentcms/FluentCMS/issues/3165)). The handler has met only the stand-in of the tests; the run is not a condition of 1.0.0, and when it is made is not decided.
 
 ## Not planned
 

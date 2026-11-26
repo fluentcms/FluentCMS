@@ -10,15 +10,15 @@ internal sealed record MediaDimensionsPayload(int BatchSize = 100);
 
 // Gives the images stored before their size was read through the image processor the size they are shown at, after their
 // orientation. Only types that carry one are read: JPEG, WebP and AVIF, of those the processor reads. One chain of runs
-// goes over the library once per database. Where it stands is a row of its own in cms_media_signing_key (StateId, beside
-// the signing key's row 1, which is the only row the signing reads): its key is the id of the last image read, empty
-// before the first, or "done", and its created_at the time a start claimed it or a run last moved it on, so that a chain
-// that goes on keeps its claim. A start of the host claims the check
-// only when the row is missing, or names no end and was claimed longer ago than Lease, as after a chain whose run failed
-// for good, and then enqueues the first run (MediaDimensionsStart), so that instances that start together start one chain.
-// A run reads the next BatchSize images that are not deleted, in the order of their ids, writes the width and height that
-// differ, and moves the row on from where it read it, then enqueues the next run, or writes "done"; two chains, which a
-// stale claim can leave, take turns on the row. Deleting the row runs the check again at the next start. Only the width
+// goes over the library once per database. Where it stands is the plugin's value StateKey: the id of the last image read,
+// empty before the first, or "done", written when a start claimed it or a run last moved it on, so that a chain that goes
+// on keeps its claim. A start of the host claims the check only when the value is missing, or names no end and was written
+// longer ago than Lease, as after a chain whose run failed for good, and then enqueues the first run (MediaDimensionsStart),
+// so that instances that start together start one chain. A run reads the next BatchSize images that are not deleted, in
+// the order of their ids, writes the width and height that differ, and moves the value on from the version it read, then
+// enqueues the next run, or writes "done". A claim taken over a stale one moves the version on, so a chain that still held
+// the stale claim loses its next write and ends there, and the new chain reads that batch again. Deleting the value runs
+// the check again at the next start. Only the width
 // and height change: not the version or the time and author of the last update, and no event of the asset is raised, so
 // no webhook hears of it; the copies of the Delivery API that name a corrected asset are evicted. A JPEG is identified from
 // the first PrefixLength bytes of its file, where its EXIF and frame header are, and from the whole file only when those
@@ -30,15 +30,15 @@ internal sealed record MediaDimensionsPayload(int BatchSize = 100);
 // evicting. One replaced since the run read it keeps the size of its new file.
 internal sealed class MediaDimensionsJob(
     PluginDbContext<MediaPlugin> database,
+    IPluginStore<MediaPlugin> store,
     MediaStorage storages,
     IImageProcessor processor,
     MediaCache cache,
     IJobScheduler scheduler,
-    TimeProvider time,
     ILogger<MediaDimensionsJob> logger) : IJob<MediaDimensionsPayload>
 {
     public const string Type = "media.dimensions.backfill";
-    public const int StateId = 2;
+    public const string StateKey = Type;
     public const string Done = "done";
     public const int PrefixLength = 1 << 20;
 
@@ -51,44 +51,24 @@ internal sealed class MediaDimensionsJob(
     private static readonly MediaType[] Oriented = [MediaTypes.Jpeg, MediaTypes.WebP, MediaTypes.Avif];
 
     // At a start of the host: claims the check unless the library was gone over or a chain claimed it within Lease, by adding
-    // the row or by moving the time of a stale claim. Answers the claim, which MediaDimensionsStart enqueues a run for, or
-    // null. The time is cut to milliseconds, which every provider stores as it is, so that the claim reads back equal.
-    public static async Task<DateTimeOffset?> ClaimAsync(PluginDbContext<MediaPlugin> database, TimeProvider time, CancellationToken cancellationToken)
+    // the value or by writing a stale claim again at its version. Answers the version of the claim, which MediaDimensionsStart
+    // enqueues a run for, or null when another start holds it.
+    public static async Task<long?> ClaimAsync(IPluginStore<MediaPlugin> store, TimeProvider time, CancellationToken cancellationToken)
     {
-        var now = time.GetUtcNow();
-        now = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerMillisecond));
-        var state = await database.Set<SigningKey>().AsNoTracking().FirstOrDefaultAsync(row => row.Id == StateId, cancellationToken);
-        if (state is null)
+        ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(time);
+
+        if (await store.GetAsync(StateKey, cancellationToken) is not { } state)
         {
-            var claim = new SigningKey { Id = StateId, Key = "", CreatedAt = now };
-            database.Add(claim);
-            try
-            {
-                await database.SaveChangesAsync(cancellationToken);
-                return now;
-            }
-            catch (DbUpdateException)
-            {
-                database.Entry(claim).State = EntityState.Detached;
-
-                // Another instance claimed it at the same start; a failure of the database is no claim.
-                if (!await database.Set<SigningKey>().AsNoTracking().AnyAsync(row => row.Id == StateId, cancellationToken))
-                {
-                    throw;
-                }
-
-                return null;
-            }
+            return (await store.TryAddAsync(StateKey, "", cancellationToken))?.Version;
         }
 
-        if (state.Key == Done || state.CreatedAt > now - Lease)
+        if (state.Value == Done || state.UpdatedAt > time.GetUtcNow() - Lease)
         {
             return null;
         }
 
-        var moved = await database.Set<SigningKey>().Where(row => row.Id == StateId && row.Key == state.Key && row.CreatedAt == state.CreatedAt)
-            .ExecuteUpdateAsync(set => set.SetProperty(row => row.CreatedAt, now), cancellationToken);
-        return moved > 0 ? now : null;
+        return (await store.TrySetAsync(StateKey, state.Value, state.Version, cancellationToken))?.Version;
     }
 
     public async Task ExecuteAsync(MediaDimensionsPayload payload, JobContext context)
@@ -98,7 +78,7 @@ internal sealed class MediaDimensionsJob(
         ArgumentOutOfRangeException.ThrowIfLessThan(payload.BatchSize, 1);
 
         var cancellationToken = context.CancellationToken;
-        if (await database.Set<SigningKey>().AsNoTracking().FirstOrDefaultAsync(row => row.Id == StateId, cancellationToken) is not { } state || state.Key == Done)
+        if (await store.GetAsync(StateKey, cancellationToken) is not { } state || state.Value == Done)
         {
             return;
         }
@@ -108,7 +88,7 @@ internal sealed class MediaDimensionsJob(
 #pragma warning disable CA1304, CA1311 // The database lowers the column, where lower() takes no culture.
         var images = database.Set<Asset>().AsNoTracking().Where(asset => asset.DeletedAt == null && mimeTypes.Contains(asset.MimeType.ToLower()));
 #pragma warning restore CA1304, CA1311
-        if (Guid.TryParse(state.Key, out var after))
+        if (Guid.TryParse(state.Value, out var after))
         {
             images = images.Where(asset => asset.Id.CompareTo(after) > 0);
         }
@@ -157,9 +137,8 @@ internal sealed class MediaDimensionsJob(
 
         MediaLog.DimensionsChecked(logger, batch.Count, corrected.Count);
         var next = batch.Count < payload.BatchSize ? Done : batch[^1].Id.ToString("D");
-        var moved = await database.Set<SigningKey>().Where(row => row.Id == StateId && row.Key == state.Key)
-            .ExecuteUpdateAsync(set => set.SetProperty(row => row.Key, next).SetProperty(row => row.CreatedAt, time.GetUtcNow()), cancellationToken);
-        if (moved > 0 && next != Done)
+        var moved = await store.TrySetAsync(StateKey, next, state.Version, cancellationToken);
+        if (moved is not null && next != Done)
         {
             await scheduler.EnqueueAsync<MediaDimensionsJob, MediaDimensionsPayload>(payload, cancellationToken: cancellationToken);
         }

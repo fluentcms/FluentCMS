@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using AspNet.Security.OAuth.Apple;
 using AspNet.Security.OAuth.GitHub;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.Members;
@@ -35,7 +33,6 @@ public sealed class MemberProviderStartupTests : IAsyncDisposable
     [InlineData("the name of another provider", "FluentCms:Members:Providers:shared: 'member-shared'")]
     [InlineData("a missing client secret", "FluentCms:Members:Providers:github:ClientSecret")]
     [InlineData("no authority", "FluentCms:Members:Providers:corp:Authority")]
-    [InlineData("no private key", "FluentCms:Members:Providers:apple:PrivateKey")]
     [InlineData("linking for Microsoft", "FluentCms:Members:Providers:microsoft:LinkVerifiedEmail")]
     [InlineData("a name that is no path segment", "FluentCms:Members:Providers:my.provider:")]
     [InlineData("a name that is not lower-case", "FluentCms:Members:Providers:Google:")]
@@ -59,7 +56,6 @@ public sealed class MemberProviderStartupTests : IAsyncDisposable
             },
             "a missing client secret" => Settings(("github:Type", "GitHub"), ("github:ClientId", "id")),
             "no authority" => Settings(("corp:Type", "Oidc"), ("corp:ClientId", "id")),
-            "no private key" => Settings(("apple:Type", "Apple"), ("apple:ClientId", "id"), ("apple:TeamId", "TEAM123456"), ("apple:KeyId", "KEY1234567")),
             "linking for Microsoft" => Settings(("microsoft:Type", "Microsoft"), ("microsoft:ClientId", "id"), ("microsoft:ClientSecret", "secret"), ("microsoft:LinkVerifiedEmail", "true")),
             "a name that is not lower-case" => Settings(("Google:Type", "Google"), ("Google:ClientId", "id"), ("Google:ClientSecret", "secret")),
             "the name of a sign-in method" => Settings(("password:Type", "Google"), ("password:ClientId", "id"), ("password:ClientSecret", "secret")),
@@ -74,15 +70,27 @@ public sealed class MemberProviderStartupTests : IAsyncDisposable
         File.Exists(_host.DatabaseFile).ShouldBeFalse();
     }
 
+    // Apple is no type of member provider, so a host that still names it is refused as for any unknown type.
+    [Fact]
+    public async Task AnAppleProviderStopsTheHostAsAnUnknownTypeDoes()
+    {
+        var app = _host.Build(Environments.Production, Settings(
+            ("apple:Type", "Apple"), ("apple:ClientId", "com.example.web"), ("apple:TeamId", "TEAM123456"), ("apple:KeyId", "KEY1234567"), ("apple:PrivateKey", "-----BEGIN PRIVATE KEY-----")));
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => app.StartAsync(Token));
+
+        exception.Code.ShouldBe("FCMS3180");
+        exception.Message.ShouldBe("FCMS3180: FluentCms:Members:Providers:apple:Type is 'Apple'; it is one of Google, Microsoft, GitHub, Oidc.");
+        File.Exists(_host.DatabaseFile).ShouldBeFalse();
+    }
+
     [Fact]
     public async Task EachTypeOfProviderIsASchemeOfItsOwnHandlerThatSignsIntoTheExternalCookieOfTheMemberPool()
     {
-        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         var settings = Settings(
             ("google:Type", "google"), ("google:ClientId", "google-id"), ("google:ClientSecret", "google-secret"), ("google:Scopes:0", "https://www.googleapis.com/auth/user.birthday.read"),
             ("ms:Type", "Microsoft"), ("ms:ClientId", "ms-id"), ("ms:ClientSecret", "ms-secret"),
             ("github:Type", "GitHub"), ("github:ClientId", "github-id"), ("github:ClientSecret", "github-secret"), ("github:LinkVerifiedEmail", "true"),
-            ("apple:Type", "Apple"), ("apple:ClientId", "com.example.web"), ("apple:TeamId", "TEAM123456"), ("apple:KeyId", "KEY1234567"), ("apple:PrivateKey", key.ExportPkcs8PrivateKeyPem()),
             ("corp:Type", "Oidc"), ("corp:ClientId", "corp-id"), ("corp:Authority", "https://id.example.com/"), ("corp:DisplayName", "Corp"), ("corp:Scopes:0", "groups"));
 
         // The same names in the admin pool are other schemes.
@@ -92,7 +100,7 @@ public sealed class MemberProviderStartupTests : IAsyncDisposable
         await app.StartAsync(Token);
 
         var members = app.Services.GetRequiredService<MemberOptions>();
-        members.Providers.Keys.ShouldBe(["google", "ms", "github", "apple", "corp"], ignoreOrder: true);
+        members.Providers.Keys.ShouldBe(["google", "ms", "github", "corp"], ignoreOrder: true);
         members.Providers["github"].LinkVerifiedEmail.ShouldBeTrue();
         members.Providers["google"].LinkVerifiedEmail.ShouldBeFalse();
 
@@ -102,7 +110,6 @@ public sealed class MemberProviderStartupTests : IAsyncDisposable
             ["member-google"] = typeof(MemberGoogleHandler),
             ["member-ms"] = typeof(MemberMicrosoftHandler),
             ["member-github"] = typeof(MemberGitHubHandler),
-            ["member-apple"] = typeof(MemberAppleHandler),
             ["member-corp"] = typeof(OpenIdConnectHandler),
         };
         foreach (var (name, handler) in expected)
@@ -130,11 +137,6 @@ public sealed class MemberProviderStartupTests : IAsyncDisposable
         Remote(github, "github");
         github.Scope.ShouldBe(["user:email"]);
         github.ClaimActions.ShouldNotContain(action => action.ClaimType == System.Security.Claims.ClaimTypes.Email);
-
-        var apple = app.Services.GetRequiredService<IOptionsMonitor<AppleAuthenticationOptions>>().Get("member-apple");
-        Remote(apple, "apple");
-        (apple.ClientId, apple.TeamId, apple.KeyId, apple.GenerateClientSecret, apple.ValidateTokens).ShouldBe(("com.example.web", "TEAM123456", "KEY1234567", true, true));
-        apple.ClientSecret.ShouldBeEmpty();
 
         var oidc = app.Services.GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>();
         var corp = oidc.Get("member-corp");

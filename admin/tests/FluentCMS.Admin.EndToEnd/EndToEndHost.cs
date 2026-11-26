@@ -7,6 +7,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using FluentCMS.Admin.EndToEnd;
+using Microsoft.Data.Sqlite;
 using Microsoft.Playwright;
 using Xunit;
 
@@ -289,6 +290,31 @@ public sealed partial class EndToEndHost : IAsyncLifetime
         }
 
         return name;
+    }
+
+    // An external login of the user's, written to the host's database: only a sign-in through a provider of FluentCms:Sso
+    // links one, and the host has no provider. The login page does not offer this one, so the user's password stays a way in.
+    // The database is on this machine for a publish of the host only, so a case that calls this carries the trait
+    // Host=Publish, which the run on the image leaves out.
+    public async Task LinkLoginAsync(Editor editor, string provider, string displayName)
+    {
+        Assert.SkipWhen(_host is not PublishedHost, "The host runs in a container, whose database the run cannot write.");
+        var database = new SqliteConnectionStringBuilder { DataSource = _host.DataPath("fluentcms.db"), Pooling = false };
+        await using var connection = new SqliteConnection(database.ToString());
+        await connection.OpenAsync(Token);
+        await using var insert = connection.CreateCommand();
+        insert.CommandText = """
+            INSERT INTO cms_user_login (login_provider, provider_key, provider_display_name, user_id)
+            SELECT $provider, $key, $name, id FROM cms_user WHERE email = $email
+            """;
+        insert.Parameters.AddWithValue("$provider", provider);
+        insert.Parameters.AddWithValue("$key", $"key-{Guid.NewGuid():N}");
+        insert.Parameters.AddWithValue("$name", displayName);
+        insert.Parameters.AddWithValue("$email", editor.Email);
+        if (await insert.ExecuteNonQueryAsync(Token) != 1)
+        {
+            throw new InvalidOperationException($"No user {editor} to link a login of {provider} to.");
+        }
     }
 
     private async Task SetMustChangePasswordAsync(Editor editor, bool mustChange)

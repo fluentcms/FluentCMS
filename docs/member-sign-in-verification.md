@@ -9,17 +9,16 @@ CI tests the [member providers](host-configuration.md#member-sign-in-with-an-ext
 | Microsoft, through Entra ID | Run on 15 Nov 2026 with a personal account; the deny of the consent could not be exercised, since Microsoft asks for no consent for `user.read`. |
 | GitHub | Run on 15 Nov 2026 with a personal account and an enterprise-managed one. |
 | Generic OIDC, against Entra ID | Run on 15 Nov 2026 with a personal account and a user of the tenant; both were refused, as specified, and no sign-in through generic OIDC completed ([#3160](https://github.com/fluentcms/FluentCMS/issues/3160)). It found that Entra ID sends no `email` for a user without a mail attribute, even with the optional claim on. |
-| Apple | Not verified, and named as such in the notes of the preview. The run is not a condition of 1.0.0, and when it is made is not decided. |
+| Apple | Dropped ([#3709](https://github.com/fluentcms/FluentCMS/issues/3709)): FluentCMS does not offer sign-in with Apple, so the run ([#3165](https://github.com/fluentcms/FluentCMS/issues/3165)) will not be made. |
 
 ## On the wire
 
-`MemberProviderTests`, with its `.Security` and `.Linking` parts, runs the handlers against `FakeMemberProviders`, which answers the token and user information endpoints of Google, Microsoft and GitHub and the discovery, keys and token endpoints of Apple, and `FakeOidcProvider` for generic OIDC; `MemberProviderStartupTests` builds hosts of its own and checks the options and the schemes the providers register:
+`MemberProviderTests`, with its `.Security` and `.Linking` parts, runs the handlers against `FakeMemberProviders`, which answers the token and user information endpoints of Google, Microsoft and GitHub, and `FakeOidcProvider` for generic OIDC; `MemberProviderStartupTests` builds hosts of its own and checks the options and the schemes the providers register:
 
 - Google's user information carries `email_verified`, which the handler maps to the claim the sign-in reads; `false` or a missing flag makes an unverified member, who gets the verification mail.
 - Microsoft's `me` carries `mail` and `userPrincipalName` and no flag, so its member is never verified by the provider.
 - GitHub's `user` carries the public address, which is never used; `user/emails`, asked for with `user:email`, lists the addresses with `primary` and `verified`, and only a primary verified one names a member. An account without one is refused with `FCMS3181`, and a `user/emails` that fails is a sign-in with no address (event 9094).
-- Apple's id token carries `email` and `email_verified` as text (`"true"`), and the client secret is a token signed with the key of the run in the name of the team, which the stub validates before it answers.
-- Generic OIDC carries `sub`, `email`, `email_verified` and `name` in the id token; the user information endpoint is not read.
+- Generic OIDC carries `sub`, `email`, `email_verified` and `name` in the id token, the flag as a boolean or as text (`"true"`), as some providers send it; the user information endpoint is not read.
 - The `redirect_uri` sent to the provider, and again when the code is redeemed, is on `FluentCms:PublicOrigin` when one is set, for every handler.
 - An `error` from the provider, and a callback whose `state` belongs to no sign-in of that browser, go back to `/account/members/login?Status=external-failed` with a `member.login_failed` row; one started from the logins page goes back to `/account/members/logins?Status=external-failed`.
 
@@ -63,7 +62,7 @@ Not fixed, for issues of their own:
 - The login page after the verification link says "Sign in with your password", and the mail "You already have an account" says to sign in with a password or reset it, to a member that a provider made and that has no password; the page that sent that mail said to follow it, and it holds no link. The answer is the same whether or not the address is a member's by design (spec 10.4), so the words, not the paths, are what to change ([#3158](https://github.com/fluentcms/FluentCMS/issues/3158)).
 - A hosted page with a form asked for over plain http, such as `http://localhost:5080`, is answered 500 (`FCMS3199`): the antiforgery cookie's `SecurePolicy` is `Always`, with or without a public origin, where a refusal that names the cause would serve better. Fixed since by [#3159](https://github.com/fluentcms/FluentCMS/issues/3159): every hosted page over plain http now answers 403 with a page that says it needs https (`FCMS3108`).
 - The deny on Microsoft's consent, a user of the tenant with a mail attribute, and the `redirect_uri` edited on a provider's page were not run ([#3160](https://github.com/fluentcms/FluentCMS/issues/3160)).
-- Apple is not verified ([#3165](https://github.com/fluentcms/FluentCMS/issues/3165)).
+- Apple was not verified ([#3165](https://github.com/fluentcms/FluentCMS/issues/3165)), and was dropped since ([#3709](https://github.com/fluentcms/FluentCMS/issues/3709)).
 
 ## Walk-through
 

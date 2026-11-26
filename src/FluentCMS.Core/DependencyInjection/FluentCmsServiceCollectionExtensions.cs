@@ -96,6 +96,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton<PluginState>();
         services.AddSingleton<IPluginState>(serviceProvider => serviceProvider.GetRequiredService<PluginState>());
         services.AddScoped<PluginAdministration>();
+        services.AddScoped(typeof(IPluginStore<>), typeof(PluginStore<>));
         foreach (var storage in plugins.Contributions.Storage)
         {
             storage.Register(services, provider);

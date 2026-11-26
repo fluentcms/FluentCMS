@@ -102,6 +102,17 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
         return rows.Count > 0;
     }
 
+    // A locking read, where an update that sets nothing new writes a new row version all the same (#3575). FOR NO KEY UPDATE
+    // is the lock that update takes, so the same statements wait for it and a wait past lock_timeout or in a deadlock fails
+    // as the update's did; a read that waited for an update or a deletion reads the row as it then is.
+    public async Task<bool> HoldDocumentAsync(DbContext context, Guid id, int? draftVersion, CancellationToken cancellationToken)
+    {
+        var rows = draftVersion is { } version
+            ? await context.Database.SqlQuery<int>($"""SELECT 1 AS "Value" FROM cms_document WHERE id = {id} AND draft_version = {version} AND deleted_at IS NULL FOR NO KEY UPDATE""").ToListAsync(cancellationToken)
+            : await context.Database.SqlQuery<int>($"""SELECT 1 AS "Value" FROM cms_document WHERE id = {id} FOR NO KEY UPDATE""").ToListAsync(cancellationToken);
+        return rows.Count > 0;
+    }
+
     // REPEATABLE READ is PostgreSQL's snapshot isolation: every read sees the snapshot of the first, and no writer waits for it.
     public async Task<IDbContextTransaction?> BeginSnapshotAsync(DbContext context, CancellationToken cancellationToken) =>
         await context.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
