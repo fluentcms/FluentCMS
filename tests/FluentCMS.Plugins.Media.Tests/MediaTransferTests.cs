@@ -9,6 +9,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Sites;
+using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Media;
 using FluentCMS.Providers;
@@ -159,11 +160,12 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         text.ShouldContain($"""fill="url(#{prefix}g)" """);
         (stored.Size, stored.Checksum).ShouldBe((bytes.LongLength, Sha256(bytes)));
 
-        // A sanitised file is sanitised to the same bytes, so a line can take its key as it is.
+        // A sanitised file is sanitised to the same bytes, so a line can take the file at its key as it is.
         var copy = Guid.CreateVersion7();
         Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(copy, "copy.svg", "image/png", bytes, key: stored.StorageKey)]))).ShouldBe((1, 0, 0));
         var copied = (await AssetAsync(copy)).ShouldNotBeNull();
-        (copied.MimeType, copied.StorageKey, copied.Checksum).ShouldBe(("image/svg+xml", stored.StorageKey, stored.Checksum));
+        (copied.MimeType, copied.Checksum, copied.OwnsFile).ShouldBe(("image/svg+xml", stored.Checksum, true));
+        (await StoredAsync(copied.StorageKey)).ShouldBe(bytes);
     }
 
     [Fact]
@@ -193,7 +195,8 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var own = (await AssetAsync(uploaded.Id)).ShouldNotBeNull();
         (own.Title, own.MimeType, own.Size, own.Width, own.Height, own.StorageKey).ShouldBe(("kept", "image/png", png.LongLength, 6, 5, key));
         var shared = (await AssetAsync(sharing)).ShouldNotBeNull();
-        (shared.MimeType, shared.Size, shared.Width, shared.Height, shared.StorageKey).ShouldBe(("image/png", png.LongLength, 6, 5, key));
+        (shared.MimeType, shared.Size, shared.Width, shared.Height, shared.OwnsFile).ShouldBe(("image/png", png.LongLength, 6, 5, true));
+        shared.StorageKey.ShouldMatch($@"^{DefaultSite.Id:N}/{sharing:N}/original-[0-9a-f]{{32}}\.png$");
         (await AssetAsync(wrong)).ShouldBeNull();
     }
 
@@ -224,7 +227,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         });
         (await AssetAsync(ids[0])).ShouldNotBeNull();
         (await AssetAsync(ids[1])).ShouldBeNull();
-        (await AssetAsync(ids[2])).ShouldNotBeNull().StorageKey.ShouldBe(key);
+        (await AssetAsync(ids[2])).ShouldNotBeNull().StorageKey.ShouldNotBe(key);
         (await AssetAsync(ids[3])).ShouldBeNull();
     }
 
@@ -561,7 +564,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var named = $"{DefaultSite.Id:N}/{id:N}/original.png";
         Directory.CreateDirectory(Path.Combine(media.StorageRoot, DefaultSite.Id.ToString("N"), id.ToString("N")));
         await File.WriteAllBytesAsync(Path.Combine(media.StorageRoot, named), bands, Token);
-        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(id, "shared.png", "image/png", bands, key: named)]))).ShouldBe((1, 0, 0));
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(id, "shared.png", "image/png", bands, key: named)]), nameKeys: true)).ShouldBe((1, 0, 0));
         (await AssetAsync(id)).ShouldNotBeNull().OwnsFile.ShouldBeFalse();
         await VariantAsync(media, admin, id);
         var shared = FilesOf(media, id);
@@ -594,7 +597,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var uploaded = await UploadAsync(admin, bands, "bands.png");
         var key = (await AssetAsync(uploaded.Id)).ShouldNotBeNull().StorageKey;
         var sharing = Guid.CreateVersion7();
-        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(sharing, "shared.png", "image/png", bands, key: key)]))).ShouldBe((1, 0, 0));
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(sharing, "shared.png", "image/png", bands, key: key)]), nameKeys: true)).ShouldBe((1, 0, 0));
         await VariantAsync(media, admin, uploaded.Id);
         var before = FilesOf(media, uploaded.Id);
         var png = Files.Png(5, 5);
@@ -618,7 +621,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var bands = Bands(8, 8);
         var uploaded = await UploadAsync(admin, bands, "bands.png");
         var key = (await AssetAsync(uploaded.Id)).ShouldNotBeNull().StorageKey;
-        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(Guid.CreateVersion7(), "shared.png", "image/png", bands, key: key)]))).ShouldBe((1, 0, 0));
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(Guid.CreateVersion7(), "shared.png", "image/png", bands, key: key)]), nameKeys: true)).ShouldBe((1, 0, 0));
 
         await ReplaceThroughTheServiceAsync(admin, uploaded.Id, Files.Png(5, 5));
 
@@ -637,7 +640,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var uploaded = await UploadAsync(admin, bands, "bands.png");
         var key = (await AssetAsync(uploaded.Id)).ShouldNotBeNull().StorageKey;
         var sharing = Guid.CreateVersion7();
-        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(sharing, "shared.png", "image/png", bands, key: key)]))).ShouldBe((1, 0, 0));
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(sharing, "shared.png", "image/png", bands, key: key)]), nameKeys: true)).ShouldBe((1, 0, 0));
         await VariantAsync(media, admin, sharing);
         string variant;
         await using (var scope = media.Services.CreateAsyncScope())
@@ -671,7 +674,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var named = $"{DefaultSite.Id:N}/{id:N}/original.png";
         Directory.CreateDirectory(Path.Combine(media.StorageRoot, DefaultSite.Id.ToString("N"), id.ToString("N")));
         await File.WriteAllBytesAsync(Path.Combine(media.StorageRoot, named), bands, Token);
-        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(id, "shared.png", "image/png", bands, key: named)]))).ShouldBe((1, 0, 0));
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(id, "shared.png", "image/png", bands, key: named)]), nameKeys: true)).ShouldBe((1, 0, 0));
         await VariantAsync(media, admin, id);
         var shared = FilesOf(media, id);
 
@@ -701,7 +704,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var bytes = await StoredAsync(variant);
         var line = Line(uploaded.Id, "small" + Path.GetExtension(variant), "image/png", bytes, updatedAt: media.Host.Time.GetUtcNow().AddMinutes(5), key: variant);
 
-        var report = await ImportAsync(admin, await PackageAsync(admin, [line]));
+        var report = await ImportAsync(admin, await PackageAsync(admin, [line]), nameKeys: true);
 
         Items(report).ShouldBeEmpty();
         Counts(report).ShouldBe((0, 1, 0));
@@ -725,7 +728,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
             await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().Where(item => item.Id == uploaded.Id).ExecuteUpdateAsync(set => set.SetProperty(item => item.Checksum, new string('0', 64)), Token);
         }
 
-        var report = await ImportAsync(admin, await PackageAsync(admin, [Line(uploaded.Id, "photo.png", "image/png", png, updatedAt: media.Host.Time.GetUtcNow().AddMinutes(5), key: key)]));
+        var report = await ImportAsync(admin, await PackageAsync(admin, [Line(uploaded.Id, "photo.png", "image/png", png, updatedAt: media.Host.Time.GetUtcNow().AddMinutes(5), key: key)]), nameKeys: true);
 
         Counts(report).ShouldBe((0, 1, 0));
         var stored = (await AssetAsync(uploaded.Id)).ShouldNotBeNull();
@@ -749,7 +752,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
 
         var replaced = await UploadAsync(admin, bands, "replaced.png");
         var replacedKey = (await AssetAsync(replaced.Id)).ShouldNotBeNull().StorageKey;
-        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(Guid.CreateVersion7(), "shared.png", "image/png", bands, key: replacedKey)]))).ShouldBe((1, 0, 0));
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(Guid.CreateVersion7(), "shared.png", "image/png", bands, key: replacedKey)]), nameKeys: true)).ShouldBe((1, 0, 0));
         await ReplaceThroughTheServiceAsync(admin, replaced.Id, Files.Png(5, 5));
         var (first, second) = (Guid.CreateVersion7(), Guid.CreateVersion7());
         var package = await PackageAsync(admin, [Line(first, "first.png", "image/png", bands, key: deletedKey), Line(second, "second.png", "image/png", bands, key: replacedKey)]);
@@ -791,7 +794,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
             (await AssetAsync(host, owner.Id)).ShouldBeNull();
         };
 
-        var report = await ImportAsync(admin, package);
+        var report = await ImportAsync(admin, package, nameKeys: true);
 
         Items(report).ShouldBe(new Dictionary<Guid, (string, string?)> { [sharing] = ("error", MediaErrorCodes.TransferFileMissing) });
         (await AssetAsync(host, sharing)).ShouldBeNull();
@@ -820,7 +823,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var sharing = Guid.CreateVersion7();
         var package = await PackageAsync(admin, [Line(sharing, "shared.png", "image/png", bands, key: key)]);
         JsonNode? imported = null;
-        (race.Asset, race.Before) = (owner.Id, async () => imported = await ImportAsync(admin, package));
+        (race.Asset, race.Before) = (owner.Id, async () => imported = await ImportAsync(admin, package, nameKeys: true));
 
         await ReplaceThroughTheServiceAsync(admin, owner.Id, Files.Png(5, 5));
 
@@ -853,7 +856,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var bands = Bands(8, 8);
         var owner = await UploadAsync(admin, bands, "owner.png");
         var key = (await AssetAsync(owner.Id)).ShouldNotBeNull().StorageKey;
-        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(Guid.CreateVersion7(), "shared.png", "image/png", bands, key: key)]))).ShouldBe((1, 0, 0));
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(Guid.CreateVersion7(), "shared.png", "image/png", bands, key: key)]), nameKeys: true)).ShouldBe((1, 0, 0));
         await ReplaceThroughTheServiceAsync(admin, owner.Id, Files.Png(5, 5));
         var replaced = (await AssetAsync(owner.Id)).ShouldNotBeNull().StorageKey;
         File.Exists(Path.Combine(media.StorageRoot, key)).ShouldBeTrue();
@@ -867,6 +870,170 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var stored = (await AssetAsync(owner.Id)).ShouldNotBeNull();
         (stored.StorageKey, stored.OwnsFile).ShouldBe((replaced, true));
         File.Exists(Path.Combine(media.StorageRoot, replaced)).ShouldBeTrue();
+    }
+
+    // Two instances share the storage and not the database (#3604). A line without a file that names the key the writer's
+    // asset has takes a copy under a key of its own, which the writer's purge, replace or deletion of the site leaves.
+    [Theory]
+    [InlineData("purge")]
+    [InlineData("replace")]
+    [InlineData("site")]
+    public async Task ALineThatNamesAKeyTakesACopyThatTheInstanceThatWroteTheKeyLeaves(string removal)
+    {
+        await using var writer = new MediaHost();
+        await using var reader = SharingStorageWith(writer);
+        using var writerAdmin = await writer.AdminAsync();
+        using var readerAdmin = await reader.AdminAsync();
+        var bands = Bands(8, 8);
+        var owner = await UploadAsync(writerAdmin, bands, "owner.png");
+        var key = (await AssetAsync(writer, owner.Id)).ShouldNotBeNull().StorageKey;
+        var sharing = Guid.CreateVersion7();
+
+        Counts(await ImportAsync(readerAdmin, await PackageAsync(readerAdmin, [Line(sharing, "shared.png", "image/png", bands, key: key)]))).ShouldBe((1, 0, 0));
+
+        var copy = (await AssetAsync(reader, sharing)).ShouldNotBeNull();
+        (copy.OwnsFile, copy.Checksum).ShouldBe((true, Sha256(bands)));
+        copy.StorageKey.ShouldMatch($@"^{DefaultSite.Id:N}/{sharing:N}/original-[0-9a-f]{{32}}\.png$");
+
+        switch (removal)
+        {
+            case "purge":
+                using (var response = await writerAdmin.DeleteAsync(new Uri($"{Root}/{owner.Id:D}", UriKind.Relative), Token))
+                {
+                    response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+                }
+
+                writer.Host.Time.Advance(new MediaOptions().DeletedRetention + TimeSpan.FromDays(1));
+                await CleanupAsync(writer);
+                break;
+            case "replace":
+                await ReplaceThroughTheServiceAsync(writerAdmin, owner.Id, Files.Png(5, 5));
+                break;
+            default:
+                await using (var scope = writer.Services.CreateAsyncScope())
+                {
+                    await ActivatorUtilities.CreateInstance<DeletedSiteMedia>(scope.ServiceProvider).HandleAsync(new SiteDeletedEvent(DefaultSite.Id, "gone"), new EventDelivery(Guid.CreateVersion7(), 1), Token);
+                }
+
+                break;
+        }
+
+        File.Exists(Path.Combine(writer.StorageRoot, key)).ShouldBeFalse();
+        using var anonymous = reader.Host.CreateClient();
+        var original = (await GetAsync(anonymous, $"/api/delivery/v1/media/{sharing:D}"))["urls"]!["original"]!.GetValue<string>();
+        using var served = await FetchAsync(anonymous, original);
+        served.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await served.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bands);
+    }
+
+    // With mediaNameKeys=true, through the endpoint and the command, the asset names the key as before and owns no file, so
+    // the purge of the instance that wrote the key takes the file, which only a shared database would have kept.
+    [Fact]
+    public async Task WithTheOptionALineNamesTheKeyAndThePurgeOfTheInstanceThatWroteItTakesTheFile()
+    {
+        await using var writer = new MediaHost();
+        await using var reader = SharingStorageWith(writer);
+        using var writerAdmin = await writer.AdminAsync();
+        using var readerAdmin = await reader.AdminAsync();
+        var bands = Bands(8, 8);
+        var owner = await UploadAsync(writerAdmin, bands, "owner.png");
+        var key = (await AssetAsync(writer, owner.Id)).ShouldNotBeNull().StorageKey;
+        var (atEndpoint, inHost) = (Guid.CreateVersion7(), Guid.CreateVersion7());
+
+        Counts(await ImportAsync(readerAdmin, await PackageAsync(readerAdmin, [Line(atEndpoint, "shared.png", "image/png", bands, key: key)]), nameKeys: true)).ShouldBe((1, 0, 0));
+        var path = Path.Combine(reader.StorageRoot, "package.zip");
+        await File.WriteAllBytesAsync(path, await PackageAsync(readerAdmin, [Line(inHost, "shared.png", "image/png", bands, key: key)]), Token);
+        var command = await reader.Host.RunCommandAsync("import", path, "--media-name-keys");
+        command.ExitCode.ShouldBe(0, command.Error);
+
+        foreach (var id in (Guid[])[atEndpoint, inHost])
+        {
+            var named = (await AssetAsync(reader, id)).ShouldNotBeNull();
+            (named.StorageKey, named.OwnsFile).ShouldBe((key, false));
+        }
+
+        using (var response = await writerAdmin.DeleteAsync(new Uri($"{Root}/{owner.Id:D}", UriKind.Relative), Token))
+        {
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        }
+
+        writer.Host.Time.Advance(new MediaOptions().DeletedRetention + TimeSpan.FromDays(1));
+        await CleanupAsync(writer);
+
+        File.Exists(Path.Combine(writer.StorageRoot, key)).ShouldBeFalse();
+    }
+
+    // A dry run copies nothing, and a rerun of the import, or a later one that changes the metadata, finds the asset with the
+    // checksum of the line and keeps its copy as its own file, so the key is copied once.
+    [Fact]
+    public async Task AKeyALineNamesIsCopiedOnceWhateverTheImportsThatFollow()
+    {
+        using var admin = await media.AdminAsync();
+        var png = Files.Png(7, 3);
+        var key = (await AssetAsync((await UploadAsync(admin, png, "photo.png")).Id)).ShouldNotBeNull().StorageKey;
+        var sharing = Guid.CreateVersion7();
+        var package = await PackageAsync(admin, [Line(sharing, "shared.png", "image/png", png, key: key)]);
+
+        Counts(await ImportAsync(admin, package, dryRun: true)).ShouldBe((1, 0, 0));
+        FilesOf(media, sharing).ShouldBeEmpty();
+
+        Counts(await ImportAsync(admin, package)).ShouldBe((1, 0, 0));
+        var copy = FilesOf(media, sharing).ShouldHaveSingleItem();
+        (await AssetAsync(sharing)).ShouldNotBeNull().StorageKey.ShouldBe(copy);
+
+        var again = await ImportAsync(admin, package);
+        Items(again).ShouldBeEmpty();
+        Counts(again).ShouldBe((0, 0, 0));
+        var later = await ImportAsync(admin, await PackageAsync(admin, [Line(sharing, "shared.png", "image/png", png, updatedAt: media.Host.Time.GetUtcNow().AddMinutes(5), title: "retitled", key: key)]));
+        Counts(later).ShouldBe((0, 1, 0));
+
+        var stored = (await AssetAsync(sharing)).ShouldNotBeNull();
+        (stored.Title, stored.StorageKey, stored.OwnsFile).ShouldBe(("retitled", copy, true));
+        FilesOf(media, sharing).ShouldBe([copy]);
+        File.Exists(Path.Combine(media.StorageRoot, key)).ShouldBeTrue();
+    }
+
+    // A copy whose write fails, or whose row the database does not save, leaves no file and no row, as an upload does, and
+    // the file at the key stays.
+    [Fact]
+    public async Task ACopyThatFailsLeavesNoFileAndNoRow()
+    {
+        var (refused, blocked) = (Guid.CreateVersion7(), Guid.CreateVersion7());
+        var save = new FailingSave();
+        save.Refused.Add(refused);
+        await using var host = new MediaHost();
+        host.Host.Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(save)));
+        using var admin = await host.AdminAsync();
+        var (one, two) = (Files.Png(2, 5), Files.Png(5, 2));
+        var oneKey = (await AssetAsync(host, (await UploadAsync(admin, one, "one.png")).Id)).ShouldNotBeNull().StorageKey;
+        var twoKey = (await AssetAsync(host, (await UploadAsync(admin, two, "two.png")).Id)).ShouldNotBeNull().StorageKey;
+
+        // A file where the storage needs the folder of the asset, so that the write of its copy fails.
+        var blocker = Path.Combine(host.StorageRoot, DefaultSite.Id.ToString("N"), blocked.ToString("N"));
+        await File.WriteAllBytesAsync(blocker, [1], Token);
+        var package = await PackageAsync(admin, [Line(refused, "one.png", "image/png", one, key: oneKey), Line(blocked, "two.png", "image/png", two, key: twoKey)]);
+
+        var report = await ImportAsync(admin, package);
+
+        Items(report).ShouldBe(new Dictionary<Guid, (string, string?)>
+        {
+            [refused] = ("error", MediaErrorCodes.TransferIdTaken),
+            [blocked] = ("error", MediaErrorCodes.TransferFileMissing),
+        });
+        (await AssetAsync(host, refused)).ShouldBeNull();
+        (await AssetAsync(host, blocked)).ShouldBeNull();
+        FilesOf(host, refused).ShouldBeEmpty();
+        File.Exists(blocker).ShouldBeTrue();
+        Directory.EnumerateFiles(host.StorageRoot, "*", SearchOption.AllDirectories).Where(file => file.Contains(blocked.ToString("N"), StringComparison.Ordinal)).ShouldBe([blocker]);
+        (File.Exists(Path.Combine(host.StorageRoot, oneKey)), File.Exists(Path.Combine(host.StorageRoot, twoKey))).ShouldBe((true, true));
+    }
+
+    // Another instance on the storage of the one given, with a database of its own.
+    private static MediaHost SharingStorageWith(MediaHost writer)
+    {
+        var reader = new MediaHost();
+        reader.Host.WithServices(services => services.PostConfigure<MediaOptions>(options => options.Local.Root = writer.StorageRoot));
+        return reader;
     }
 
     // The import is still updated when the old file cannot be deleted, as a replace is, and the file stays.
@@ -1047,11 +1214,23 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
 
     private static string FileOf(Guid id, string extension) => $"files/{id:N}/original{extension}";
 
-    private static async Task<JsonNode> ImportAsync(HttpClient admin, byte[] package, bool dryRun = false)
+    // With nameKeys, a line without a file names the key instead of taking a copy.
+    private static async Task<JsonNode> ImportAsync(HttpClient admin, byte[] package, bool dryRun = false, bool nameKeys = false)
     {
         using var body = new ByteArrayContent(package);
         body.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
-        using var response = await admin.PostAsync(new Uri(Import + (dryRun ? "?dryRun=true" : ""), UriKind.Relative), body, Token);
+        List<string> query = [];
+        if (dryRun)
+        {
+            query.Add("dryRun=true");
+        }
+
+        if (nameKeys)
+        {
+            query.Add($"options={MediaTransfer.NameKeysOption}%3Dtrue");
+        }
+
+        using var response = await admin.PostAsync(new Uri(Import + (query.Count == 0 ? "" : "?" + string.Join('&', query)), UriKind.Relative), body, Token);
         var text = await response.Content.ReadAsStringAsync(Token);
         response.StatusCode.ShouldBe(HttpStatusCode.OK, text);
         return JsonNode.Parse(text.Split('\n', StringSplitOptions.RemoveEmptyEntries)[^1])!["report"]!;
