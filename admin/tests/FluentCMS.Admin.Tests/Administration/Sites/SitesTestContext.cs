@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using System.Text.Json.Nodes;
 using AngleSharp.Dom;
 using Bunit;
@@ -8,7 +9,8 @@ namespace FluentCMS.Admin.Tests.Administration.Sites;
 
 // The sites area against a fake of /sites/{id} and its locales for the shell's site, which keeps what the page changes and
 // what GET /me/sites answers in step with it, as the server does. A refusal is given with Management.Answer, which is asked
-// first; the locales that entries are in are kept, as the server keeps them (FCMS3136).
+// first; the locales that entries are in are kept, as the server keeps them (FCMS3136), and so are those other locales name
+// in their fallbacks (FCMS3143).
 public abstract class SitesTestContext : AdministrationTestContext
 {
     protected SitesTestContext()
@@ -85,6 +87,31 @@ public abstract class SitesTestContext : AdministrationTestContext
         var chain = fallbacks?.AsArray().Select(item => (string)item!).ToList() ?? [];
         return chain.All(item => Find(item) is not null && !string.Equals(item, code, StringComparison.OrdinalIgnoreCase)) && chain.Distinct(StringComparer.OrdinalIgnoreCase).Count() == chain.Count;
     }
+
+    // The other locales whose fallbacks name the code, in their order; an implicit chain names none.
+    private List<string> Naming(string code) =>
+        [.. Ordered.Where(locale => !string.Equals((string)locale["code"]!, code, StringComparison.OrdinalIgnoreCase)
+                && locale["fallbacks"] is JsonArray chain && chain.Any(item => string.Equals((string)item!, code, StringComparison.OrdinalIgnoreCase)))
+            .Select(locale => (string)locale["code"]!)];
+
+    // FCMS3143 as the server writes it: one error for each naming locale at locales.{code}.fallbacks, and a generic detail
+    // when there are several.
+    private static HttpResponseMessage IsFallback(string code, List<string> naming) => new(HttpStatusCode.Conflict)
+    {
+        Content = new StringContent(new JsonObject
+        {
+            ["status"] = 409,
+            ["code"] = "FCMS3143",
+            ["title"] = "Locale is a fallback",
+            ["detail"] = naming.Count == 1 ? $"'{naming[0]}' names '{code}' as a fallback." : $"The request has {naming.Count} errors; see errors.",
+            ["errors"] = new JsonArray([.. naming.Select(other => (JsonNode)new JsonObject
+            {
+                ["path"] = $"locales.{other}.fallbacks",
+                ["code"] = "FCMS3143",
+                ["message"] = $"'{other}' names '{code}' as a fallback; take '{code}' out of the fallbacks of '{other}' first.",
+            })]),
+        }.ToJsonString(), Encoding.UTF8, "application/problem+json"),
+    };
 
     private HttpResponseMessage? Answer(HttpRequestMessage request, string path, string? body)
     {
@@ -172,6 +199,11 @@ public abstract class SitesTestContext : AdministrationTestContext
                 if (IsDefault(removed) || WithEntries.Contains(removed))
                 {
                     return Problem(HttpStatusCode.UnprocessableEntity, "FCMS3136", "code");
+                }
+
+                if (Naming(removed) is { Count: > 0 } naming)
+                {
+                    return IsFallback(removed, naming);
                 }
 
                 Locales.Remove(gone);

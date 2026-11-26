@@ -69,7 +69,13 @@ else
                         <th scope="row">@locale.Code</th>
                         <td>@locale.Position</td>
                         <td>@StateOf(locale, isDefault)</td>
-                        <td>@Fallbacks(locale.Fallbacks)</td>
+                        <td>
+                            @Fallbacks(locale.Fallbacks)
+                            @if (Blocks(locale.Code) is { } kept)
+                            {
+                                <div class="sites-blocking"><strong>@L["Sites.Locales.Blocks", kept]</strong></div>
+                            }
+                        </td>
                         <td>
                             <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
                                 @if (at > 0)
@@ -168,6 +174,9 @@ else
     private string? fallbacksText;
     private string? fallbacksError;
     private string? localesMessage;
+
+    // A removal the server kept since other locales name it in their fallbacks, which their rows say until the next change.
+    private (string Removed, IReadOnlyList<string> Naming)? blocked;
     private string? newCode;
     private string? newFallbacks;
     private bool newEnabled = true;
@@ -242,7 +251,7 @@ else
         reading?.Cancel();
         reading?.Dispose();
         var current = reading = CancellationTokenSource.CreateLinkedTokenSource(Closing);
-        (siteId, site, state, editing) = (shown.Id, null, State.Loading, null);
+        (siteId, site, state, editing, blocked) = (shown.Id, null, State.Loading, null, null);
         (siteMessage, localesMessage, addMessage, nameError, defaultError, codeError, newFallbacksError) = (null, null, null, null, null, null, null);
         try
         {
@@ -399,7 +408,7 @@ else
             return;
         }
 
-        (busy, fallbacksError) = (true, null);
+        (busy, fallbacksError, blocked) = (true, null, null);
         var changed = false;
         try
         {
@@ -422,6 +431,17 @@ else
         catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.LocaleInUse))
         {
             localesMessage = IsDefault(code) ? L["Sites.Locales.DefaultInUse", code] : L["Sites.Locales.HasEntries", code];
+        }
+        catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.LocaleIsFallback))
+        {
+            var naming = SiteProblems.Naming(exception);
+            blocked = (code, naming);
+            localesMessage = naming switch
+            {
+                [] => L["Sites.Locales.IsFallback", code],
+                [var one] => L["Sites.Locales.IsFallbackOfOne", code, one],
+                _ => L["Sites.Locales.IsFallbackOfMany", code, string.Join(", ", naming)],
+            };
         }
         catch (Exception exception) when (SiteProblems.Has(exception, SiteProblems.LocaleNotFound))
         {
@@ -522,6 +542,9 @@ else
     }
 
     private bool IsDefault(string code) => string.Equals(code, site?.DefaultLocale, StringComparison.OrdinalIgnoreCase);
+
+    private string? Blocks(string code) =>
+        blocked is { } kept && kept.Naming.Contains(code, StringComparer.OrdinalIgnoreCase) ? kept.Removed : null;
 
     private string StateOf(SiteLocaleRecord locale, bool isDefault) =>
         isDefault ? L["Sites.Locales.Default"] : locale.Enabled ? L["Sites.Locales.On"] : L["Sites.Locales.Off"];
