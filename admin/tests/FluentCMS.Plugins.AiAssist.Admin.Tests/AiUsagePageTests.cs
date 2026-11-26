@@ -32,7 +32,28 @@ public sealed class AiUsagePageTests : AiTestContext
         calls[1][3].ShouldBe("An asset of the media library");
         calls[1][8].ShouldBe("Failed");
         page.FindAll(".ai-usage-table")[0].QuerySelectorAll("tbody th").Select(cell => cell.TextContent).ShouldBe(["Ada", $"API key {Key:D}"]);
+        page.FindAll(".ai-usage-truncated").ShouldBeEmpty();
         Server.Requests.ShouldHaveSingleItem().Path.ShouldBe("ai/usage?page=1&pageSize=50");
+    }
+
+    // The server answers at most 100 groups, those that used the most tokens, and says when the filter matched more.
+    [Fact]
+    public void GroupsCutByTheServerAreNotedUnderTheirTableWithANarrowerFilterSuggested()
+    {
+        Server.Usage = FakeAiServer.UsageOf([Row(Ada, "Ada", "rewrite", 30, 10), Row(Key, "", "altText", 100, 20, kind: "apiKey")], groupsTruncated: true);
+
+        var page = Render<AiUsagePage>();
+
+        page.WaitForAssertion(() => page.Find(".ai-usage-truncated").TextContent.ShouldBe(
+            "The table shows the 2 principals and actions that used the most tokens, and the filter matches more. Narrow it by principal, action or days to see them all."));
+        var note = page.Find(".ai-usage-truncated");
+        note.GetAttribute("role").ShouldBe("status");
+        note.PreviousElementSibling!.QuerySelector("caption")!.TextContent.ShouldBe("By principal and action");
+
+        Server.Usage = FakeAiServer.UsageOf([Row(Ada, "Ada", "rewrite", 30, 10)]);
+        page.FindAll("select")[0].Change(Ada.ToString("D"));
+
+        page.WaitForAssertion(() => page.FindAll(".ai-usage-truncated").ShouldBeEmpty());
     }
 
     [Fact]
