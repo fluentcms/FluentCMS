@@ -87,11 +87,14 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
             return new KeyRotation(upcoming, Made: false);
         }
 
-        // With no key to follow there is nothing to publish it ahead of.
-        var made = Generate(use, NextSequence(keys, use), now, accepted.Count == 0 ? now : now + lead);
+        // A key that retires within the allowance for clocks is as good as retired, and may be one that a revocation retired
+        // on a machine whose clock is ahead: it is given no more time. With no other key to follow there is nothing to
+        // publish the new one ahead of, so it is active at once.
+        var lasting = accepted.Where(key => !RetiresSoon(key, now)).ToList();
+        var made = Generate(use, NextSequence(keys, use), now, lasting.Count == 0 ? now : now + lead);
         var retires = made.ActiveFrom + overlap;
         List<SigningKey> followed = [];
-        foreach (var key in accepted)
+        foreach (var key in lasting)
         {
             // A key that has its date keeps it. Only the newest can have one too early: a generated key that a certificate
             // replaced and that signs again.
@@ -173,19 +176,28 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
 
     // What the job does that needs no new key. It removes the rows that have retired, material included. While a certificate
     // signs it gives each generated signing key without a date the overlap from this run. And it moves the retirement of a
-    // key later when the overlap has grown since its successor was made, never earlier. A key that retired no later than its
-    // successor became active was revoked, and is given no more time, whatever this instance's clock says.
+    // key later when the overlap has grown since its successor was made, never earlier.
+    //
+    // A revocation retires keys at once, and the job must never give one its time back, on an instance whose clock is behind
+    // the machine that revoked or when the revocation commits between the job's read and its write. So it leaves alone
+    // every retired_at that is not later than its own clock and the allowance for clocks, whichever place the key has among
+    // the others, and a key that retired no later than its successor became active. And each write names the retired_at it
+    // read: one that finds another date changes nothing.
     public async Task UpkeepAsync(bool certificateSigns, TimeSpan overlap, CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-        var keys = await context.Set<SigningKey>().OrderBy(key => key.Use).ThenBy(key => key.Sequence).ToListAsync(cancellationToken);
+        var keys = await Stored(context).ToListAsync(cancellationToken);
         var now = time.GetUtcNow();
 
-        var removed = keys.Where(key => SigningKeyStates.IsRetired(key, now)).ToList();
-        context.RemoveRange(removed);
+        foreach (var key in keys.Where(key => SigningKeyStates.IsRetired(key, now)))
+        {
+            if (await AsRead(context, key).ExecuteDeleteAsync(cancellationToken) > 0)
+            {
+                OidcLog.KeyRemoved(logger, key.Id, key.Use, key.CreatedAt, key.RetiredAt!.Value);
+            }
+        }
 
-        List<SigningKey> moved = [];
         foreach (var use in SigningKey.Uses)
         {
             var kept = keys.Where(key => key.Use == use && !SigningKeyStates.IsRetired(key, now)).ToList();
@@ -196,7 +208,7 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
                 if (index + 1 < kept.Count)
                 {
                     var successor = kept[index + 1];
-                    if (key.RetiredAt is null || (key.RetiredAt > successor.ActiveFrom && key.RetiredAt < successor.ActiveFrom + overlap))
+                    if (key.RetiredAt is null || (!RetiresSoon(key, now) && key.RetiredAt > successor.ActiveFrom && key.RetiredAt < successor.ActiveFrom + overlap))
                     {
                         retires = successor.ActiveFrom + overlap;
                     }
@@ -206,23 +218,11 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
                     retires = now + overlap;
                 }
 
-                if (retires is not null)
+                if (retires is not null && await AsRead(context, key).ExecuteUpdateAsync(row => row.SetProperty(column => column.RetiredAt, retires), cancellationToken) > 0)
                 {
-                    key.RetiredAt = retires;
-                    moved.Add(key);
+                    OidcLog.KeyRetirementSet(logger, key.Id, key.Use, retires.Value);
                 }
             }
-        }
-
-        await context.SaveChangesAsync(cancellationToken);
-        foreach (var key in removed)
-        {
-            OidcLog.KeyRemoved(logger, key.Id, key.Use, key.CreatedAt, key.RetiredAt!.Value);
-        }
-
-        foreach (var key in moved)
-        {
-            OidcLog.KeyRetirementSet(logger, key.Id, key.Use, key.RetiredAt!.Value);
         }
     }
 
@@ -267,6 +267,13 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
             ? Generate(use, NextSequence(stored, use), now, activeFrom: now)
             : null;
     }
+
+    // Whether the key retires within the allowance for clocks, by this instance's clock.
+    private static bool RetiresSoon(SigningKey key, DateTimeOffset now) => key.RetiredAt is { } retires && retires <= now + KeyOverlap.ClockAllowance;
+
+    // The row while it still has the retired_at that was read.
+    private static IQueryable<SigningKey> AsRead(SystemDbContext context, SigningKey read) =>
+        context.Set<SigningKey>().Where(key => key.Id == read.Id && key.RetiredAt == read.RetiredAt);
 
     private static int NextSequence(IEnumerable<SigningKey> stored, string use) =>
         stored.Where(key => key.Use == use).Select(key => key.Sequence).DefaultIfEmpty().Max() + 1;

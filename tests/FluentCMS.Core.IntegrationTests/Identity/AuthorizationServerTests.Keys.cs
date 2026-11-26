@@ -426,6 +426,102 @@ public sealed partial class AuthorizationServerTests
         keys[encryption.Id].RetiredAt.ShouldBeNull();
     }
 
+    // A revocation inside the overlap of a rotation retires the retiring key and the one that was active at the same
+    // moment, and the job runs on an instance whose clock is a minute behind the machine that revoked.
+    [Fact]
+    public async Task TheJobGivesNoKeyOfARevocationItsTimeBackWhateverItsPlace()
+    {
+        await using var host = NewHost();
+        await host.SignInAsync(await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
+        var now = host.Time.GetUtcNow();
+        var first = SigningKeys(host).Single(key => key.Use == SigningKey.Signing);
+        var second = AddKey(host, SigningKey.Signing, sequence: 2, now.AddDays(-1));
+        var third = AddKey(host, SigningKey.Signing, sequence: 3, now.AddMinutes(1));
+        Retire(host, first.Id, third.ActiveFrom);
+        Retire(host, second.Id, third.ActiveFrom);
+
+        await RunKeysJobAsync(host);
+
+        var keys = SigningKeys(host).ToDictionary(key => key.Id);
+        keys[first.Id].RetiredAt.ShouldBe(third.ActiveFrom);
+        keys[second.Id].RetiredAt.ShouldBe(third.ActiveFrom);
+        keys[third.Id].RetiredAt.ShouldBeNull();
+    }
+
+    // The revocation commits after the job read the row and before it writes it.
+    [Fact]
+    public async Task TheJobDoesNotOverwriteARevocationThatCameAfterItReadTheRow()
+    {
+        var database = new SigningKeyReadFailure();
+        await using var host = NewHost().Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(database)));
+        await host.SignInAsync(await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
+        var now = host.Time.GetUtcNow();
+        var first = SigningKeys(host).Single(key => key.Use == SigningKey.Signing);
+        var second = AddKey(host, SigningKey.Signing, sequence: 2, now.AddDays(-2));
+
+        // Too short for the overlap of this moment, so the job means to move it later.
+        Retire(host, first.Id, second.ActiveFrom.AddDays(3));
+        database.BeforeUpdate = () => Retire(host, first.Id, now);
+
+        await RunKeysJobAsync(host);
+
+        database.BeforeUpdate.ShouldBeNull();
+        SigningKeys(host).Single(key => key.Id == first.Id).RetiredAt.ShouldBe(now);
+    }
+
+    // A database that hangs must not hold a probe for its timeout.
+    [Fact]
+    public async Task AProbeNeitherReadsTheKeysNorWaitsForARead()
+    {
+        var failure = new SigningKeyReadFailure();
+        var logs = new LogCapture();
+        await using var host = NewHost()
+            .WithServices(services => services.AddLogging(logging => logging.AddProvider(logs)))
+            .Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(failure)));
+        using var client = host.CreateSecureClient();
+        await KeySetAsync(client);
+        failure.Fails = true;
+        host.Time.Advance(SigningKeyRing.ReadInterval);
+
+        using (var live = await client.GetAsync("/health/live", Token))
+        {
+            live.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        failure.Failed.ShouldBe(0);
+        logs.Entries.ShouldNotContain(entry => entry.EventId.Id == OidcLog.KeysNotReadId);
+
+        // The copy was 30 seconds old all along: the next request that is authenticated reads.
+        await KeySetAsync(client);
+        failure.Failed.ShouldBe(1);
+        logs.Entries.Count(entry => entry.EventId.Id == OidcLog.KeysNotReadId).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AReadThatTakesLongToFailIsTriedAgain30SecondsAfterItEnded()
+    {
+        var failure = new SigningKeyReadFailure();
+        await using var host = NewHost().Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(failure)));
+        using var client = host.CreateSecureClient();
+        await KeySetAsync(client);
+
+        // The read takes the 30 seconds of a database's timeout to fail.
+        failure.Fails = true;
+        failure.BeforeFailing = () => host.Time.Advance(SigningKeyRing.ReadInterval);
+        host.Time.Advance(SigningKeyRing.ReadInterval);
+        await KeySetAsync(client);
+        failure.Failed.ShouldBe(1);
+
+        await KeySetAsync(client);
+        host.Time.Advance(SigningKeyRing.ReadInterval - TimeSpan.FromSeconds(1));
+        await KeySetAsync(client);
+        failure.Failed.ShouldBe(1);
+
+        host.Time.Advance(TimeSpan.FromSeconds(1));
+        await KeySetAsync(client);
+        failure.Failed.ShouldBe(2);
+    }
+
     [Fact]
     public async Task OfTwoThatRotateAtOnceOneMakesTheSuccessorAndTheOtherFindsIt()
     {
@@ -729,10 +825,19 @@ public sealed partial class AuthorizationServerTests
         context.SaveChanges();
     }
 
-    // Fails every read and write of cms_signing_key while it is told to, as a database that cannot be reached would.
+    // Fails every read of cms_signing_key while it is told to, as a database that cannot be reached would, and lets a test
+    // act right before the first update of the table, as another process that commits in between would.
     private sealed class SigningKeyReadFailure : DbCommandInterceptor
     {
+        private int _failed;
+
         public bool Fails { get; set; }
+
+        public int Failed => Volatile.Read(ref _failed);
+
+        public Action? BeforeFailing { get; set; }
+
+        public Action? BeforeUpdate { get; set; }
 
         public override InterceptionResult<DbDataReader> ReaderExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
         {
@@ -746,10 +851,23 @@ public sealed partial class AuthorizationServerTests
             return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
         }
 
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (BeforeUpdate is { } act && command.CommandText.Contains("UPDATE", StringComparison.OrdinalIgnoreCase) && command.CommandText.Contains("cms_signing_key", StringComparison.Ordinal))
+            {
+                BeforeUpdate = null;
+                act();
+            }
+
+            return base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
+        }
+
         private void Check(DbCommand command)
         {
             if (Fails && command.CommandText.Contains("cms_signing_key", StringComparison.Ordinal))
             {
+                Interlocked.Increment(ref _failed);
+                BeforeFailing?.Invoke();
                 throw new InvalidOperationException("The read fails for the test.");
             }
         }
