@@ -1,8 +1,8 @@
 @* The actions of the admin halves on one field of a form (spec 5.1): a button that shows and hides them, which loads their
    halves the first time it opens and keeps those whose AppliesToAsync answers true. An action is confirmed when it asks, then
    runs with the field as the draft holds it; a result that fits the field's type goes into the draft through OnResult, as an
-   unsaved change, and one for another locale to the form through OnResultIn. The form makes a new menu for each entry and locale it loads, so a result that comes after the draft
-   changed is dropped with the menu it was asked from. Escape closes the list, from the button or from inside it, and the
+   unsaved change, and one for another locale to the form through OnResultIn. The form makes a new menu for each entry and
+   locale it loads, so a result that comes after the draft changed is dropped with the menu it was asked from. Escape closes the list, from the button or from inside it, and the
    loading, a failed load and no action are each announced once, as the list's region is new. *@
 @using FluentCMS.Admin.Actions
 @using Microsoft.Extensions.Logging
