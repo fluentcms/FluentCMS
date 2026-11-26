@@ -584,6 +584,8 @@ A page that sends no `ready` within five seconds is shown as it is, with a note 
 
 **As built ([#3650]).** `PreviewMessages` reads versions 1 and 2 and keeps the version a `ready` named; `ContentPreview` posts `hello` after each load that `preview.js` reports, once the load has ended the ready state of a page of version 2, and `refresh` in the version of the page's `ready`. For a page of version 2, a save between a load and the page's answer to `hello` finds the pane not ready and loads the frame again. Component tests cover the `hello` after each load, a page of version 2 with its `ready` before and after the load and then a load it did not announce, and a page of version 1 that still becomes ready, hears `refresh` as version 1 and keeps its gap. The end-to-end cases serve a page of version 1 for the first case and of version 2 for the navigations, to a page without the contract and to one with it, and run in Chromium, Firefox and WebKit.
 
+**As built ([#3470]).** The form keeps an open pane through its read of the entry, site and locale the pane shows, such as the Reload of a conflict, or Try again after a read failed, which keeps the pane too: the pane keeps its page, its answer and its token, and takes the version and status of the new read as it takes a save's, so a ready page is told to refresh while the token lasts and is loaded with a new one after it ended. A load of another entry, site or locale drops the pane at once, before its read answers, as a read that finds no entry or no type does, and leaving the form disposes it; closing a pane kept by a failed read gives focus to the heading, since the toggle is not drawn. The first case of the issue, a `ready` after the load and then a navigation to a page without the contract, is closed for a page of version 2 by `hello` ([#3650], above, with its component tests and end-to-end case); a page of version 1 keeps the gap stated above, which `navigated` or an answer to `hello` closes. Component tests cover the Reload, Try again, an ended token, another entry during the read and the Close.
+
 ### 4.13 Bulk actions
 
 Rows 3.14, 8.8, 2.14.
@@ -1430,3 +1432,4 @@ The draft asked sixteen questions, each with a recommendation. All were decided 
 [#3651]: https://github.com/fluentcms/FluentCMS/issues/3651
 [#3674]: https://github.com/fluentcms/FluentCMS/issues/3674
 [#3675]: https://github.com/fluentcms/FluentCMS/issues/3675
+[#3470]: https://github.com/fluentcms/FluentCMS/issues/3470
