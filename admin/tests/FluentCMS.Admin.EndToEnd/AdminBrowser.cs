@@ -129,6 +129,32 @@ public sealed class AdminBrowser
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign in", Exact = true }).ClickAsync();
     }
 
+    // The hosted page that changes the password, filled in and sent as the editor does; the editor with its new password,
+    // which the mask knows from here on.
+    public async Task<Editor> ChangePasswordOnTheHostedPageAsync(AdminTab tab, Editor editor)
+    {
+        var changed = editor with { Password = EndToEndHost.NewPassword() };
+        Mask(editor.Password);
+        Mask(changed.Password);
+        var page = tab.Page;
+        var current = page.GetByLabel("Current password", new PageGetByLabelOptions { Exact = true });
+        await current.WaitForAsync(new LocatorWaitForOptions { Timeout = (float)Wait.TotalMilliseconds });
+        new Uri(page.Url).AbsolutePath.ShouldBe("/account/change-password");
+        try
+        {
+            await current.FillAsync(editor.Password);
+            await page.GetByLabel("New password", new PageGetByLabelOptions { Exact = true }).FillAsync(changed.Password);
+            await page.GetByLabel("Repeat the new password", new PageGetByLabelOptions { Exact = true }).FillAsync(changed.Password);
+        }
+        catch (PlaywrightException exception)
+        {
+            throw new PlaywrightException(Masked(exception.Message));
+        }
+
+        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Change the password", Exact = true }).ClickAsync();
+        return changed;
+    }
+
     // The trace of this context, masked, at path; the same as a failed test leaves: the chunks recorded around the unrecorded
     // scopes, as one trace. The unmasked chunks are written outside the traces folder, in a folder of the run's host, which is
     // deleted with them if this process dies first.
@@ -166,6 +192,17 @@ public sealed class AdminBrowser
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(secret.Length, ShortestSecret, nameof(secret));
         Keep(secret);
+    }
+
+    // An authenticator key as a page shows it, in groups of four in lower case, masked in that form and in the forms a page or
+    // the authenticator URI writes it, and returned without its spaces.
+    public string MaskAuthenticatorKey(string shown)
+    {
+        var key = shown.Replace(" ", "", StringComparison.Ordinal).Trim();
+        Mask(shown.Trim());
+        Mask(key.ToLowerInvariant());
+        Mask(key.ToUpperInvariant());
+        return key;
     }
 
     // The steps that show a secret no mask reaches, since a screenshot holds it as pixels: nothing of them is recorded, no
@@ -480,6 +517,7 @@ public sealed class AdminTab
     private readonly ConcurrentQueue<Call> _calls = new();
     private long _callsSeen;
     private long _lastGrant;
+    private long _lastSignIn;
 
     internal AdminTab(EndToEndHost host, IPage page, Func<string, string> masked)
     {
@@ -630,10 +668,33 @@ public sealed class AdminTab
     {
         if (request.Status == 200)
         {
-            Interlocked.Exchange(ref _lastGrant, DateTime.UtcNow.Ticks);
+            var now = DateTime.UtcNow.Ticks;
+            Interlocked.Exchange(ref _lastGrant, now);
+            if (request.GrantType == "authorization_code")
+            {
+                Interlocked.Exchange(ref _lastSignIn, now);
+            }
         }
 
         _tokenRequests.Enqueue(request);
+    }
+
+    // Returns once the tab's last grant is older than the age, as for a time the server counts from the redemption of the
+    // refresh token the tab last sent. No request is sent meanwhile.
+    public Task LastGrantOlderThanAsync(TimeSpan age) => OlderThanAsync(Interlocked.Read(ref _lastGrant), age);
+
+    // Returns once the tab's last sign-in, its last code redeemed, is older than the age; a tab the admin opened from it
+    // keeps that time with the copy of its sessionStorage.
+    public Task SignInOlderThanAsync(TimeSpan age) => OlderThanAsync(Interlocked.Read(ref _lastSignIn), age);
+
+    private static async Task OlderThanAsync(long granted, TimeSpan age)
+    {
+        granted.ShouldBeGreaterThan(0, "the tab has no such grant yet");
+        var wait = new DateTime(granted, DateTimeKind.Utc) + age - DateTime.UtcNow;
+        if (wait > TimeSpan.Zero)
+        {
+            await Task.Delay(wait, TestContext.Current.CancellationToken);
+        }
     }
 
     // Returns once the tab's access token is due for its refresh on demand, half its lifetime after the last grant, so that

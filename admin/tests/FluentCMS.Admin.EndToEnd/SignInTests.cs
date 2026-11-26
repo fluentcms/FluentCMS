@@ -135,6 +135,33 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
+    // A logout the user does not confirm on the hosted page ends the tab's session and leaves the server's: the admin, opened
+    // again, signs in through the authorize redirect without the login page and comes back to its start page.
+    [Fact]
+    public async Task ALogoutTheUserDoesNotConfirmLeavesTheAdminSignedInWhenItIsOpenedAgain()
+    {
+        var editor = await Host.CreateEditorAsync();
+        var browser = await OpenBrowserAsync();
+        var tab = await browser.NewTabAsync();
+        await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, editor);
+        await Expect(tab.Sidebar).ToBeVisibleAsync();
+        var (loginPages, authorizations) = (tab.LoginPagesShown, tab.AuthorizeRequests.Count);
+
+        await tab.Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = editor.Email }).ClickAsync();
+        await tab.Page.GetByRole(AriaRole.Menuitem, new PageGetByRoleOptions { Name = Repository.AdminText("Shell.UserMenu.SignOut"), Exact = true }).ClickAsync();
+        await Expect(tab.Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign out", Exact = true })).ToBeVisibleAsync();
+        new Uri(tab.Page.Url).AbsolutePath.ShouldBe("/account/logout");
+
+        var exchange = await tab.TokenRequestOfAsync(() => tab.Page.GotoAsync(Host.Admin.AbsoluteUri));
+        exchange.ShouldBeGranted("authorization_code");
+        await Expect(tab.Heading("Home.Page.Heading")).ToBeVisibleAsync();
+        tab.Page.Url.ShouldBe(Host.Admin.AbsoluteUri);
+        tab.LoginPagesShown.ShouldBe(loginPages);
+        tab.AuthorizeRequests.Count.ShouldBe(authorizations + 1);
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
     // A session the server ends, here by an operator setting a new password seconds after the sign-in, ends at the tab's next
     // refresh. Within a minute of its sign-in the admin says that the session ended rather than signing in again on its own,
     // which could loop; the user's own sign-in then asks for the password and comes back to the route the tab was on.

@@ -1,3 +1,4 @@
+using Microsoft.Playwright;
 using Shouldly;
 using Xunit;
 using static Microsoft.Playwright.Assertions;
@@ -8,6 +9,10 @@ namespace FluentCMS.Admin.EndToEnd;
 // (spec 2.4, AQ3). The host's access tokens last five seconds, so a tab refreshes on demand at a call after half of that.
 public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
 {
+    // OpenIddict's leeway for a refresh token used again, its default, and AdminSession.RepeatWindow.
+    private static readonly TimeSpan ReuseLeeway = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan RepeatWindow = TimeSpan.FromMinutes(1);
+
     [Fact]
     public async Task TwoTabsEachRefreshTheirOwnTokenAtOnceAndBothStaySignedIn()
     {
@@ -71,6 +76,58 @@ public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
         copy.AuthorizeRequests.Count.ShouldBe(1);
         browser.PolicyViolations.ShouldBeEmpty();
     }
+
+    // A copy the first tab does not answer for, as in a browser without BroadcastChannel (spec 2.4, copied tabs), shares its
+    // refresh token. The copy redeems it as it starts; the first tab's use of it past the server's 30-second reuse leeway is a
+    // replay, which ends the session of both. Each then signs in again through the server's session, without the login page,
+    // and comes back to its route. The route is the gallery, which reads nothing once the shell has started, so that the
+    // first tab is idle when the copy takes its token. The case waits past the leeway, which the host has no setting for, and
+    // past the admin's one-minute window after a sign-in, within which a session the server ends is not signed in again on
+    // its own: about a minute from the sign-in.
+    [Fact]
+    public async Task TwoTabsThatShareARefreshTokenPastTheReuseLeewayEachSignInAgainWithoutTheLoginPage()
+    {
+        var browser = await OpenBrowserAsync();
+        var gallery = new Uri(Host.Admin, "system/components").AbsoluteUri;
+        var first = await SignedInTabAsync(browser, "system/components", await Host.CreateEditorAsync());
+        await Expect(first.Sidebar).ToBeVisibleAsync();
+        await Expect(GalleryHeading(first)).ToBeVisibleAsync();
+        var loginPages = first.LoginPagesShown;
+
+        // Once the first tab's start, and any refresh it made, is over, so that the copy takes the token the first holds.
+        await first.Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        var firstGrants = first.TokenRequests.Count;
+        await first.Page.Context.AddInitScriptAsync("delete window.BroadcastChannel;");
+        var copy = await browser.OpenedByAsync(first);
+        await Expect(copy.Sidebar).ToBeVisibleAsync();
+        await Expect(GalleryHeading(copy)).ToBeVisibleAsync();
+        copy.TokenRequests.First().ShouldBeGranted("refresh_token");
+        copy.AuthorizeRequests.ShouldBeEmpty();
+
+        await copy.LastGrantOlderThanAsync(ReuseLeeway + TimeSpan.FromSeconds(2));
+        await first.SignInOlderThanAsync(RepeatWindow + TimeSpan.FromSeconds(2));
+        first.TokenRequests.Count.ShouldBe(firstGrants, "the first tab refreshed after the copy took its token");
+
+        foreach (var tab in new[] { first, copy })
+        {
+            var refused = await tab.ReloadAsync();
+            refused.GrantType.ShouldBe("refresh_token");
+            refused.Status.ShouldBe(400);
+            await Expect(tab.Sidebar).ToBeVisibleAsync();
+            await Expect(GalleryHeading(tab)).ToBeVisibleAsync();
+            tab.TokenRequests.Last().ShouldBeGranted("authorization_code");
+            tab.Page.Url.ShouldBe(gallery);
+        }
+
+        first.LoginPagesShown.ShouldBe(loginPages);
+        copy.LoginPagesShown.ShouldBe(0);
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    // The gallery is a page of the administration assembly, with its texts in the folder Gallery there. The shell's start and
+    // that assembly's load are waited for one after the other, since each takes seconds in slow mode.
+    private static ILocator GalleryHeading(AdminTab tab) =>
+        tab.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = Repository.AdministrationText("Gallery", "System.Components.Heading"), Exact = true });
 
     // Compared, never written out, since it holds the refresh token.
     private static Task<string?> StoredSessionAsync(AdminTab tab) =>

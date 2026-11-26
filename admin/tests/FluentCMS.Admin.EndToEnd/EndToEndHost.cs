@@ -265,12 +265,39 @@ public sealed partial class EndToEndHost : IAsyncLifetime
         var changed = editor with { Password = NewPassword() };
         await CommandAsync(changed.Password, "user", "reset-password", "--email", editor.Email, "--password-stdin");
 
+        await SetMustChangePasswordAsync(editor, false);
+        return changed;
+    }
+
+    // Has the user choose a new password at its next sign-in, as an administrator does on the user's page.
+    public Task MustChangePasswordAsync(Editor editor) => SetMustChangePasswordAsync(editor, true);
+
+    // A role of the case's own, named by its mark, with the grants of the built-in Editor, which requires two-factor sign-in.
+    // Only the users the case makes with it hold it, so no other case signs in under it.
+    public async Task<string> CreateTwoFactorRoleAsync(string mark)
+    {
+        var name = $"Two-factor editor {mark}";
+        using var client = await ManagementClientAsync();
+        var editor = await client.GetFromJsonAsync<JsonObject>(new Uri($"api/management/v1/roles/{EditorRoleId}", UriKind.Relative), Token);
+        using var created = await client.PostAsJsonAsync(
+            new Uri("api/management/v1/roles", UriKind.Relative),
+            new JsonObject { ["name"] = name, ["requireTwoFactor"] = true, ["grants"] = editor!["grants"]!.DeepClone() },
+            Token);
+        if (created.StatusCode != HttpStatusCode.Created)
+        {
+            throw new InvalidOperationException($"Creating the role {name} answered {(int)created.StatusCode}: {await created.Content.ReadAsStringAsync(Token)}");
+        }
+
+        return name;
+    }
+
+    private async Task SetMustChangePasswordAsync(Editor editor, bool mustChange)
+    {
         using var client = await ManagementClientAsync();
         var found = await client.GetFromJsonAsync<JsonObject>(new Uri($"api/management/v1/users?search={Uri.EscapeDataString(editor.Email)}", UriKind.Relative), Token);
         var id = found!["items"]!.AsArray().Single(user => (string?)user!["email"] == editor.Email)!["id"]!.GetValue<string>();
-        using var kept = await client.PatchAsJsonAsync(new Uri($"api/management/v1/users/{id}", UriKind.Relative), new { mustChangePassword = false }, Token);
+        using var kept = await client.PatchAsJsonAsync(new Uri($"api/management/v1/users/{id}", UriKind.Relative), new { mustChangePassword = mustChange }, Token);
         kept.EnsureSuccessStatusCode();
-        return changed;
     }
 
     // An HTTP client that trusts the run's own certificate and no other, for the checks that need no browser.
@@ -300,7 +327,7 @@ public sealed partial class EndToEndHost : IAsyncLifetime
 
     private static Editor NewEditor() => new($"editor-{Guid.NewGuid():N}@example.com", NewPassword());
 
-    private static string NewPassword() => "Aa1!" + Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+    internal static string NewPassword() => "Aa1!" + Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
 
     private static int FreePort()
     {

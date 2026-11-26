@@ -293,6 +293,9 @@ public static class Ui
     // A state that a browser event sets in the test.
     public static Task UntilAsync(Func<bool> condition, string because) => UntilAsync(() => Task.FromResult(condition()), because);
 
+    // The code an authenticator app with the key shows now; the host runs on this machine's clock.
+    public static string AuthenticatorCode(string key) => FluentCMS.Admin.Testing.Totp.Code(key, DateTimeOffset.UtcNow);
+
     // A text of the resources with its arguments.
     public static string Format(string text, params string[] arguments)
     {
