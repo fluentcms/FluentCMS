@@ -21,6 +21,7 @@ namespace FluentCMS.Admin.Tests.Administration.ApiKeys;
 public sealed class ApiKeysPageTests : AdministrationTestContext
 {
     private const string Permission = "apikeys.manage";
+    private static readonly Guid Shop = new("0193a1b2-0000-7000-8000-00000000a002");
     private const string Focus = "Blazor._internal.domWrapper.focus";
 
     private readonly ApiKeysFake keys = new();
@@ -71,6 +72,7 @@ public sealed class ApiKeysPageTests : AdministrationTestContext
         app.Find("form.api-key-form").Submit();
 
         app.WaitForAssertion(() => SecretDialog(app).Secret.ShouldBe(ApiKeysFake.Secret));
+        Services.GetRequiredService<FluentCMS.Admin.Forms.IFormDraftStore>().HasUnsavedForms.ShouldBeFalse();
         var create = keys.Calls.Single(call => call.Method == HttpMethod.Post && call.Path == "api-keys");
         var body = JsonNode.Parse(create.Body!)!.AsObject();
         body["name"]!.GetValue<string>().ShouldBe("Shop reader");
@@ -355,6 +357,36 @@ public sealed class ApiKeysPageTests : AdministrationTestContext
         app.Find($"main a[href='{ApiKeyRoutes.List}']");
     }
 
+    // #3511: a key filled in and not made asks before the page is left, and nothing of it is kept as a draft.
+    [Fact]
+    public async Task AKeyNotMadeAsksBeforeThePageIsLeftAndKeepsNoDraft()
+    {
+        Management.AddSite(Shop, "Shop", "shop");
+        var app = OpenForm();
+        Fill(app);
+        app.Find("form.api-key-form textarea").Input("203.0.113.0/24");
+
+        await LeavingAsksFirstAsync(app, () =>
+        {
+            app.Find("form.api-key-form input").GetAttribute("value").ShouldBe("Shop reader");
+            app.Find("form.api-key-form textarea").GetAttribute("value").ShouldBe("203.0.113.0/24");
+        }, "Shop reader", "203.0.113.0/24");
+
+        LeaveWhenAsked(app, "api-keys");
+    }
+
+    [Fact]
+    public void AKeyChangedBackAsksNothing()
+    {
+        var app = OpenForm();
+        app.Find("form.api-key-form input").Input("Shop reader");
+        app.Find("form.api-key-form input").Input("");
+        Site(app, "Main").Change(false);
+        Site(app, "Main").Change(true);
+
+        NothingAsks(app, "api-keys");
+    }
+
     private IRenderedComponent<AdminApp> OpenForm()
     {
         var app = Load("api-keys/new");
@@ -372,6 +404,9 @@ public sealed class ApiKeysPageTests : AdministrationTestContext
     // The control a label names, by the label's text without its required mark.
     private static AngleSharp.Dom.IElement Labelled(IRenderedComponent<AdminApp> app, string label) =>
         app.Find("#" + app.FindAll("label[for]").First(element => element.TextContent.Trim().StartsWith(label, StringComparison.Ordinal)).GetAttribute("for"));
+
+    private static AngleSharp.Dom.IElement Site(IRenderedComponent<AdminApp> app, string name) =>
+        app.FindComponents<FluentCMS.Admin.Components.CmsCheckbox>().Single(box => box.Instance.Label == name).Find("fluent-checkbox");
 
     private AngleSharp.Dom.IElement EverySite(IRenderedComponent<AdminApp> app) =>
         app.FindComponents<FluentCMS.Admin.Components.CmsCheckbox>().Single(box => box.Instance.Label == Localized<ApiKeysResources>("ApiKeys.New.EverySite")).Find("fluent-checkbox");

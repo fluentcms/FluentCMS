@@ -1,8 +1,9 @@
 @* The generated settings page of an area, for the site or for the instance defaults (spec 4.16): a form from the JSON schema
    of the read, with the field editors of 4.6. A secret is never read, so it shows as set or not set and holds only what the
    user types, which a save sends and then forgets; a secret the user did not type is left out of the request, since naming
-   it would replace it. Nothing of the form goes to the draft store or to browser storage. Save and reset name the version
-   read; a save over a change made elsewhere opens the conflict, as the content form does. *@
+   it would replace it. Nothing of the form goes to the draft store or to browser storage; while it differs from the read,
+   leaving it asks first. Save and reset name the version read; a save over a change made elsewhere opens the conflict, as
+   the content form does. *@
 @implements IDisposable
 @using System.Diagnostics.CodeAnalysis
 @using System.Net
@@ -11,6 +12,8 @@
 @inject FieldEditorRegistry Editors
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<SettingsResources> L
+
+<UnsavedGuard Unsaved="@(() => Changed)" />
 
 @if (read is null && failure is null)
 {

@@ -12,6 +12,8 @@ namespace FluentCMS.Admin.Tests.Administration.Members;
 // The members page: the list, read in pages with a search and the filters group, verified and active, and a member added.
 public sealed class MembersPageTests : MembersTestContext
 {
+    private static readonly Guid Shop = new("0193a1b2-0000-7000-8000-00000000a002");
+
     public MembersPageTests()
     {
         UseNeutralResources();
@@ -136,6 +138,39 @@ public sealed class MembersPageTests : MembersTestContext
         var sent = JsonNode.Parse(BodyOf(HttpMethod.Post, "members")!)!;
         sent.ToJsonString().ShouldBe("""{"email":"lin@example.com","displayName":"Lin"}""");
         Navigation.Uri.ShouldEndWith($"/members/{(Guid)Members[^1]!["id"]!:D}");
+    }
+
+    // #3511: a member typed and not added asks before the page is left, a filter of the list keeps it, and nothing of it is
+    // kept as a draft.
+    [Fact]
+    public async Task AMemberNotAddedAsksBeforeThePageIsLeftAndKeepsNoDraft()
+    {
+        Management.AddSite(Shop, "Shop", "shop");
+        var app = Load("members");
+        app.WaitForAssertion(() => Rows(app).Length.ShouldBe(2));
+        Section(app, "Add a member").QuerySelector("input[type=email]")!.Input("lin@example.com");
+        Section(app, "Add a member").QuerySelectorAll("input")[1].Input("Lin");
+
+        Filter(app, "Group").Change(Readers.ToString("D"));
+        app.WaitForAssertion(() => Rows(app).Select(row => row[0]).ShouldBe(["ada@example.com"]));
+        await LeavingAsksFirstAsync(app, () =>
+        {
+            Section(app, "Add a member").QuerySelector("input[type=email]")!.GetAttribute("value").ShouldBe("lin@example.com");
+            Section(app, "Add a member").QuerySelectorAll("input")[1].GetAttribute("value").ShouldBe("Lin");
+        }, "lin@example.com", "Lin");
+
+        LeaveWhenAsked(app, "members/groups");
+    }
+
+    [Fact]
+    public void AMemberClearedAsksNothing()
+    {
+        var app = Load("members");
+        app.WaitForAssertion(() => Rows(app).Length.ShouldBe(2));
+        Section(app, "Add a member").QuerySelector("input[type=email]")!.Input("lin@example.com");
+        Section(app, "Add a member").QuerySelector("input[type=email]")!.Input(" ");
+
+        NothingAsks(app, "members/groups");
     }
 
     [Fact]

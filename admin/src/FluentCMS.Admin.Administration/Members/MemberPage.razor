@@ -1,7 +1,7 @@
 @* A member of the instance (spec 4.15): its account, with its display name changed, deactivate and reactivate, and delete
    after a question that names it; its groups, each taken out and one added; its sessions and its external logins. Putting
    a member in a group, or taking it out, needs every grant of the group's role (FCMS3103), which the server decides; the
-   page offers it and names the refusal. *@
+   page offers it and names the refusal. A display name typed and not saved asks before the page is left. *@
 @page "/members/{Id:guid}"
 @implements IDisposable
 @inject IManagementApi Api
@@ -10,6 +10,8 @@
 @inject FormatService Formats
 @inject TimeProvider Time
 @inject IStringLocalizer<MembersResources> L
+
+<UnsavedGuard Unsaved="@(() => member is not null && (displayName?.Trim() ?? "") != (member.DisplayName ?? ""))" />
 
 @if (member is null)
 {

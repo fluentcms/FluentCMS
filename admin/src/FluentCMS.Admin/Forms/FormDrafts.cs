@@ -47,6 +47,10 @@ internal sealed class FormDrafts(ISessionStorage storage)
         return new Tracking(this, form);
     }
 
+    // An editor that asks before it is left and keeps no draft, as those of the administration area: what they hold may be a
+    // secret, and no form would restore it (#3511). It is left out of the drafts written and removed.
+    public IDisposable TrackUnsaved() => Track(new WithoutDraft());
+
     // The user chose to leave the unsaved forms, as at a confirmed site switch or sign-out, or they are kept as drafts:
     // nothing asks about them any more.
     public void ReleaseAll()
@@ -71,7 +75,7 @@ internal sealed class FormDrafts(ISessionStorage storage)
         List<FormDraftKey> keys;
         lock (_gate)
         {
-            keys = [.. _forms.Select(form => form.CaptureDraft().Key)];
+            keys = [.. _forms.Where(KeepsDraft).Select(form => form.CaptureDraft().Key)];
         }
 
         ReleaseAll();
@@ -90,10 +94,12 @@ internal sealed class FormDrafts(ISessionStorage storage)
     // Before the redirect to sign in, when the session has ended.
     public async Task SaveTrackedAsync(string user)
     {
+        List<IUnsavedForm> kept;
         List<FormDraft> drafts;
         lock (_gate)
         {
-            drafts = [.. _forms.Select(form => form.CaptureDraft())];
+            kept = [.. _forms.Where(KeepsDraft)];
+            drafts = [.. kept.Select(form => form.CaptureDraft())];
         }
 
         if (drafts.Count == 0)
@@ -109,9 +115,10 @@ internal sealed class FormDrafts(ISessionStorage storage)
             stored.Add(new StoredDraft(user, site, type, entry, locale, draft.BaseVersion, draft.Fields.DeepClone().AsObject()));
         }
 
-        // Kept, so the redirect to sign in does not ask; a write that failed leaves the question.
+        // Kept, so the redirect to sign in does not ask about them; a write that failed, and an editor that keeps no draft,
+        // leave the question.
         await WriteAsync(stored);
-        ReleaseAll();
+        Release(kept);
     }
 
     public async Task<FormDraft?> FindAsync(string user, FormDraftKey key)
@@ -181,18 +188,33 @@ internal sealed class FormDrafts(ISessionStorage storage)
         await storage.SetAsync(StorageKey, JsonSerializer.Serialize(drafts, AuthenticationJsonContext.Default.ListStoredDraft));
     }
 
-    private void Untrack(IUnsavedForm form)
+    private static bool KeepsDraft(IUnsavedForm form) => form is not WithoutDraft;
+
+    private void Untrack(IUnsavedForm form) => Release([form]);
+
+    private void Release(List<IUnsavedForm> forms)
     {
         bool last;
         lock (_gate)
         {
-            last = _forms.Remove(form) && _forms.Count == 0;
+            var removed = false;
+            foreach (var form in forms)
+            {
+                removed |= _forms.Remove(form);
+            }
+
+            last = removed && _forms.Count == 0;
         }
 
         if (last)
         {
             TrackedChanged?.Invoke();
         }
+    }
+
+    private sealed class WithoutDraft : IUnsavedForm
+    {
+        public FormDraft CaptureDraft() => throw new InvalidOperationException("An editor that keeps no draft has none to capture.");
     }
 
     private sealed class Tracking(FormDrafts drafts, IUnsavedForm form) : IDisposable

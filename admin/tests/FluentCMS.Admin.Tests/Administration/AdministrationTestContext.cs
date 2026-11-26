@@ -1,13 +1,20 @@
 using System.Reflection;
 using System.Text.Json.Nodes;
+using AngleSharp.Dom;
 using Bunit;
+using FluentCMS.Admin.Administration.Common;
 using FluentCMS.Admin.Administration.Users;
+using FluentCMS.Admin.Authentication;
+using FluentCMS.Admin.Components;
+using FluentCMS.Admin.Forms;
 using FluentCMS.Admin.Plugins;
 using FluentCMS.Admin.Plugins.Sample;
 using FluentCMS.Admin.Shell;
+using FluentCMS.Admin.Tests.Authentication;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using Microsoft.FluentUI.AspNetCore.Components;
 using Shouldly;
 using static FluentCMS.Admin.Tests.Shell.FakeManagementServer;
 
@@ -90,6 +97,97 @@ public abstract class AdministrationTestContext : AdminTestContext
     {
         var page = app.FindComponent<RouteView>().Instance.RouteData.PageType;
         return page.Assembly == typeof(UsersPage).Assembly ? page.GetCustomAttributes<RouteAttribute>().First().Template : null;
+    }
+
+    // The dirty guard of an editor of the areas (#3511), on a page a test has changed, with a second site to switch to: the tab's close asks, and a route to another page, a site switch and a sign-out ask first and
+    // leave the page as it is on the answer to stay, which `kept` checks. The end of the session keeps nothing of the page
+    // in the draft store, none of the texts `typed` in sessionStorage, and the question with it.
+    private protected async Task LeavingAsksFirstAsync(IRenderedComponent<AdminApp> app, Action kept, params string[] typed)
+    {
+        var page = Navigation.Uri;
+        UnloadGuards().ShouldNotBeEmpty();
+        UnloadGuards()[^1].ShouldBeTrue();
+
+        Navigation.NavigateTo("");
+        app.WaitForAssertion(() => Dialog(app, LeaveTitle).Instance.Open.ShouldBeTrue());
+        Navigation.Uri.ShouldBe(page);
+        DialogButton(app, LeaveTitle, Localized<CommonResources>("Common.Leave.Cancel")).Click();
+        app.WaitForAssertion(() => app.FindComponents<CmsDialog>().ShouldNotContain(found => found.Instance.Title == LeaveTitle));
+        Navigation.Uri.ShouldBe(page);
+        kept();
+
+        var other = app.FindAll(".site-switcher option").Select(option => option.GetAttribute("value")).First(value => value != MainSite.ToString("D"));
+        app.Find(".site-switcher select").Change(other);
+        Dialog(app, Text("Shell.SiteSwitcher.UnsavedTitle")).Instance.Open.ShouldBeTrue();
+        DialogButton(app, Text("Shell.SiteSwitcher.UnsavedTitle"), Text("Shell.SiteSwitcher.UnsavedCancel")).Click();
+        Context.Site!.Id.ShouldBe(MainSite);
+        kept();
+
+        var session = (SignedInTestSession)Services.GetRequiredService<IAdminSession>();
+        SignOut(app);
+        Dialog(app, Text("Shell.SignOut.Title")).Instance.Open.ShouldBeTrue();
+        DialogButton(app, Text("Shell.SignOut.Title"), Text("Shell.SignOut.Cancel")).Click();
+        session.SignOuts.ShouldBe(0);
+        kept();
+
+        await app.InvokeAsync(() => Services.GetRequiredService<FormDrafts>().SaveTrackedAsync(session.User!.Subject));
+        Storage[FormDrafts.StorageKey].ShouldBeNull();
+        Storage.Writes.ShouldNotContain($"set {FormDrafts.StorageKey}");
+        Storage.Items.Values.ShouldAllBe(value => typed.All(text => !value.Contains(text, StringComparison.Ordinal)));
+        Services.GetRequiredService<IFormDraftStore>().HasUnsavedForms.ShouldBeTrue();
+        kept();
+    }
+
+    // A confirmed leave goes on as the navigation it was, and the editor is given up.
+    private protected void LeaveWhenAsked(IRenderedComponent<AdminApp> app, string route)
+    {
+        Navigation.NavigateTo(route);
+        app.WaitForAssertion(() => Dialog(app, LeaveTitle).Instance.Open.ShouldBeTrue());
+        DialogButton(app, LeaveTitle, Localized<CommonResources>("Common.Leave.Confirm")).Click();
+
+        app.WaitForAssertion(() => Navigation.Uri.ShouldBe(Navigation.ToAbsoluteUri(route).AbsoluteUri));
+        Services.GetRequiredService<IFormDraftStore>().HasUnsavedForms.ShouldBeFalse();
+        UnloadGuards()[^1].ShouldBeFalse();
+    }
+
+    // An editor as it was read, or saved: the tab's close, a sign-out and a route to another page ask nothing.
+    private protected void NothingAsks(IRenderedComponent<AdminApp> app, string route = "")
+    {
+        Services.GetRequiredService<IFormDraftStore>().HasUnsavedForms.ShouldBeFalse();
+        if (UnloadGuards() is [.., var last])
+        {
+            last.ShouldBeFalse();
+        }
+
+        var session = (SignedInTestSession)Services.GetRequiredService<IAdminSession>();
+        SignOut(app);
+        session.SignOuts.ShouldBe(1);
+
+        Navigation.NavigateTo(route);
+        app.WaitForAssertion(() => Navigation.Uri.ShouldBe(Navigation.ToAbsoluteUri(route).AbsoluteUri));
+        app.FindComponents<CmsDialog>().ShouldNotContain(found => found.Instance.Open);
+    }
+
+    private string LeaveTitle => Localized<CommonResources>("Common.Leave.Title");
+
+    private List<bool> UnloadGuards() =>
+        [.. Document.Invocations.Where(call => call.Identifier == "guardUnload").Select(call => (bool)call.Arguments[0]!)];
+
+    private static IRenderedComponent<CmsDialog> Dialog(IRenderedComponent<AdminApp> app, string title) =>
+        app.FindComponents<CmsDialog>().Single(found => found.Instance.Title == title);
+
+    private static IElement DialogButton(IRenderedComponent<AdminApp> app, string title, string text) =>
+        Dialog(app, title).FindAll("fluent-button").Single(button => button.TextContent.Trim() == text);
+
+    // The answer to the site switcher's question, for a test that switches with unsaved changes.
+    private protected void ConfirmSiteSwitch(IRenderedComponent<AdminApp> app) =>
+        DialogButton(app, Text("Shell.SiteSwitcher.UnsavedTitle"), Text("Shell.SiteSwitcher.UnsavedConfirm")).Click();
+
+    // The library raises the item's click from its menu's change event.
+    private void SignOut(IRenderedComponent<AdminApp> app)
+    {
+        var item = app.FindAll("fluent-menu-item").Single(found => found.TextContent.Trim() == Text("Shell.UserMenu.SignOut"));
+        item.TriggerEvent("onmenuitemchange", new MenuItemEventArgs { Id = item.Id });
     }
 
     internal sealed class AdministrationLoader : IAdminAssemblyLoader

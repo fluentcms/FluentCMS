@@ -134,6 +134,7 @@ public sealed class RolePageTests : RolesTestContext
         var held = Management.HoldSite[Shop] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         app.Find(".site-switcher select").Change(Shop.ToString("D"));
+        ConfirmSiteSwitch(app);
 
         app.WaitForAssertion(() => app.FindComponents<RolePage>().ShouldBeEmpty());
         held.SetResult();
@@ -157,6 +158,7 @@ public sealed class RolePageTests : RolesTestContext
         Field(app, "Name").Input("Mine");
 
         app.Find(".site-switcher select").Change(Shop.ToString("D"));
+        ConfirmSiteSwitch(app);
 
         app.WaitForAssertion(() => Field(app, "Name").GetAttribute("value").ShouldBe("Reviewers"));
         app.FindComponent<RolePage>().Instance.ShouldBeSameAs(page);
@@ -368,6 +370,56 @@ public sealed class RolePageTests : RolesTestContext
         Field(app, "Description").HasAttribute("readonly").ShouldBeTrue();
         app.FindAll("main select").ShouldBeEmpty();
         app.FindAll("main fluent-button").Select(button => button.TextContent.Trim()).ShouldBe(["Save"]);
+    }
+
+    // #3511: a role that differs from its read asks before it is left, and nothing of it is kept as a draft.
+    [Fact]
+    public async Task AChangedRoleAsksBeforeItIsLeftAndKeepsNoDraft()
+    {
+        var app = Open($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => Field(app, "Name"));
+        Field(app, "Name").Input("Mine");
+        Add(app, GrantCatalogue.Core, "roles.manage");
+        app.WaitForAssertion(() => GrantsShown(app).ShouldContain("roles.manage"));
+
+        await LeavingAsksFirstAsync(app, () =>
+        {
+            Field(app, "Name").GetAttribute("value").ShouldBe("Mine");
+            GrantsShown(app).ShouldContain("roles.manage");
+        }, "Mine");
+
+        LeaveWhenAsked(app, "roles");
+    }
+
+    [Fact]
+    public void ARoleChangedBackAsksNothing()
+    {
+        var app = Open($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => Field(app, "Name"));
+        Field(app, "Name").Input("Mine");
+        Add(app, GrantCatalogue.Core, "roles.manage");
+        app.WaitForAssertion(() => GrantsShown(app).ShouldContain("roles.manage"));
+
+        Field(app, "Name").Input("Reviewers");
+        app.Find("main [data-grant='roles.manage']").QuerySelectorAll("fluent-button").Single(button => button.TextContent.Trim().StartsWith("Remove", StringComparison.Ordinal)).Click();
+
+        app.WaitForAssertion(() => GrantsShown(app).ShouldNotContain("roles.manage"));
+        NothingAsks(app, "roles");
+    }
+
+    [Fact]
+    public void ARoleSavedOrCreatedAsksNothing()
+    {
+        var app = Open("roles/new");
+        app.WaitForAssertion(() => Field(app, "Name"));
+        Field(app, "Name").Input("Translators");
+        Save(app);
+        app.WaitForAssertion(() => Navigation.Uri.ShouldEndWith("roles/0193a1b2-0000-7000-8000-000000000001"));
+        Field(app, "Description").Input("They translate.");
+        Save(app);
+
+        app.WaitForAssertion(() => Alert(app).ShouldBe("The role was saved."));
+        NothingAsks(app, "roles");
     }
 
     private int ReadsInShop(string path) =>

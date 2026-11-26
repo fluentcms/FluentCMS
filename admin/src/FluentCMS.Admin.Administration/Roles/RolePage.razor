@@ -4,8 +4,8 @@
    The page edits a role the caller manages only, as the list shows them; the server stays the authority, and its refusals
    are shown on the role by their code. A site switch drops the page while the new site loads, since the layout shows no
    page until the shell is ready, and builds it again then: the role is read in the new site, where what the caller manages
-   and holds differs, and what was not saved is gone. A change of the content locale keeps the page and changes the access,
-   so the marks only. *@
+   and holds differs, and what was not saved is gone, so the switch asks first while the role differs from its read. A
+   change of the content locale keeps the page and changes the access, so the marks only. *@
 @page "/roles/new"
 @page "/roles/{Id:guid}"
 @implements IDisposable
@@ -14,6 +14,8 @@
 @inject NavigationManager Navigation
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<RolesResources> L
+
+<UnsavedGuard Unsaved="@(() => Unsaved)" />
 
 @if (state != State.Ready || catalogue is null || draft is null || !Manageable)
 {
@@ -88,7 +90,7 @@ else
             </CmsStack>
         </CmsCard>
 
-        <RoleGrants Grants="@draft.Grants" Catalogue="@catalogue" RoleSite="@RoleSite" ReadOnly="@Fixed" Disabled="@busy" />
+        <RoleGrants Grants="@draft.Grants" Catalogue="@catalogue" RoleSite="@RoleSite" ReadOnly="@Fixed" Disabled="@busy" OnChanged="@StateHasChanged" />
 
         <div role="alert">
             <p tabindex="-1" @ref="messageElement">@message</p>
@@ -134,6 +136,7 @@ else
     private Guid? shownId;
     private bool shown;
     private string? siteChoice;
+    private string? siteRead;
     private string? nameError;
     private string? descriptionError;
     private string? message;
@@ -166,6 +169,11 @@ else
     private string StateHeading => state == State.NotFound ? L["Roles.Editor.NotFound"]
         : state == State.Ready ? L["Roles.Editor.NotManaged"]
         : Id is null ? L["Roles.Editor.NewHeading"] : L["Roles.Editor.Heading"];
+
+    // What the user changed since the role was read, or since the page opened for a new one; a save takes the role answered
+    // as the read.
+    private bool Unsaved => state == State.Ready && draft is not null && Manageable
+        && (!draft.SameAs(read is null ? new RoleDraft() : RoleDraft.From(read)) || (read is null && siteChoice != siteRead));
 
     // Super Admin holds every permission; of it, only requireTwoFactor can be changed (FCMS3043).
     private bool Fixed => read?.Id == RoleScope.SuperAdmin;
@@ -201,7 +209,7 @@ else
     private Task ReadAgainAsync()
     {
         (read, draft, nameError, descriptionError, message, detail, asking) = (null, null, null, null, null, null, false);
-        siteChoice = Context.Site?.Id.ToString("D") ?? EverySite;
+        siteChoice = siteRead = Context.Site?.Id.ToString("D") ?? EverySite;
         return ReadAsync();
     }
 

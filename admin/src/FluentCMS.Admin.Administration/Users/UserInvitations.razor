@@ -1,13 +1,15 @@
 @* Invitations of the users page (spec 4.15): one is sent by email with the roles the new user gets, listed while it can be
    accepted, and revoked. Sending or revoking one needs every grant of its roles, and a new invitation to an address ends the
    pending one to it, whose roles the caller must hold too (FCMS3103). The list leaves out an invitation whose sender no
-   longer stands, which accept would refuse (#3391). *@
+   longer stands, which accept would refuse (#3391). An invitation typed and not sent asks before it is left. *@
 @implements IDisposable
 @inject IManagementApi Api
 @inject AdminContext Context
 @inject FormatService Formats
 @inject IStringLocalizer<UsersResources> L
 @inject IStringLocalizer<CommonResources> Common
+
+<UnsavedGuard Unsaved="@(() => !string.IsNullOrWhiteSpace(email) || chosen.Count > 0)" />
 
 <CmsCard Title="@L["Users.Invite.Heading"]">
     <form @onsubmit="SendAsync">

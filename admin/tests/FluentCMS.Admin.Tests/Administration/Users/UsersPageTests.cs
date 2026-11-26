@@ -15,6 +15,8 @@ namespace FluentCMS.Admin.Tests.Administration.Users;
 // The users page: the list, read in pages with a search, and the invitations, sent with roles, pending and revoked.
 public sealed class UsersPageTests : UsersTestContext
 {
+    private static readonly Guid Shop = new("0193a1b2-0000-7000-8000-00000000a002");
+
     public UsersPageTests()
     {
         UseNeutralResources();
@@ -243,5 +245,45 @@ public sealed class UsersPageTests : UsersTestContext
         app.WaitForAssertion(() => Rows(app).Select(row => row[0]).ShouldBe(["ada"]));
         UserQueries[^1].ShouldBe("page=1&pageSize=25&search=ada");
         hold.SetResult();
+    }
+
+    // #3511: an invitation typed and not sent asks before the page is left, a search of the list keeps it, and nothing of it
+    // is kept as a draft.
+    [Fact]
+    public async Task AnInvitationNotSentAsksBeforeThePageIsLeftAndKeepsNoDraft()
+    {
+        Management.AddSite(Shop, "Shop", "shop");
+        var app = Load("users");
+        app.WaitForAssertion(() => Section(app, "Invite a user").QuerySelector("select").ShouldNotBeNull());
+        Section(app, "Invite a user").QuerySelector("input[type=email]")!.Input("lin@example.com");
+        Section(app, "Invite a user").QuerySelector("select")!.Change(Editor.ToString("D"));
+        Button(Section(app, "Invite a user"), "Add the role").Click();
+        app.WaitForAssertion(() => Items(Section(app, "Invite a user")).ShouldBe(["Editor"]));
+
+        Navigation.NavigateTo("users?q=gra");
+        app.WaitForAssertion(() => Rows(app).Select(row => row[0]).ShouldBe(["grace"]));
+        await LeavingAsksFirstAsync(app, () =>
+        {
+            Section(app, "Invite a user").QuerySelector("input[type=email]")!.GetAttribute("value").ShouldBe("lin@example.com");
+            Items(Section(app, "Invite a user")).ShouldBe(["Editor"]);
+        }, "lin@example.com");
+
+        LeaveWhenAsked(app, "");
+    }
+
+    [Fact]
+    public void AnInvitationClearedOrSentAsksNothing()
+    {
+        var app = Load("users");
+        app.WaitForAssertion(() => Section(app, "Invite a user").QuerySelector("select").ShouldNotBeNull());
+        Section(app, "Invite a user").QuerySelector("input[type=email]")!.Input("lin@example.com");
+        Section(app, "Invite a user").QuerySelector("input[type=email]")!.Input("");
+        Services.GetRequiredService<FluentCMS.Admin.Forms.IFormDraftStore>().HasUnsavedForms.ShouldBeFalse();
+
+        Section(app, "Invite a user").QuerySelector("input[type=email]")!.Input("lin@example.com");
+        Section(app, "Invite a user").QuerySelector("form")!.Submit();
+
+        app.WaitForAssertion(() => Message(app, "Invite a user").ShouldStartWith("An invitation was sent to lin@example.com."));
+        NothingAsks(app);
     }
 }
