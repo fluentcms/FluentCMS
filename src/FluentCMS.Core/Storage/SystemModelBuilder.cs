@@ -63,6 +63,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<ScheduleRow>(MapSchedule);
         modelBuilder.Entity<SettingRow>(MapSetting);
         modelBuilder.Entity<PluginSiteRow>(MapPluginSite);
+        modelBuilder.Entity<PluginStoreRow>(MapPluginStore);
         modelBuilder.Entity<SchemaHistoryRow>(MapSchemaHistory);
         modelBuilder.Entity<Site>(MapSite);
         modelBuilder.Entity<SiteLocale>(MapSiteLocale);
@@ -724,6 +725,17 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.Property(row => row.Plugin).HasMaxLength(PluginSiteRow.PluginMaxLength);
 
         entity.HasOne<Site>().WithMany().HasForeignKey(row => row.SiteId).OnDelete(DeleteBehavior.Cascade);
+    }
+
+    // A plugin's values belong to the instance, not to a site, so no deletion of a site touches them.
+    private static void MapPluginStore(EntityTypeBuilder<PluginStoreRow> entity)
+    {
+        entity.ToTable(StorageNames.PluginStore);
+        MapColumnNames(entity);
+        entity.HasKey(row => new { row.Plugin, row.Key });
+        entity.Property(row => row.Plugin).HasMaxLength(PluginSiteRow.PluginMaxLength);
+        entity.Property(row => row.Key).HasMaxLength(PluginStoreRow.KeyMaxLength);
+        entity.Property(row => row.Value).HasMaxLength(PluginStoreRow.ValueMaxLength);
     }
 
     private static void MapSchemaHistory(EntityTypeBuilder<SchemaHistoryRow> entity)
