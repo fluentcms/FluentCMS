@@ -13,6 +13,11 @@
     <Compile Include="$(MSBuildThisFileDirectory)../eng/PseudoCulture.cs" Link="PseudoCulture.cs" />
   </ItemGroup>
 
+  <!-- The authenticator codes of the account's two-factor sign-in, for the API tests and the end-to-end cases. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'FluentCMS.Admin.ApiTests' Or '$(MSBuildProjectName)' == 'FluentCMS.Admin.EndToEnd'">
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/Totp.cs" Link="Totp.cs" />
+  </ItemGroup>
+
   <PropertyGroup>
     <DefineConstants>$(DefineConstants);PSEUDO_CULTURE_MARKING_ONLY</DefineConstants>
   </PropertyGroup>
