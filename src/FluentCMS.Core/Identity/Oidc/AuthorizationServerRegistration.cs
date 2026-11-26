@@ -142,7 +142,7 @@ internal static class AuthorizationServerRegistration
         });
 
         services.AddSingleton<SigningKeyStore>();
-        services.AddSingleton<IValidateOptions<SecurityOptions>, KeyOverlapCheck>();
+        services.AddSingleton<IValidateOptions<ClientOptions>, KeyOverlapCheck>();
         services.AddSingleton<IValidateOptions<SecurityOptions>, SigningCertificateValidity>();
         services.AddSingleton<SigningCertificates>();
         services.AddSingleton<SigningKeyRing>();

@@ -140,13 +140,19 @@ internal sealed class OidcKeysScheduleService(IJobScheduler scheduler, TimeProvi
 }
 
 // A configured overlap shorter than the longest lifetime of a token would retire a key while what it signed is still good,
-// so the host does not start with one.
-internal sealed class KeyOverlapCheck(ClientOptions clients, PreviewTokenOptions preview) : IValidateOptions<SecurityOptions>
+// so the host does not start with one. It is checked with the lifetimes of ClientOptions, and not with SecurityOptions: a
+// package may need SecurityOptions to configure its client, as the admin does, so SecurityOptions must not need ClientOptions.
+internal sealed class KeyOverlapCheck(SecurityOptions security, PreviewTokenOptions preview) : IValidateOptions<ClientOptions>
 {
-    public ValidateOptionsResult Validate(string? name, SecurityOptions options)
+    public ValidateOptionsResult Validate(string? name, ClientOptions options)
     {
-        var least = KeyOverlap.AtStart(clients, preview);
-        if (name == Options.DefaultName && options.KeyRotation.Overlap is { } overlap && overlap < least)
+        if (name != Options.DefaultName || security.KeyRotation.Overlap is not { } overlap)
+        {
+            return ValidateOptionsResult.Success;
+        }
+
+        var least = KeyOverlap.AtStart(options, preview);
+        if (overlap < least)
         {
             throw new FluentCmsConfigurationException(
                 HostErrorCodes.InvalidOption,

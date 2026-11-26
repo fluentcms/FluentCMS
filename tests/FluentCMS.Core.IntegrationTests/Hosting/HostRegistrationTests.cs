@@ -211,6 +211,24 @@ public sealed class HostRegistrationTests : IAsyncDisposable
         rotation.Overlap.ShouldBe(TimeSpan.FromDays(14) + TimeSpan.FromMinutes(5) + TimeSpan.FromSeconds(30));
     }
 
+    // The admin's client registration takes SecurityOptions to configure ClientOptions. A check of SecurityOptions that
+    // took ClientOptions would close a circle that the container does not see through its factories, and the first read of
+    // either would never return.
+    [Fact]
+    public async Task APackageThatNeedsTheSecurityOptionsToConfigureItsClientDoesNotBlockTheOptions()
+    {
+        var app = _host.Build(
+            Environments.Production,
+            new Dictionary<string, string?> { ["FluentCms:Security:KeyRotation:Overlap"] = "30.00:00:00" },
+            builder => builder.Services.AddSingleton<IPostConfigureOptions<ClientOptions>>(services => new ClientOfAPackage(services.GetRequiredService<SecurityOptions>())));
+
+        var security = await Task.Run(() => app.Services.GetRequiredService<SecurityOptions>(), Token).WaitAsync(TimeSpan.FromSeconds(30), Token);
+        var clients = await Task.Run(() => app.Services.GetRequiredService<ClientOptions>(), Token).WaitAsync(TimeSpan.FromSeconds(30), Token);
+
+        security.KeyRotation.Overlap.ShouldBe(TimeSpan.FromDays(30));
+        clients.Applications.ShouldContainKey("of-a-package");
+    }
+
     [Fact]
     public void RoutineRotationIsOffByDefault()
     {
@@ -253,6 +271,12 @@ public sealed class HostRegistrationTests : IAsyncDisposable
             message.ShouldContain($"1 certificate of FluentCms:Security:PreviousSigningCertificates (thumbprint {thumbprint}), which never signs");
             message.ShouldNotContain("test-password");
         }
+    }
+
+    private sealed class ClientOfAPackage(SecurityOptions security) : IPostConfigureOptions<ClientOptions>
+    {
+        public void PostConfigure(string? name, ClientOptions options) =>
+            options.Applications["of-a-package"] = new ClientRegistration { DisplayName = security.ReferrerPolicy, RedirectUris = { "https://app.example.com/callback" }, ContributedByPackage = true };
     }
 
     private static (string Path, string Thumbprint) WriteCertificate(string directory, string name)
