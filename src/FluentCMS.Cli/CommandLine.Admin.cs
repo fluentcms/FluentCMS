@@ -7,12 +7,13 @@ namespace FluentCMS.Cli;
 
 // The commands that administer an instance (B-91). In project mode they run inside the host as the system with the Cli
 // origin; with --url they call the Management API with the key of --token, as that key's principal. `user create`,
-// `user reset-password`, `jobs run`, `seed` and `settings reprotect` run in the host only, and `mcp` reaches a running
-// instance only.
+// `user reset-password`, `jobs run`, `seed`, `settings reprotect`, `keyring reprotect` and the `keys` commands run in the host only, and `mcp`
+// reaches a running instance only.
 internal sealed partial class CommandLine
 {
     private static readonly string[] KeyClasses = ["delivery", "preview", "management"];
     private static readonly string[] JobStatuses = ["pending", "running", "succeeded", "dead_lettered"];
+    private static readonly string[] KeyUses = ["sig", "enc"];
 
     private Command ApiKey() => new("apikey", "API keys, in the host project or in a running instance with --url.")
     {
@@ -216,6 +217,60 @@ internal sealed partial class CommandLine
         var project = ProjectOptions.AddTo(command);
         command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["settings", "reprotect"], cancellationToken));
         return command;
+    }
+
+    private Command Keyring() => new("keyring", "The Data Protection key ring: protect every stored value again under its current key, in the host project.")
+    {
+        KeyringReprotect(),
+    };
+
+    private Command KeyringReprotect()
+    {
+        var command = new Command("reprotect", "Protects every stored value that Data Protection protects in place, the secret settings, webhook secrets and headers and the media signing key, again under the current default key of the key ring and names that key, and counts the token keys still under an older one; run it before removing a previous ring certificate. In the host project only.");
+        var project = ProjectOptions.AddTo(command);
+        command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["keyring", "reprotect"], cancellationToken));
+        return command;
+    }
+
+    private Command Keys() => new("keys", "The keys of the authorization server: list them, make the next one, or revoke them all, in the host project.")
+    {
+        KeysList(),
+        KeysRotate(),
+        KeysRevoke(),
+    };
+
+    private Command KeysList()
+    {
+        var command = new Command("list", "Lists the keys of the authorization server with their states and dates, and the configured signing certificates by thumbprint and validity; a key itself is never shown. In the host project only.");
+        var project = ProjectOptions.AddTo(command);
+        command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["keys", "list"], cancellationToken));
+        return command;
+    }
+
+    private Command KeysRotate()
+    {
+        var use = KeyUse("Only the key of this use: sig (signs tokens) or enc (encrypts codes and refresh tokens). Both when left out.");
+        var command = new Command("rotate", "Makes the next signing and encryption key: it is accepted at once, signs or encrypts after FluentCms:Security:KeyRotation:PublishLead, and the key before it stays accepted for the overlap after that, so nobody is signed out. Does nothing for a use that has an upcoming key. In the host project only.") { use };
+        var project = ProjectOptions.AddTo(command);
+        command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["keys", "rotate", .. Value(result, use)], cancellationToken));
+        return command;
+    }
+
+    private Command KeysRevoke()
+    {
+        var use = KeyUse("Only the keys of this use: sig or enc. Both when left out. The tokens and sessions are revoked either way.");
+        var force = new Option<bool>("--force") { Description = "Does it. Without it the command changes nothing and says what it would end." };
+        var command = new Command("revoke", "For a key that may have leaked: retires every key of the authorization server at once, makes new ones that sign and encrypt at once, and revokes every token and session of every user, member and client, who sign in again; consents are kept. Changes nothing without --force. In the host project only.") { use, force };
+        var project = ProjectOptions.AddTo(command);
+        command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["keys", "revoke", .. Value(result, use), .. Flag(result, force)], cancellationToken));
+        return command;
+    }
+
+    private static Option<string> KeyUse(string description)
+    {
+        var use = Text("--use", description, "use");
+        use.AcceptOnlyFromAmong(KeyUses);
+        return use;
     }
 
     private Command Mcp()

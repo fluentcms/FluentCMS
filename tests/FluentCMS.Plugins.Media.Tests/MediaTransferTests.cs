@@ -110,6 +110,32 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
     }
 
     [Fact]
+    public async Task AnSvgOfAPackageOverTheSvgLimitIsAnItemErrorAndOneAtItIsTaken()
+    {
+        var svg = Files.Svg("""<rect width="10" height="10"/>""");
+        byte[] over = [.. svg, (byte)' '];
+        await using var rules = await media.ConfigureAsync(settings =>
+        {
+            settings.Svg = SvgHandling.Sanitize;
+            settings.MaxSvgFileSize = svg.Length;
+        });
+        using var admin = await media.AdminAsync();
+        Guid[] ids = [Guid.CreateVersion7(), Guid.CreateVersion7()];
+        var package = await PackageAsync(
+            admin,
+            [Line(ids[0], "over.svg", "image/svg+xml", over), Line(ids[1], "at.svg", "image/svg+xml", svg)],
+            (FileOf(ids[0], ".svg"), over),
+            (FileOf(ids[1], ".svg"), svg));
+
+        var report = await ImportAsync(admin, package);
+
+        Items(report).ShouldBe(new Dictionary<Guid, (string, string?)> { [ids[0]] = ("error", MediaErrorCodes.TooLarge) });
+        Counts(report).ShouldBe((1, 0, 1));
+        (await AssetAsync(ids[0])).ShouldBeNull();
+        (await AssetAsync(ids[1])).ShouldNotBeNull().MimeType.ShouldBe("image/svg+xml");
+    }
+
+    [Fact]
     public async Task AnSvgOfAPackageIsSanitisedAsAnUploadIsWhenTheSiteSaysSo()
     {
         await using var rules = await media.ConfigureAsync(settings => settings.Svg = SvgHandling.Sanitize);

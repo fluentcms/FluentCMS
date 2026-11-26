@@ -124,8 +124,9 @@ public sealed class AiWireTests : IAsyncLifetime
         var site = await SiteAsync(altText: true);
         using var admin = await _ai.AdminAsync(site);
         var image = await UploadAsync(admin, "harbour.png", Picture(2000, 1000));
+        var entry = await ArticleAsync(admin, new { title = "Harbour", image });
 
-        var answer = await SuggestAsync(admin, "altText", new { type = "article", field = "summary", options = new { mediaId = image } });
+        var answer = await SuggestAsync(admin, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = image } });
 
         answer["suggestion"]!.GetValue<string>().ShouldBe(_stub.Answer);
         var messages = _stub.Requests.ShouldHaveSingleItem().Body!["messages"]!.AsArray();

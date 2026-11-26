@@ -62,7 +62,8 @@ public abstract class AiTestContext : BunitContext
         ],
     };
 
-    protected static FieldActionContext Context(string field, JsonObject document, string? locale = "en")
+    // The form of an entry, a new one unless entryId names it, or of one not created yet.
+    protected static FieldActionContext Context(string field, JsonObject document, string? locale = "en", Guid? entryId = null, bool created = true)
     {
         var values = document.ToDictionary(pair => pair.Key, pair => pair.Value);
         return new FieldActionContext
@@ -71,7 +72,7 @@ public abstract class AiTestContext : BunitContext
             Field = Article.Fields.Single(item => item.Name == field),
             Value = values.GetValueOrDefault(field),
             Document = values,
-            EntryId = Guid.CreateVersion7(),
+            EntryId = created ? entryId ?? Guid.CreateVersion7() : null,
             ContentLocale = locale,
         };
     }
@@ -165,7 +166,9 @@ internal sealed class FakeAdminContext : IAdminContext, IAdminAccess
 internal sealed record AiRequest(HttpMethod Method, string Path, JsonNode? Body, string? Locale, string? IfMatch);
 
 // The AI and media routes as the server answers them. An action's events are what a test writes to Events, one at a time,
-// or a problem the test sets before the first; GET /ai/usage answers Usage; media assets are read and their alt text saved.
+// or a problem the test sets before the first; GET /ai/usage answers Usage; media assets are read and their alt text saved;
+// GET /ai/fields answers MayDescribeAssets as assets; and an entry's saved draft is read in a locale from Drafts, a 404 where
+// it holds none.
 internal sealed class FakeAiServer : IManagementApi, IManagementEvents
 {
     public List<AiRequest> Requests { get; } = [];
@@ -179,6 +182,11 @@ internal sealed class FakeAiServer : IManagementApi, IManagementEvents
     public bool StreamCancelled { get; private set; }
 
     public Dictionary<Guid, JsonObject> Assets { get; } = [];
+
+    public Dictionary<(Guid Id, string? Locale), JsonObject> Drafts { get; } = [];
+
+    // What GET /ai/fields answers as assets: whether the caller may send images of the library for alt text.
+    public bool MayDescribeAssets { get; set; } = true;
 
     public JsonObject Usage { get; set; } = UsageOf([]);
 
@@ -233,6 +241,17 @@ internal sealed class FakeAiServer : IManagementApi, IManagementEvents
             var read = asset.DeepClone().AsObject();
             read["locale"] = AnsweredLocale(request.Locale);
             return Task.FromResult(new ApiResponse<T>(HttpStatusCode.OK, $"\"{asset["version"]}\"", read.Deserialize(answer)!));
+        }
+
+        if (path == "ai/fields")
+        {
+            var fields = new JsonObject { ["enabled"] = true, ["locale"] = "en", ["fields"] = new JsonObject(), ["assets"] = MayDescribeAssets };
+            return Task.FromResult(new ApiResponse<T>(HttpStatusCode.OK, null, fields.Deserialize(answer)!));
+        }
+
+        if (path.StartsWith("content/article/", StringComparison.Ordinal) && Guid.TryParse(path["content/article/".Length..], out var entry) && Drafts.TryGetValue((entry, request.Locale), out var draft))
+        {
+            return Task.FromResult(new ApiResponse<T>(HttpStatusCode.OK, "\"1\"", draft.Deserialize(answer)!));
         }
 
         return Task.FromException<ApiResponse<T>>(new ApiProblemException(new ApiProblem { Status = 404, Code = "FCMS3104", Title = "Not found" }));

@@ -140,11 +140,14 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         Jobs(),
         Seed(),
         Settings(),
+        Keyring(),
+        Keys(),
         Mcp(),
         Export(),
         Import(),
         Backup(),
         Restore(),
+        Media(),
         new Generate.GenerateCommands(output, error, launcher, _connect, HostSnapshotAsync).Build(),
     };
 
@@ -628,6 +631,20 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         var project = ProjectOptions.AddTo(command);
         command.SetAction((result, cancellationToken) => HandOverAsync(
             result, project, ["restore", Path.GetFullPath(result.GetValue(file)!), .. Flag(result, force), .. Flag(result, allowMismatch)], cancellationToken));
+        return command;
+    }
+
+    private Command Media() => new("media", "The media plugin's stored files: sanitise the stored SVGs again, in the host project.")
+    {
+        MediaSanitizeSvg(),
+    };
+
+    private Command MediaSanitizeSvg()
+    {
+        var dryRun = new Option<bool>("--dry-run") { Description = "Lists the SVGs whose bytes the pass would change, and those it would leave, and changes nothing." };
+        var command = new Command("sanitize-svg", "Sanitises every stored SVG of the media libraries again with the current pass and replaces each whose bytes change, as a replace of its file does; exits with 1 when it leaves one, such as one over maxSvgFileSize. In the host project only.") { dryRun };
+        var project = ProjectOptions.AddTo(command);
+        command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["media", "sanitize-svg", .. Flag(result, dryRun)], cancellationToken));
         return command;
     }
 

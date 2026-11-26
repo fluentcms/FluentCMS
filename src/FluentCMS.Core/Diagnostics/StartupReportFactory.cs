@@ -110,6 +110,22 @@ internal sealed class StartupReportFactory(
             found.Add(new InsecureDefault { Id = "generated-signing-key", Message = $"Tokens are signed with a key the server generated; {GeneratedSigningKeyCheck.Key} accepts it. Configure a signing certificate." });
         }
 
+        // Rotation is off by default, so this is where an operator who accepted a generated key learns that it never changes.
+        if (environment?.IsDevelopment() == false && services.GetService<ISigningKeyStatus>()?.IsGenerated == true && services.GetService<SecurityOptions>() is { KeyRotation.Enabled: false })
+        {
+            found.Add(new InsecureDefault { Id = "signing-key-rotation-off", Message = $"The generated key that signs tokens is never replaced: {KeyRotationKey}:{nameof(KeyRotationOptions.Enabled)} is off. Turn it on to rotate the generated keys every {KeyRotationKey}:{nameof(KeyRotationOptions.Interval)}, or run 'fluentcms keys rotate' when one is due." });
+        }
+
+        // A certificate that only validates belongs to a replacement that is under way, and what its key signs is accepted
+        // until it is removed.
+        if (environment?.IsDevelopment() == false && services.GetService<SigningCertificates>()?.Describe().Where(certificate => !certificate.Signs).Select(certificate => certificate.Thumbprint).ToList() is { Count: > 0 } validating)
+        {
+            var named = validating.Count == 1
+                ? $"1 certificate of {SigningCertificates.PreviousKey} (thumbprint {validating[0]}), which never signs"
+                : $"{validating.Count} certificates of {SigningCertificates.PreviousKey} (thumbprints {string.Join(", ", validating)}), which never sign";
+            found.Add(new InsecureDefault { Id = "signing-validation-certificates", Message = $"Tokens are also accepted when they are signed with {named}. Remove the certificate that was replaced once its tokens have expired, which 'fluentcms keys list' and the longest token lifetime tell, and keep the next one only until it is the signing certificate." });
+        }
+
         if (services.GetService<IDataProtectionStatus>()?.KeysEncrypted == false && found.All(item => item.Id != HostErrorCodes.UnencryptedKeyRingInProduction))
         {
             found.Add(new InsecureDefault { Id = "data-protection-keys-unencrypted", Message = "The Data Protection key ring is stored unencrypted, so a reader of the database can forge sign-in cookies. Add an XML encryptor such as ProtectKeysWithCertificate." });
@@ -167,6 +183,8 @@ internal sealed class StartupReportFactory(
 
         return found;
     }
+
+    private const string KeyRotationKey = $"{FluentCmsOptions.Section}:{SecurityOptions.Section}:{KeyRotationOptions.Section}";
 
     // Web host defaults read AllowedHosts into these options and make an unset value "*"; without them nothing filters hosts.
     private bool AllowsAnyHost() =>

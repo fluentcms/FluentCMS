@@ -10,16 +10,18 @@ internal enum PreviewMessageType
     Navigated,
 }
 
-internal sealed record PreviewMessage(PreviewMessageType Type, string? Url);
+// The version is the one the page's message named, which refresh to that page is posted in; hello is always version 2.
+internal sealed record PreviewMessage(PreviewMessageType Type, string? Url, int Version);
 
-// Version 1 of the preview's postMessage contract (spec 4.12): every message is a JSON object of the protocol
+// Version 2 of the preview's postMessage contract (spec 4.12): every message is a JSON object of the protocol
 // fluentcms-preview, a version and a type. A message of another origin than the page loaded, of another protocol, of a higher
-// version or of a type the admin does not take is ignored, and no message the admin sends carries a token.
+// version or of a type the admin does not take is ignored, and no message the admin sends carries a token. The admin reads
+// versions 1 and 2; version 2 adds hello, which a page of version 1 ignores.
 internal static class PreviewMessages
 {
     public const string Protocol = "fluentcms-preview";
 
-    public const int Version = 1;
+    public const int Version = 2;
 
     public static Uri? HttpUri(string? url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) ? uri : null;
@@ -75,17 +77,25 @@ internal static class PreviewMessages
 
         return Text(message, "type") switch
         {
-            "ready" => new PreviewMessage(PreviewMessageType.Ready, Text(message, "url")),
-            "navigated" => new PreviewMessage(PreviewMessageType.Navigated, Text(message, "url")),
+            "ready" => new PreviewMessage(PreviewMessageType.Ready, Text(message, "url"), number),
+            "navigated" => new PreviewMessage(PreviewMessageType.Navigated, Text(message, "url"), number),
             _ => null,
         };
     }
 
-    // The draft was saved: the page reads it again.
-    public static string Refresh(string type, Guid id, string? locale, int version) => new JsonObject
+    // The frame loaded a page: one that speaks version 2 answers with ready.
+    public static string Hello() => new JsonObject
     {
         ["protocol"] = Protocol,
         ["version"] = Version,
+        ["type"] = "hello",
+    }.ToJsonString();
+
+    // The draft was saved: the page reads it again. It is posted in the version the page's ready named.
+    public static string Refresh(int speaks, string type, Guid id, string? locale, int version) => new JsonObject
+    {
+        ["protocol"] = Protocol,
+        ["version"] = speaks,
         ["type"] = "refresh",
         ["entry"] = new JsonObject
         {

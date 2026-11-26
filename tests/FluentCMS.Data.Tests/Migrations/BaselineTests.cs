@@ -48,10 +48,10 @@ public sealed partial class BaselineTests : IDisposable
     // What a preview added to the baseline after the squash, which the chain never made: a preview does not upgrade a
     // database (10.4, H5), so a change of the model goes into the baseline until 1.0.0.
     private static readonly string[] TablesAddedToTheBaseline = ["cms_default_grant", "cms_user_preference"];
-    private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name"), ("cms_media_asset", "owns_file"), ("cms_media_asset", "version"), ("cms_search_entry", "field"), ("cms_ai_usage", "principal_name")];
+    private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name"), ("cms_media_asset", "owns_file"), ("cms_media_asset", "version"), ("cms_search_entry", "field"), ("cms_ai_usage", "principal_name"), ("cms_signing_key", "sequence"), ("cms_signing_key", "active_from"), ("cms_signing_key", "retired_at")];
 
     // Indexes added the same way, by the prefix of their catalog lines.
-    private static readonly string[] IndexesAddedToTheBaseline = ["index:cms_media_asset.ix_cms_media_asset_site_owns_file:", "index:cms_webhooks_delivery.ix_cms_webhooks_delivery_queued:", "index:cms_job.ix_cms_job_status_completed:", "index:cms_outbox.ix_cms_outbox_failed:", "index:cms_outbox.ix_cms_outbox_handler_pending:", "index:cms_outbox.ix_cms_outbox_failed_available_at:", "index:cms_outbox.ix_cms_outbox_failed_handler:"];
+    private static readonly string[] IndexesAddedToTheBaseline = ["index:cms_media_asset.ix_cms_media_asset_site_owns_file:", "index:cms_webhooks_delivery.ix_cms_webhooks_delivery_queued:", "index:cms_job.ix_cms_job_status_completed:", "index:cms_outbox.ix_cms_outbox_failed:", "index:cms_outbox.ix_cms_outbox_handler_pending:", "index:cms_outbox.ix_cms_outbox_failed_available_at:", "index:cms_outbox.ix_cms_outbox_failed_handler:", "index:cms_signing_key.uq_cms_signing_key_use_sequence:"];
 
     // The keys, in order with their directions, and the filter of the core indexes added to the baseline, as every provider's
     // catalog line reads once quotes, brackets, parentheses, casts and spaces are taken out.
@@ -62,6 +62,7 @@ public sealed partial class BaselineTests : IDisposable
         ("index:cms_outbox.ix_cms_outbox_handler_pending:", "handler,sequence,id", "status='pending'"),
         ("index:cms_outbox.ix_cms_outbox_failed_available_at:", "available_at,attempts", "status='failed'"),
         ("index:cms_outbox.ix_cms_outbox_failed_handler:", "handler", "status='failed'"),
+        ("index:cms_signing_key.uq_cms_signing_key_use_sequence:", "use,sequence", null),
     ];
 
     // Without the index's name, which can hold a key's, as ix_cms_outbox_failed_handler does.

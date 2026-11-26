@@ -178,11 +178,11 @@ TEXT='Ships is big boats what carry many things across the sea, and they goes sl
 
 3. `translate`, with `{"type":"article","field":"title","text":"Ships at sea","options":{"targetLocale":"fr"}}`.
 4. `seo`, plain and streamed, with the body of step 2. The suggestion is `{ "metaTitle", "metaDescription" }`, and the stream sends `done` only.
-5. `altText`. Upload a photograph, set the vision model, and ask for the alternative text:
+5. `altText`. Set `"assetAltText": true` and the vision model in the settings, upload a photograph, save it as the `hero` of an article's draft, and ask for the alternative text of that image of the article:
 
    ```bash
    curl -s -H "X-Api-Key: $FLUENTCMS_TOKEN" -F "files=@photo.jpg" $H/api/management/v1/media
-   curl -s "${A[@]}" $H/api/management/v1/ai/actions/altText -d '{"type":"article","field":"title","options":{"mediaId":"<id of the upload>"}}'
+   curl -s "${A[@]}" $H/api/management/v1/ai/actions/altText -d '{"type":"article","field":"title","documentId":"<id of the article>","options":{"mediaId":"<id of the upload>"}}'
    ```
 
 6. The timeout. Set `requestTimeout` to 1 and ask for `expand` of the body, plain and streamed, with a text whose answer takes more than a second; on Ollama the first call after a change of model loads it, which takes longer. The plain call is 504 with `FCMS1688`, and the stream ends with an `error` event of `FCMS1688`.

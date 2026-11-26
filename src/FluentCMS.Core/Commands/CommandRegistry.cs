@@ -28,10 +28,15 @@ internal static class CommandRegistry
         new JobsRetryCommand(),
         new SeedCommand(),
         new SettingsReprotectCommand(),
+        new KeyringReprotectCommand(),
+        new KeysListCommand(),
+        new KeysRotateCommand(),
+        new KeysRevokeCommand(),
         new ExportCommand(),
         new ImportCommand(),
         new BackupCommand(),
         new RestoreCommand(),
+        new MediaSanitizeSvgCommand(),
         new OpenApiDocumentCommand(),
     ];
 

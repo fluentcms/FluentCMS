@@ -1,3 +1,4 @@
+using FluentCMS.Media;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Plugins.AiAssist.Tests;
@@ -20,4 +21,7 @@ public sealed class Article : ContentItem
 
     [Integer]
     public int? Rating { get; set; }
+
+    [Media]
+    public MediaRef? Image { get; set; }
 }

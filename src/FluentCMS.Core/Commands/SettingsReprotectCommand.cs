@@ -20,33 +20,43 @@ internal sealed class SettingsReprotectCommand : HostCommand
         var result = await context.Services.GetRequiredService<SecretSettingsReprotection>().RunAsync(cancellationToken);
         await context.Output.WriteLineAsync($"Protected the secrets of {result.Documents} stored settings documents again under the default key {key:D} of the key ring. Retire an older key only once this is the key you keep and every instance protects under it.");
 
+        var (pending, advice) = await ReportAsync(result, context.Error);
+        if (pending == 0)
+        {
+            return CommandExitCodes.Success;
+        }
+
+        throw new CommandException(
+            CommandErrorCodes.SecretsNotReprotected,
+            $"{pending} stored settings documents still need the key that protected them; {string.Join("; ", advice)}; then run 'fluentcms settings reprotect' again before retiring a key");
+    }
+
+    // Writes what the pass left, and returns how many documents still need an older key with what to do about them; keyring
+    // reprotect reports the same way.
+    internal static async Task<(int Pending, List<string> Advice)> ReportAsync(SecretSettingsReprotected result, TextWriter error)
+    {
         foreach (var left in result.Left)
         {
             var scope = left.Site is { } site ? $"site {site:D}" : "the instance";
             if (!left.Registered)
             {
                 var older = left.Unreached.Count > 0 ? $"; {string.Join(", ", left.Unreached)} hold a protected value under an older key or one the key ring cannot unprotect" : "";
-                await context.Error.WriteLineAsync($"The settings area '{left.Area}' for {scope} is left as it is: no settings class of this host has that area, so the command cannot tell which of its values are secrets, nor whether the plugin that owns it is only not loaded in this run{older}.");
+                await error.WriteLineAsync($"The settings area '{left.Area}' for {scope} is left as it is: no settings class of this host has that area, so the command cannot tell which of its values are secrets, nor whether the plugin that owns it is only not loaded in this run{older}.");
                 continue;
             }
 
             if (left.Unreadable.Count > 0)
             {
-                await context.Error.WriteLineAsync($"The settings area '{left.Area}' for {scope} is left as it is: the key ring cannot unprotect {string.Join(", ", left.Unreadable)}.");
+                await error.WriteLineAsync($"The settings area '{left.Area}' for {scope} is left as it is: the key ring cannot unprotect {string.Join(", ", left.Unreadable)}.");
             }
 
             if (left.Unreached.Count > 0)
             {
-                await context.Error.WriteLineAsync($"The settings area '{left.Area}' for {scope} holds a protected value under {string.Join(", ", left.Unreached)}, which its settings class does not read as a secret, under an older key or one the key ring cannot unprotect; the pass leaves it as it is.");
+                await error.WriteLineAsync($"The settings area '{left.Area}' for {scope} holds a protected value under {string.Join(", ", left.Unreached)}, which its settings class does not read as a secret, under an older key or one the key ring cannot unprotect; the pass leaves it as it is.");
             }
         }
 
         var pending = result.Left.Where(left => left.Unreadable.Count > 0 || left.Unreached.Count > 0).ToList();
-        if (pending.Count == 0)
-        {
-            return CommandExitCodes.Success;
-        }
-
         var unreadable = pending.Count(left => left.Unreadable.Count > 0);
         var unreached = pending.Count(left => left.Registered && left.Unreached.Count > 0);
         var unregistered = pending.Count(left => !left.Registered);
@@ -66,8 +76,6 @@ internal sealed class SettingsReprotectCommand : HostCommand
             advice.Add($"{unregistered} are of areas no settings class of this host has: run the command in a host that registers them, such as with the plugin that owns the area");
         }
 
-        throw new CommandException(
-            CommandErrorCodes.SecretsNotReprotected,
-            $"{pending.Count} stored settings documents still need the key that protected them; {string.Join("; ", advice)}; then run 'fluentcms settings reprotect' again before retiring a key");
+        return (pending.Count, advice);
     }
 }

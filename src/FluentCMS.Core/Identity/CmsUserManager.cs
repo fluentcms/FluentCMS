@@ -334,15 +334,26 @@ public sealed class CmsUserManager : UserManager<CmsUser>
             return place;
         }
 
+        // The new password is hashed once, before the guess is checked, for every try of its save, and the guess is checked
+        // again only against another password a lost save reloaded, so that a right guess and a wrong one each make one hash
+        // and one check, and their time tells them apart no more than their answer (#3601).
+        var hash = PasswordHasher.HashPassword(user, newPassword);
+        string? verified = null;
         for (var attempt = 0; attempt < SaveAttempts; attempt++)
         {
-            if (await VerifyPasswordAsync(passwords, user, currentPassword) == PasswordVerificationResult.Failed)
+            var stored = await passwords.GetPasswordHashAsync(user, CancellationToken);
+            if (attempt == 0 || !string.Equals(stored, verified, StringComparison.Ordinal))
             {
-                await CountFailedSignInAsync(user);
-                return IdentityResult.Failed(ErrorDescriber.PasswordMismatch());
+                if (await VerifyPasswordAsync(passwords, user, currentPassword) == PasswordVerificationResult.Failed)
+                {
+                    await CountFailedSignInAsync(user);
+                    return IdentityResult.Failed(ErrorDescriber.PasswordMismatch());
+                }
+
+                verified = stored;
             }
 
-            var result = await SaveNewPasswordAsync(user, newPassword);
+            var result = await SaveNewPasswordAsync(user, passwords, hash);
             if (result.Succeeded || !Lost(result, user))
             {
                 return result;
@@ -406,8 +417,10 @@ public sealed class CmsUserManager : UserManager<CmsUser>
         return result;
     }
 
-    // Each lost save is a save of the user by another request that went through, so the tries run out only while more of them
-    // go through than the counts of the sessions and the lockout let pass before they refuse.
+    // Each lost save is a save of the user by another request that went through. The counts let about twice the tries pass in
+    // the lockout's time, a place and a failure of each password and each code they check, so the sessions' own requests can
+    // make the tries of a save run out: a place is then not taken and its guess not checked, and a right password whose save
+    // keeps losing is answered as a wrong one, after the same work (#3601).
     private int SaveAttempts => 2 * Math.Max(Options.Lockout.MaxFailedAccessAttempts, 1);
 
     // A guess of a signed-in user takes its place in its count, in a save that goes through, before it is checked, so that
@@ -442,17 +455,20 @@ public sealed class CmsUserManager : UserManager<CmsUser>
     // The new password, the flag cleared, and the count of passwords and the lockout's started again, the guess's own place
     // included, in one save. The lockout's count comes back if it fails, unless the failed save reloaded the user with what
     // is stored now, which another request may have changed since.
-    private async Task<IdentityResult> SaveNewPasswordAsync(CmsUser user, string newPassword)
+    private async Task<IdentityResult> SaveNewPasswordAsync(CmsUser user, IUserPasswordStore<CmsUser> passwords, string hash)
     {
         var failures = user.AccessFailedCount;
         user.AccessFailedCount = 0;
         var result = await ClearingPasswordChangeAsync(user, async () =>
         {
-            var hashed = await UpdatePasswordHash(user, newPassword, validatePassword: false);
-            if (!hashed.Succeeded)
+            // Identity's new security stamp, with no password to hash; the hash made once is set after it.
+            var stamped = await UpdatePasswordHash(user, null!, validatePassword: false);
+            if (!stamped.Succeeded)
             {
-                return hashed;
+                return stamped;
             }
+
+            await passwords.SetPasswordHashAsync(user, hash, CancellationToken);
 
             if (Store is IUserAuthenticationTokenStore<CmsUser> tokens && await tokens.GetTokenAsync(user, StoreProvider, PasswordFailuresName, CancellationToken) is not null)
             {

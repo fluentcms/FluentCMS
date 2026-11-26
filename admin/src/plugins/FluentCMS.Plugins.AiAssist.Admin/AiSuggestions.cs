@@ -2,7 +2,8 @@ using FluentCMS.Admin;
 
 namespace FluentCMS.Plugins.AiAssist.Admin;
 
-// What the panel asks the server for. Images are the media ids the user chooses among for altText. ForAsset saves an accepted alt text on the asset, and leaves the form's draft as it is.
+// What the panel asks the server for. Images are the media ids the user chooses among for altText, of the entry DocumentId
+// names for a field. ForAsset saves an accepted alt text on the asset, and leaves the form's draft as it is.
 public sealed record AiSuggestionRequest
 {
     public required string Action { get; init; }
@@ -16,6 +17,8 @@ public sealed record AiSuggestionRequest
     public string? Locale { get; init; }
 
     public string? Text { get; init; }
+
+    public Guid? DocumentId { get; init; }
 
     public IReadOnlyList<Guid> Images { get; init; } = [];
 
