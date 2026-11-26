@@ -116,7 +116,7 @@ internal sealed class StoredSvgSanitizer(
         return left;
     }
 
-    // The file, read no further than one byte past the limit; null when it is missing or its storage is gone.
+    // The file, read until it is past the limit, at most one buffer beyond it; null when it is missing or its storage is gone.
     private async Task<byte[]?> ReadAsync(string provider, string key, long limit, CancellationToken cancellationToken)
     {
         if (storages.Find(provider) is not { } storage)
