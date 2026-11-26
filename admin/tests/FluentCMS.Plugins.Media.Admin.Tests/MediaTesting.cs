@@ -105,6 +105,9 @@ internal sealed class FakeAdminContext : IAdminContext, IAdminAccess
 {
     public HashSet<string> Permissions { get; } = new(StringComparer.Ordinal) { "media.read" };
 
+    // Those held only through grants limited to folders, as /me/access lists them under limitedPermissions.
+    public HashSet<string> Limited { get; } = new(StringComparer.Ordinal);
+
     public MeResponse? User => null;
 
     public MySiteInfo? Site { get; set; }
@@ -119,11 +122,20 @@ internal sealed class FakeAdminContext : IAdminContext, IAdminAccess
 
     public bool AllowsForInstance(string permission) => false;
 
+    public bool AllowsForSomeResources(string permission) => Permissions.Contains(permission) || Limited.Contains(permission);
+
     public TypeAccessInfo? ForType(string type) => null;
 
     public Task ReadSitesAsync(Guid? gone = null) => Task.CompletedTask;
 
     public void Grant(params string[] permissions) => Permissions.UnionWith(permissions);
+
+    // The permissions held only for some folders, and none of them for every folder.
+    public void GrantInFolders(params string[] permissions)
+    {
+        Permissions.ExceptWith(permissions);
+        Limited.UnionWith(permissions);
+    }
 
     public void RaiseChanged() => Changed?.Invoke();
 }

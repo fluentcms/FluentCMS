@@ -211,7 +211,7 @@ A component of a half injects these services of the admin, all in `FluentCMS.Adm
 | `IManagementApi` | the admin's client of the Management API, already set to the site and the content locale, with the user's token and the wait on a 429. An `ApiRequest` carries its `IfMatch` and `IdempotencyKey`, an answer its `EntityTag`, and a refused call throws `ApiProblemException` with the `ApiProblem` |
 | `IManagementEvents` | a request whose answer is `text/event-stream`, read event by event through the same client |
 | `IAdminContext` | the user, the site, the content locale and the user's access, with a `Changed` event and `ReadSitesAsync` |
-| `IAdminAccess` | `Allows(permission)` in the site, `AllowsForInstance(permission)` for the instance, and `ForType(type)` for a content type |
+| `IAdminAccess` | `Allows(permission)` in the site, `AllowsForInstance(permission)` for the instance, `AllowsForSomeResources(permission)` for a grant that may be limited to resources, and `ForType(type)` for a content type |
 | `IAdminFormats` | the user's time zone, and a date, a time, a moment and a number formatted in the user's formats |
 | `IAdminSchema` | the schema of the site |
 | `IAnnouncer` | a message for the shell's polite or assertive live region |
@@ -227,6 +227,8 @@ A component of a half injects these services of the admin, all in `FluentCMS.Adm
 ## Access for the site and for the instance
 
 A permission is held in a site by default: `Permission` of a page, a menu item, an action or a widget is checked against the user's access in the current site, which `IAdminAccess.Allows` answers. A permission the server checks for the instance only, such as one of a page that manages something every site shares, is declared with `InstanceOnly = true` on `[AdminPage]`; the manifest carries `instanceOnly` on the page and on its menu item, and the sidebar and the route ask `IAdminAccess.AllowsForInstance`. An instance-only page needs a permission, and the manifest test names one that has none. A page without a permission that is not instance-only shows to every signed-in user of a site where the plugin is enabled.
+
+A grant may be limited to some of the plugin's resources, as a role may hold `media.upload` for some media folders only. The user's access lists such a permission apart and does not say which resources the grant names, so `IAdminAccess.Allows` answers false for it and `IAdminAccess.AllowsForSomeResources` true. The shell shows a page, a menu item, a widget or an action that is not instance-only when the user holds its permission for some resources at least; a control of your own whose calls your server half narrows resource by resource asks `AllowsForSomeResources` too, and shows what each call answers. A content permission is asked of `ForType(type)`, whose `Create`, `Publish` and the rest say what the user may do with the entries of that type in the content locale.
 
 The admin hides what the user may not use; the server half still checks every call, since a hidden button is no guard.
 

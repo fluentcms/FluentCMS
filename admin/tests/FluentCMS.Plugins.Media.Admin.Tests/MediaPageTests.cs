@@ -44,6 +44,24 @@ public sealed class MediaPageTests : MediaTestContext
         cut.WaitForAssertion(() => JSInterop.Invocations.ShouldContain(invocation => invocation.Identifier == "import" && (string)invocation.Arguments[0]! == MediaDropZone.ModulePath));
     }
 
+    // The access does not say which folders a grant names, so a grant limited to some offers what it allows, and the server
+    // answers for each folder.
+    [Fact]
+    public void GrantsLimitedToFoldersOfferTheActionsTheyAllow()
+    {
+        Admin.GrantInFolders(MediaPermissions.Read, MediaPermissions.Upload, MediaPermissions.Update, MediaPermissions.ManageFolders);
+        var photos = Library.AddFolder("Photos");
+        Library.AddAsset("logo.png", photos);
+
+        var cut = RenderAt($"?folder={photos:D}");
+
+        cut.WaitForAssertion(() => cut.FindAll(".media-tile-check").Count.ShouldBe(1));
+        cut.FindAll(".media-upload").Count.ShouldBe(1);
+        HasButton(cut, "New folder").ShouldBeTrue();
+        HasButton(cut, "Delete folder").ShouldBeTrue();
+        Admin.Allows(MediaPermissions.Upload).ShouldBeFalse();
+    }
+
     [Fact]
     public void TheRootOffersANewFolderButNothingToRenameMoveOrDelete()
     {

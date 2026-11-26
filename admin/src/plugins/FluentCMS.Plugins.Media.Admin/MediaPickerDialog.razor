@@ -20,7 +20,7 @@
                           Accept="@Accept"
                           OnOpen="OpenAsync">
                 <Actions>
-                    @if (Context.Access.Allows(MediaPermissions.Upload))
+                    @if (Context.Access.AllowsForSomeResources(MediaPermissions.Upload))
                     {
                         <MediaUpload Folder="@state.Folder" Accept="@Accept" OnUploaded="@(_ => browser!.ReloadAsync())" />
                     }
