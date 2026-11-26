@@ -18,7 +18,8 @@ namespace FluentCMS.Admin.Tests.Content;
 // published page while the locale has one, a URL of another origin refused, the page's ready taken only from the frame's
 // origin, protocol and version and forgotten when the page navigates or the frame loads another, the hello after each load
 // that a page of version 2 answers, a save that tells a ready page to refresh in its version and reloads a silent one, a
-// token minted again once it ended, and the newest mint's answer used.
+// token minted again once it ended, the newest mint's answer used, and the pane and its token kept through the form's read
+// of the same entry, site and locale (#3470).
 public sealed class ContentPreviewTests : AdminTestContext
 {
     private const string FrontEnd = "https://www.example.com";
@@ -905,6 +906,112 @@ public sealed class ContentPreviewTests : AdminTestContext
         _content.PreviewMints.ShouldBe(2);
     }
 
+    // The Reload of a conflict reads the same entry, site and locale again: the pane stays through the read with its page and
+    // its token, and the newer draft is refreshed in the ready page without a mint (#3470).
+    [Fact]
+    public async Task TheReloadOfAConflictKeepsThePaneAndItsToken()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+        app.WaitForAssertion(() => Pane(app).GetAttribute("data-ready").ShouldBe("true"));
+        Conflict(app, id);
+        var held = new TaskCompletionSource();
+        Management.HoldPath = path => path.Contains($"/content/post/{id:D}?", StringComparison.Ordinal) ? held.Task : null;
+
+        Button(app, "Reload the entry").Click();
+
+        app.WaitForAssertion(() => app.FindAll(".content-form p[role='status']").ShouldNotBeEmpty());
+        Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-1");
+        await Release(app, held);
+        app.WaitForAssertion(() => app.Find("[data-field='title'] input").GetAttribute("value").ShouldBe("Theirs"));
+        app.WaitForAssertion(() => Posted("refresh").Count.ShouldBe(1));
+        Posted("refresh").Single()["entry"]!["version"]!.GetValue<int>().ShouldBe(2);
+        Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-1");
+        _content.PreviewMints.ShouldBe(1);
+    }
+
+    // A read that failed keeps the pane, and Try again shows the entry beside it with the token it has.
+    [Fact]
+    public void TryAgainAfterAFailedReadKeepsThePaneAndItsToken()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Conflict(app, id);
+        Management.Answer = (method, path) => method == HttpMethod.Get && path == $"content/post/{id:D}" ? Problem(System.Net.HttpStatusCode.InternalServerError, "FCMS1000") : null;
+
+        Button(app, "Reload the entry").Click();
+
+        app.WaitForAssertion(() => app.Find(".content-form p").TextContent.ShouldBe("The entry could not be read."));
+        Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-1");
+        Management.Answer = null;
+        Button(app, "Try again").Click();
+
+        app.WaitForAssertion(() => app.Find("[data-field='title'] input").GetAttribute("value").ShouldBe("Theirs"));
+        Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-1");
+        _content.PreviewMints.ShouldBe(1);
+    }
+
+    // The pane kept by a failed read has no toggle to give focus back to, so its Close gives it to the heading.
+    [Fact]
+    public void ClosingAPaneKeptByAFailedReadFocusesTheHeading()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Conflict(app, id);
+        Management.Answer = (method, path) => method == HttpMethod.Get && path == $"content/post/{id:D}" ? Problem(System.Net.HttpStatusCode.InternalServerError, "FCMS1000") : null;
+        Button(app, "Reload the entry").Click();
+        app.WaitForAssertion(() => app.Find(".content-form p").TextContent.ShouldBe("The entry could not be read."));
+        var focuses = Document.Invocations.Count(call => call.Identifier == "focusHeading");
+
+        Button(app, "Close preview").Click();
+
+        app.WaitForAssertion(() => app.FindAll(".content-preview").ShouldBeEmpty());
+        Document.Invocations.Count(call => call.Identifier == "focusHeading").ShouldBe(focuses + 1);
+        Management.Answer = null;
+        Button(app, "Try again").Click();
+        app.WaitForAssertion(() => Button(app, "Preview").GetAttribute("aria-expanded").ShouldBe("false"));
+        app.FindAll(".content-preview").ShouldBeEmpty();
+    }
+
+    // A token that ended is not used again: the newer draft after the Reload is loaded with a new one.
+    [Fact]
+    public void TheReloadOfAConflictMintsAgainAfterTheTokenEnded()
+    {
+        _content.PreviewLifetime = TimeSpan.FromSeconds(30);
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+        Conflict(app, id);
+
+        Button(app, "Reload the entry").Click();
+
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
+        Posted("refresh").ShouldBeEmpty();
+    }
+
+    // The pane kept through a read goes as soon as the form loads another entry, before either read answers.
+    [Fact]
+    public async Task APaneKeptThroughAReadGoesAtOnceForAnotherEntry()
+    {
+        var (first, second) = (_content.Add("post", new JsonObject { ["title"] = "Hello" }), _content.Add("post", new JsonObject { ["title"] = "World" }));
+        var app = Open(Load($"content/post/{first:D}"));
+        Conflict(app, first);
+        var held = new TaskCompletionSource();
+        Management.HoldPath = path => path.Contains("?fallback=none", StringComparison.Ordinal) ? held.Task : null;
+        Button(app, "Reload the entry").Click();
+        app.WaitForAssertion(() => app.FindAll(".content-form p[role='status']").ShouldNotBeEmpty());
+        Frame(app);
+
+        Navigation.NavigateTo($"content/post/{second:D}");
+
+        app.WaitForAssertion(() => app.FindAll(".content-preview").ShouldBeEmpty());
+        await Release(app, held);
+        app.WaitForAssertion(() => app.Find("[data-field='title'] input").GetAttribute("value").ShouldBe("World"));
+        app.FindAll(".content-preview").ShouldBeEmpty();
+        _content.PreviewMints.ShouldBe(1);
+    }
+
     // The page reuses the form for a new entry: its first save moves to the entry's route without opening the pane.
     [Fact]
     public void ANewEntryAfterAnOpenPaneDoesNotOpenIt()
@@ -1108,6 +1215,15 @@ public sealed class ContentPreviewTests : AdminTestContext
         app.Find("[data-field='title'] input").Input(title + " changed");
         Save(app);
         app.WaitForAssertion(() => app.FindAll(".content-form-saved").ShouldNotBeEmpty());
+    }
+
+    // Another tab's save makes the form's save a 412, whose problem offers to read the entry again.
+    private void Conflict(IRenderedComponent<AdminApp> app, Guid id)
+    {
+        _content.ChangeElsewhere(id, "title", "Theirs");
+        app.Find("[data-field='title'] input").Input("Mine");
+        Save(app);
+        app.WaitForAssertion(() => Button(app, "Reload the entry"));
     }
 
     private static IElement ToolbarButton(IRenderedComponent<AdminApp> app, string text) =>

@@ -67,7 +67,8 @@ public abstract class AccountTestContext : AdminTestContext
         focused.Id.ShouldBe(expected.Id);
     }
 
-    protected IRenderedComponent<AdminApp> Load(string route = AccountPage.Route, string configuration = ValidConfiguration)
+    // Five cards, and a sixth for the consents to MCP clients where the plugin answers.
+    protected IRenderedComponent<AdminApp> Load(string route = AccountPage.Route, string configuration = ValidConfiguration, int cards = 5)
     {
         Services.AddScoped<IAdminAssemblyLoader>(_ => Loader);
         Start(configuration);
@@ -75,7 +76,7 @@ public abstract class AccountTestContext : AdminTestContext
         var app = Render<AdminApp>();
         app.WaitForAssertion(() =>
         {
-            app.FindAll("section.cms-card").Count.ShouldBe(5);
+            app.FindAll("section.cms-card").Count.ShouldBe(cards);
             app.FindAll("section.cms-card [role=status]").ShouldBeEmpty();
         });
         return app;

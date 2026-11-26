@@ -342,6 +342,11 @@ public sealed class LockOrderTests
         public ValueTask BeforeDeleteAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken) => meanwhile.RunAsync(services, context.Locales);
     }
 
+    private sealed class MeanwhileRestore(IServiceProvider services, Meanwhile meanwhile) : IBeforeRestoreHook<ContentDocument>
+    {
+        public ValueTask BeforeRestoreAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken) => meanwhile.RunAsync(services, context.Locales);
+    }
+
     // Whether the shared published row goes with a locale is read under the holds of every row of the entry, which a publish
     // of another locale takes too: read before, a publish of English that commits in the hook of an unpublish of French was
     // not seen and its shared row went, and an unpublish of English that does was not seen and left the row behind.
@@ -417,5 +422,99 @@ public sealed class LockOrderTests
         meanwhile.Locales.ShouldBe(["en,fr", "en,fr,fr-CA"]);
         changes.Seen.Where(change => change.Kind == EntryChangeKind.Trashed).Select(change => change.Locale).Order(StringComparer.Ordinal).ShouldBe(["en", "fr", "fr-CA"]);
         database.Read(context => context.Documents.IgnoreQueryFilters().Count(document => document.DocumentId == id && document.DeletedAt != null)).ShouldBe(3);
+    }
+
+    // A locale added again under the rerun is a 412. That locale moved the version of the trash's row, so the 412 names the
+    // version stored under the holds, the one of the entry it shows, and not the one the trash read (#3578).
+    [Fact]
+    public async Task ATrashThatALocaleWasAddedUnderTwiceNamesTheVersionStoredUnderItsHolds()
+    {
+        var meanwhile = new Meanwhile();
+        using var database = new ServiceDatabase(cms =>
+        {
+            cms.Services.AddSingleton(meanwhile);
+            cms.Services.AddScoped<IBeforeDeleteHook<ContentDocument>, MeanwhileDelete>();
+        });
+        var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Hello" }));
+        meanwhile.Run = async () =>
+        {
+            await database.UpdateAsync(Editor, id, new() { ["title"] = "Bonjour" }, 0, locale: "fr");
+            meanwhile.Run = () => database.UpdateAsync(Editor, id, new() { ["title"] = "Allo" }, 0, locale: "fr-CA");
+        };
+
+        var conflict = await Should.ThrowAsync<VersionConflictException>(() => database.DeleteAsync(Editor, id));
+
+        meanwhile.Locales.ShouldBe(["en", "en,fr"]);
+        (conflict.ExpectedVersion, conflict.CurrentVersion, VersionOf(conflict.Current!)).ShouldBe((2, 3, 3));
+        database.Document(id).DraftVersion.ShouldBe(3);
+        database.Read(context => context.Documents.IgnoreQueryFilters().Count(document => document.DocumentId == id && document.DeletedAt != null)).ShouldBe(0);
+    }
+
+    // Two trashes of one entry that cross: the second holds the rows once the first has committed, finds them in the trash and
+    // finds no entry, so they are marked and announced once (#3578). So are two restores.
+    [Theory]
+    [InlineData("trash")]
+    [InlineData("restore")]
+    public async Task ATrashOrARestoreThatAnotherCommittedUnderFindsNoEntry(string kind)
+    {
+        var meanwhile = new Meanwhile();
+        var changes = new Changes();
+        using var database = new ServiceDatabase(cms =>
+        {
+            cms.Services.AddSingleton(meanwhile);
+            cms.Services.AddSingleton<IEntryChangeSink>(changes);
+            cms.Services.AddScoped<IBeforeDeleteHook<ContentDocument>, MeanwhileDelete>();
+            cms.Services.AddScoped<IBeforeRestoreHook<ContentDocument>, MeanwhileRestore>();
+        });
+        var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Hello" }));
+        await database.UpdateAsync(Editor, id, new() { ["title"] = "Bonjour" }, 0, locale: "fr");
+        if (kind == "restore")
+        {
+            await database.DeleteAsync(Editor, id);
+        }
+
+        Func<Task> write = kind == "trash" ? () => database.DeleteAsync(Editor, id) : () => database.RestoreAsync(Editor, id);
+        meanwhile.Run = write;
+        changes.Seen.Clear();
+
+        await Should.ThrowAsync<EntryNotFoundException>(write);
+
+        meanwhile.Run.ShouldBeNull();
+        var announced = kind == "trash" ? EntryChangeKind.Trashed : EntryChangeKind.Restored;
+        changes.Seen.Select(change => (change.Kind, change.Locale)).OrderBy(change => change.Locale, StringComparer.Ordinal).ShouldBe([(announced, "en"), (announced, "fr")]);
+        database.Read(context => context.Documents.IgnoreQueryFilters().Count(document => document.DocumentId == id && document.DeletedAt != null)).ShouldBe(kind == "trash" ? 2 : 0);
+    }
+
+    // An import decides what it unpublishes from the rows it holds. A publish of French that commits between the import's first
+    // read and its transaction was not seen before #3578, and French stayed published under the package's draft.
+    [Fact]
+    public async Task AnImportUnpublishesALocalePublishedAfterItsFirstRead()
+    {
+        var gate = new TransactionGate();
+        using var database = new ServiceDatabase(cms => cms.Services.ConfigureDbContext<CmsDbContext>(options => options.AddInterceptors(gate)));
+        var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Hello", ["views"] = 1 }));
+        await database.UpdateAsync(Editor, id, new() { ["title"] = "Bonjour" }, 0, locale: "fr");
+        var later = DateTimeOffset.UtcNow.AddHours(1);
+        TransferEntryLocale Locale(string locale, string title) =>
+            new(locale, EntryStatus.Draft, 5, null, later, Guid.CreateVersion7(), later, Guid.CreateVersion7(), null, null, new JsonObject { ["title"] = title, ["views"] = 5 }, null);
+        var entry = new TransferEntry(id, [Locale("en", "Hi"), Locale("fr", "Salut")]);
+        gate.At = () => database.PublishAsync(Editor, id, "fr");
+
+        var imported = await database.AsAsync(
+            Principal.System,
+            services =>
+            {
+                services.GetRequiredService<TransferImportMode>().Active = true;
+                gate.Context = services.GetRequiredService<CmsDbContext>();
+                return services.GetRequiredService<ContentService>().ImportAsync("article", entry, overwrite: true, authorsFromImporter: false, Token);
+            },
+            origin: Origin.Import);
+
+        gate.Passed.ShouldBeTrue();
+        imported.ShouldBe(TransferOutcome.Updated);
+        var french = database.Document(id, "fr");
+        (french.Status, french.PublishedVersion).ShouldBe((EntryStatus.Draft, (int?)null));
+        database.PublishedRow("cms_article_i18n", id, "fr").ShouldBeNull();
+        (await database.GetAsync(Editor, id, locale: "fr"))!["title"].ShouldBe("Salut");
     }
 }
