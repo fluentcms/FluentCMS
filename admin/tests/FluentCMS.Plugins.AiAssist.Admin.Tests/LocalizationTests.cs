@@ -5,8 +5,8 @@ using Xunit;
 
 namespace FluentCMS.Plugins.AiAssist.Admin.Tests;
 
-// The sweep of spec 7: every page of the half under both pseudo-cultures, with a call of each kind of principal, its data
-// marked; the moment of a call is data in the user's formats.
+// The sweep of spec 7: every page of the half under both pseudo-cultures, with a call of each kind of principal and the
+// note of groups cut, its data marked; the moment of a call is data in the user's formats.
 public sealed class LocalizationTests : AiTestContext
 {
     public static TheoryData<string, string> Pages() => PseudoSweep.Pages(typeof(AiUsagePage).Assembly);
@@ -17,7 +17,7 @@ public sealed class LocalizationTests : AiTestContext
     {
         this.UsePseudoCulture(culture);
         string Data(string text) => PseudoCulture.Transform(text, culture);
-        Server.Usage = FakeAiServer.UsageOf([Call("adminUser", Data("Ada"), "rewrite", Data("article"), Data("title")), Call("apiKey", "", "altText", "", "")]);
+        Server.Usage = FakeAiServer.UsageOf([Call("adminUser", Data("Ada"), "rewrite", Data("article"), Data("title")), Call("apiKey", "", "altText", "", "")], groupsTruncated: true);
 
         IRenderedComponent<Microsoft.AspNetCore.Components.IComponent> cut = page switch
         {
