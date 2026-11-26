@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Nodes;
 using FluentCMS.Media;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -139,6 +140,32 @@ public sealed class MediaUploadTests(MediaHost media) : IClassFixture<MediaHost>
         text.ShouldNotContain("foreignObject");
         stored["size"]!.GetValue<long>().ShouldBe(new FileInfo(file).Length);
         stored["checksum"]!.GetValue<string>().ShouldBe(Sha256(await File.ReadAllBytesAsync(file, Token)));
+    }
+
+    // A file that may be an SVG is held to the SVG limit before it is parsed, whether the site sanitises SVGs or refuses them.
+    [Fact]
+    public async Task AnSvgOverTheSvgLimitIsRefusedAsTooLargeAndOneAtItIsStored()
+    {
+        using var client = await media.AdminAsync();
+        var svg = Files.Svg("""<rect width="5" height="5"/>""");
+        await using var limit = await media.ConfigureAsync(settings =>
+        {
+            settings.Svg = SvgHandling.Sanitize;
+            settings.MaxSvgFileSize = svg.Length;
+        });
+
+        using var over = await UploadAsync(client, null, ("logo.svg", [.. svg, (byte)' ']));
+        using var at = await UploadAsync(client, null, ("logo.svg", svg));
+
+        over.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
+        var problem = JsonNode.Parse(await over.Content.ReadAsStringAsync(Token))!;
+        problem["code"]!.GetValue<string>().ShouldBe(MediaErrorCodes.TooLarge);
+        problem["detail"]!.GetValue<string>().ShouldBe($"The file 'logo.svg' is over the limit of {svg.Length} bytes an SVG.");
+        at.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        await using var refuse = await media.ConfigureAsync(settings => settings.Svg = SvgHandling.Refuse);
+        using var refused = await UploadAsync(client, null, ("logo.svg", [.. svg, (byte)' ']));
+        (await CodeAsync(refused)).ShouldBe(MediaErrorCodes.TooLarge);
     }
 
     [Fact]

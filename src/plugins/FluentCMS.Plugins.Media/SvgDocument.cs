@@ -19,18 +19,20 @@ namespace FluentCMS.Plugins.Media;
 // undone; the two forms cover a comment that a string hides and a string that a comment hides; a value with a backslash and
 // a url( goes too. The root loses overflow, style, transform and filter, which would paint over the page around it, and
 // an animation of the root that sets one of them or moves it goes. An animation of a link, a handler, a class or an id
-// goes. A file nested deeper than MaxDepth is no SVG. Scoping then gives every id and every reference to one a prefix of
-// the file, so that an inlined SVG names nothing of the page, on window or in another SVG, and reaches none of its
-// elements. Save writes what an HTML parser reads as an XML parser does: no CDATA section, comment or prefixed element.
+// goes, and so does one that loses its begin or end. A file nested deeper than MaxDepth is no SVG. Scoping then gives
+// every id and every reference to one a prefix of the file, so that an inlined SVG names nothing of the page, on window or
+// in another SVG, and reaches none of its elements. Save writes what an HTML parser reads as an XML parser does: no CDATA
+// section, comment or prefixed element.
 internal static partial class SvgDocument
 {
     // The most levels of elements a file nests, the root included. A file nested deeper is no SVG the plugin takes: no
     // drawing needs as many, and the passes over the tree, Save's included, recurse as deep as it nests.
     public const int MaxDepth = 128;
 
-    // The most nodes a file holds, elements, text, CDATA sections, comments and processing instructions, and the most
-    // attributes an element has, namespace declarations included. With the depth, they bound the size of the tree that is
-    // built and of each list a pass sets again; a drawing has far fewer. A file past either is no SVG the plugin takes.
+    // The most nodes a file holds, elements, text, the white space between elements included, CDATA sections, comments and
+    // processing instructions, and the most attributes an element has, namespace declarations included. With the depth,
+    // they bound the size of the tree that is built and of each list a pass sets again; a drawing has far fewer. A file
+    // past either is no SVG the plugin takes. The node cap is fixed rather than a setting: what a site raises is the size.
     public const int MaxNodes = 100_000;
 
     public const int MaxAttributes = 1_000;
@@ -118,8 +120,23 @@ internal static partial class SvgDocument
 
     private static readonly HashSet<string> Timings = new(StringComparer.Ordinal) { "begin", "end" };
 
-    public static XDocument? Parse(Stream stream)
+    // Parse, then Sanitize, Scope and Save: the bytes to store, or null when the stream holds no SVG.
+    public static byte[]? Sanitized(Stream stream, long maxSize, CancellationToken cancellationToken) =>
+        Parse(stream, maxSize, cancellationToken) is { } document ? Sanitized(document, cancellationToken) : null;
+
+    public static byte[] Sanitized(XDocument document, CancellationToken cancellationToken)
     {
+        Sanitize(document, cancellationToken);
+        Scope(document, cancellationToken);
+        return Save(document, cancellationToken);
+    }
+
+    // A file over maxSize, from where the stream stands, is refused as too large before it is read as XML; a stream that
+    // cannot seek is read up to the limit only.
+    public static XDocument? Parse(Stream stream, long maxSize, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
         var settings = new XmlReaderSettings
         {
             DtdProcessing = DtdProcessing.Prohibit,
@@ -132,8 +149,13 @@ internal static partial class SvgDocument
 
         // The depth and the counts are read first, without building the tree, so that a file past a limit costs one pass of the
         // reader; that pass sees the comments and processing instructions the tree leaves out, which still cost its building.
-        var seekable = stream.CanSeek ? stream : Buffered(stream);
+        var seekable = stream.CanSeek ? stream : Buffered(stream, maxSize, cancellationToken);
         var start = seekable.Position;
+        if (seekable.Length - start > maxSize)
+        {
+            throw TooLarge(maxSize);
+        }
+
         var counting = settings.Clone();
         counting.IgnoreComments = false;
         counting.IgnoreProcessingInstructions = false;
@@ -144,6 +166,7 @@ internal static partial class SvgDocument
                 var nodes = 0;
                 while (scan.Read())
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (scan.NodeType is not (XmlNodeType.EndElement or XmlNodeType.XmlDeclaration) && ++nodes > MaxNodes)
                     {
                         return null;
@@ -156,6 +179,7 @@ internal static partial class SvgDocument
                 }
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             seekable.Position = start;
             using var reader = XmlReader.Create(seekable, settings);
             var document = XDocument.Load(reader);
@@ -167,19 +191,33 @@ internal static partial class SvgDocument
         }
     }
 
-    private static MemoryStream Buffered(Stream stream)
+    private static MemoryStream Buffered(Stream stream, long maxSize, CancellationToken cancellationToken)
     {
         var copy = new MemoryStream();
-        stream.CopyTo(copy);
+        var buffer = new byte[81920];
+        int read;
+        while ((read = stream.Read(buffer)) > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (copy.Length + read > maxSize)
+            {
+                throw TooLarge(maxSize);
+            }
+
+            copy.Write(buffer, 0, read);
+        }
+
         copy.Position = 0;
         return copy;
     }
+
+    private static PluginException TooLarge(long maxSize) => new(MediaErrorCodes.TooLarge, $"The file is over the limit of {maxSize} bytes an SVG.");
 
     // From the root down, each element's children are read once and set again once, the kept ones only: removing nodes one
     // at a time walks the list of siblings each time, which takes a time that grows with the square of their number. A
     // CDATA section becomes its text, which Save escapes, and goes when it is empty, so that a second pass writes the same
     // empty element; a comment or a processing instruction is nothing of the drawing.
-    public static void Sanitize(XDocument document)
+    public static void Sanitize(XDocument document, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(document);
 
@@ -198,6 +236,7 @@ internal static partial class SvgDocument
             List<XNode> kept = [];
             foreach (var node in element.Nodes())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 switch (node)
                 {
                     case XCData data when data.Value.Length > 0:
@@ -217,8 +256,10 @@ internal static partial class SvgDocument
                         // Its attributes first, so that a link that goes leaves an animation of its parent, as a later pass reads it.
                         if (IsKept(child))
                         {
+                            var animation = Animations.Contains(child.Name.LocalName);
+                            var timings = animation ? TimingsOf(child) : 0;
                             KeepAttributes(child, isRoot: false);
-                            if (!(Animations.Contains(child.Name.LocalName) && Targets(child, root, rootId) && MovesTheBox(child)))
+                            if (!(animation && ((Targets(child, root, rootId) && MovesTheBox(child)) || TimingsOf(child) < timings)))
                             {
                                 kept.Add(child);
                             }
@@ -250,7 +291,7 @@ internal static partial class SvgDocument
     // wrote, so that sanitising it gives the same bytes; otherwise every name takes the file's own on top. First the values
     // this cannot rewrite go: a link that is no fragment, a value whose url() it does not read, and a begin or end that is
     // not read whole, such as one with a backslash, whose escapes a browser may read as a name.
-    public static void Scope(XDocument document)
+    public static void Scope(XDocument document, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(document);
 
@@ -259,7 +300,7 @@ internal static partial class SvgDocument
         {
             names.Add(name);
             return name;
-        }, normalize: true);
+        }, cancellationToken, normalize: true);
 
         var ids = document.Descendants().Select(element => element.Attribute("id")?.Value).OfType<string>().ToList();
         var named = ids.Count > 0 ? ids : names;
@@ -271,26 +312,30 @@ internal static partial class SvgDocument
         if (ScopedPrefix().Match(named[0]) is { Success: true } existing)
         {
             var again = new XDocument(document);
-            Visit(again, name => name.StartsWith(existing.Value, StringComparison.Ordinal) ? name[existing.Value.Length..] : name);
-            var derived = PrefixOf(again);
-            Visit(again, name => derived + name);
-            if (Save(again).AsSpan().SequenceEqual(Save(document)))
+            Visit(again, name => name.StartsWith(existing.Value, StringComparison.Ordinal) ? name[existing.Value.Length..] : name, cancellationToken);
+            var derived = PrefixOf(again, cancellationToken);
+            Visit(again, name => derived + name, cancellationToken);
+            if (Save(again, cancellationToken).AsSpan().SequenceEqual(Save(document, cancellationToken)))
             {
                 return;
             }
         }
 
-        var prefix = PrefixOf(document);
-        Visit(document, name => prefix + name);
+        var prefix = PrefixOf(document, cancellationToken);
+        Visit(document, name => prefix + name, cancellationToken);
     }
 
-    private static string PrefixOf(XDocument document) => $"fcms_{Convert.ToHexStringLower(SHA256.HashData(Save(document)))[..16]}_";
+    private static string PrefixOf(XDocument document, CancellationToken cancellationToken) =>
+        $"fcms_{Convert.ToHexStringLower(SHA256.HashData(Save(document, cancellationToken)))[..16]}_";
 
-    // Each name an attribute holds, as the map gives it back. Normalising, the values that cannot be rewritten go.
-    private static void Visit(XDocument document, Func<string, string> map, bool normalize = false)
+    // Each name an attribute holds, as the map gives it back. Normalising, the values that cannot be rewritten go, and so
+    // does an animation that loses its begin or end to them, which would otherwise start when the drawing loads.
+    private static void Visit(XDocument document, Func<string, string> map, CancellationToken cancellationToken, bool normalize = false)
     {
+        List<XElement> untimed = [];
         foreach (var element in document.Descendants())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             foreach (var attribute in element.Attributes().ToList())
             {
                 if (attribute.IsNamespaceDeclaration)
@@ -326,6 +371,7 @@ internal static partial class SvgDocument
                     if (normalize && !timings.All(timing => timing.Trim(TimingSpace).Length == 0 || Timing().IsMatch(timing)))
                     {
                         attribute.Remove();
+                        untimed.Add(element);
                         continue;
                     }
 
@@ -345,13 +391,18 @@ internal static partial class SvgDocument
                 }
             }
         }
+
+        foreach (var element in untimed.Distinct())
+        {
+            element.Remove();
+        }
     }
 
     // The drawing as an HTML parser reads it the same as an XML parser: SVG elements without a prefix under the SVG namespace as
     // the default, the attributes the lists keep with xlink: and xml: as HTML adjusts them, text and values escaped so that no
     // <, >, & or quote ends a context, and no declaration, CDATA section, comment or processing instruction. Characters that
     // XML would normalise are written as references and new lines as \n, so a file is written alike on every platform.
-    public static byte[] Save(XDocument document)
+    public static byte[] Save(XDocument document, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(document);
 
@@ -359,14 +410,15 @@ internal static partial class SvgDocument
         if (document.Root is { } root)
         {
             var xlink = root.DescendantsAndSelf().Attributes().Any(attribute => attribute.Name.Namespace == XLinkNamespace);
-            Write(root, text, xlink);
+            Write(root, text, xlink, cancellationToken);
         }
 
         return new UTF8Encoding(false).GetBytes(text.ToString());
     }
 
-    private static void Write(XElement element, StringBuilder text, bool? xlink)
+    private static void Write(XElement element, StringBuilder text, bool? xlink, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (!IsSvg(element.Name))
         {
             return;
@@ -408,7 +460,7 @@ internal static partial class SvgDocument
         {
             if (node is XElement child)
             {
-                Write(child, text, null);
+                Write(child, text, null, cancellationToken);
             }
             else if (node is XText part)
             {
@@ -456,6 +508,9 @@ internal static partial class SvgDocument
             ? animation.Parent == root
             : rootId is not null && links.Any(link => link is not null && link.Value.Trim(UrlWhiteSpace) == "#" + rootId);
     }
+
+    private static int TimingsOf(XElement animation) =>
+        animation.Attributes().Count(attribute => attribute.Name.Namespace == XNamespace.None && Timings.Contains(attribute.Name.LocalName));
 
     private static bool MovesTheBox(XElement animation) =>
         animation.Name.LocalName is "animateTransform" or "animateMotion"
