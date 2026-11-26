@@ -437,6 +437,9 @@ public static class ErrorCodeRegistry
         Startup(GenerateErrorCodes.OpenApiUnavailable, "OpenAPI document unavailable"),
         Startup("FCMS3380", "Generated file names differ in case alone"),
         Startup("FCMS3381", "Generated file of another namespace"),
+        // 339x the commands of the token keys, which run inside the host
+        Startup(CommandErrorCodes.CertificateSigns, "No generated signing key to rotate"),
+        Startup(CommandErrorCodes.RevocationNotForced, "Key revocation not forced"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);

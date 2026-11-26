@@ -47,6 +47,11 @@ public sealed partial class ParserTests : IDisposable
     [InlineData("seed", "--url", "https://cms.example.com")]
     [InlineData("settings", "reprotect", "--url", "https://cms.example.com")]
     [InlineData("settings", "reprotect", "--force")]
+    [InlineData("keys", "list", "--url", "https://cms.example.com")]
+    [InlineData("keys", "rotate", "--use", "jwk")]
+    [InlineData("keys", "rotate", "--url", "https://cms.example.com")]
+    [InlineData("keys", "revoke", "--force", "--url", "https://cms.example.com")]
+    [InlineData("keys", "revoke", "--use", "all")]
     [InlineData("mcp")]
     [InlineData("mcp", "--project", ".")]
     [InlineData("schema", "apply", "--output", "schema.sql")]
@@ -108,6 +113,11 @@ public sealed partial class ParserTests : IDisposable
     [InlineData(new[] { "jobs", "list", "--status", "dead_lettered" }, new[] { "jobs", "list", "--status", "dead_lettered" })]
     [InlineData(new[] { "seed", "--name", "BlogSeeder" }, new[] { "seed", "--name", "BlogSeeder" })]
     [InlineData(new[] { "settings", "reprotect", "--no-build" }, new[] { "settings", "reprotect" })]
+    [InlineData(new[] { "keys", "list", "--no-build" }, new[] { "keys", "list" })]
+    [InlineData(new[] { "keys", "rotate" }, new[] { "keys", "rotate" })]
+    [InlineData(new[] { "keys", "rotate", "--use", "enc", "--no-build" }, new[] { "keys", "rotate", "--use", "enc" })]
+    [InlineData(new[] { "keys", "revoke" }, new[] { "keys", "revoke" })]
+    [InlineData(new[] { "keys", "revoke", "--force", "--use", "sig" }, new[] { "keys", "revoke", "--use", "sig", "--force" })]
     public async Task TheCommandIsHandedOnWithoutTheToolsOwnOptions(string[] args, string[] handedOn)
     {
         (await RunAsync([.. args, "--assembly", ToolRun.HostAssembly])).ShouldBe(RecordingLauncher.ExitCode);

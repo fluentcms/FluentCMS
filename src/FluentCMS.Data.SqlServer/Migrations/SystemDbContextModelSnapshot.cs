@@ -541,6 +541,10 @@ namespace FluentCMS.Data.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("id");
 
+                    b.Property<DateTimeOffset>("ActiveFrom")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("active_from");
+
                     b.Property<string>("Algorithm")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -556,6 +560,14 @@ namespace FluentCMS.Data.SqlServer.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("protected_key");
 
+                    b.Property<DateTimeOffset?>("RetiredAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("retired_at");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int")
+                        .HasColumnName("sequence");
+
                     b.Property<string>("Use")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -563,6 +575,10 @@ namespace FluentCMS.Data.SqlServer.Migrations
                         .HasColumnName("use");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Use", "Sequence")
+                        .IsUnique()
+                        .HasDatabaseName("uq_cms_signing_key_use_sequence");
 
                     b.ToTable("cms_signing_key", (string)null);
                 });

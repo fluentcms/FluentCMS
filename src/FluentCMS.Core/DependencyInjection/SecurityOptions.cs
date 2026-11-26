@@ -33,6 +33,14 @@ public sealed class SecurityOptions
     // The certificate the authorization server signs tokens with. Without one it signs with a key it generates and stores.
     public SigningCertificateOptions SigningCertificate { get; } = new();
 
+    // Certificates whose tokens are accepted and that are listed in the key set, and that never sign: the one a new
+    // SigningCertificate replaced, until its tokens have expired, and the next one, before it becomes the SigningCertificate.
+    public IList<SigningCertificateOptions> PreviousSigningCertificates { get; } = [];
+
+    // When the keys the authorization server generates are replaced, and how long a key is published before it signs and
+    // accepted after it stopped.
+    public KeyRotationOptions KeyRotation { get; } = new();
+
     public SecurityCorsOptions Cors { get; } = new();
 
     // The Referrer-Policy header of FluentCMS responses.
@@ -40,6 +48,11 @@ public sealed class SecurityOptions
 
     // The sources that may frame the hosted pages, as the frame-ancestors directive takes them. None by default.
     public string FrameAncestors { get; set; } = "'none'";
+
+    // An entry whose Path and Password are both empty is absent, as an empty SigningCertificate:Path is, so that the
+    // environment can turn off an entry of a settings file, which it cannot remove.
+    internal IEnumerable<(SigningCertificateOptions Entry, int Index)> ConfiguredPreviousSigningCertificates =>
+        PreviousSigningCertificates.Select((entry, index) => (entry, index)).Where(item => item.entry.IsConfigured || !string.IsNullOrEmpty(item.entry.Password));
 
     internal void Validate()
     {
@@ -58,6 +71,12 @@ public sealed class SecurityOptions
         }
 
         SigningCertificate.Validate();
+        foreach (var (entry, index) in ConfiguredPreviousSigningCertificates)
+        {
+            entry.Load($"{nameof(PreviousSigningCertificates)}:{index}", privateKey: false).Dispose();
+        }
+
+        KeyRotation.Validate();
         Cors.Delivery.Validate("Cors:Delivery");
         Cors.Management.Validate("Cors:Management");
         Cors.Members.Validate("Cors:Members");
@@ -77,8 +96,16 @@ public sealed class SigningCertificateOptions
     // there when the process is killed. Linux writes nothing either way, and macOS does not support an ephemeral key.
     internal static X509KeyStorageFlags KeyStorage => OperatingSystem.IsWindows() ? X509KeyStorageFlags.EphemeralKeySet : X509KeyStorageFlags.DefaultKeySet;
 
-    internal X509Certificate2 Load()
+    // key is where the configuration has the entry, for the message. A certificate that only validates needs no private key.
+    internal X509Certificate2 Load(string key = nameof(SecurityOptions.SigningCertificate), bool privateKey = true)
     {
+        if (!IsConfigured)
+        {
+            throw new FluentCmsConfigurationException(
+                OidcErrorCodes.SigningCertificateUnusable,
+                $"{key}:{nameof(Path)} is not set; each entry names its PKCS#12 file.");
+        }
+
         X509Certificate2 certificate;
         try
         {
@@ -88,16 +115,18 @@ public sealed class SigningCertificateOptions
         {
             throw new FluentCmsConfigurationException(
                 OidcErrorCodes.SigningCertificateUnusable,
-                $"{nameof(SecurityOptions.SigningCertificate)}:{nameof(Path)} is '{Path}', which cannot be read as a PKCS#12 file with this password: {exception.Message}");
+                $"{key}:{nameof(Path)} is '{Path}', which cannot be read as a PKCS#12 file with this password: {exception.Message}");
         }
 
-        using var rsa = certificate.GetRSAPrivateKey();
+        using var rsa = privateKey ? certificate.GetRSAPrivateKey() : certificate.GetRSAPublicKey();
         if (rsa is null)
         {
             certificate.Dispose();
             throw new FluentCmsConfigurationException(
                 OidcErrorCodes.SigningCertificateUnusable,
-                $"{nameof(SecurityOptions.SigningCertificate)}:{nameof(Path)} is '{Path}', which holds no RSA private key; the authorization server signs with RS256.");
+                privateKey
+                    ? $"{key}:{nameof(Path)} is '{Path}', which holds no RSA private key; the authorization server signs with RS256."
+                    : $"{key}:{nameof(Path)} is '{Path}', which holds no RSA key; the authorization server signs with RS256.");
         }
 
         return certificate;
@@ -108,6 +137,55 @@ public sealed class SigningCertificateOptions
         if (IsConfigured)
         {
             Load().Dispose();
+        }
+    }
+}
+
+// FluentCms:Security:KeyRotation (ADR 0008). The keys in cms_signing_key are replaced by 'fluentcms keys rotate' and, when
+// Enabled, by the job oidc.keys; PublishLead and Overlap hold for both.
+public sealed class KeyRotationOptions
+{
+    internal const string Section = "KeyRotation";
+
+    // Every instance reads the keys within 30 seconds, so each has a new key before any signs with it.
+    internal static readonly TimeSpan MinimumPublishLead = TimeSpan.FromMinutes(10);
+
+    private static readonly TimeSpan Maximum = TimeSpan.FromDays(3650);
+
+    // Turns the routine rotation on. Off by default: a validator outside the host that pinned a key breaks at the first one.
+    public bool Enabled { get; set; }
+
+    // How long a key signs or encrypts before its successor does.
+    public TimeSpan Interval { get; set; } = TimeSpan.FromDays(90);
+
+    // How long a new key is accepted, and a signing key listed in the key set, before it signs or encrypts.
+    public TimeSpan PublishLead { get; set; } = TimeSpan.FromDays(1);
+
+    // How long a key is still accepted after its successor signs. Unset, it is the longest lifetime of a token, the 30
+    // seconds in which a used refresh token is taken again and 5 minutes for clocks; a shorter one stops the host.
+    public TimeSpan? Overlap { get; set; }
+
+    internal void Validate()
+    {
+        if (PublishLead < MinimumPublishLead || PublishLead > Maximum)
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.InvalidOption,
+                $"{Section}:{nameof(PublishLead)} is {PublishLead}; it must be from {MinimumPublishLead} to {Maximum.TotalDays:0} days, so that every instance has read a new key before one signs with it.");
+        }
+
+        if (Interval <= PublishLead || Interval > Maximum)
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.InvalidOption,
+                $"{Section}:{nameof(Interval)} is {Interval}; it must be more than {nameof(PublishLead)} ({PublishLead}) and at most {Maximum.TotalDays:0} days.");
+        }
+
+        if (Overlap is { } overlap && (overlap <= TimeSpan.Zero || overlap > Maximum))
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.InvalidOption,
+                $"{Section}:{nameof(Overlap)} is {overlap}; it must be more than zero and at most {Maximum.TotalDays:0} days, or left unset for the longest lifetime of a token.");
         }
     }
 }
