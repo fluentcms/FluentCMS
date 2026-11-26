@@ -323,10 +323,10 @@ internal sealed class OutboxDrainer(
         await using var stop = new Stop(jobs.ReleaseTimeout, time, hostStopping);
         var cancellationToken = stop.Requested;
         var delivered = 0;
-        while (!cancellationToken.IsCancellationRequested && await UnreleasedEndedAsync(key, cancellationToken))
+        while (!cancellationToken.IsCancellationRequested)
         {
             var claim = await ClaimWithRetryAsync(lanesOf, key, deferred, stop);
-            if (claim.Rows.Count == 0)
+            if (claim is not { Rows.Count: > 0 })
             {
                 break;
             }
@@ -367,11 +367,18 @@ internal sealed class OutboxDrainer(
         return true;
     }
 
-    private async Task<Claim> ClaimWithRetryAsync(Lanes lanesOf, string key, Deferrals deferred, Stop stop)
+    // Null when the lane is stopped while it waits for the lease of a release that failed, which every attempt does, so that a
+    // retry after a claim whose release failed waits too.
+    private async Task<Claim?> ClaimWithRetryAsync(Lanes lanesOf, string key, Deferrals deferred, Stop stop)
     {
         var cancellationToken = stop.Requested;
         for (var attempt = 1; ; attempt++)
         {
+            if (!await UnreleasedEndedAsync(key, cancellationToken))
+            {
+                return null;
+            }
+
             try
             {
                 return await ClaimAsync(lanesOf, key, deferred, stop);
