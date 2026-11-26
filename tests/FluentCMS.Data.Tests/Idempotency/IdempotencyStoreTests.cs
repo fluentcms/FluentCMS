@@ -3,6 +3,7 @@ using System.Data.Common;
 using System.Text;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -40,6 +41,10 @@ public sealed class IdempotencyStoreTests : IDisposable
 
     private readonly KeyLogs _logs = new();
 
+    private readonly AfterCommit _afterCommit = new();
+
+    private readonly LostAnswer _lostAnswer = new();
+
     private readonly ServiceDatabase _database;
 
     public IdempotencyStoreTests() =>
@@ -47,7 +52,8 @@ public sealed class IdempotencyStoreTests : IDisposable
         {
             cms.Services.AddSingleton<TimeProvider>(_clock);
             cms.Services.AddSingleton<ILoggerProvider>(_logs);
-            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(_gate));
+            cms.Services.AddSingleton<IEntryChangeSink>(_afterCommit);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(_gate, _lostAnswer));
             cms.Idempotency.Window = TimeSpan.FromHours(24);
             cms.Idempotency.InProgressTimeout = TimeSpan.FromMinutes(5);
         });
@@ -182,23 +188,98 @@ public sealed class IdempotencyStoreTests : IDisposable
         (await BeginAsync(hash: "hash-b")).Claim.ShouldNotBeNull().Id.ShouldNotBe(claim.Id);
     }
 
-    // #3523: a repeat removes the expired row of a request whose lease ran out, and the request renews before the repeat
-    // claims the key afresh: the request puts its claim back, and the repeat then finds the key held rather than run too.
+    // #3523: a repeat removes the expired row of a request whose lease ran out past the window, and the request renews
+    // after the repeat's read found no row and before its insert (#3582): the request puts its claim back, the repeat's
+    // insert collides with it, and the repeat, reading the key again, finds it held rather than run too.
     [Fact]
     public async Task ARepeatThatRemovedAnExpiredKeyLosesItToTheRequestThatPutsItBack()
     {
         var first = (await BeginAsync()).Claim!;
         _clock.Advance(TimeSpan.FromHours(24));
+        (await Store.RenewAsync(first, Token)).ShouldBe(IdempotencyRenewal.Renewed);
+        _clock.Advance(TimeSpan.FromMinutes(5));
         IdempotencyRenewal? renewal = null;
         var deleted = false;
         _gate.Arm(
-            command => (deleted |= TestProvider.IsDeleteFrom(command.CommandText, "cms_idempotency_key")) && command.CommandText.StartsWith("SELECT", StringComparison.Ordinal),
+            sql => (deleted |= TestProvider.IsDeleteFrom(sql, "cms_idempotency_key")) && (sql == KeyGate.BeginTransaction || TestProvider.IsInsertInto(sql, "cms_idempotency_key")),
             async () => renewal = await Store.RenewAsync(first, Token));
 
         (await RefusedAsync(() => BeginAsync())).ShouldBe(IdempotencyErrorCodes.InProgress);
 
         renewal.ShouldBe(IdempotencyRenewal.Restored);
         Rows().ShouldHaveSingleItem().Owner.ShouldBe(first.Owner);
+    }
+
+    // #3582: a repeat that took the key over inside its window, once the request's lease ran out, and answered under it, or
+    // failed and freed it, leaves no row once its answer's window passed or it freed the key. The request cannot tell that
+    // from a key that was only removed, so it does not put its claim back but is lost, rather than run its write again.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ARequestWhoseKeyARepeatTookOverAndAnsweredOrFreedIsNotPutBack(bool answered)
+    {
+        var first = (await BeginAsync()).Claim!;
+        _clock.Advance(TimeSpan.FromMinutes(5));
+        var repeat = (await BeginAsync()).Claim.ShouldNotBeNull();
+        if (answered)
+        {
+            await Store.CompleteAsync(repeat, Created);
+            _clock.Advance(TimeSpan.FromHours(24) - TimeSpan.FromMinutes(5));
+            await RetainAsync();
+        }
+        else
+        {
+            await Store.ReleaseAsync(repeat);
+        }
+
+        Rows().ShouldBeEmpty();
+        (await Store.RenewAsync(first, Token)).ShouldBe(IdempotencyRenewal.Lost);
+        Rows().ShouldBeEmpty();
+    }
+
+    // #3582: nor is a claim whose lease ran out past the window put back a window or more later: a request that claimed the
+    // key afresh since may have answered, and its row gone once its own window passed.
+    [Fact]
+    public async Task ARequestWhoseLeaseRanOutAWindowAgoIsNotPutBack()
+    {
+        var first = (await BeginAsync()).Claim!;
+        _clock.Advance(TimeSpan.FromHours(24));
+        (await Store.RenewAsync(first, Token)).ShouldBe(IdempotencyRenewal.Renewed);
+        _clock.Advance(TimeSpan.FromMinutes(5));
+        await Store.CompleteAsync((await BeginAsync()).Claim.ShouldNotBeNull(), Created);
+        _clock.Advance(TimeSpan.FromHours(24));
+        await RetainAsync();
+
+        Rows().ShouldBeEmpty();
+        (await Store.RenewAsync(first, Token)).ShouldBe(IdempotencyRenewal.Lost);
+    }
+
+    // #3582: a put-back whose insert committed but reported a failure leaves the claim with the window of the row it wrote,
+    // so that once a repeat took that row over, answered and the row went past its window, the request is not put back
+    // again against the window of the row before.
+    [Fact]
+    public async Task APutBackThatCommittedButFailedKeepsTheWindowOfItsRow()
+    {
+        var first = (await BeginAsync()).Claim!;
+        _clock.Advance(TimeSpan.FromHours(24));
+        (await Store.RenewAsync(first, Token)).ShouldBe(IdempotencyRenewal.Renewed);
+        _clock.Advance(TimeSpan.FromMinutes(5));
+        await RetainAsync();
+        Rows().ShouldBeEmpty();
+
+        _lostAnswer.Arm();
+        await Should.ThrowAsync<InvalidOperationException>(() => Store.RenewAsync(first, Token));
+        Rows().ShouldHaveSingleItem().Owner.ShouldBe(first.Owner);
+        (await Store.RenewAsync(first, Token)).ShouldBe(IdempotencyRenewal.Renewed);
+
+        _clock.Advance(TimeSpan.FromMinutes(5));
+        await Store.CompleteAsync((await BeginAsync()).Claim.ShouldNotBeNull(), Created);
+        _clock.Advance(TimeSpan.FromHours(24) - TimeSpan.FromMinutes(2));
+        await RetainAsync();
+        Rows().ShouldBeEmpty();
+
+        (await Store.RenewAsync(first, Token)).ShouldBe(IdempotencyRenewal.Lost);
+        Rows().ShouldBeEmpty();
     }
 
     // #3523: a repeat that read a lapsed lease loses its takeover to a renewal of that lease before its update.
@@ -208,7 +289,7 @@ public sealed class IdempotencyStoreTests : IDisposable
         var first = (await BeginAsync()).Claim!;
         _clock.Advance(TimeSpan.FromMinutes(5));
         IdempotencyRenewal? renewal = null;
-        _gate.Arm(command => TestProvider.IsUpdateOf(command.CommandText, "cms_idempotency_key"), async () => renewal = await Store.RenewAsync(first, Token));
+        _gate.Arm(sql => TestProvider.IsUpdateOf(sql, "cms_idempotency_key"), async () => renewal = await Store.RenewAsync(first, Token));
 
         (await RefusedAsync(() => BeginAsync())).ShouldBe(IdempotencyErrorCodes.InProgress);
 
@@ -299,9 +380,9 @@ public sealed class IdempotencyStoreTests : IDisposable
         Rows().ShouldHaveSingleItem().ResponseStatus.ShouldBeNull();
     }
 
-    // #3523: a key that passed its window and was removed while its request ran, its lease out, is not a key a repeat took:
-    // the request puts its claim back and holds the key again, so a repeat meanwhile is refused, and its answer is kept
-    // and replayed as usual.
+    // #3523: a key that was removed while its request ran, its lease out past its window, is not a key a repeat took: the
+    // request puts its claim back and holds the key again, so a repeat meanwhile is refused, and its answer is kept and
+    // replayed as usual.
     [Fact]
     public async Task ARequestWhoseKeyWasRemovedUnderItPutsItBackAndKeepsItsAnswer()
     {
@@ -320,8 +401,8 @@ public sealed class IdempotencyStoreTests : IDisposable
         await working.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
         var hash = Rows().Single().RequestHash;
 
+        await HoldPastTheWindowAsync(others);
         await RemoveRowsAsync();
-        await TurnSetAsync(others);
         _clock.Advance(TimeSpan.FromMinutes(5) / 3);
         await TurnSetAsync(others);
 
@@ -333,8 +414,9 @@ public sealed class IdempotencyStoreTests : IDisposable
         (await BeginAsync("key-expired", hash)).Stored.ShouldNotBeNull().Body.ShouldBe("""{"id":"1"}""");
     }
 
-    // #3523: a repeat that claimed a removed key afresh before the request's renewal keeps it: the request cannot put its
-    // claim back and is cancelled before its write, so only one of the two writes.
+    // #3523: a repeat that claimed a removed key afresh before the request's renewal keeps it: the request, whose lease ran
+    // out past the window so that it would put its claim back otherwise (#3582), is refused by the unique index and is
+    // cancelled before its write, so only one of the two writes.
     [Fact]
     public async Task ARequestWhoseRemovedKeyARepeatClaimedIsCancelled()
     {
@@ -354,9 +436,9 @@ public sealed class IdempotencyStoreTests : IDisposable
         await working.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
         var hash = Rows().Single().RequestHash;
 
+        await HoldPastTheWindowAsync(others);
         await RemoveRowsAsync();
         var repeat = (await BeginAsync("key-reclaimed", hash)).Claim.ShouldNotBeNull();
-        await TurnSetAsync(others);
         _clock.Advance(TimeSpan.FromMinutes(5) / 3);
 
         (await RefusedAsync(() => running.WaitAsync(TimeSpan.FromSeconds(30), Token))).ShouldBe(IdempotencyErrorCodes.InProgress);
@@ -423,11 +505,11 @@ public sealed class IdempotencyStoreTests : IDisposable
         Rows().ShouldHaveSingleItem().ResponseStatus.ShouldBeNull();
     }
 
-    // #3485: a bulk whose client went away while it ran answers 200 with the rest of its items not run, and does not throw.
-    // That answer is of work cut short, so it is not kept: the key stays held until its lease runs out, and a retry then
-    // runs the bulk again, the items not run among them.
+    // #3485: a bulk whose client went away while it ran, before any of its writes committed, answers 200 with the rest of its
+    // items not run, and does not throw. That answer is of work cut short, so it is not kept: the key stays held until its
+    // lease runs out, and a retry then runs the bulk again, the items not run among them.
     [Fact]
-    public async Task ABulkCutShortByItsClientKeepsNothingAndARetryAfterTheLeaseRunsIt()
+    public async Task ABulkCutShortByItsClientBeforeACommitKeepsNothingAndARetryAfterTheLeaseRunsIt()
     {
         List<int> ran = [];
         using var client = new CancellationTokenSource();
@@ -487,6 +569,138 @@ public sealed class IdempotencyStoreTests : IDisposable
         writes.ShouldBe(1);
     }
 
+    // #3590: a client that goes away once a create committed, while the content service reads the entry back, before the
+    // handler returns, does not leave the key held without an answer: the answer of the entry is kept, so a retry with the
+    // key is answered it, replayed, and the entry is written once.
+    [Fact]
+    public async Task ARetryAfterTheClientWentAwayOnceACreateCommittedGetsTheEntryAndWritesNothing()
+    {
+        var runs = 0;
+        using var client = new CancellationTokenSource();
+        _afterCommit.Then = _ => client.CancelAsync();
+        using (var scope = _database.Database.NewScope())
+        {
+            var http = ContentRequest(scope, "key-create", client.Token);
+            await IdempotentRequests.RunAsync(http, async () =>
+            {
+                runs++;
+                var created = await Content(scope).CreateAsync("author", new ContentDocument { ["name"] = "Ada" }, http.RequestAborted);
+                client.IsCancellationRequested.ShouldBeTrue();
+                return Results.Json(new { id = IdOf(created) }, statusCode: StatusCodes.Status201Created);
+            });
+        }
+
+        var row = Rows().ShouldHaveSingleItem();
+        row.ResponseStatus.ShouldBe(StatusCodes.Status201Created);
+        var id = Authors().ShouldHaveSingleItem();
+        row.ResponseBody.ShouldBe($$"""{"id":"{{id}}"}""");
+
+        _afterCommit.Then = null;
+        using var retryScope = _database.Database.NewScope();
+        var retry = ContentRequest(retryScope, "key-create", CancellationToken.None);
+        await ReplaysAsync(retry, row.ResponseBody!, StatusCodes.Status201Created, async () =>
+        {
+            runs++;
+            return Results.Json(await Content(retryScope).CreateAsync("author", new ContentDocument { ["name"] = "Ada" }, retry.RequestAborted));
+        });
+
+        runs.ShouldBe(1);
+        Authors().ShouldHaveSingleItem().ShouldBe(id);
+    }
+
+    // #3590: a bulk whose client went away once its first item committed runs its other items, within InProgressTimeout,
+    // and its whole answer is kept, so a retry with the key is answered it, replayed, and runs nothing.
+    [Fact]
+    public async Task ABulkWhoseClientWentAwayAfterItsFirstCommitRunsTheRestAndARetryGetsItsAnswer()
+    {
+        using var client = new CancellationTokenSource();
+        _afterCommit.Then = _ => client.CancelAsync();
+        using (var scope = _database.Database.NewScope())
+        {
+            var http = ContentRequest(scope, "key-bulk-committed", client.Token);
+            await IdempotentRequests.RunAsync(http, () => ContentBulkAsync(http, scope, "One", "Two", "Three"));
+        }
+
+        Authors().Count.ShouldBe(3);
+        var row = Rows().ShouldHaveSingleItem();
+        row.ResponseStatus.ShouldBe(StatusCodes.Status200OK);
+        row.ResponseBody.ShouldBe("""{"items":["Succeeded","Succeeded","Succeeded"],"cancelled":false}""");
+
+        _afterCommit.Then = null;
+        await RetryBulkAsync("key-bulk-committed", row.ResponseBody!);
+        Authors().Count.ShouldBe(3);
+    }
+
+    // #3590: a bulk that its client left after its first commit, and that is still running when InProgressTimeout has passed
+    // since, stops at its next item and answers the rest as not run; that answer is kept, so a retry is told exactly what ran.
+    [Fact]
+    public async Task ABulkThatRunsPastTheBoundAfterItsClientWentAwayKeepsWhatRanAndTheRestAsNotRun()
+    {
+        using var client = new CancellationTokenSource();
+        var commits = 0;
+        _afterCommit.Then = async _ =>
+        {
+            if (++commits == 1)
+            {
+                await client.CancelAsync();
+            }
+            else
+            {
+                _clock.Advance(TimeSpan.FromMinutes(5));
+            }
+        };
+        using (var scope = _database.Database.NewScope())
+        {
+            var http = ContentRequest(scope, "key-bulk-bound", client.Token);
+            await IdempotentRequests.RunAsync(http, () => ContentBulkAsync(http, scope, "One", "Two", "Three"));
+        }
+
+        Authors().Count.ShouldBe(2);
+        var row = Rows().ShouldHaveSingleItem();
+        row.ResponseStatus.ShouldBe(StatusCodes.Status200OK);
+        row.ResponseBody.ShouldBe("""{"items":["Succeeded","Succeeded","NotRun"],"cancelled":true}""");
+
+        _afterCommit.Then = null;
+        await RetryBulkAsync("key-bulk-bound", row.ResponseBody!);
+        Authors().Count.ShouldBe(2);
+    }
+
+    private async Task RetryBulkAsync(string key, string body)
+    {
+        using var scope = _database.Database.NewScope();
+        var retry = ContentRequest(scope, key, CancellationToken.None);
+        await ReplaysAsync(retry, body, StatusCodes.Status200OK, () => ContentBulkAsync(retry, scope, "One", "Two", "Three"));
+    }
+
+    private static async Task ReplaysAsync(HttpContext http, string body, int status, Func<Task<IResult>> handler)
+    {
+        await (await IdempotentRequests.RunAsync(http, handler)).ExecuteAsync(http);
+        http.Response.StatusCode.ShouldBe(status);
+        http.Response.Headers[IdempotentRequests.ReplayedHeader].ToString().ShouldBe("true");
+        Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray()).ShouldBe(body);
+    }
+
+    private static async Task<IResult> ContentBulkAsync(HttpContext http, IServiceScope scope, params string[] names)
+    {
+        var request = new BulkRequest { Operation = BulkOperation.Create, Entries = [.. names.Select(name => new ContentDocument { ["name"] = name })] };
+        var result = await Content(scope).BulkAsync("author", request, http.RequestAborted);
+        return Results.Json(new { items = result.Items.Select(item => item.Status.ToString()), cancelled = result.Cancelled });
+    }
+
+    private static IContentService Content(IServiceScope scope) => scope.ServiceProvider.GetRequiredService<IContentService>();
+
+    // A keyed request of the content routes, whose operation the content service reads, as the entry point sets it.
+    private DefaultHttpContext ContentRequest(IServiceScope scope, string key, CancellationToken client)
+    {
+        var http = Request(scope, key);
+        http.RequestAborted = client;
+        scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>().Current =
+            new OperationContext(Editor, Origin.Api, SiteA, "en", "client", "c", _clock.GetUtcNow());
+        return http;
+    }
+
+    private List<Guid> Authors() => _database.Read(context => context.Documents.Where(document => document.Type == "author").Select(document => document.DocumentId).Distinct().ToList());
+
     // Four items, as ContentService.RunBulkAsync runs them: an item after the token was cancelled is not run, and the answer
     // is 200 with every item, whether or not all ran.
     private static async Task<IResult> BulkAsync(HttpContext http, List<int> ran, Func<Task> afterEach)
@@ -506,6 +720,20 @@ public sealed class IdempotencyStoreTests : IDisposable
         }
 
         return Results.Json(new { items = results, cancelled = http.RequestAborted.IsCancellationRequested });
+    }
+
+    // Told of each write the content service committed, before it reads the entry back.
+    private sealed class AfterCommit : IEntryChangeSink
+    {
+        public Func<EntryChange, Task>? Then { get; set; }
+
+        public async ValueTask PublishAsync(EntryChange change, CancellationToken cancellationToken)
+        {
+            if (Then is { } then)
+            {
+                await then(change);
+            }
+        }
     }
 
     // An answer whose client goes away as it begins to be written, once the work has answered.
@@ -574,6 +802,18 @@ public sealed class IdempotencyStoreTests : IDisposable
     }
 
     private Task TurnSetAsync(int others) => _clock.WhenTimersAsync(others + 1).WaitAsync(TimeSpan.FromSeconds(30), Token);
+
+    // Renews the lease of a running request until it ends past the key's window, as for a request that outlives it. The
+    // jump to the window's end renews at a time the jump does not fix; the turn after it renews at the window's end or
+    // later, so the lease it writes ends past the window.
+    private async Task HoldPastTheWindowAsync(int others)
+    {
+        await TurnSetAsync(others);
+        _clock.Advance(TimeSpan.FromHours(24));
+        await TurnSetAsync(others);
+        _clock.Advance(TimeSpan.FromMinutes(5) / 3);
+        await TurnSetAsync(others);
+    }
 
     [Fact]
     public async Task OfManyRequestsThatSendOneKeyAtOnceOneRunsAndTheOthersAreRefused()
@@ -679,14 +919,16 @@ public sealed class IdempotencyStoreTests : IDisposable
         Should.Throw<ValidationException>(() => IdempotencyStore.Key(["a", "b"])).Errors.ShouldHaveSingleItem().Path.ShouldBe("Idempotency-Key");
     }
 
-    // Runs what a test gives it before the first command of the store that matches once armed, and lets the command go on
-    // when that is done.
-    private sealed class KeyGate : DbCommandInterceptor
+    // Runs what a test gives it before the first command of the store that matches once armed, or before the first
+    // transaction it begins, as BeginTransaction, and lets the command or the transaction go on when that is done.
+    private sealed class KeyGate : DbCommandInterceptor, IDbTransactionInterceptor
     {
-        private Func<DbCommand, bool>? _matches;
+        public const string BeginTransaction = "BEGIN TRANSACTION";
+
+        private Func<string, bool>? _matches;
         private Func<Task>? _at;
 
-        public void Arm(Func<DbCommand, bool> matches, Func<Task> at)
+        public void Arm(Func<string, bool> matches, Func<Task> at)
         {
             _at = at;
             Volatile.Write(ref _matches, matches);
@@ -694,24 +936,42 @@ public sealed class IdempotencyStoreTests : IDisposable
 
         public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
         {
-            await PassAsync(command);
+            await PassAsync(command.CommandText);
             return result;
         }
 
         // A save sends its batch as a query on some providers.
         public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
         {
-            await PassAsync(command);
+            await PassAsync(command.CommandText);
             return result;
         }
 
-        private async Task PassAsync(DbCommand command)
+        // A save may begin a transaction before its insert, which on SQLite holds the writer until it ends.
+        public async ValueTask<InterceptionResult<DbTransaction>> TransactionStartingAsync(DbConnection connection, TransactionStartingEventData eventData, InterceptionResult<DbTransaction> result, CancellationToken cancellationToken = default)
         {
-            if (Volatile.Read(ref _matches) is { } matches && matches(command) && Interlocked.CompareExchange(ref _matches, null, matches) == matches)
+            await PassAsync(BeginTransaction);
+            return result;
+        }
+
+        private async Task PassAsync(string sql)
+        {
+            if (Volatile.Read(ref _matches) is { } matches && matches(sql) && Interlocked.CompareExchange(ref _matches, null, matches) == matches)
             {
                 await _at!().WaitAsync(TimeSpan.FromSeconds(30), Token);
             }
         }
+    }
+
+    // Once armed, fails the next save of the store after it committed, as a connection lost before its answer would.
+    private sealed class LostAnswer : SaveChangesInterceptor
+    {
+        private int _armed;
+
+        public void Arm() => Volatile.Write(ref _armed, 1);
+
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default) =>
+            Interlocked.Exchange(ref _armed, 0) == 1 ? throw new InvalidOperationException("The answer of a save that committed was lost.") : ValueTask.FromResult(result);
     }
 
     // What the store logs, by event id.

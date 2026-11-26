@@ -10,3 +10,7 @@ internal interface ISessionStorage
 
     ValueTask RemoveAsync(string key);
 }
+
+// The browser refused the tab's sessionStorage, as some privacy settings do: the admin cannot sign in without it (spec 2.4).
+internal sealed class TabStorageRefusedException(Exception innerException)
+    : Exception("The browser refused the tab's sessionStorage.", innerException);

@@ -8,7 +8,8 @@
    discard in the form's locale, each shown by the status of the locale and what the caller may do with the type, the
    status badge, and the warnings of a publish. Its locales (A-17): the form edits the content locale of its address, with
    a switcher and the status of every locale of the site; a locale the entry has no translation in starts empty or as a copy
-   of another and is added by its first save, and a second locale can be shown read-only beside each field. In a side panel
+   of another and is added by its first save, and a second locale can be shown read-only beside each field; a field action's
+   value for another locale moves the form there and goes into that locale's draft once it has loaded. In a side panel
    (A-15) it creates and saves without leaving the page: it raises OnSaved instead of moving to the entry's route, and its
    heading is the panel's. Its version history (A-28) is a side panel, whose restore the form runs as a status action, and
    its preview (A-29) a pane beside it or below it. *@
@@ -33,7 +34,7 @@
 @inject IStringLocalizer<AdminResources> L
 @inject FieldActionOffers FieldOffers
 
-<div class="content-form-layout" data-preview="@(PreviewShown ? (previewWidth == ContentPreview.Full ? "full" : "beside") : null)" data-width="@(PreviewShown ? previewWidth : null)">
+<div class="content-form-layout" data-preview="@(Previewed is not null ? (previewWidth == ContentPreview.Full ? "full" : "beside") : null)" data-width="@(Previewed is not null ? previewWidth : null)">
     <div class="content-form">
         @if (InPanel)
         {
@@ -246,10 +247,10 @@
                 break;
         }
     </div>
-    @if (PreviewShown)
+    @if (Previewed is { } previewed)
     {
-        <ContentPreview @ref="preview" Type="@type!.Name" EntryId="@entryId!.Value" Site="@read!.Site" Locale="@read.Locale" TokenLocale="@PreviewLocale" Version="@read.Entry!.Version" Status="@read.Entry.Status"
-                        Width="@previewWidth" WidthChanged="@(value => previewWidth = value)" OnClose="ClosePreview" />
+        <ContentPreview @ref="preview" Type="@previewed.Type" EntryId="@previewed.EntryId" Site="@previewed.Site" Locale="@previewed.Locale" TokenLocale="@previewed.TokenLocale" Version="@previewed.Version" Status="@previewed.Status"
+                        Width="@previewWidth" WidthChanged="@(value => previewWidth = value)" OnClose="ClosePreviewAsync" />
     }
 </div>
 <CmsDialog Title="@L["Content.Form.Leave.Title"]" Open="@(leaveAnswer is not null)" OpenChanged="@(open => { if (!open) AnswerLeave(false); })">
@@ -419,6 +420,17 @@
     private bool focusPreviewButton;
     private bool focusPreview;
     private string previewWidth = ContentPreview.Phone;
+    // The pane of the entry, site and locale a load reads again, such as the Reload of a conflict or a Try again: it stays
+    // through the read with its page and its token, since a token cannot be revoked (#3470).
+    private PreviewTarget? keptPreview;
+
+    private sealed record PreviewTarget(string Type, Guid EntryId, string? Site, string? Locale, string? TokenLocale, int Version, string? Status);
+
+    // A value an action of a half gave for another locale of the entry, held until that locale has loaded. Only in the form,
+    // never in storage or the address, so it goes with the form, its entry, a sign-out or the end of the session.
+    private PendingValue? pending;
+
+    private sealed record PendingValue(Guid Entry, string Field, string Locale, JsonNode? Value, string Action);
 
     // The name of the content type, as the route has it.
     [Parameter, EditorRequired]
@@ -503,6 +515,10 @@
     private bool MayPreview => MayShowHistory && Configuration.PreviewEnabled && type!.Previewable != false;
 
     private bool PreviewShown => previewOpen && MayPreview;
+
+    private PreviewTarget? Previewed => !previewOpen ? null
+        : MayPreview ? new(type!.Name, entryId!.Value, read!.Site, read.Locale, PreviewLocale, read.Entry!.Version, read.Entry.Status)
+        : keptPreview;
 
     private string? PreviewLocale => type?.Localized == true ? ContentCode : null;
 
@@ -687,6 +703,10 @@
     private async Task LoadAsync()
     {
         var current = ++generation;
+        var previewed = Previewed;
+        keptPreview = previewed is not null && previewed.Type == Type && previewed.EntryId == (Id ?? (IsSingleton ? entryId : null))
+            && previewed.Site == CurrentSite.Site && string.Equals(previewed.Locale, Locale ?? ContentLocaleSource.Locale, StringComparison.OrdinalIgnoreCase)
+            ? previewed : null;
         StopOffering();
         offering = new CancellationTokenSource();
         tracking?.Dispose();
@@ -709,7 +729,7 @@
 
             if (schema.Types.FirstOrDefault(item => item.Name == Type) is not { } found)
             {
-                (state, localizedType) = (FormState.TypeNotFound, null);
+                (state, localizedType, keptPreview, pending) = (FormState.TypeNotFound, null, null, null);
                 return;
             }
 
@@ -744,7 +764,7 @@
             }
 
             (type, access, tabs, read, entryId) = (found, Access.ForType(found.Name), ContentFormLayout.Build(found), entry, id);
-            previewOpen &= id is not null && id == previewEntry;
+            (previewOpen, keptPreview) = (previewOpen && id is not null && id == previewEntry, null);
             (locales, readableLocales) = (everyLocale, readableNow);
             tabbed = [.. tabs.Where(tab => tab.Name is not null)];
             (site, locale) = entry is not null ? (entry.Site, entry.Locale) : (CurrentSite.Site, Locale ?? ContentLocaleSource.Locale);
@@ -759,20 +779,75 @@
             {
                 state = FormState.Ready;
                 OfferFieldActions(current, found);
+                PutPendingIn();
             }
         }
         catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.NotFound && current == generation)
         {
-            state = FormState.EntryNotFound;
+            (state, keptPreview, pending) = (FormState.EntryNotFound, null, null);
         }
         catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.Forbidden && current == generation)
         {
-            state = FormState.TypeNotFound;
+            (state, keptPreview, pending) = (FormState.TypeNotFound, null, null);
         }
         catch (Exception exception) when (IsFailure(exception) && current == generation)
         {
-            state = FormState.Failed;
+            // A read that failed keeps the pane, so that Try again needs no token while the one shown lasts.
+            (state, pending) = (FormState.Failed, null);
         }
+    }
+
+    // A value for another locale (spec 5.1): any half may name one, so it is refused unless it is another enabled locale of the
+    // site where the user may change the field of this saved entry, in the page's own form, which owns the locale of the
+    // address. The form then moves there, through the question before unsaved changes are left; a second value replaces one
+    // that waits.
+    private async Task<string?> PutInAsync(SchemaFieldDescription field, string action, string named, JsonNode? value)
+    {
+        var current = generation;
+        var code = Context.ContentLocales.FirstOrDefault(item => string.Equals(item, named, StringComparison.OrdinalIgnoreCase));
+        if (!OwnsAddress || type is not { Localized: true } shownType || entryId is not { } id || code is null
+            || string.Equals(code, ContentCode, StringComparison.OrdinalIgnoreCase)
+            || !await Context.MayUpdateInAsync(shownType.Name, field.Name, code))
+        {
+            return L["Content.FieldActions.LocaleRefused", named];
+        }
+
+        if (current != generation)
+        {
+            return null;
+        }
+
+        pending = new PendingValue(id, field.Name, code, value?.Parent is null ? value : value.DeepClone(), action);
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("locale", code));
+        return null;
+    }
+
+    // Once the locale has loaded, with any draft a past session kept, the value goes in as an unsaved change of the field it
+    // was given for, on the entry it was asked on and where the user may change the field; otherwise it goes, and the form
+    // says why.
+    private void PutPendingIn()
+    {
+        if (pending is not { } waiting)
+        {
+            return;
+        }
+
+        pending = null;
+        if (waiting.Entry != entryId || !string.Equals(waiting.Locale, ContentCode, StringComparison.OrdinalIgnoreCase))
+        {
+            Announce(L["Content.FieldActions.DroppedElsewhere", waiting.Action, waiting.Locale]);
+            return;
+        }
+
+        var field = type!.Fields.FirstOrDefault(item => item.Name == waiting.Field);
+        if (field is null || !Changeable(field))
+        {
+            Announce(L["Content.FieldActions.DroppedReadOnly", waiting.Action, waiting.Locale, field is null ? waiting.Field : FieldEditorBase.LabelOf(field)]);
+            return;
+        }
+
+        Change(field, waiting.Value);
+        Announce(L["Content.FieldActions.ChangedIn", waiting.Action, FieldEditorBase.LabelOf(field), waiting.Locale]);
     }
 
     // A field the caller may not set at create is left to the server's default, so a create never sends it.
@@ -954,7 +1029,12 @@
     private static bool IsFailure(Exception exception) =>
         exception is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException;
 
-    private void ClosePreview() => (previewOpen, focusPreviewButton) = (false, true);
+    // The toggle is drawn only while the form shows the entry; a pane kept through a read gives focus to the heading.
+    private Task ClosePreviewAsync()
+    {
+        (previewOpen, keptPreview, focusPreviewButton) = (false, null, state == FormState.Ready);
+        return focusPreviewButton ? Task.CompletedTask : FocusHeadingAsync(afterDialog: false);
+    }
 
     private void TogglePreview() => (previewOpen, focusPreview, previewEntry) = (!previewOpen, !previewOpen, entryId);
 
@@ -1588,6 +1668,13 @@
         if (!leave)
         {
             context.PreventNavigation();
+            if (pending is { } stayed)
+            {
+                pending = null;
+                Announce(L["Content.FieldActions.Stayed", stayed.Action, stayed.Locale]);
+                await InvokeAsync(StateHasChanged);
+            }
+
             return;
         }
 
@@ -1680,7 +1767,7 @@
                 @Editor(field)
                 @if (Changeable(field) && fieldActions.GetValueOrDefault(field.Name) is { } actions)
                 {
-                    <FieldActionMenu @key="generation" Actions="@([.. actions.Select(action => (action.Half, action.Declared))])" FieldLabel="@FieldEditorBase.LabelOf(field)" Context="@(() => ActionContext(field))" OnResult="@(value => Change(field, value))" />
+                    <FieldActionMenu @key="generation" Actions="@([.. actions.Select(action => (action.Half, action.Declared))])" FieldLabel="@FieldEditorBase.LabelOf(field)" Context="@(() => ActionContext(field))" OnResult="@(value => Change(field, value))" OnResultIn="@((action, code, value) => PutInAsync(field, action, code, value))" />
                 }
                 @if (compare is { } other)
                 {

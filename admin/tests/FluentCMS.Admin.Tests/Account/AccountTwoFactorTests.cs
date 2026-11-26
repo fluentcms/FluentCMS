@@ -15,7 +15,8 @@ public sealed class AccountTwoFactorTests : AccountTestContext
     private const string Heading = "Two-factor sign-in";
     private const string SharedKey = "JBSWY3DPEHPK3PXP";
     private const string AuthenticatorUri = "otpauth://totp/FluentCMS:ada%40example.com?secret=" + SharedKey + "&issuer=FluentCMS&digits=6";
-    private const string SignInAgainFirst = "Setting up two-factor sign-in needs a recent sign-in, and yours is more than a few minutes old. Sign out, sign in again, then set it up.";
+    private const string SignInAgainFirst = "Setting up two-factor sign-in needs a recent sign-in, and yours is more than a few minutes old. Sign in again, and the setup goes on here.";
+    private const string ReturnRoute = "account?two-factor=enrol";
     private static readonly string[] Codes = ["A1B2C-3D4E5", "F6G7H-8J9K0"];
 
     [Fact]
@@ -200,6 +201,13 @@ public sealed class AccountTwoFactorTests : AccountTestContext
         app.WaitForAssertion(() => Message(app, Heading).ShouldBe(SignInAgainFirst));
         app.WaitForAssertion(() => ShouldBeFocused<AccountTwoFactor>(app, "messageElement"));
         Section(app, Heading).QuerySelector("input").ShouldBeNull();
+
+        // One action: the hosted pages ask for the password, and the tab comes back to the setup (#3445).
+        Button(Section(app, Heading), "Sign in again").Click();
+
+        Reauthentications.ShouldBe([ReturnRoute]);
+        SignIns.ShouldBeEmpty();
+        Button(Section(app, Heading), "Sign in again").HasAttribute("disabled").ShouldBeTrue();
     }
 
     [Fact]
@@ -217,6 +225,84 @@ public sealed class AccountTwoFactorTests : AccountTestContext
 
         app.WaitForAssertion(() => Message(app, Heading).ShouldBe(SignInAgainFirst));
         AssertNoSecretShown(app);
+
+        // The key and the code stay behind: the return sets up again with a new key.
+        Button(Section(app, Heading), "Sign in again").Click();
+
+        Reauthentications.ShouldBe([ReturnRoute]);
+        AssertNoSecretKept();
+    }
+
+    // Back from the sign-in on the login page, the setup goes on with a new key under the new token, and the address forgets
+    // the step, so that a reload does not set up again.
+    [Fact]
+    public void TheReturnFromTheSignInSetsUpAgainAndForgetsTheStep()
+    {
+        EnrolAnswers();
+
+        var app = Load(ReturnRoute);
+
+        app.WaitForAssertion(() => Section(app, Heading).QuerySelector(".account-key")!.TextContent.ShouldBe("jbsw y3dp ehpk 3pxp"));
+        Management.Count("me/two-factor/enrol").ShouldBe(1);
+        Navigation.Uri.ShouldBe("http://localhost/account");
+        var forgot = ((Bunit.TestDoubles.BunitNavigationManager)Navigation).History.First();
+        forgot.Options.ReplaceHistoryEntry.ShouldBeTrue();
+        forgot.Options.ForceLoad.ShouldBeFalse();
+        app.WaitForAssertion(() => ShouldBeFocused<AccountTwoFactor>(app, "stepHeading"));
+
+        Section(app, Heading).QuerySelector("input")!.Input("123456");
+        Button(Section(app, Heading), "Turn on").Click();
+
+        app.WaitForAssertion(() => Section(app, Heading).QuerySelector("pre.account-codes").ShouldNotBeNull());
+        Management.Count("me/two-factor/enrol").ShouldBe(1);
+        Reauthentications.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AReturnWhileTwoFactorIsOnSetsNothingUp()
+    {
+        Management.TwoFactor = Status(enabled: true, left: 4);
+        EnrolAnswers();
+
+        var app = Load(ReturnRoute);
+
+        app.WaitForAssertion(() => Navigation.Uri.ShouldBe("http://localhost/account"));
+        Section(app, Heading).TextContent.ShouldContain("Recovery codes left: 4.");
+        Management.Count("me/two-factor/enrol").ShouldBe(0);
+    }
+
+    [Fact]
+    public void ASignInOnTheLoginPageThatCannotStartIsSaidAndCanBeTriedAgain()
+    {
+        Management.Answer = (method, path) => path == "me/two-factor/enrol" ? Problem(HttpStatusCode.Forbidden, "FCMS3065") : null;
+        var app = Load();
+        Button(Section(app, Heading), "Set up two-factor sign-in").Click();
+        app.WaitForAssertion(() => Message(app, Heading).ShouldBe(SignInAgainFirst));
+        FailSignIn();
+
+        Button(Section(app, Heading), "Sign in again").Click();
+
+        app.WaitForAssertion(() => Message(app, Heading).ShouldBe("The sign-in server could not be reached, so you are still signed in as before. Try again in a moment."));
+        app.WaitForAssertion(() => ShouldBeFocused<AccountTwoFactor>(app, "messageElement"));
+        Button(Section(app, Heading), "Sign in again").HasAttribute("disabled").ShouldBeFalse();
+        Reauthentications.ShouldBeEmpty();
+    }
+
+    // The sign-in's secrets cannot be kept, so the page is loaded again, whose gate says that the browser blocks the storage.
+    [Fact]
+    public void ASignInOnTheLoginPageThatTheBrowsersStorageRefusesLoadsThePageAgain()
+    {
+        Management.Answer = (method, path) => path == "me/two-factor/enrol" ? Problem(HttpStatusCode.Forbidden, "FCMS3065") : null;
+        var app = Load();
+        Button(Section(app, Heading), "Set up two-factor sign-in").Click();
+        app.WaitForAssertion(() => Message(app, Heading).ShouldBe(SignInAgainFirst));
+        FailSignIn(new FluentCMS.Admin.Interop.TabStorageRefusedException(new Microsoft.JSInterop.JSException("The operation is insecure.")));
+
+        Button(Section(app, Heading), "Sign in again").Click();
+
+        var reload = ((Bunit.TestDoubles.BunitNavigationManager)Navigation).History.First();
+        (reload.Uri, reload.Options.ForceLoad).ShouldBe(("http://localhost/account", true));
+        Reauthentications.ShouldBeEmpty();
     }
 
     [Fact]

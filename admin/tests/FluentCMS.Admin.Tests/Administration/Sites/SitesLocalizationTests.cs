@@ -33,6 +33,12 @@ public sealed class SitesLocalizationTests : SitesTestContext
         Button(Section(app, Localized<SitesResources>("Sites.Locales.Heading")), Localized<SitesResources>("Sites.Locales.Remove") + Localized<SitesResources>("Sites.Locales.Which", german)).Click();
         app.WaitForAssertion(() => Message(Section(app, Localized<SitesResources>("Sites.Locales.Heading"))).ShouldBe(Localized<SitesResources>("Sites.Locales.HasEntries", german)));
         PseudoCulture.Unlocalized(app.Nodes).ShouldBeEmpty();
+
+        // A locale another names as a fallback, which the row of that locale says too.
+        Button(Section(app, Localized<SitesResources>("Sites.Locales.Heading")), Localized<SitesResources>("Sites.Locales.Remove") + Localized<SitesResources>("Sites.Locales.Which", french)).Click();
+        app.WaitForAssertion(() => Message(Section(app, Localized<SitesResources>("Sites.Locales.Heading"))).ShouldBe(Localized<SitesResources>("Sites.Locales.IsFallbackOfOne", french, canadian)));
+        app.Find(".sites-blocking").TextContent.ShouldBe(Localized<SitesResources>("Sites.Locales.Blocks", french));
+        PseudoCulture.Unlocalized(app.Nodes).ShouldBeEmpty();
     }
 
     // Data the fake serves is marked as a resource is, so that only a text of the page itself can fail the check: the site's

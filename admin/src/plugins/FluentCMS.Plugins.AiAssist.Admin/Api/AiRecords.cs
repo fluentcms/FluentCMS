@@ -24,9 +24,11 @@ internal sealed record AiActionBody
     public AiActionOptions? Options { get; init; }
 }
 
-// The image of altText; the half sends no other option.
+// The image of altText, and the locale translate writes in, an enabled locale of the site.
 internal sealed record AiActionOptions
 {
+    public string? TargetLocale { get; init; }
+
     public Guid? MediaId { get; init; }
 }
 
@@ -97,7 +99,8 @@ internal sealed record AiUsageRow
     public required DateTimeOffset CreatedAt { get; init; }
 }
 
-// The calls and tokens of every row the filter matches, in all and by principal and action.
+// The calls and tokens of every row the filter matches, in all and by principal and action: the groups that used the most
+// tokens, at most 100, with GroupsTruncated when the filter matched more.
 internal sealed record AiUsageTotals
 {
     public long Calls { get; init; }
@@ -107,6 +110,8 @@ internal sealed record AiUsageTotals
     public long CompletionTokens { get; init; }
 
     public required IReadOnlyList<AiUsageGroup> Groups { get; init; }
+
+    public bool GroupsTruncated { get; init; }
 }
 
 internal sealed record AiUsageGroup

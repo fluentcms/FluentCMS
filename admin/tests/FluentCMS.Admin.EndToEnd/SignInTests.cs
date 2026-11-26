@@ -194,6 +194,60 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
+    // A browser that refuses sessionStorage, as some privacy settings do, throws as a script reads window.sessionStorage. Here
+    // it refuses it from the callback on, so the sign-in reaches the hosted login first: the callback says that the browser
+    // blocks the tab's storage and redeems nothing, and its button goes back to the admin, whose gate says so too, offers no
+    // "Try again" and starts no sign-in, nor after a reload. No page throws an unhandled exception.
+    [Fact]
+    public async Task ABlockedSessionStorageIsShownAtTheCallbackAndTheGateInsteadOfLooping()
+    {
+        var browser = await OpenBrowserAsync();
+        var tab = await browser.NewTabAsync();
+        var unhandled = new ConcurrentQueue<string>();
+        tab.Page.Console += (_, message) =>
+        {
+            if (message.Text.Contains("Unhandled exception", StringComparison.OrdinalIgnoreCase))
+            {
+                unhandled.Enqueue(message.Text);
+            }
+        };
+        await tab.Page.AddInitScriptAsync("""
+            (() => {
+              const refused = 'fluentcms-e2e/refuse-session-storage';
+              try {
+                if (location.pathname.endsWith('/authentication/login-callback')) { localStorage.setItem(refused, '1'); }
+                if (localStorage.getItem(refused) !== '1') { return; }
+              } catch { return; }
+              Object.defineProperty(window, 'sessionStorage', {
+                configurable: true,
+                get() { throw new DOMException('The operation is insecure.', 'SecurityError'); },
+              });
+            })();
+            """);
+        await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, await EditorAsync());
+
+        await Expect(tab.Heading("Authentication.Callback.FailedHeading")).ToBeVisibleAsync();
+        await Expect(tab.Page.GetByText(Repository.AdminText("Authentication.Callback.StorageRefused"), new() { Exact = true })).ToBeVisibleAsync();
+        new Uri(tab.Page.Url).AbsolutePath.ShouldEndWith("/authentication/login-callback");
+        tab.TokenRequests.ShouldBeEmpty();
+        var (loginPages, authorizations) = (tab.LoginPagesShown, tab.AuthorizeRequests.Count);
+
+        await tab.Button("Authentication.Callback.StartAgain").ClickAsync();
+        await Expect(tab.Heading("Authentication.Gate.StorageRefusedHeading")).ToBeVisibleAsync();
+        await Expect(tab.Button("Authentication.Gate.TryAgain")).ToHaveCountAsync(0);
+        tab.Page.Url.ShouldBe(Host.Admin.AbsoluteUri);
+
+        await tab.Page.ReloadAsync();
+        await Expect(tab.Heading("Authentication.Gate.StorageRefusedHeading")).ToBeVisibleAsync();
+        tab.Page.Url.ShouldBe(Host.Admin.AbsoluteUri);
+        tab.AuthorizeRequests.Count.ShouldBe(authorizations);
+        tab.LoginPagesShown.ShouldBe(loginPages);
+        tab.TokenRequests.ShouldBeEmpty();
+        unhandled.ShouldBeEmpty();
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
     // The gallery is a page of the administration assembly, with its texts in the folder Gallery there.
     private static ILocator GalleryHeading(AdminTab tab) =>
         tab.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = Repository.AdministrationText("Gallery", "System.Components.Heading"), Exact = true });

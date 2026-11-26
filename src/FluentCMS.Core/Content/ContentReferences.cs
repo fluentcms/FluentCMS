@@ -23,7 +23,10 @@ internal sealed class ContentReferences(
     IOperationContextAccessor operations,
     IOutputCacheStore store,
     IEventBus events,
-    DeliveryCacheOptions delivery) : IContentReferences
+    DeliveryCacheOptions delivery,
+    EntryStore entryStore,
+    IDataProvider provider,
+    ContentWriteOptions writeOptions) : IContentReferences
 {
     public async Task<IReadOnlyList<ContentReference>> FindAsync(string targetType, Guid targetId, CancellationToken cancellationToken = default)
     {
@@ -94,12 +97,14 @@ internal sealed class ContentReferences(
     {
         Check(targetType);
 
-        var references = database.References.Where(reference => reference.TargetType == targetType && reference.TargetId == targetId);
-        var entries = await references.Select(reference => reference.SourceDocumentId).Distinct().ToListAsync(cancellationToken);
-        var types = delivery.TagHeader is not null && entries.Count > 0 ? await TypeTagsAsync(entries, cancellationToken) : [];
-        var removed = await references.ExecuteDeleteAsync(cancellationToken);
+        // In a caller's transaction, such as a content hook's, the rows are held where it removes them, and a deadlock has
+        // ended that transaction, which is the caller's to handle.
+        var (entries, removed) = database.Database.CurrentTransaction is null
+            ? await InOwnTransactionAsync(() => RemoveHeldAsync(targetType, targetId, cancellationToken), cancellationToken)
+            : await RemoveHeldAsync(targetType, targetId, cancellationToken);
         if (removed > 0 && delivery.Invalidates)
         {
+            var types = delivery.TagHeader is not null ? await TypeTagsAsync(entries, CancellationToken.None) : [];
             string[] tags = [.. entries.Select(CacheTags.Entry)];
             foreach (var tag in tags)
             {
@@ -110,6 +115,72 @@ internal sealed class ContentReferences(
         }
 
         return removed;
+    }
+
+    // A save replaces its entry's references under the hold of its rows, so the references of an entry go only once its
+    // cms_document rows are held, in the lock order of a content write (spec 4.5): each entry's rows by primary key, ordinal by
+    // locale, the entries by id. A row added since the read is held after them, so that a save of a new locale, which deletes
+    // the shared references too, cannot cross the removal. The references of an entry that began to refer to the target since
+    // the read stay, as they would had its save come after.
+    private async Task<(List<Guid> Entries, int Removed)> RemoveHeldAsync(string targetType, Guid targetId, CancellationToken cancellationToken)
+    {
+        var entries = await database.References
+            .Where(reference => reference.TargetType == targetType && reference.TargetId == targetId)
+            .Select(reference => reference.SourceDocumentId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        if (entries.Count == 0)
+        {
+            return (entries, 0);
+        }
+
+        HashSet<Guid> held = [];
+        while (true)
+        {
+            var rows = await database.Documents.IgnoreQueryFilters().AsNoTracking()
+                .Where(document => entries.Contains(document.DocumentId))
+                .ToListAsync(cancellationToken);
+            var fresh = rows.Where(row => !held.Contains(row.Id)).OrderBy(row => row.DocumentId).ThenBy(row => row.Locale, StringComparer.Ordinal).ToList();
+            if (fresh.Count == 0)
+            {
+                break;
+            }
+
+            foreach (var row in fresh)
+            {
+                await entryStore.HoldAsync(row, cancellationToken);
+                held.Add(row.Id);
+            }
+        }
+
+        var removed = await database.References
+            .Where(reference => reference.TargetType == targetType && reference.TargetId == targetId && entries.Contains(reference.SourceDocumentId))
+            .ExecuteDeleteAsync(cancellationToken);
+        return (entries, removed);
+    }
+
+    // As a content write in a transaction of its own: a deadlock victim runs again after a pause (#2959), and a wait past the
+    // lock timeout is not run again (#3573).
+    private async Task<T> InOwnTransactionAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken)
+    {
+        for (var deadlocks = 0; ; )
+        {
+            try
+            {
+                await using var transaction = await provider.BeginWriteAsync(database, writeOptions.LockTimeout, cancellationToken);
+                var result = await work();
+                await transaction.CommitAsync(CancellationToken.None);
+                return result;
+            }
+            catch (Exception exception) when (deadlocks < ContentService.DeadlockReruns && provider.IsDeadlock(exception))
+            {
+                await ContentService.PauseAfterDeadlockAsync(++deadlocks, cancellationToken);
+            }
+            catch (Exception exception) when (provider.IsLockTimeout(exception))
+            {
+                throw new EntryBusyException(writeOptions.LockTimeout, exception);
+            }
+        }
     }
 
     // A CDN's copy whose tag header would have passed its budget carries the tags of its entries' types in place of theirs,

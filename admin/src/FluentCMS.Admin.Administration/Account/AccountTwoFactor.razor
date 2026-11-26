@@ -11,6 +11,7 @@
 @using FluentCMS.Admin.Authentication
 @inject ManagementClient Client
 @inject IAdminSession Session
+@inject NavigationManager Navigation
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<AccountResources> L
 
@@ -126,6 +127,10 @@
         <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="EnrolAsync">@L["Account.TwoFactor.Enrol"]</CmsButton>
     }
     <p class="account-message" tabindex="-1" @ref="messageElement">@message</p>
+    @if (offerSignIn)
+    {
+        <CmsButton Disabled="@busy" OnClick="SignInRecentlyAsync">@L["Account.TwoFactor.SignInAgain"]</CmsButton>
+    }
 </CmsCard>
 
 @code {
@@ -137,6 +142,11 @@
         Disable,
         NewCodes,
     }
+
+    // The query of the return from SignInRecentlyAsync. It holds no key and no code, and a link with it does what the button
+    // to set up does.
+    private const string ReturnQuery = "two-factor";
+    private const string ReturnToEnrol = "enrol";
 
     private MyTwoFactor status = new();
     private AccountSectionState state = AccountSectionState.Loading;
@@ -152,8 +162,25 @@
     private ElementReference stepHeading;
     private ElementReference messageElement;
     private bool focusNext;
+    private bool offerSignIn;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    [SupplyParameterFromQuery(Name = ReturnQuery)]
+    public string? ReturnedTo { get; set; }
+
+    // Back from the sign-in, the address forgets the step, so that a reload does not set up again, and the setup starts over
+    // with a new key under the new token. The enrolment itself still needs a sign-in of the last minutes.
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        if (ReturnedTo == ReturnToEnrol)
+        {
+            Navigation.NavigateTo(AccountPage.Route, replace: true);
+            if (state == AccountSectionState.Ready && !status.Enabled)
+            {
+                await EnrolAsync();
+            }
+        }
+    }
 
     // The dialog of the codes takes focus itself.
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -197,7 +224,7 @@
     private async Task EnrolAsync()
     {
         busy = true;
-        message = null;
+        (message, offerSignIn) = (null, false);
         try
         {
             setup = await Client.EnrolAuthenticatorAsync(CancellationToken.None);
@@ -210,6 +237,7 @@
         }
         catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.RecentSignInRequired))
         {
+            offerSignIn = true;
             await ShowAsync(L["Account.TwoFactor.SignInAgainFirst"]);
         }
         catch (Exception exception) when (AccountProblems.IsFailure(exception))
@@ -275,6 +303,19 @@
         }
     }
 
+    // Shows the login page whatever the server's own session, and comes back here to set up again. Nothing of a setup
+    // already open goes with it: the key and the code were dropped with the step.
+    private async Task SignInRecentlyAsync()
+    {
+        busy = true;
+        if (!await AccountSignIn.RecentlyAsync(Session, Navigation, $"{AccountPage.Route}?{ReturnQuery}={ReturnToEnrol}"))
+        {
+            busy = false;
+            message = L["Account.TwoFactor.SignInAgainFailed"];
+            focusNext = true;
+        }
+    }
+
     // The answer, or null with the reason shown and announced: a wrong code stays on the step, a sign-in too old to turn it
     // on closes the step, any other refusal reads the status again.
     private async Task<IReadOnlyList<string>?> RunWithCodeAsync(Func<string, CancellationToken, Task<IReadOnlyList<string>>> call)
@@ -299,6 +340,7 @@
         catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.RecentSignInRequired))
         {
             CloseStep(L["Account.TwoFactor.SignInAgainFirst"]);
+            offerSignIn = true;
             return null;
         }
         catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.NoAuthenticator)
@@ -351,7 +393,7 @@
     private void OpenStep(Step next)
     {
         step = next;
-        (code, codeError, message) = (null, null, null);
+        (code, codeError, message, offerSignIn) = (null, null, null, false);
         focusNext = true;
     }
 
@@ -360,7 +402,7 @@
     {
         Forget();
         step = Step.None;
-        message = result;
+        (message, offerSignIn) = (result, false);
         focusNext = true;
     }
 

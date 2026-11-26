@@ -5,9 +5,9 @@ using static Microsoft.Playwright.Assertions;
 
 namespace FluentCMS.Admin.EndToEnd;
 
-// The account page of the signed-in user (spec 4.3, #3147) against the reference host: its sessions and two-factor sign-in
-// by choice. Each case changes its user, so each signs in as one of its own. The preferences card is PreferencesTests'. The
-// reference host has no external provider, so no case removes a login.
+// The account page of the signed-in user (spec 4.3, #3147) against the reference host: its sessions, two-factor sign-in by
+// choice and the password change. Each case changes its user, so each signs in as one of its own. The preferences card is
+// PreferencesTests'. The reference host has no external provider, so no case removes a login.
 public sealed class AccountPageTests(EndToEndHost host) : BrowserTest(host)
 {
     private const string Route = "account";
@@ -101,6 +101,78 @@ public sealed class AccountPageTests(EndToEndHost host) : BrowserTest(host)
         await browser.SignInOnTheHostedPageAsync(tab, user);
         await Expect(card.GetByText(Text("Account.TwoFactor.Off"), new() { Exact = true })).ToBeVisibleAsync();
         page.Url.ShouldBe(new Uri(Host.Admin, Route).AbsoluteUri);
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    // The host answers FCMS3065 only to a sign-in more than ten minutes old, a constant of its own, so the browser answers the
+    // first setup so, as the host does. "Sign in again" then asks for the login page with prompt=login, although the browser's
+    // own sign-in still holds, and the page comes back to the setup, which the host takes from the new token, the turn-on too.
+    [Fact]
+    public async Task ASetupWithASignInTooOldSignsInAgainOnTheLoginPageAndGoesOn()
+    {
+        var user = await Host.CreateEditorAsync();
+        var browser = await OpenBrowserAsync();
+        var tab = await SignedInTabAsync(browser, Route, user);
+        var page = tab.Page;
+        var card = Card(tab, "Account.TwoFactor.Heading");
+        await Expect(card.GetByText(Text("Account.TwoFactor.Off"), new() { Exact = true })).ToBeVisibleAsync();
+        await page.RouteAsync(
+            tab.ManagementUrl("me/two-factor/enrol"),
+            route => route.FulfillAsync(new RouteFulfillOptions
+            {
+                Status = 403,
+                ContentType = "application/problem+json",
+                Body = """{"status":403,"code":"FCMS3065","title":"Forbidden"}""",
+            }),
+            new PageRouteOptions { Times = 1 });
+
+        await Ui.ButtonIn(card, Text("Account.TwoFactor.Enrol")).ClickAsync();
+        await Expect(card.Locator(".account-message")).ToHaveTextAsync(Text("Account.TwoFactor.SignInAgainFirst"));
+        await Ui.ButtonIn(card, Text("Account.TwoFactor.SignInAgain")).ClickAsync();
+
+        // The setup starts as the page comes back, so its key is shown in an unrecorded scope from the sign-in on.
+        await browser.UnrecordedAsync(async () =>
+        {
+            await browser.SignInOnTheHostedPageAsync(tab, user);
+            var key = browser.MaskAuthenticatorKey(await card.Locator("code.account-key").InnerTextAsync());
+            page.Url.ShouldBe(new Uri(Host.Admin, Route).AbsoluteUri);
+            await card.GetByRole(AriaRole.Textbox).FillAsync(Ui.AuthenticatorCode(key));
+            await Ui.ButtonIn(card, Text("Account.TwoFactor.Verify")).ClickAsync();
+            var title = Text("Account.TwoFactor.CodesHeading");
+            await Expect(tab.ShownDialog(title)).ToBeVisibleAsync();
+            foreach (var code in (await tab.Dialog(title).Locator("pre.account-codes").InnerTextAsync()).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                browser.Mask(code);
+            }
+        });
+
+        tab.LoginPagesShown.ShouldBe(2);
+        // The host's redirect back to the authorize endpoint after its login page keeps the request, prompt=login with it, so
+        // the requests that ask for it are those of one sign-in, its state the same.
+        var states = tab.AuthorizeRequests.Select(request => System.Web.HttpUtility.ParseQueryString(request.Query)).Where(query => query["prompt"] == "login").Select(query => query["state"]).ToList();
+        states.ShouldNotBeEmpty();
+        states.Distinct().Count().ShouldBe(1);
+        tab.AuthorizeRequests.First().Query.ShouldNotContain("prompt=");
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    // The change ends the user's sessions within a minute of this tab's sign-in, so back here the tab's refresh is refused;
+    // the tab signs in again at once, which the browser's own sign-in, kept by the hosted page, answers without the login page.
+    [Fact]
+    public async Task ThePasswordIsChangedOnTheHostedPageAndTheTabComesBackHereSignedIn()
+    {
+        var user = await Host.CreateEditorAsync();
+        var browser = await OpenBrowserAsync();
+        var tab = await SignedInTabAsync(browser, Route, user);
+
+        await Card(tab, "Account.Password.Heading").GetByRole(AriaRole.Link, new() { Name = Text("Account.Password.Change"), Exact = true }).ClickAsync();
+        await browser.ChangePasswordOnTheHostedPageAsync(tab, user);
+
+        await Expect(Card(tab, "Account.Sessions.Heading")).ToBeVisibleAsync();
+        await Ui.UntilAsync(() => tab.TokenRequests.Count(request => request is { GrantType: "authorization_code", Status: 200 }) == 2, "the tab signs in again with a code of its own");
+        tab.TokenRequests.ShouldContain(request => request.GrantType == "refresh_token" && request.Status == 400);
+        tab.Page.Url.ShouldBe(new Uri(Host.Admin, Route).AbsoluteUri);
+        tab.LoginPagesShown.ShouldBe(1);
         browser.PolicyViolations.ShouldBeEmpty();
     }
 

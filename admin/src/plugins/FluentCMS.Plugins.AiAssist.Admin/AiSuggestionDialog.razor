@@ -1,4 +1,5 @@
-@* The panel of one suggestion (spec 5.5). Alt text asks for the image first when the entry has several. The suggestion streams in as the server sends it; the text is not a live region, and the start, the end
+@* The panel of one suggestion (spec 5.5). Alt text asks for the image first when the entry has several, and translate for
+   the locale it writes into. The suggestion streams in as the server sends it; the text is not a live region, and the start, the end
    and a failure are announced once each, politely. Accept is offered only once the stream has ended with its suggestion: a
    refusal, an error within the stream, a stop or a close leave the draft as it was. An alt text for the asset is saved on
    the asset when it is accepted, over the version of the asset it last read: one changed since is read again and shown. *@
@@ -13,7 +14,11 @@
 
 <CmsDialog Title="@Request.Label" Open="@open" OpenChanged="@(value => { if (!value) Close(null); })" OnClosed="Closed" CloseButton="false">
     <ChildContent>
-        @if (step == Step.Choose)
+        @if (step == Step.Choose && AsksForLocale)
+        {
+            <CmsSelect Label="@L["Ai.Panel.TargetLocale"]" Options="@([.. Request.Targets.Select(locale => new CmsOption(locale.Code, locale.Name))])" Value="@target" ValueChanged="@(value => target = Request.Targets.FirstOrDefault(locale => locale.Code == value)?.Code)" />
+        }
+        else if (step == Step.Choose)
         {
             @if (images is null)
             {
@@ -30,7 +35,7 @@
         }
         else
         {
-            <div class="ai-suggestion" aria-busy="@(step == Step.Streaming ? "true" : "false")" lang="@Request.Locale" dir="auto">
+            <div class="ai-suggestion" aria-busy="@(step == Step.Streaming ? "true" : "false")" lang="@(target ?? Request.Locale)" dir="auto">
                 @if (seo is { } meta)
                 {
                     <dl>
@@ -48,6 +53,10 @@
             @if (step == Step.Streaming)
             {
                 <p class="ai-panel-note">@L["Ai.Panel.Writing"]</p>
+            }
+            else if (step == Step.Done && TargetName is { } into)
+            {
+                <p class="ai-panel-note">@L["Ai.Panel.IntoLocale", into]</p>
             }
         }
         @if (problem is { } shown)
@@ -110,20 +119,27 @@
     private bool saving;
     private bool open = true;
     private bool closed;
-    private string? answer;
+    private AiAccepted? answer;
+
+    // The locale translate writes into, once chosen.
+    private string? target;
 
     [Parameter, EditorRequired]
     public AiSuggestionRequest Request { get; set; } = null!;
 
-    // Raised once, with the accepted text or null.
+    // Raised once, with what was accepted or null.
     [Parameter, EditorRequired]
-    public Action<string?> OnDone { get; set; } = null!;
+    public Action<AiAccepted?> OnDone { get; set; } = null!;
 
     private AiApi Ai => new(Api, Events);
 
     private bool AsksForImage => Request.Action == AiActionNames.AltText;
 
-    private bool Chosen => image is not null;
+    private bool AsksForLocale => Request.Action == AiActionNames.Translate;
+
+    private bool Chosen => AsksForLocale ? target is not null : image is not null;
+
+    private string? TargetName => Request.Targets.FirstOrDefault(locale => locale.Code == target)?.Name;
 
     public void Dispose()
     {
@@ -136,6 +152,15 @@
     protected override async Task OnInitializedAsync()
     {
         token = stopping.Token;
+
+        // The user names the locale, which is chosen already when there is one.
+        if (AsksForLocale)
+        {
+            step = Step.Choose;
+            target = Request.Targets.Count == 1 ? Request.Targets[0].Code : null;
+            return;
+        }
+
         if (AsksForImage)
         {
             step = Step.Choose;
@@ -196,7 +221,7 @@
             else if (Read(outcome.Suggestion))
             {
                 step = Step.Done;
-                Announcer.Announce(L["Ai.Panel.Ready"]);
+                Announcer.Announce(TargetName is { } into ? L["Ai.Panel.ReadyTranslation", into] : L["Ai.Panel.Ready"]);
             }
             else
             {
@@ -226,6 +251,7 @@
         Options = Request.Action switch
         {
             AiActionNames.AltText => new AiActionOptions { MediaId = image },
+            AiActionNames.Translate => new AiActionOptions { TargetLocale = target },
             _ => null,
         },
     };
@@ -262,7 +288,7 @@
     {
         if (!Request.ForAsset)
         {
-            Close(text);
+            Close(new AiAccepted(text, target));
             return;
         }
 
@@ -276,7 +302,7 @@
         {
             await Ai.SetAltAsync(asset, text, token);
             Announcer.Announce(L["Ai.Panel.AltSaved", asset.Name]);
-            Close(text);
+            Close(new AiAccepted(text, null));
         }
         catch (Exception failure) when (Stopped(failure))
         {
@@ -328,7 +354,7 @@
 
     // A close stops a stream that runs, which the server then ends as cancelled. The answer goes once the dialog has closed
     // and given focus back to the control that opened it.
-    private void Close(string? accepted)
+    private void Close(AiAccepted? accepted)
     {
         if (!open)
         {

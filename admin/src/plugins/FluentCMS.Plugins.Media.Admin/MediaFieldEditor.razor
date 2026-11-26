@@ -86,7 +86,7 @@
             <span id="@orderHintId" class="cms-visually-hidden">@L["Media.Field.OrderHint"]</span>
         }
     }
-    @if (!ReadOnly && Context.Access.Allows(MediaPermissions.Read))
+    @if (!ReadOnly && Context.Access.AllowsForSomeResources(MediaPermissions.Read))
     {
         <div class="media-field-actions">
             <CmsButton @ref="chooseButton" Icon="CmsIconName.Image" OnClick="PickAsync">@L[Field.Multiple ? "Media.Field.ChooseMany" : "Media.Field.Choose"]</CmsButton>
@@ -143,7 +143,7 @@
     }
 
     // The alt text and focal point are saved on the asset, which the field's own read-only state does not hold back.
-    private bool MayUpdate => !ReadOnly && Context.Access.Allows(MediaPermissions.Update);
+    private bool MayUpdate => !ReadOnly && Context.Access.AllowsForSomeResources(MediaPermissions.Update);
 
     private bool CanOrder => Field.Multiple && !ReadOnly && Ids.Count > 1;
 

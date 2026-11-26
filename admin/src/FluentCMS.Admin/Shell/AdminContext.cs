@@ -328,6 +328,15 @@ internal sealed class AdminContext(
         return [.. ContentLocales.Where(code => !access.TryGetValue(code, out var found) || found.Types.ContainsKey(type))];
     }
 
+    // Whether the user may change the field of the type in the locale. A locale whose access could not be read counts as one
+    // it may, since the form reads the access there again when it shows it, and the server judges the save.
+    public async Task<bool> MayUpdateInAsync(string type, string field, string locale)
+    {
+        var access = await LocaleAccessAsync();
+        return !access.TryGetValue(locale, out var found)
+            || (found.Types.TryGetValue(type, out var typed) && typed.Update && typed.UpdatableFields.Contains(field, StringComparer.Ordinal));
+    }
+
     // The other locales of the site in which the user may read some type, for a locale that shows none.
     public async Task<IReadOnlyList<string>> LocalesWithContentAsync()
     {
@@ -359,8 +368,12 @@ internal sealed class AdminContext(
 
     public bool AllowsForInstance(string permission) => AccessInfo is { } access && access.InstancePermissions.Contains(permission, StringComparer.Ordinal);
 
-    // Whether the user may open an area of core's administration pages: it holds the area's permission, for the instance
-    // when the area is instance-only. A permission with a star, as the settings menu's, is held with any name in its place.
+    public bool AllowsForSomeResources(string permission) =>
+        AccessInfo is { } access && (Holds(access, permission) || access.LimitedPermissions.Contains(permission, StringComparer.Ordinal));
+
+    // Whether the user may open an area of core's administration pages: it holds the area's permission with no limit to
+    // resources, since core's routes refuse a grant limited to them, and for the instance when the area is instance-only.
+    // A permission with a star, as the settings menu's, is held with any name in its place.
     public bool Allows(AdministrationArea area)
     {
         ArgumentNullException.ThrowIfNull(area);
@@ -380,10 +393,11 @@ internal sealed class AdminContext(
         return held.Any(name => name.Length > start.Length + end.Length && name.StartsWith(start, StringComparison.Ordinal) && name.EndsWith(end, StringComparison.Ordinal));
     }
 
-    // Whether the user holds the permission of a page of an admin half, for the instance when the page is instance-only.
-    // A page that names none is open to everyone, but an instance-only one, which has nothing to hold for the instance.
+    // Whether the user holds the permission of a page of an admin half, for the instance when the page is instance-only, and
+    // otherwise in the site for some resources at least: which ones the page's own calls answer, as the media library's
+    // folders. A page that names none is open to everyone, but an instance-only one, which has nothing to hold for the instance.
     public bool Allows(string? permission, bool instanceOnly) =>
-        permission is null ? !instanceOnly : instanceOnly ? AllowsForInstance(permission) : Allows(permission);
+        permission is null ? !instanceOnly : instanceOnly ? AllowsForInstance(permission) : AllowsForSomeResources(permission);
 
     public TypeAccessInfo? ForType(string type) => AccessInfo is { } access && access.Types.TryGetValue(type, out var found) ? found : null;
 

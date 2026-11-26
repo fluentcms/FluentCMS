@@ -1,7 +1,8 @@
 @* The AI usage of the site (spec 5.5), for a caller with ai.usage.read: every call sent to a provider, newest first, in pages,
    filtered by principal, action and days in UTC, as the daily budget counts them, with the totals of all that the filter
    matches, in all and by principal and action. A principal is named as it was at its call; a total by principal names the
-   principal by a name the rows read so far gave it, else by its kind and id. *@
+   principal by a name the rows read so far gave it, else by its kind and id. The server answers the 100 totals by principal
+   and action that used the most tokens, and the page notes when the filter matched more. *@
 @page "/ai/usage"
 @attribute [AdminPage("/ai/usage", Permission = AiActionNames.ReadUsage)]
 @attribute [AdminMenuItem("Ai.Usage.Menu", Section = AdminSection.Administration, Order = 90)]
@@ -63,6 +64,11 @@
                 }
             </tbody>
         </table>
+
+        @if (page.Totals.GroupsTruncated)
+        {
+            <p class="ai-usage-truncated" role="status">@L["Ai.Usage.GroupsTruncated", Number(page.Totals.Groups.Count)]</p>
+        }
 
         <table class="ai-usage-table">
             <caption>@L["Ai.Usage.Calls"]</caption>

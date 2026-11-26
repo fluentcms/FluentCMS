@@ -20,6 +20,14 @@ internal interface IAdminSession
     // Redirects the whole page to the authorize endpoint; after sign-in the admin returns to the route, one of its own.
     Task SignInAsync(string? returnRoute, CancellationToken cancellationToken);
 
+    // As SignInAsync, with prompt=login: the hosted pages show the login page even while their own session holds, so that the
+    // new tokens carry a sign-in of now, which a change that needs a recent sign-in asks for.
+    Task ReauthenticateAsync(string? returnRoute, CancellationToken cancellationToken);
+
+    // Redirects the whole page to the hosted page that changes the password. The next start of the tab, the return from it,
+    // signs in again if its session has ended, even right after its sign-in.
+    Task ChangePasswordAsync(string pageUrl, CancellationToken cancellationToken);
+
     // The callback's parameters, as the authorize endpoint sent them.
     Task<SignInCompletion> CompleteSignInAsync(string? code, string? state, string? error, CancellationToken cancellationToken);
 
@@ -43,10 +51,13 @@ internal enum SignInFailure
 
     // The authorization server could not be reached.
     Unreachable,
+
+    // The browser refused the tab's sessionStorage, which holds the secrets of the sign-in and the session.
+    StorageRefused,
 }
 
 // The server ended the session within AdminSession.RepeatWindow of its sign-in, so the tab does not sign in again on its own;
-// SignInAsync, which the user asks for, does.
+// SignInAsync, which the user asks for, does, and so does the return from ChangePasswordAsync.
 internal sealed class SessionEndedAfterSignInException()
     : Exception("The server ended the session right after the sign-in; the tab waits for the user before it signs in again.");
 

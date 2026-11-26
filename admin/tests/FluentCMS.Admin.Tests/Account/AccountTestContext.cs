@@ -27,9 +27,15 @@ public abstract class AccountTestContext : AdminTestContext
     // The routes the page asked the session to sign in again to come back to.
     protected List<string?> SignIns => ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).SignIns;
 
+    // The routes the page asked the session to sign in again to on the login page, to come back to.
+    protected List<string?> Reauthentications => ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).Reauthentications;
+
+    // The addresses the page asked the session to leave for to change the password.
+    protected List<string> PasswordChanges => ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).PasswordChanges;
+
     // The authorization server cannot be reached when the page signs in again.
-    protected void FailSignIn() =>
-        ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).SignInError = new HttpRequestException("The authorization server did not answer.");
+    protected void FailSignIn(Exception? failure = null) =>
+        ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).SignInError = failure ?? new HttpRequestException("The authorization server did not answer.");
 
     protected static List<string> Names(IElement section) =>
         [.. section.QuerySelectorAll(".account-item-name").Select(name => name.TextContent.Trim())];
@@ -64,7 +70,8 @@ public abstract class AccountTestContext : AdminTestContext
         focused.Id.ShouldBe(expected.Id);
     }
 
-    protected IRenderedComponent<AdminApp> Load(string route = AccountPage.Route, string configuration = ValidConfiguration)
+    // Five cards, and a sixth for the consents to MCP clients where the plugin answers.
+    protected IRenderedComponent<AdminApp> Load(string route = AccountPage.Route, string configuration = ValidConfiguration, int cards = 5)
     {
         Services.AddScoped<IAdminAssemblyLoader>(_ => Loader);
         Start(configuration);
@@ -72,7 +79,7 @@ public abstract class AccountTestContext : AdminTestContext
         var app = Render<AdminApp>();
         app.WaitForAssertion(() =>
         {
-            app.FindAll("section.cms-card").Count.ShouldBe(5);
+            app.FindAll("section.cms-card").Count.ShouldBe(cards);
             app.FindAll("section.cms-card [role=status]").ShouldBeEmpty();
         });
         return app;

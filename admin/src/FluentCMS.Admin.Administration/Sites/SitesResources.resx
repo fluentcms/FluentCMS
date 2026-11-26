@@ -147,6 +147,18 @@
   <data name="Sites.Locales.HasEntries" xml:space="preserve">
     <value>The site has entries in {0}, so it stays. Disable it instead, or delete its entries first.</value>
   </data>
+  <data name="Sites.Locales.IsFallback" xml:space="preserve">
+    <value>{0} stays, since other locales name it as a fallback. Take it out of their fallbacks first.</value>
+  </data>
+  <data name="Sites.Locales.IsFallbackOfOne" xml:space="preserve">
+    <value>{0} stays, since {1} names it as a fallback. Take {0} out of the fallbacks of {1} first.</value>
+  </data>
+  <data name="Sites.Locales.IsFallbackOfMany" xml:space="preserve">
+    <value>{0} stays, since the locales {1} name it as a fallback. Take {0} out of their fallbacks first.</value>
+  </data>
+  <data name="Sites.Locales.Blocks" xml:space="preserve">
+    <value>Keeps {0} from being removed</value>
+  </data>
   <data name="Sites.Locales.Gone" xml:space="preserve">
     <value>The site no longer has the locale {0}.</value>
   </data>

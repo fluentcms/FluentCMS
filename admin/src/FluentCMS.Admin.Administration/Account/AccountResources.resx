@@ -64,6 +64,72 @@
   <data name="Account.Sessions.ThisTabEnded" xml:space="preserve">
     <value>The sign-in of this tab has ended. The admin signs in again.</value>
   </data>
+  <data name="Account.Consents.Heading" xml:space="preserve">
+    <value>MCP clients you allow</value>
+  </data>
+  <data name="Account.Consents.Explained" xml:space="preserve">
+    <value>These MCP clients count toward the number of clients one account may keep, also one whose consent no longer holds. Ending your consent stops the client's access with your account at once and frees its place; it asks for your consent again if it signs in once more.</value>
+    <comment>What the list is and what ending a consent does.</comment>
+  </data>
+  <data name="Account.Consents.None" xml:space="preserve">
+    <value>You allow no MCP client.</value>
+  </data>
+  <data name="Account.Consents.Active" xml:space="preserve">
+    <value>Your consent holds, given {0}</value>
+    <comment>{0} is the date and time of the consent.</comment>
+  </data>
+  <data name="Account.Consents.ActiveUndated" xml:space="preserve">
+    <value>Your consent holds</value>
+  </data>
+  <data name="Account.Consents.Inactive" xml:space="preserve">
+    <value>Your consent no longer holds, given {0}; the client still counts</value>
+    <comment>{0} is the date and time of the consent, which its session or a change of password has ended.</comment>
+  </data>
+  <data name="Account.Consents.InactiveUndated" xml:space="preserve">
+    <value>No consent of yours holds; the client still counts</value>
+  </data>
+  <data name="Account.Consents.End" xml:space="preserve">
+    <value>End consent</value>
+  </data>
+  <data name="Account.Consents.EndWhich" xml:space="preserve">
+    <value>, to {0}</value>
+    <comment>Read after End consent by assistive technology only; {0} is the client.</comment>
+  </data>
+  <data name="Account.Consents.EndWhichGiven" xml:space="preserve">
+    <value>, to {0} given {1}</value>
+    <comment>Read after End consent by assistive technology only; {0} is the client, {1} the date and time of the consent.</comment>
+  </data>
+  <data name="Account.Consents.ConfirmTitle" xml:space="preserve">
+    <value>End your consent?</value>
+  </data>
+  <data name="Account.Consents.ConfirmText" xml:space="preserve">
+    <value>{0} loses its access with your account at once: its tokens are refused from their next request. Its place among your clients is free again.</value>
+    <comment>{0} is the client.</comment>
+  </data>
+  <data name="Account.Consents.Confirm" xml:space="preserve">
+    <value>End consent</value>
+  </data>
+  <data name="Account.Consents.Keep" xml:space="preserve">
+    <value>Keep it</value>
+  </data>
+  <data name="Account.Consents.Ended" xml:space="preserve">
+    <value>Your consent to {0} is ended.</value>
+  </data>
+  <data name="Account.Consents.Gone" xml:space="preserve">
+    <value>{0} no longer counts toward your clients: it was removed, or your consent was ended already.</value>
+    <comment>For FCMS1603.</comment>
+  </data>
+  <data name="Account.Consents.Changed" xml:space="preserve">
+    <value>{0} changed at the same moment, so its place was not freed. End the consent again.</value>
+    <comment>For FCMS1609.</comment>
+  </data>
+  <data name="Account.Consents.Busy" xml:space="preserve">
+    <value>Other consents are being changed, so nothing was ended. Try again in a moment.</value>
+    <comment>For the 503 of FCMS3106.</comment>
+  </data>
+  <data name="Account.Consents.EndFailed" xml:space="preserve">
+    <value>The consent could not be ended. Try again.</value>
+  </data>
   <data name="Account.TwoFactor.Heading" xml:space="preserve">
     <value>Two-factor sign-in</value>
   </data>
@@ -126,7 +192,13 @@
     <value>Two-factor sign-in is on already.</value>
   </data>
   <data name="Account.TwoFactor.SignInAgainFirst" xml:space="preserve">
-    <value>Setting up two-factor sign-in needs a recent sign-in, and yours is more than a few minutes old. Sign out, sign in again, then set it up.</value>
+    <value>Setting up two-factor sign-in needs a recent sign-in, and yours is more than a few minutes old. Sign in again, and the setup goes on here.</value>
+  </data>
+  <data name="Account.TwoFactor.SignInAgain" xml:space="preserve">
+    <value>Sign in again</value>
+  </data>
+  <data name="Account.TwoFactor.SignInAgainFailed" xml:space="preserve">
+    <value>The sign-in server could not be reached, so you are still signed in as before. Try again in a moment.</value>
   </data>
   <data name="Account.TwoFactor.Changed" xml:space="preserve">
     <value>Two-factor sign-in was changed meanwhile, so nothing was done. Its status is shown again.</value>

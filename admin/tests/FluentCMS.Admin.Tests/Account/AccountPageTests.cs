@@ -239,6 +239,11 @@ public sealed class AccountPageTests : AccountTestContext
         link.GetAttribute("href").ShouldBe("http://localhost/account/change-password?ReturnUrl=%2Faccount");
         link.HasAttribute("target").ShouldBeFalse();
         password.TextContent.ShouldContain("brings you back here");
+
+        link.Click();
+
+        PasswordChanges.ShouldBe(["http://localhost/account/change-password?ReturnUrl=%2Faccount"]);
+        SignIns.ShouldBeEmpty();
     }
 
     [Fact]

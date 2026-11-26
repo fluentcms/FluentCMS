@@ -155,14 +155,15 @@ public sealed class FieldActionContext
 /// <summary>What a form does with a field's value after a <see cref="FieldActionBase"/> has run.</summary>
 public sealed class FieldActionResult
 {
-    private FieldActionResult(bool replaces, JsonNode? value)
+    private FieldActionResult(bool replaces, JsonNode? value, string? locale)
     {
         Replaces = replaces;
         Value = value;
+        Locale = locale;
     }
 
     /// <summary>Gets the result that leaves the value as it is.</summary>
-    public static FieldActionResult Unchanged { get; } = new(false, null);
+    public static FieldActionResult Unchanged { get; } = new(false, null, null);
 
     /// <summary>Gets whether the form takes <see cref="Value"/> as the field's value.</summary>
     public bool Replaces { get; }
@@ -170,8 +171,27 @@ public sealed class FieldActionResult
     /// <summary>Gets the new value of the field, when <see cref="Replaces"/> is set.</summary>
     public JsonNode? Value { get; }
 
+    /// <summary>
+    /// Gets the content locale whose draft takes <see cref="Value"/>, or <see langword="null"/> for the locale the form shows.
+    /// </summary>
+    public string? Locale { get; }
+
     /// <summary>The result that puts a value into the form's draft.</summary>
     /// <param name="value">The new value, a node of no document, or <see langword="null"/> to clear the field.</param>
     /// <returns>The result.</returns>
-    public static FieldActionResult Replace(JsonNode? value) => new(true, value);
+    public static FieldActionResult Replace(JsonNode? value) => new(true, value, null);
+
+    /// <summary>
+    /// The result that puts a value into the field of another locale of the entry: the form moves to that locale, asking
+    /// first when it has unsaved changes, and holds the value there as an unsaved change. The locale the form showed keeps
+    /// its value.
+    /// </summary>
+    /// <param name="locale">An enabled locale of the site other than the one the form shows.</param>
+    /// <param name="value">The new value, a node of no document, or <see langword="null"/> to clear the field.</param>
+    /// <returns>The result.</returns>
+    public static FieldActionResult ReplaceIn(string locale, JsonNode? value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(locale);
+        return new(true, value, locale);
+    }
 }

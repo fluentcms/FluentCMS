@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.Storage;
 using FluentCMS.Hooks;
 using FluentCMS.Publishing;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,19 +12,18 @@ namespace FluentCMS.Data.Tests.Content;
 
 // #3265: the fields of a localized type that no locale owns. A write that moves them, or adds a locale, moves the version of
 // every other locale, so a client that read one of them before is refused. A write of another locale is made to land inside
-// a write here, between its read and its swaps, by a hook that runs it in the same scope and transaction.
+// a write here, between its read and its swaps, by a hook that runs it as another request, committed before the hook returns.
+// A write of the hook's own scope would be the hook's, which a save answers FCMS2405 (#3568).
 public sealed class SharedFieldTests
 {
     private static ContentDocument Titled(string title) => new() { ["title"] = title };
 
-    // What runs once, inside the first write of the locale it waits for, as the operation of another locale.
+    // What another request commits once, inside the first write of the locale it waits for.
     private sealed class Crossing
     {
         public string? When { get; set; }
 
-        public Func<IServiceProvider, Task>? Run { get; set; }
-
-        public string As { get; set; } = "en";
+        public Func<Task>? Run { get; set; }
     }
 
     private sealed class CrossingHook(IServiceProvider services, Crossing crossing) : IBeforeUpdateHook<ContentDocument>
@@ -36,17 +36,7 @@ public sealed class SharedFieldTests
             }
 
             crossing.Run = null;
-            var accessor = services.GetRequiredService<IOperationContextAccessor>();
-            var outer = accessor.Current!;
-            accessor.Current = outer with { Locale = crossing.As };
-            try
-            {
-                await run(services);
-            }
-            finally
-            {
-                accessor.Current = outer;
-            }
+            await RowLocks.CommittedMeanwhileAsync(services.GetRequiredService<CmsDbContext>(), run);
         }
     }
 
@@ -55,8 +45,6 @@ public sealed class SharedFieldTests
         cms.Services.AddSingleton(crossing);
         cms.Services.AddScoped<IBeforeUpdateHook<ContentDocument>, CrossingHook>();
     });
-
-    private static IContentService Content(IServiceProvider services) => services.GetRequiredService<IContentService>();
 
     // English at version 2, since adding French moved it, and French at version 1.
     private static async Task<Guid> EnglishAndFrenchAsync(ServiceDatabase database)
@@ -84,10 +72,10 @@ public sealed class SharedFieldTests
     [Fact]
     public async Task AddingALocaleCannotWriteBackASharedValueChangedSinceItsRead()
     {
-        var crossing = new Crossing { When = "fr", As = "en" };
+        var crossing = new Crossing { When = "fr" };
         using var database = WithCrossing(crossing);
         var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Hello", ["views"] = 1 }));
-        crossing.Run = services => Content(services).PatchAsync("article", id, new() { ["views"] = 7 }, 1, Token);
+        crossing.Run = () => database.PatchAsync(Editor, id, new() { ["views"] = 7 }, 1);
 
         var conflict = await Should.ThrowAsync<VersionConflictException>(() => database.UpdateAsync(Editor, id, new() { ["title"] = "Bonjour", ["views"] = 1 }, 0, locale: "fr"));
 
@@ -102,10 +90,10 @@ public sealed class SharedFieldTests
     [Fact]
     public async Task AddingALocaleThatLostToAnAddOfThatLocaleNamesTheVersionTheWinnerGaveIt()
     {
-        var crossing = new Crossing { When = "fr", As = "fr" };
+        var crossing = new Crossing { When = "fr" };
         using var database = WithCrossing(crossing);
         var id = IdOf(await database.CreateAsync(Editor, Titled("Hello")));
-        crossing.Run = services => Content(services).UpdateAsync("article", id, Titled("Salut"), 0, Token);
+        crossing.Run = () => database.UpdateAsync(Editor, id, Titled("Salut"), 0, locale: "fr");
 
         var conflict = await Should.ThrowAsync<VersionConflictException>(() => database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr"));
 
@@ -119,10 +107,10 @@ public sealed class SharedFieldTests
     [Fact]
     public async Task ASharedChangeThatLostAtTheSwapOfAnotherLocaleNamesTheVersionOfItsOwn()
     {
-        var crossing = new Crossing { When = "fr", As = "en" };
+        var crossing = new Crossing { When = "fr" };
         using var database = WithCrossing(crossing);
         var id = await EnglishAndFrenchAsync(database);
-        crossing.Run = services => Content(services).PatchAsync("article", id, new() { ["views"] = 7 }, 2, Token);
+        crossing.Run = () => database.PatchAsync(Editor, id, new() { ["views"] = 7 }, 2);
 
         var conflict = await Should.ThrowAsync<VersionConflictException>(() => database.PatchAsync(Editor, id, new() { ["views"] = 9 }, 1, locale: "fr"));
 
@@ -136,10 +124,10 @@ public sealed class SharedFieldTests
     [Fact]
     public async Task ASharedChangeThatMissedALocaleAddedSinceItsReadConflicts()
     {
-        var crossing = new Crossing { When = "en", As = "fr" };
+        var crossing = new Crossing { When = "en" };
         using var database = WithCrossing(crossing);
         var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Hello", ["views"] = 1 }));
-        crossing.Run = services => Content(services).UpdateAsync("article", id, Titled("Bonjour"), 0, Token);
+        crossing.Run = () => database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
 
         var conflict = await Should.ThrowAsync<VersionConflictException>(() => database.PatchAsync(Editor, id, new() { ["views"] = 5 }, 1));
 
@@ -151,11 +139,11 @@ public sealed class SharedFieldTests
     [Fact]
     public async Task ASharedChangeIsRefusedWhenAnotherLocaleMovedSinceItsReadThoughItsOwnVersionHolds()
     {
-        var crossing = new Crossing { When = "en", As = "fr" };
+        var crossing = new Crossing { When = "en" };
         using var database = WithCrossing(crossing);
         var id = await EnglishAndFrenchAsync(database);
         await database.PublishAsync(Editor, id);
-        crossing.Run = services => Content(services).PatchAsync("article", id, Titled("Salut"), 1, Token);
+        crossing.Run = () => database.PatchAsync(Editor, id, Titled("Salut"), 1, locale: "fr");
 
         var conflict = await Should.ThrowAsync<VersionConflictException>(() => database.PatchAsync(Editor, id, new() { ["views"] = 5 }, 2));
 
@@ -169,10 +157,10 @@ public sealed class SharedFieldTests
     [Fact]
     public async Task APublishOfAnotherLocaleBetweenTheReadAndTheSwapKeepsItsStatus()
     {
-        var crossing = new Crossing { When = "en", As = "en" };
+        var crossing = new Crossing { When = "en" };
         using var database = WithCrossing(crossing);
         var id = await EnglishAndFrenchAsync(database);
-        crossing.Run = services => Content(services).PublishAsync("article", id, new LocaleWriteOptions { Locale = "fr" }, Token);
+        crossing.Run = () => database.PublishAsync(Editor, id, "fr");
 
         await database.PatchAsync(Editor, id, new() { ["views"] = 5 }, 2);
 
@@ -186,11 +174,11 @@ public sealed class SharedFieldTests
     [Fact]
     public async Task AnUnpublishOfAnotherLocaleBetweenTheReadAndTheSwapKeepsItsStatus()
     {
-        var crossing = new Crossing { When = "en", As = "en" };
+        var crossing = new Crossing { When = "en" };
         using var database = WithCrossing(crossing);
         var id = await EnglishAndFrenchAsync(database);
         await database.PublishAsync(Editor, id, "fr");
-        crossing.Run = services => Content(services).UnpublishAsync("article", id, new LocaleOptions { Locale = "fr" }, Token);
+        crossing.Run = () => database.UnpublishAsync(Editor, id, "fr");
 
         await database.PatchAsync(Editor, id, new() { ["views"] = 5 }, 2);
 

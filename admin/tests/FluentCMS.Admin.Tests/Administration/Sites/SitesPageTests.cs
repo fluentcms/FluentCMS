@@ -133,6 +133,64 @@ public sealed class SitesPageTests : SitesTestContext
     }
 
     [Fact]
+    public void ALocaleAnotherNamesAsAFallbackIsKeptTheRowOfThatLocaleSaysSoAndItIsRemovedOnceTakenOutOfTheChain()
+    {
+        AddLocale("fr", 1, []);
+        AddLocale("fr-CA", 2, ["fr"]);
+        var app = Load("sites");
+        app.WaitForAssertion(() => Rows(app).Length.ShouldBe(3));
+
+        Button(Section(app, "Locales"), "Remove the locale fr").Click();
+
+        app.WaitForAssertion(() => Message(Section(app, "Locales")).ShouldBe("fr stays, since fr-CA names it as a fallback. Take fr out of the fallbacks of fr-CA first."));
+        Marks(app).ShouldBe([("fr-CA", "Keeps fr from being removed")]);
+        Rows(app).Length.ShouldBe(3);
+        Management.Count("me/sites").ShouldBe(1);
+
+        Button(Section(app, "Locales"), "Change the fallbacks of fr-CA").Click();
+        var locales = Section(app, "Locales");
+        Field(locales, "Fallbacks of fr-CA").Input("en");
+        locales.QuerySelector("form")!.Submit();
+        app.WaitForAssertion(() => Rows(app)[2][3].ShouldBe("en"));
+        Marks(app).ShouldBeEmpty();
+
+        Button(Section(app, "Locales"), "Remove the locale fr").Click();
+        app.WaitForAssertion(() => Message(Section(app, "Locales")).ShouldBe("fr is removed."));
+        Rows(app).Select(row => row[0]).ShouldBe(["en", "fr-CA"]);
+    }
+
+    [Fact]
+    public void ALocaleTwoOthersNameAsAFallbackNamesBothAndMarksTheirRows()
+    {
+        AddLocale("fr", 1, []);
+        AddLocale("fr-CA", 2, ["fr"]);
+        AddLocale("de", 3, ["en"]);
+        AddLocale("fr-CH", 4, ["de", "fr"]);
+        var app = Load("sites");
+        app.WaitForAssertion(() => Rows(app).Length.ShouldBe(5));
+
+        Button(Section(app, "Locales"), "Remove the locale fr").Click();
+
+        app.WaitForAssertion(() => Message(Section(app, "Locales")).ShouldBe("fr stays, since the locales fr-CA, fr-CH name it as a fallback. Take fr out of their fallbacks first."));
+        Marks(app).ShouldBe([("fr-CA", "Keeps fr from being removed"), ("fr-CH", "Keeps fr from being removed")]);
+        Rows(app).Length.ShouldBe(5);
+    }
+
+    [Fact]
+    public void ARefusalAsAFallbackWithoutTheNamingLocalesStillSaysWhy()
+    {
+        AddLocale("fr", 1);
+        Management.Answer = (method, path) => method == HttpMethod.Delete && path == $"sites/{MainSite:D}/locales/fr" ? Problem(HttpStatusCode.Conflict, "FCMS3143") : null;
+        var app = Load("sites");
+        app.WaitForAssertion(() => Rows(app).Length.ShouldBe(2));
+
+        Button(Section(app, "Locales"), "Remove the locale fr").Click();
+
+        app.WaitForAssertion(() => Message(Section(app, "Locales")).ShouldBe("fr stays, since other locales name it as a fallback. Take it out of their fallbacks first."));
+        Marks(app).ShouldBeEmpty();
+    }
+
+    [Fact]
     public void MovingALocaleUpGivesEachLocaleItsPlace()
     {
         AddLocale("fr", 1);
@@ -211,4 +269,9 @@ public sealed class SitesPageTests : SitesTestContext
         app.WaitForAssertion(() => Context.AccessCurrent.ShouldBeTrue());
         Heading(app).ShouldBe("Sites and locales");
     }
+
+    // The rows that say they keep a locale from being removed, by their code, with what they say.
+    private static (string Code, string Text)[] Marks(IRenderedComponent<AdminApp> app) =>
+        [.. app.FindAll("table.sites-locales tbody tr").Where(row => row.QuerySelector(".sites-blocking") is not null)
+            .Select(row => (row.Children[0].TextContent.Trim(), row.QuerySelector(".sites-blocking")!.TextContent.Trim()))];
 }

@@ -5,8 +5,8 @@ using FluentCMS.Admin.Api;
 namespace FluentCMS.Admin.Content;
 
 // A list read with locale=all answers each entry as { "id", "locales": { code: entry } } (backend 4.6). A row shows the entry
-// in the content locale, which the engine matched and sorted by, or else in the first locale of the site it has; the badges
-// show every locale.
+// in the content locale, or else in the first locale of the site it has, which is the row the engine listed it by while the
+// content locale is the site's default; the badges show every locale.
 internal static class EveryLocaleRows
 {
     public static (IReadOnlyList<ContentEntry> Rows, IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, ContentEntry>> Locales) Read(

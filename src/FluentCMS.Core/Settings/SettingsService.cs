@@ -304,9 +304,26 @@ internal sealed class SettingsService(
     private string Checked(SettingsDescriptor descriptor, string json)
     {
         var canonical = descriptor.Canonicalize(json);
-        List<ValidationError> errors = [.. checks.Where(check => check.Area == descriptor.Area).SelectMany(check => check.Check(descriptor.Read(canonical)))];
+        List<ValidationError> errors =
+        [
+            .. LookingProtected(descriptor, canonical),
+            .. checks.Where(check => check.Area == descriptor.Area).SelectMany(check => check.Check(descriptor.Read(canonical))),
+        ];
         return errors.Count > 0 ? throw new ValidationException(errors) : canonical;
     }
+
+    // Only a protected secret is stored with the prefix, so a string with it under any other key would read as one in the row
+    // and be named by settings reprotect on every run.
+    private static IEnumerable<ValidationError> LookingProtected(SettingsDescriptor descriptor, string canonical) =>
+        JsonNode.Parse(canonical, documentOptions: new JsonDocumentOptions { MaxDepth = SettingsJson.MaxDepth })!.AsObject()
+            .Where(property => !descriptor.SecretKeys.Contains(property.Key)
+                && property.Value is JsonValue value
+                && value.TryGetValue<string>(out var text)
+                && text.StartsWith(SettingsProtection.Prefix, StringComparison.Ordinal))
+            .Select(property => new ValidationError(
+                property.Key,
+                SettingsErrorCodes.InvalidValue,
+                $"The settings area '{descriptor.Area}' does not accept a value of '{property.Key}' that starts with '{SettingsProtection.Prefix}', which marks a protected secret."));
 
     private ResolvedSetting? Pick(SettingsDescriptor descriptor, SettingRow? row, SettingsSource source, int version, Guid scope)
     {

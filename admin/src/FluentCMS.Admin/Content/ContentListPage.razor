@@ -319,8 +319,9 @@ else if (view is { } shownView)
     }
 
     // Each locale's status needs every locale of the entries, so a localized type in a site of several locales is read with
-    // locale=all while its status is shown. The engine then matches, sorts and searches in the site's default locale, so only
-    // while that is the content locale; another content locale reads its own, and the status in each other locale after it.
+    // locale=all while its status is shown. The engine then lists each entry once by its row in the first locale the caller may
+    // read, which is the content locale only while that is the site's default; another content locale reads its own, and the
+    // status in each other locale after it.
     private ContentQuery Query(ListView list) =>
         list.Query(shown, sort, page, pageSize, filters, search, everyLocale: EveryLocaleStatus(list) && Context.NamedLocale is null);
 
@@ -631,8 +632,8 @@ else if (view is { } shownView)
 
     // All that match as ids with their labels, in the list's order, one more than a bulk run takes, so that the confirmation
     // can tell a set the limit cut. It pages by the engine's cursor, which goes on after the last row read, so an edit between
-    // two pages neither skips nor repeats an entry. Under locale=all the engine matches in the site's default locale, which is
-    // then the content locale, so the read of that locale alone matches the same entries.
+    // two pages neither skips nor repeats an entry. A list of every locale is read as it is shown, so that an entry without a
+    // row in the default locale is among them.
     private async Task<IReadOnlyList<(Guid Id, string Label)>> ReadMatchingAsync(CancellationToken cancellationToken)
     {
         if (shownQuery is not { } query || Described is not { } type || view is not { } list)
@@ -652,10 +653,10 @@ else if (view is { } shownView)
                 Fields = [.. new[] { "id", list.Label.Name }.Distinct(StringComparer.Ordinal)],
                 Populate = [],
                 WithTotal = false,
-                Locale = query.Locale == ListView.EveryLocale ? null : query.Locale,
             };
             var answer = await Client.ListEntriesAsync(Type, read, cancellationToken);
-            found.AddRange(answer.Items.Take(BulkRunner.MaxEntries + 1 - found.Count).Select(entry => (entry.Id, AdminLabels.Entry(type, entry))));
+            var rows = query.Locale == ListView.EveryLocale ? EveryLocaleRows.Read(answer.Items, Context.ContentLocale, SiteLocales).Rows : answer.Items;
+            found.AddRange(rows.Take(BulkRunner.MaxEntries + 1 - found.Count).Select(entry => (entry.Id, AdminLabels.Entry(type, entry))));
             cursor = answer.NextCursor;
         }
         while (cursor is not null && found.Count <= BulkRunner.MaxEntries);

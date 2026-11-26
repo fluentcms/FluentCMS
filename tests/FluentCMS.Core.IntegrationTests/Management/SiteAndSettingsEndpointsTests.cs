@@ -114,6 +114,20 @@ public sealed class SiteAndSettingsEndpointsTests(AdminFixture fixture) : IClass
     }
 
     [Fact]
+    public async Task AValueThatLooksProtectedUnderAKeyThatIsNoSecretIsRefused()
+    {
+        var read = await fixture.GetAsync("settings/mail");
+
+        var refused = await fixture.PutAsync("settings/mail", """{ "host": "fcms-protected:v1:forged-7713", "port": 587 }""", ifMatch: read.ETag);
+
+        refused.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, refused.Body?.ToJsonString());
+        refused.Json["code"]!.GetValue<string>().ShouldBe("FCMS2805");
+        refused.Json["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("host");
+        refused.Body!.ToJsonString().ShouldNotContain("forged-7713");
+        (await fixture.GetAsync("settings/mail")).ETag.ShouldBe(read.ETag);
+    }
+
+    [Fact]
     public async Task ASiteLimitedGrantChangesTheSiteButNotTheInstanceDefaults()
     {
         var role = await fixture.CreateRoleAsync($$"""

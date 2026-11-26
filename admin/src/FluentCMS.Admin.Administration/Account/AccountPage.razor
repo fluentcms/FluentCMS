@@ -1,10 +1,12 @@
-@* The account page of the signed-in user (spec 4.3, A-09): its sessions, two-factor sign-in, external logins, the hosted page
-   that changes the password, and the preferences. It loads with this assembly on its first visit, as an open route, so that
-   it is not part of the first download (A-41). *@
+@* The account page of the signed-in user (spec 4.3, A-09): its sessions, its consents to MCP clients while the MCP plugin is
+   enabled, two-factor sign-in, external logins, the hosted page that changes the password, and the preferences. It loads
+   with this assembly on its first visit, as an open route, so that it is not part of the first download (A-41). *@
 @page "/account"
 @implements IDisposable
+@using FluentCMS.Admin.Authentication
 @using FluentCMS.Admin.Configuration
 @inject AdminConfiguration Configuration
+@inject IAdminSession Session
 @inject NavigationManager Navigation
 @inject IStringLocalizer<AccountResources> L
 
@@ -13,6 +15,7 @@
     <CascadingValue Value="hold" IsFixed="true">
         <div class="account-cards">
             <AccountSessions />
+            <AccountMcpConsents />
             <AccountTwoFactor />
             <AccountLogins />
             <CmsCard Title="@L["Account.Password.Heading"]">
@@ -23,7 +26,7 @@
                 }
                 else
                 {
-                    <p><a href="@ChangePasswordUrl">@L["Account.Password.Change"]</a></p>
+                    <p><a href="@ChangePasswordUrl" @onclick="ChangePasswordAsync" @onclick:preventDefault>@L["Account.Password.Change"]</a></p>
                 }
             </CmsCard>
             <AccountPreferences />
@@ -49,6 +52,10 @@
     private string ChangePasswordUrl => ReturnsHere
         ? $"{ChangePasswordPage.AbsoluteUri}?ReturnUrl={Uri.EscapeDataString(Here.AbsolutePath)}"
         : ChangePasswordPage.AbsoluteUri;
+
+    // Through the session, which marks the tab first: the change ends the user's sessions, this tab's with them, and the
+    // return signs in again however young the sign-in is.
+    private Task ChangePasswordAsync() => Session.ChangePasswordAsync(ChangePasswordUrl, CancellationToken.None);
 
     protected override void OnInitialized() => hold.Changed += OnHoldChanged;
 

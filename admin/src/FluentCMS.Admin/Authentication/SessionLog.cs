@@ -25,4 +25,7 @@ internal static partial class SessionLog
 
     [LoggerMessage(EventId = 15, EventName = "SignInUnavailable", Level = LogLevel.Error, Message = "The sign-in could not start.")]
     public static partial void SignInUnavailable(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 17, EventName = "TabStorageRefused", Level = LogLevel.Error, Message = "The sign-in could not start: the browser refused the tab's sessionStorage.")]
+    public static partial void TabStorageRefused(ILogger logger, Exception exception);
 }

@@ -668,6 +668,68 @@ public sealed class AdministrationGateTests : AdministrationTestContext
         Loader.Loads.ShouldBe(1);
     }
 
+    // A grant limited to resources, as one of media folders: the access does not say which, so the half's page and its menu
+    // item show, and the page's own calls answer for each resource.
+    [Fact]
+    public void AHalfsPageShowsToACallerWhoHoldsItsPermissionForSomeResourcesOnly()
+    {
+        UseTheSampleHalfWithItsPermission("media.read");
+        Grant([]);
+        GrantLimited("media.read");
+
+        var app = Load("reviews");
+
+        app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"));
+        Links(app).ShouldBe(["", "reviews"]);
+        Loader.Loads.ShouldBe(1);
+        Context.Allows("media.read").ShouldBeFalse();
+        Context.AllowsForSomeResources("media.read").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void AGrantLimitedToResourcesOpensNoInstanceOnlyPageOfAHalf()
+    {
+        UseTheSampleHalfWithItsPageInstanceOnly();
+        Grant([]);
+        GrantLimited("reviews.notes.manage");
+
+        var app = Load("reviews");
+
+        app.WaitForAssertion(() => Heading(app).ShouldBe("No access"));
+        Links(app).ShouldBe([""]);
+        Loader.Loads.ShouldBe(0);
+    }
+
+    // Core's routes refuse a grant limited to resources, so it opens no area.
+    [Theory]
+    [InlineData("roles", "roles.manage")]
+    [InlineData("api-keys", "apikeys.manage")]
+    [InlineData("settings", "settings.media.manage")]
+    public void AGrantLimitedToResourcesOpensNoArea(string route, string permission)
+    {
+        Grant([]);
+        GrantLimited(permission);
+
+        var app = Load(route);
+
+        app.WaitForAssertion(() => Heading(app).ShouldBe("No access"));
+        Links(app).ShouldBe([""]);
+        Loader.Loads.ShouldBe(0);
+    }
+
+    [Fact]
+    public void WithoutAnyGrantOfItsPermissionAHalfsPageAnswersNoAccess()
+    {
+        UseTheSampleHalfWithItsPermission("media.read");
+        Grant([]);
+
+        var app = Load("reviews");
+
+        app.WaitForAssertion(() => Heading(app).ShouldBe("No access"));
+        Links(app).ShouldBe([""]);
+        Context.AllowsForSomeResources("media.read").ShouldBeFalse();
+    }
+
     [Fact]
     public void TheManifestCheckNamesAPageThatIsInstanceOnlyOnOneSideOnly()
     {
@@ -724,6 +786,27 @@ public sealed class AdministrationGateTests : AdministrationTestContext
             Management.Plugins[site] = [Plugin("reviews", enabled: true)];
         }
     }
+
+    // The sample half, enabled in the main site, with its pages and menu item under another permission.
+    private void UseTheSampleHalfWithItsPermission(string permission)
+    {
+        var sample = AdminPluginManifestJson.Read(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, AdminPluginManifest.FileName)));
+        Services.AddSingleton(new AdminPluginCatalog(
+        [
+            sample with
+            {
+                Pages = [.. sample.Pages.Select(page => page with { Permission = permission })],
+                MenuItems = [.. sample.MenuItems.Select(item => item with { Permission = permission })],
+                Widgets = [],
+            },
+        ],
+        []));
+        Management.Plugins[MainSite] = [Plugin("reviews", enabled: true)];
+    }
+
+    // The permissions the user holds in the main site only through grants limited to resources.
+    private void GrantLimited(params string[] permissions) =>
+        Management.Access[MainSite]["limitedPermissions"] = new System.Text.Json.Nodes.JsonArray([.. permissions.Select(name => (System.Text.Json.Nodes.JsonNode)name)]);
 
     private void UseTheSampleHalfWithItsPageInstanceOnly(string? permission = "reviews.notes.manage")
     {
