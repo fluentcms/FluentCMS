@@ -2,6 +2,8 @@ using System.Net;
 using System.Text.Json;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Authentication;
+using FluentCMS.Admin.Interop;
+using Microsoft.AspNetCore.Components;
 
 namespace FluentCMS.Admin.Administration.Account;
 
@@ -14,6 +16,27 @@ internal static class AccountSignIn
         try
         {
             await session.SignInAsync(AccountPage.Route, CancellationToken.None);
+            return true;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidOperationException or TaskCanceledException)
+        {
+            return false;
+        }
+    }
+
+    // For a change that needs a recent sign-in: the hosted pages show the login page again, and the tab comes back to the
+    // route. False as above. A browser that refuses the tab's storage cannot keep the sign-in's secrets, so the page is loaded
+    // again, and the gate there says so.
+    public static async Task<bool> RecentlyAsync(IAdminSession session, NavigationManager navigation, string returnRoute)
+    {
+        try
+        {
+            await session.ReauthenticateAsync(returnRoute, CancellationToken.None);
+            return true;
+        }
+        catch (TabStorageRefusedException)
+        {
+            navigation.NavigateTo(navigation.BaseUri + AccountPage.Route, forceLoad: true);
             return true;
         }
         catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidOperationException or TaskCanceledException)

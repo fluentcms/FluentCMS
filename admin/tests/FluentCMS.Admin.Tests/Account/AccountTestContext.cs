@@ -27,12 +27,15 @@ public abstract class AccountTestContext : AdminTestContext
     // The routes the page asked the session to sign in again to come back to.
     protected List<string?> SignIns => ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).SignIns;
 
+    // The routes the page asked the session to sign in again to on the login page, to come back to.
+    protected List<string?> Reauthentications => ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).Reauthentications;
+
     // The addresses the page asked the session to leave for to change the password.
     protected List<string> PasswordChanges => ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).PasswordChanges;
 
     // The authorization server cannot be reached when the page signs in again.
-    protected void FailSignIn() =>
-        ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).SignInError = new HttpRequestException("The authorization server did not answer.");
+    protected void FailSignIn(Exception? failure = null) =>
+        ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).SignInError = failure ?? new HttpRequestException("The authorization server did not answer.");
 
     protected static List<string> Names(IElement section) =>
         [.. section.QuerySelectorAll(".account-item-name").Select(name => name.TextContent.Trim())];
