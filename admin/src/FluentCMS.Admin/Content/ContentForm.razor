@@ -33,7 +33,7 @@
 @inject IStringLocalizer<AdminResources> L
 @inject FieldActionOffers FieldOffers
 
-<div class="content-form-layout" data-preview="@(PreviewShown ? (previewWidth == ContentPreview.Full ? "full" : "beside") : null)" data-width="@(PreviewShown ? previewWidth : null)">
+<div class="content-form-layout" data-preview="@(Previewed is not null ? (previewWidth == ContentPreview.Full ? "full" : "beside") : null)" data-width="@(Previewed is not null ? previewWidth : null)">
     <div class="content-form">
         @if (InPanel)
         {
@@ -246,10 +246,10 @@
                 break;
         }
     </div>
-    @if (PreviewShown)
+    @if (Previewed is { } previewed)
     {
-        <ContentPreview @ref="preview" Type="@type!.Name" EntryId="@entryId!.Value" Site="@read!.Site" Locale="@read.Locale" TokenLocale="@PreviewLocale" Version="@read.Entry!.Version" Status="@read.Entry.Status"
-                        Width="@previewWidth" WidthChanged="@(value => previewWidth = value)" OnClose="ClosePreview" />
+        <ContentPreview @ref="preview" Type="@previewed.Type" EntryId="@previewed.EntryId" Site="@previewed.Site" Locale="@previewed.Locale" TokenLocale="@previewed.TokenLocale" Version="@previewed.Version" Status="@previewed.Status"
+                        Width="@previewWidth" WidthChanged="@(value => previewWidth = value)" OnClose="ClosePreviewAsync" />
     }
 </div>
 <CmsDialog Title="@L["Content.Form.Leave.Title"]" Open="@(leaveAnswer is not null)" OpenChanged="@(open => { if (!open) AnswerLeave(false); })">
@@ -419,6 +419,11 @@
     private bool focusPreviewButton;
     private bool focusPreview;
     private string previewWidth = ContentPreview.Phone;
+    // The pane of the entry, site and locale a load reads again, such as the Reload of a conflict or a Try again: it stays
+    // through the read with its page and its token, since a token cannot be revoked (#3470).
+    private PreviewTarget? keptPreview;
+
+    private sealed record PreviewTarget(string Type, Guid EntryId, string? Site, string? Locale, string? TokenLocale, int Version, string? Status);
 
     // The name of the content type, as the route has it.
     [Parameter, EditorRequired]
@@ -503,6 +508,10 @@
     private bool MayPreview => MayShowHistory && Configuration.PreviewEnabled && type!.Previewable != false;
 
     private bool PreviewShown => previewOpen && MayPreview;
+
+    private PreviewTarget? Previewed => !previewOpen ? null
+        : MayPreview ? new(type!.Name, entryId!.Value, read!.Site, read.Locale, PreviewLocale, read.Entry!.Version, read.Entry.Status)
+        : keptPreview;
 
     private string? PreviewLocale => type?.Localized == true ? ContentCode : null;
 
@@ -687,6 +696,10 @@
     private async Task LoadAsync()
     {
         var current = ++generation;
+        var previewed = Previewed;
+        keptPreview = previewed is not null && previewed.Type == Type && previewed.EntryId == (Id ?? (IsSingleton ? entryId : null))
+            && previewed.Site == CurrentSite.Site && string.Equals(previewed.Locale, Locale ?? ContentLocaleSource.Locale, StringComparison.OrdinalIgnoreCase)
+            ? previewed : null;
         StopOffering();
         offering = new CancellationTokenSource();
         tracking?.Dispose();
@@ -709,7 +722,7 @@
 
             if (schema.Types.FirstOrDefault(item => item.Name == Type) is not { } found)
             {
-                (state, localizedType) = (FormState.TypeNotFound, null);
+                (state, localizedType, keptPreview) = (FormState.TypeNotFound, null, null);
                 return;
             }
 
@@ -744,7 +757,7 @@
             }
 
             (type, access, tabs, read, entryId) = (found, Access.ForType(found.Name), ContentFormLayout.Build(found), entry, id);
-            previewOpen &= id is not null && id == previewEntry;
+            (previewOpen, keptPreview) = (previewOpen && id is not null && id == previewEntry, null);
             (locales, readableLocales) = (everyLocale, readableNow);
             tabbed = [.. tabs.Where(tab => tab.Name is not null)];
             (site, locale) = entry is not null ? (entry.Site, entry.Locale) : (CurrentSite.Site, Locale ?? ContentLocaleSource.Locale);
@@ -763,14 +776,15 @@
         }
         catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.NotFound && current == generation)
         {
-            state = FormState.EntryNotFound;
+            (state, keptPreview) = (FormState.EntryNotFound, null);
         }
         catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.Forbidden && current == generation)
         {
-            state = FormState.TypeNotFound;
+            (state, keptPreview) = (FormState.TypeNotFound, null);
         }
         catch (Exception exception) when (IsFailure(exception) && current == generation)
         {
+            // A read that failed keeps the pane, so that Try again needs no token while the one shown lasts.
             state = FormState.Failed;
         }
     }
@@ -954,7 +968,12 @@
     private static bool IsFailure(Exception exception) =>
         exception is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException;
 
-    private void ClosePreview() => (previewOpen, focusPreviewButton) = (false, true);
+    // The toggle is drawn only while the form shows the entry; a pane kept through a read gives focus to the heading.
+    private Task ClosePreviewAsync()
+    {
+        (previewOpen, keptPreview, focusPreviewButton) = (false, null, state == FormState.Ready);
+        return focusPreviewButton ? Task.CompletedTask : FocusHeadingAsync(afterDialog: false);
+    }
 
     private void TogglePreview() => (previewOpen, focusPreview, previewEntry) = (!previewOpen, !previewOpen, entryId);
 
