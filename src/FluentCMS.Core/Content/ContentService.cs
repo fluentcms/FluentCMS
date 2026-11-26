@@ -249,7 +249,12 @@ internal sealed partial class ContentService(
                 await hooks.RunAsync(HookKind.BeforeDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
 
                 // One statement marks every row, in whatever order the database takes them, so each is held first in the lock order.
-                await HoldEveryRowAsync(id, documents, () => TrashConflictAsync(write, id, row), cancellationToken);
+                // A trash that committed while this one waited for them has marked and announced them already.
+                if ((await HoldEveryRowAsync(id, documents, held => TrashConflictAsync(write, id, row, held), cancellationToken)).Any(document => document.DeletedAt is not null))
+                {
+                    throw new EntryNotFoundException(write.Type.Name, id);
+                }
+
                 await store.SetTrashedAsync(id, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken);
                 await hooks.RunAsync(HookKind.AfterDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
 
@@ -274,7 +279,12 @@ internal sealed partial class ContentService(
                 var working = ContentCopy.Of(stored);
                 var locales = LocalesOf(documents);
                 await hooks.RunAsync(HookKind.BeforeRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
-                await HoldEveryRowAsync(id, documents, () => TrashConflictAsync(write, id, row), cancellationToken);
+                // As for a trash, a restore that committed while this one waited for the rows has restored them.
+                if ((await HoldEveryRowAsync(id, documents, held => TrashConflictAsync(write, id, row, held), cancellationToken)).Any(document => document.DeletedAt is null))
+                {
+                    throw new EntryNotFoundException(write.Type.Name, id);
+                }
+
                 await store.SetTrashedAsync(id, null, null, cancellationToken);
                 await hooks.RunAsync(HookKind.AfterRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
 
@@ -1292,11 +1302,13 @@ internal sealed partial class ContentService(
 
     private static string AddedMessage(Document document) => string.Create(CultureInfo.InvariantCulture, $"Added the locale {document.Locale}.");
 
-    private async Task<Exception> TrashConflictAsync(WriteScope write, Guid id, Document row) =>
-        await ConflictAsync(write, id, row.DraftVersion, row.DraftVersion, CancellationToken.None);
+    // The locale added moved the version of this row since the trash read it, so the stored one is that of the holds.
+    private async Task<Exception> TrashConflictAsync(WriteScope write, Guid id, Document row, List<Document> held) =>
+        await ConflictAsync(write, id, row.DraftVersion, held.Find(item => item.Id == row.Id)?.DraftVersion ?? row.DraftVersion, CancellationToken.None);
 
     // A row of the entry that appeared between the read of its rows and their holds (HoldEveryRowAsync). Conflict is what a
-    // client is answered where the write cannot run again, none for a job or an import, whose runner tries again.
+    // client is answered where the write cannot run again. A job and an import have none: the job's attempt fails, which its
+    // runner tries again, and the import reports the item as an error.
     private sealed class EntryRowsAddedException(Exception? conflict) : Exception("A locale was added to the entry while it was written; run it again.")
     {
         public Exception? Conflict { get; } = conflict;
