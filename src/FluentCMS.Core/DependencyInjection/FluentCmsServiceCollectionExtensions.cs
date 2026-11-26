@@ -296,6 +296,7 @@ public static class FluentCmsServiceCollectionExtensions
 
         services.AddFluentCmsOptions(IdempotencyOptions.Section, HostErrorCodes.InvalidOption, builder.Idempotency, idempotency => idempotency.Validate());
         services.AddSingleton<IdempotencyStore>();
+        services.AddScoped<IdempotencyCommits>();
         builder.Jobs.AddJob<IdempotencyRetentionJob, IdempotencyRetentionPayload>(IdempotencyRetentionJob.Type, IdempotencyRetentionJob.AttemptTimeout);
         services.AddHostedService<IdempotencyRetentionScheduleService>();
 

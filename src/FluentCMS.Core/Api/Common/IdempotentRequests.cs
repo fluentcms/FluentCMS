@@ -14,8 +14,8 @@ namespace FluentCMS.Core.Api.Common;
 // that a repeat runs again. The lease of the key is renewed while the request runs, however long it takes, and a request
 // whose key a repeat took over all the same, after renewals failed for a whole lease, is cancelled; one whose work answered
 // first answers what its work answered and keeps nothing. A key removed under its request, past its window, is put back.
-// The answer of work that answered before the client went away is kept also when it goes away while the answer is written,
-// so a retry is answered it.
+// The answer of work that answered before the client went away, or committed a write before it went, is kept also when it
+// goes away while the answer is written, so a retry is answered it.
 internal static class IdempotentRequests
 {
     public const string ReplayedHeader = "Idempotent-Replayed";
@@ -42,6 +42,7 @@ internal static class IdempotentRequests
 
         var claim = start.Claim!;
         var aborted = httpContext.RequestAborted;
+        var commits = httpContext.RequestServices.GetRequiredService<IdempotencyCommits>();
         var lease = store.Hold(claim);
         var lost = lease.Lost;
         StoredResponse response;
@@ -50,26 +51,37 @@ internal static class IdempotentRequests
             try
             {
                 IResult result;
+                bool stands;
 
-                // The work stops when the client goes away, and when a repeat took the key over, so that it never runs beside it.
-                using (var stop = CancellationTokenSource.CreateLinkedTokenSource(aborted, lost))
+                // The work stops when a repeat took the key over, so that it never runs beside it, and when the client goes
+                // away: at once until a write of it commits, and InProgressTimeout later once one has, so that what committed is
+                // answered whole, or with the items a bulk did not run within the bound as not run (#3590).
+                using (var work = store.WorkBound(aborted))
+                using (var stop = CancellationTokenSource.CreateLinkedTokenSource(work.Token, lost))
                 {
                     httpContext.RequestAborted = stop.Token;
+                    commits.Watch(work);
                     try
                     {
                         result = await handler();
                     }
                     finally
                     {
+                        commits.Watch(null);
                         httpContext.RequestAborted = aborted;
                     }
+
+                    stands = work.Stands;
                 }
 
-                // Work whose token the client's going away cancelled before it answered may have been cut short, as a bulk that
-                // reports the rest as not run, so its answer is not kept: the key stays held, as for work that threw.
-                aborted.ThrowIfCancellationRequested();
+                // Work whose client went away before any write of it committed may have been cut short, as a bulk that reports
+                // the rest as not run, so its answer is not kept: the key stays held, as for work that threw.
+                if (!stands)
+                {
+                    throw new OperationCanceledException(aborted);
+                }
 
-                // The work has answered whole, so what it committed stands: a key lost from here on no longer stops the answer,
+                // The work has answered, so what it committed stands: a key lost from here on no longer stops the answer,
                 // and neither does the client going away, so that a retry is answered what the write answered (#3485).
                 response = await CaptureAsync(httpContext, result, store, claim, aborted);
             }
@@ -80,10 +92,9 @@ internal static class IdempotentRequests
         }
         catch (OperationCanceledException) when (aborted.IsCancellationRequested)
         {
-            // The client went away before the work answered, perhaps after it committed or with a part of it done, or the
-            // capture of its answer ran past its bound: the key stays held until its lease runs out, which is renewed for as
-            // long as the work ran, so that a retry never runs it a second time while the first may have succeeded or may
-            // still be running.
+            // The client went away before the work committed anything, or the work or the capture of its answer ran past its
+            // bound: the key stays held until its lease runs out, which is renewed for as long as the work ran, so that a retry
+            // never runs it a second time while the first may have succeeded or may still be running.
             throw;
         }
         catch (OperationCanceledException) when (lost.IsCancellationRequested)

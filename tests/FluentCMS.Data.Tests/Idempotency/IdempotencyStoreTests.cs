@@ -3,6 +3,7 @@ using System.Data.Common;
 using System.Text;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -40,6 +41,8 @@ public sealed class IdempotencyStoreTests : IDisposable
 
     private readonly KeyLogs _logs = new();
 
+    private readonly AfterCommit _afterCommit = new();
+
     private readonly ServiceDatabase _database;
 
     public IdempotencyStoreTests() =>
@@ -47,6 +50,7 @@ public sealed class IdempotencyStoreTests : IDisposable
         {
             cms.Services.AddSingleton<TimeProvider>(_clock);
             cms.Services.AddSingleton<ILoggerProvider>(_logs);
+            cms.Services.AddSingleton<IEntryChangeSink>(_afterCommit);
             cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(_gate));
             cms.Idempotency.Window = TimeSpan.FromHours(24);
             cms.Idempotency.InProgressTimeout = TimeSpan.FromMinutes(5);
@@ -423,11 +427,11 @@ public sealed class IdempotencyStoreTests : IDisposable
         Rows().ShouldHaveSingleItem().ResponseStatus.ShouldBeNull();
     }
 
-    // #3485: a bulk whose client went away while it ran answers 200 with the rest of its items not run, and does not throw.
-    // That answer is of work cut short, so it is not kept: the key stays held until its lease runs out, and a retry then
-    // runs the bulk again, the items not run among them.
+    // #3485: a bulk whose client went away while it ran, before any of its writes committed, answers 200 with the rest of its
+    // items not run, and does not throw. That answer is of work cut short, so it is not kept: the key stays held until its
+    // lease runs out, and a retry then runs the bulk again, the items not run among them.
     [Fact]
-    public async Task ABulkCutShortByItsClientKeepsNothingAndARetryAfterTheLeaseRunsIt()
+    public async Task ABulkCutShortByItsClientBeforeACommitKeepsNothingAndARetryAfterTheLeaseRunsIt()
     {
         List<int> ran = [];
         using var client = new CancellationTokenSource();
@@ -487,6 +491,138 @@ public sealed class IdempotencyStoreTests : IDisposable
         writes.ShouldBe(1);
     }
 
+    // #3590: a client that goes away once a create committed, while the content service reads the entry back, before the
+    // handler returns, does not leave the key held without an answer: the answer of the entry is kept, so a retry with the
+    // key is answered it, replayed, and the entry is written once.
+    [Fact]
+    public async Task ARetryAfterTheClientWentAwayOnceACreateCommittedGetsTheEntryAndWritesNothing()
+    {
+        var runs = 0;
+        using var client = new CancellationTokenSource();
+        _afterCommit.Then = _ => client.CancelAsync();
+        using (var scope = _database.Database.NewScope())
+        {
+            var http = ContentRequest(scope, "key-create", client.Token);
+            await IdempotentRequests.RunAsync(http, async () =>
+            {
+                runs++;
+                var created = await Content(scope).CreateAsync("author", new ContentDocument { ["name"] = "Ada" }, http.RequestAborted);
+                client.IsCancellationRequested.ShouldBeTrue();
+                return Results.Json(new { id = IdOf(created) }, statusCode: StatusCodes.Status201Created);
+            });
+        }
+
+        var row = Rows().ShouldHaveSingleItem();
+        row.ResponseStatus.ShouldBe(StatusCodes.Status201Created);
+        var id = Authors().ShouldHaveSingleItem();
+        row.ResponseBody.ShouldBe($$"""{"id":"{{id}}"}""");
+
+        _afterCommit.Then = null;
+        using var retryScope = _database.Database.NewScope();
+        var retry = ContentRequest(retryScope, "key-create", CancellationToken.None);
+        await ReplaysAsync(retry, row.ResponseBody!, StatusCodes.Status201Created, async () =>
+        {
+            runs++;
+            return Results.Json(await Content(retryScope).CreateAsync("author", new ContentDocument { ["name"] = "Ada" }, retry.RequestAborted));
+        });
+
+        runs.ShouldBe(1);
+        Authors().ShouldHaveSingleItem().ShouldBe(id);
+    }
+
+    // #3590: a bulk whose client went away once its first item committed runs its other items, within InProgressTimeout,
+    // and its whole answer is kept, so a retry with the key is answered it, replayed, and runs nothing.
+    [Fact]
+    public async Task ABulkWhoseClientWentAwayAfterItsFirstCommitRunsTheRestAndARetryGetsItsAnswer()
+    {
+        using var client = new CancellationTokenSource();
+        _afterCommit.Then = _ => client.CancelAsync();
+        using (var scope = _database.Database.NewScope())
+        {
+            var http = ContentRequest(scope, "key-bulk-committed", client.Token);
+            await IdempotentRequests.RunAsync(http, () => ContentBulkAsync(http, scope, "One", "Two", "Three"));
+        }
+
+        Authors().Count.ShouldBe(3);
+        var row = Rows().ShouldHaveSingleItem();
+        row.ResponseStatus.ShouldBe(StatusCodes.Status200OK);
+        row.ResponseBody.ShouldBe("""{"items":["Succeeded","Succeeded","Succeeded"],"cancelled":false}""");
+
+        _afterCommit.Then = null;
+        await RetryBulkAsync("key-bulk-committed", row.ResponseBody!);
+        Authors().Count.ShouldBe(3);
+    }
+
+    // #3590: a bulk that its client left after its first commit, and that is still running when InProgressTimeout has passed
+    // since, stops at its next item and answers the rest as not run; that answer is kept, so a retry is told exactly what ran.
+    [Fact]
+    public async Task ABulkThatRunsPastTheBoundAfterItsClientWentAwayKeepsWhatRanAndTheRestAsNotRun()
+    {
+        using var client = new CancellationTokenSource();
+        var commits = 0;
+        _afterCommit.Then = async _ =>
+        {
+            if (++commits == 1)
+            {
+                await client.CancelAsync();
+            }
+            else
+            {
+                _clock.Advance(TimeSpan.FromMinutes(5));
+            }
+        };
+        using (var scope = _database.Database.NewScope())
+        {
+            var http = ContentRequest(scope, "key-bulk-bound", client.Token);
+            await IdempotentRequests.RunAsync(http, () => ContentBulkAsync(http, scope, "One", "Two", "Three"));
+        }
+
+        Authors().Count.ShouldBe(2);
+        var row = Rows().ShouldHaveSingleItem();
+        row.ResponseStatus.ShouldBe(StatusCodes.Status200OK);
+        row.ResponseBody.ShouldBe("""{"items":["Succeeded","Succeeded","NotRun"],"cancelled":true}""");
+
+        _afterCommit.Then = null;
+        await RetryBulkAsync("key-bulk-bound", row.ResponseBody!);
+        Authors().Count.ShouldBe(2);
+    }
+
+    private async Task RetryBulkAsync(string key, string body)
+    {
+        using var scope = _database.Database.NewScope();
+        var retry = ContentRequest(scope, key, CancellationToken.None);
+        await ReplaysAsync(retry, body, StatusCodes.Status200OK, () => ContentBulkAsync(retry, scope, "One", "Two", "Three"));
+    }
+
+    private static async Task ReplaysAsync(HttpContext http, string body, int status, Func<Task<IResult>> handler)
+    {
+        await (await IdempotentRequests.RunAsync(http, handler)).ExecuteAsync(http);
+        http.Response.StatusCode.ShouldBe(status);
+        http.Response.Headers[IdempotentRequests.ReplayedHeader].ToString().ShouldBe("true");
+        Encoding.UTF8.GetString(((MemoryStream)http.Response.Body).ToArray()).ShouldBe(body);
+    }
+
+    private static async Task<IResult> ContentBulkAsync(HttpContext http, IServiceScope scope, params string[] names)
+    {
+        var request = new BulkRequest { Operation = BulkOperation.Create, Entries = [.. names.Select(name => new ContentDocument { ["name"] = name })] };
+        var result = await Content(scope).BulkAsync("author", request, http.RequestAborted);
+        return Results.Json(new { items = result.Items.Select(item => item.Status.ToString()), cancelled = result.Cancelled });
+    }
+
+    private static IContentService Content(IServiceScope scope) => scope.ServiceProvider.GetRequiredService<IContentService>();
+
+    // A keyed request of the content routes, whose operation the content service reads, as the entry point sets it.
+    private DefaultHttpContext ContentRequest(IServiceScope scope, string key, CancellationToken client)
+    {
+        var http = Request(scope, key);
+        http.RequestAborted = client;
+        scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>().Current =
+            new OperationContext(Editor, Origin.Api, SiteA, "en", "client", "c", _clock.GetUtcNow());
+        return http;
+    }
+
+    private List<Guid> Authors() => _database.Read(context => context.Documents.Where(document => document.Type == "author").Select(document => document.DocumentId).Distinct().ToList());
+
     // Four items, as ContentService.RunBulkAsync runs them: an item after the token was cancelled is not run, and the answer
     // is 200 with every item, whether or not all ran.
     private static async Task<IResult> BulkAsync(HttpContext http, List<int> ran, Func<Task> afterEach)
@@ -506,6 +642,20 @@ public sealed class IdempotencyStoreTests : IDisposable
         }
 
         return Results.Json(new { items = results, cancelled = http.RequestAborted.IsCancellationRequested });
+    }
+
+    // Told of each write the content service committed, before it reads the entry back.
+    private sealed class AfterCommit : IEntryChangeSink
+    {
+        public Func<EntryChange, Task>? Then { get; set; }
+
+        public async ValueTask PublishAsync(EntryChange change, CancellationToken cancellationToken)
+        {
+            if (Then is { } then)
+            {
+                await then(change);
+            }
+        }
     }
 
     // An answer whose client goes away as it begins to be written, once the work has answered.

@@ -6,6 +6,7 @@ using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Content.Validation;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
@@ -59,6 +60,7 @@ internal sealed partial class ContentService(
     TimeProvider time,
     TransferImportMode importMode,
     IServiceScopeFactory scopes,
+    IdempotencyCommits commits,
     ILogger<ContentService> logger) : IContentService
 {
     internal const int DeadlockReruns = 5;
@@ -616,6 +618,9 @@ internal sealed partial class ContentService(
             committed = true;
             _commits++;
             _committed = result as Document;
+
+            // A keyed request goes on from here although its client goes away, so that its answer is kept for a retry.
+            commits.Committed();
         }
         finally
         {
