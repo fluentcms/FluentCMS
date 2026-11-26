@@ -32,6 +32,7 @@ internal static class CommandRegistry
         new ImportCommand(),
         new BackupCommand(),
         new RestoreCommand(),
+        new MediaSanitizeSvgCommand(),
         new OpenApiDocumentCommand(),
     ];
 
