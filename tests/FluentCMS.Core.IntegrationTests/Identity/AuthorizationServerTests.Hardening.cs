@@ -268,7 +268,7 @@ public sealed partial class AuthorizationServerTests
             _ = second.Services;
 
             var stores = new[] { first, second, first, second }.Select(host => host.Services.GetRequiredService<SigningKeyStore>()).ToArray();
-            var keys = await Task.WhenAll(stores.Select(store => Task.Run(() => store.Keys(SigningKey.Signing).Single().KeyId)));
+            var keys = await Task.WhenAll(stores.Select(store => Task.Run(() => store.Read(SigningKey.Uses).Single(key => key.Use == SigningKey.Signing).Id)));
 
             keys.Distinct().ShouldHaveSingleItem();
             SigningKeys(first).Count(key => key.Use == SigningKey.Signing).ShouldBe(1);

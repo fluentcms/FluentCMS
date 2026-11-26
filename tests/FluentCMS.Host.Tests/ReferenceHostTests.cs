@@ -76,6 +76,7 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         insecure.ShouldContain("allowed-hosts-any");
         insecure.ShouldContain("public-origin-unset");
         insecure.ShouldContain("generated-signing-key");
+        insecure.ShouldContain("signing-key-rotation-off");
         insecure.ShouldContain("data-protection-keys-unencrypted");
         insecure.ShouldNotContain("development-email-sender");
         insecure.ShouldNotContain("schema-sync-outside-development");

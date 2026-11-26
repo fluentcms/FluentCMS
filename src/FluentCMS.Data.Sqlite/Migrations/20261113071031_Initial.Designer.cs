@@ -538,6 +538,10 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
+                    b.Property<long>("ActiveFrom")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("active_from");
+
                     b.Property<string>("Algorithm")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -553,6 +557,14 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("protected_key");
 
+                    b.Property<long?>("RetiredAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("retired_at");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("sequence");
+
                     b.Property<string>("Use")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -560,6 +572,10 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasColumnName("use");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Use", "Sequence")
+                        .IsUnique()
+                        .HasDatabaseName("uq_cms_signing_key_use_sequence");
 
                     b.ToTable("cms_signing_key", (string)null);
                 });

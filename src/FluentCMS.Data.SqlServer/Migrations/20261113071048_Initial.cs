@@ -369,9 +369,12 @@ namespace FluentCMS.Data.SqlServer.Migrations
                 {
                     id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     use = table.Column<string>(type: "nvarchar(16)", maxLength: 16, nullable: false),
+                    sequence = table.Column<int>(type: "int", nullable: false),
                     algorithm = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
                     protected_key = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                    created_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    active_from = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    retired_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1200,6 +1203,12 @@ namespace FluentCMS.Data.SqlServer.Migrations
                 columns: new[] { "site_id", "key" },
                 unique: true,
                 filter: "site_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "uq_cms_signing_key_use_sequence",
+                table: "cms_signing_key",
+                columns: new[] { "use", "sequence" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_cms_site_slug",

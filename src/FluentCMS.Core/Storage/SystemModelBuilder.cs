@@ -505,6 +505,11 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         conventions.ConfigureKey(entity.Property(key => key.Id));
         entity.Property(key => key.Use).HasMaxLength(StatusLength);
         entity.Property(key => key.Algorithm).HasMaxLength(AlgorithmLength);
+
+        // Of two instances that make the next key of a use at once, one is let in and the other reads the winner's.
+        entity.HasIndex(key => new { key.Use, key.Sequence })
+            .IsUnique()
+            .HasDatabaseName("uq_cms_signing_key_use_sequence");
     }
 
     private void MapDataProtectionKey(EntityTypeBuilder<DataProtectionKey> entity)
