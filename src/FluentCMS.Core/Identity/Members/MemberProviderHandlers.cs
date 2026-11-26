@@ -1,7 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using AspNet.Security.OAuth.Apple;
 using AspNet.Security.OAuth.GitHub;
 using FluentCMS.Core.DependencyInjection;
 using Microsoft.AspNetCore.Authentication;
@@ -45,41 +44,6 @@ internal sealed class MemberMicrosoftHandler(IOptionsMonitor<MicrosoftAccountOpt
     {
         await base.InitializeEventsAsync();
         Events = MemberProviderRegistration.Chain(Events, new OAuthEvents());
-    }
-}
-
-internal sealed class MemberAppleHandler(IOptionsMonitor<AppleAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder, PublicOrigin origin)
-    : AppleAuthenticationHandler(options, new PackageCategory(logger), encoder)
-{
-    protected override string BuildChallengeUrl(AuthenticationProperties properties, string redirectUri) =>
-        base.BuildChallengeUrl(properties, MemberProviders.Callback(origin, Options.CallbackPath, redirectUri));
-
-    protected override Task<OAuthTokenResponse> ExchangeCodeAsync(OAuthCodeExchangeContext context) =>
-        base.ExchangeCodeAsync(MemberProviders.Callback(origin, Options.CallbackPath, context));
-
-    // The Apple events sign the client secret and validate the id token; both stay the events the handler found.
-    protected override async Task InitializeEventsAsync()
-    {
-        await base.InitializeEventsAsync();
-        var host = Events;
-        var chained = MemberProviderRegistration.Chain(host, new AppleAuthenticationEvents());
-        chained.OnGenerateClientSecret = host.GenerateClientSecret;
-        chained.OnValidateIdToken = host.ValidateIdToken;
-        Events = chained;
-    }
-
-    // A handler's log is named after its type, and the Apple handler writes the tokens of a sign-in to it at Trace.
-    // The log keeps the name of the package's handler, so that a host that turns the FluentCMS categories up for a
-    // diagnosis does not write those tokens, and one category, AspNet.Security.OAuth.Apple, holds all the package says.
-    private sealed class PackageCategory(ILoggerFactory inner) : ILoggerFactory
-    {
-        public ILogger CreateLogger(string categoryName) => inner.CreateLogger(typeof(AppleAuthenticationHandler).FullName!);
-
-        public void AddProvider(ILoggerProvider provider) => inner.AddProvider(provider);
-
-        public void Dispose()
-        {
-        }
     }
 }
 

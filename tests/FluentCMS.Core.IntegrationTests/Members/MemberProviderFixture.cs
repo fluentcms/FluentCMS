@@ -1,4 +1,3 @@
-using AspNet.Security.OAuth.Apple;
 using AspNet.Security.OAuth.GitHub;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.Members;
@@ -25,7 +24,6 @@ public sealed class MemberProviderFixture : IAsyncLifetime
     public const string Google = "google";
     public const string MicrosoftAccount = "microsoft";
     public const string GitHub = "github";
-    public const string Apple = "apple";
 
     // A generic OIDC provider, and one that links a member by an address the provider says is verified.
     public const string Corp = "corp";
@@ -53,14 +51,6 @@ public sealed class MemberProviderFixture : IAsyncLifetime
                 cms.Members.Providers[Google] = new MemberProvider { Type = MemberProviderTypes.Google, ClientId = FakeMemberProviders.GoogleClientId, ClientSecret = providers.ClientSecret };
                 cms.Members.Providers[MicrosoftAccount] = new MemberProvider { Type = MemberProviderTypes.Microsoft, ClientId = FakeMemberProviders.MicrosoftClientId, ClientSecret = providers.ClientSecret };
                 cms.Members.Providers[GitHub] = new MemberProvider { Type = MemberProviderTypes.GitHub, ClientId = FakeMemberProviders.GitHubClientId, ClientSecret = providers.ClientSecret };
-                cms.Members.Providers[Apple] = new MemberProvider
-                {
-                    Type = MemberProviderTypes.Apple,
-                    ClientId = FakeMemberProviders.AppleClientId,
-                    TeamId = FakeMemberProviders.AppleTeamId,
-                    KeyId = FakeMemberProviders.AppleKeyId,
-                    PrivateKey = providers.ApplePrivateKey,
-                };
                 cms.Members.Providers[Corp] = new MemberProvider
                 {
                     Type = MemberProviderTypes.Oidc,
@@ -85,7 +75,6 @@ public sealed class MemberProviderFixture : IAsyncLifetime
                 services.ConfigureAll<GoogleOptions>(options => options.BackchannelHttpHandler = providers.Handler);
                 services.ConfigureAll<MicrosoftAccountOptions>(options => options.BackchannelHttpHandler = providers.Handler);
                 services.ConfigureAll<GitHubAuthenticationOptions>(options => options.BackchannelHttpHandler = providers.Handler);
-                services.ConfigureAll<AppleAuthenticationOptions>(options => options.BackchannelHttpHandler = providers.Handler);
                 services.ConfigureAll<OpenIdConnectOptions>(options => options.BackchannelHttpHandler = oidc.Handler);
             });
 

@@ -5,7 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageVersion Include="AspNet.Security.OAuth.Apple" Version="10.1.0" />
     <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="10.1.0" />
     <PackageVersion Include="AWSSDK.S3" Version="4.0.104.11" />
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.30.1" />

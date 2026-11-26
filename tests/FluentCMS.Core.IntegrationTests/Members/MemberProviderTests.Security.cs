@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Net;
-using AspNet.Security.OAuth.Apple;
 using AspNet.Security.OAuth.GitHub;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
@@ -151,7 +150,7 @@ public sealed partial class MemberProviderTests
         Details(failed)["reason"].ShouldBe(LoginFailureReasons.InvalidCredentials);
 
         // An answer of the provider that another browser asked for: the state is of a sign-in this browser never started.
-        foreach (var provider in new[] { Google, MicrosoftAccount, GitHub, Apple, Corp })
+        foreach (var provider in new[] { Google, MicrosoftAccount, GitHub, Corp })
         {
             var account = FakeAccount.Of(MemberFixture.NewAddress()) with { Addresses = [(MemberFixture.NewAddress(), true, true)] };
             using var victim = new HostedPagesBrowser(fixture.Host, "10.7.10.2");
@@ -178,7 +177,7 @@ public sealed partial class MemberProviderTests
 
         // No code was redeemed for any of them.
         fixture.Providers.TokenRequests.Count.ShouldBe(redeemed);
-        (await MemberFixture.ActivityAsync(fixture.Host, "member.login_failed")).Count(row => row.Ip is "10.7.10.2" or "10.7.10.4").ShouldBe(6);
+        (await MemberFixture.ActivityAsync(fixture.Host, "member.login_failed")).Count(row => row.Ip is "10.7.10.2" or "10.7.10.4").ShouldBe(5);
     }
 
     [Fact]
@@ -238,7 +237,6 @@ public sealed partial class MemberProviderTests
     [InlineData(Google)]
     [InlineData(MicrosoftAccount)]
     [InlineData(GitHub)]
-    [InlineData(Apple)]
     [InlineData(Corp)]
     public async Task TheRedirectUriOfAProviderIsBuiltFromThePublicOriginAndNotFromTheRequest(string provider)
     {
@@ -556,15 +554,13 @@ public sealed partial class MemberProviderTests
         var address = MemberFixture.NewAddress();
         using (var browser = new HostedPagesBrowser(host, "10.7.15.1"))
         {
-            using var apple = await SignInWithAsync(browser, Apple, new FakeAccount("001234." + Guid.NewGuid().ToString("N"), address));
-            (await DecideAsync(browser, apple)).ShouldBe("/");
+            using var corp = await SignInWithAsync(browser, Corp, FakeAccount.Of(address));
+            (await DecideAsync(browser, corp)).ShouldBe("/");
             using var taken = await SignInWithAsync(browser, Google, FakeAccount.Of(address));
             using var refused = await browser.FollowAsync(taken);
             using var denied = await SignInWithAsync(browser, Corp, FakeAccount.Of(MemberFixture.NewAddress()), error: "access_denied");
         }
 
-        var key = string.Concat(fixture.Providers.ApplePrivateKey.Split('\n').Where(line => !line.StartsWith("-----", StringComparison.Ordinal)).Select(line => line.Trim()));
-        var generated = fixture.Providers.TokenRequests.Last(sent => sent.Kind == "apple").ClientSecret.ShouldNotBeNull();
         var lines = logs.Entries;
         lines.ShouldContain(entry => entry.EventId.Id == MemberLog.ProviderMemberCreatedId);
         lines.ShouldContain(entry => entry.EventId.Id == MemberLog.ProviderSignInRefusedId);
@@ -576,8 +572,6 @@ public sealed partial class MemberProviderTests
             var text = entry.Message + string.Join(' ', entry.State.Values) + entry.Exception;
             text.ShouldNotContain(fixture.Providers.ClientSecret);
             text.ShouldNotContain(FakeOidcProvider.ClientSecret);
-            text.ShouldNotContain(key[..40]);
-            text.ShouldNotContain(generated);
             text.ShouldNotContain("ID Token:");
             text.ShouldNotContain("Access Token:");
             if (entry.Category.StartsWith("FluentCMS.Core.Identity.Members", StringComparison.Ordinal))
@@ -585,29 +579,6 @@ public sealed partial class MemberProviderTests
                 text.ShouldNotContain(address);
             }
         }
-
-        // The Apple package writes the client secret it signs and the tokens of a sign-in at Trace, in its own category,
-        // which stays at Information while the host does not name it.
-        lines.ShouldNotContain(entry => entry.Message.Contains(generated, StringComparison.Ordinal) || entry.Message.StartsWith("ID Token:", StringComparison.Ordinal));
-        lines.ShouldNotContain(entry => entry.Category.StartsWith(AppleLogLevel.Category, StringComparison.Ordinal) && entry.Level < LogLevel.Information);
-    }
-
-    [Fact]
-    public async Task AHostThatNamesTheAppleCategoryGetsWhatThePackageWritesThere()
-    {
-        var logs = new LogCapture();
-        await using var host = NewHost(fixture.Providers, fixture.Oidc, fixture.Emails, logs)
-            .WithServices(services => services.AddLogging(logging => logging.AddFilter(AppleLogLevel.Category, LogLevel.Trace)));
-        using (var browser = new HostedPagesBrowser(host, "10.7.15.2"))
-        {
-            using var apple = await SignInWithAsync(browser, Apple, new FakeAccount("001234." + Guid.NewGuid().ToString("N"), MemberFixture.NewAddress()));
-            (await DecideAsync(browser, apple)).ShouldBe("/");
-        }
-
-        var generated = fixture.Providers.TokenRequests.Last(sent => sent.Kind == "apple").ClientSecret.ShouldNotBeNull();
-        var told = logs.Entries.Where(entry => entry.Message.Contains(generated, StringComparison.Ordinal) || entry.Message.StartsWith("ID Token:", StringComparison.Ordinal)).ToList();
-        told.Count.ShouldBeGreaterThanOrEqualTo(2);
-        told.ShouldAllBe(entry => entry.Level == LogLevel.Trace && entry.Category.StartsWith(AppleLogLevel.Category, StringComparison.Ordinal));
     }
 
     // A host's own events on an OpenID Connect provider, as Events or as EventsType, keep FluentCMS's: the login's key from
@@ -694,14 +665,14 @@ public sealed partial class MemberProviderTests
         }
     }
 
-    // A host's own events on a Google, Microsoft, GitHub or Apple provider, as Events, as EventsType or as a delegate set
+    // A host's own events on a Google, Microsoft or GitHub provider, as Events, as EventsType or as a delegate set
     // in a PostConfigure, keep FluentCMS's: the provider's name in the ticket, without which the external login page
     // refuses the sign-in, and the way back to the member login page after a failure, with its row; the host's run after
     // them (#3564).
     [Fact]
     public async Task AHostsOwnEventsOnAnOAuthProviderKeepTheProviderNameAndTheWayBackToTheLoginPage()
     {
-        string[] providers = [Google, MicrosoftAccount, GitHub, Apple];
+        string[] providers = [Google, MicrosoftAccount, GitHub];
         var client = 0;
         foreach (var way in new[] { "Events", "EventsType", "delegate" })
         {
@@ -710,17 +681,15 @@ public sealed partial class MemberProviderTests
             {
                 services.AddSingleton(seen);
                 services.AddTransient<HostOAuthEvents>();
-                services.AddTransient<HostAppleEvents>();
                 SetEvents<GoogleOptions>(services, Google, way, seen);
                 SetEvents<MicrosoftAccountOptions>(services, MicrosoftAccount, way, seen);
                 SetEvents<GitHubAuthenticationOptions>(services, GitHub, way, seen);
-                SetEvents<AppleAuthenticationOptions>(services, Apple, way, seen);
             });
 
             foreach (var provider in providers)
             {
                 var member = await host.CreateMemberAsync(cancellationToken: Token);
-                var account = provider == Apple ? new FakeAccount("001234." + Guid.NewGuid().ToString("N"), MemberFixture.NewAddress()) : FakeAccount.Of(MemberFixture.NewAddress());
+                var account = FakeAccount.Of(MemberFixture.NewAddress());
                 await LinkAsync(host, member.Id, provider, account.Subject);
                 using (var browser = new HostedPagesBrowser(host, $"10.7.16.{++client}"))
                 {
@@ -751,14 +720,13 @@ public sealed partial class MemberProviderTests
         where TOptions : OAuthOptions =>
         services.PostConfigure<TOptions>(MemberProvider.SchemeOf(provider), options =>
         {
-            var apple = options is AppleAuthenticationOptions;
             switch (way)
             {
                 case "Events":
-                    options.Events = apple ? new HostAppleEvents(seen) : new HostOAuthEvents(seen);
+                    options.Events = new HostOAuthEvents(seen);
                     break;
                 case "EventsType":
-                    options.EventsType = apple ? typeof(HostAppleEvents) : typeof(HostOAuthEvents);
+                    options.EventsType = typeof(HostOAuthEvents);
                     break;
                 default:
                     options.Events.OnTicketReceived = seen.TicketReceived;
@@ -788,21 +756,6 @@ public sealed partial class MemberProviderTests
     }
 
     private sealed class HostOAuthEvents(HostSeen seen) : OAuthEvents
-    {
-        public override async Task TicketReceived(TicketReceivedContext context)
-        {
-            await seen.TicketReceived(context);
-            await base.TicketReceived(context);
-        }
-
-        public override async Task RemoteFailure(RemoteFailureContext context)
-        {
-            await seen.RemoteFailure(context);
-            await base.RemoteFailure(context);
-        }
-    }
-
-    private sealed class HostAppleEvents(HostSeen seen) : AppleAuthenticationEvents
     {
         public override async Task TicketReceived(TicketReceivedContext context)
         {
