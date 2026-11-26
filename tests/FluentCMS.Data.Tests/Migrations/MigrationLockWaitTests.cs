@@ -95,19 +95,27 @@ public sealed class MigrationLockWaitTests : IDisposable
             Production,
             GeneratedMigrations.CompileFirst(ArticleSchemas.Titled),
             configure: cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(new ShortLockTimeout())));
-        var held = await HoldAsync(host);
         using var bound = Bound();
+        var held = await HoldAsync(host);
 
-        var start = host.StartAsync(bound.Token);
-
-        // Three times the timeout that EF's own request for the lock has here.
-        if (await Task.WhenAny(start, Task.Delay(TimeSpan.FromSeconds(3), Token)) == start)
+        var start = Task.CompletedTask;
+        try
         {
-            await start;
-        }
+            start = host.StartAsync(bound.Token);
 
-        start.IsCompleted.ShouldBeFalse();
-        await held.DisposeAsync();
+            // Three times the timeout that EF's own request for the lock has here.
+            if (await Task.WhenAny(start, Task.Delay(TimeSpan.FromSeconds(3), Token)) == start)
+            {
+                await start;
+            }
+
+            start.IsCompleted.ShouldBeFalse();
+        }
+        finally
+        {
+            await held.DisposeAsync();
+            await Task.WhenAny(start);
+        }
 
         await start;
 
@@ -136,6 +144,7 @@ public sealed class MigrationLockWaitTests : IDisposable
         using var bound = Bound();
 
         var migrating = migrator.Services.GetRequiredService<MigrationRunner>().MigrateAsync(bound.Token);
+        var start = Task.CompletedTask;
         try
         {
             if (await Task.WhenAny(migrating, ddl.IsOpen.WaitAsync(bound.Token)) == migrating)
@@ -144,7 +153,7 @@ public sealed class MigrationLockWaitTests : IDisposable
             }
 
             ddl.IsOpen.IsCompletedSuccessfully.ShouldBeTrue();
-            var start = second.StartAsync(bound.Token);
+            start = second.StartAsync(bound.Token);
             if (!TestProvider.IsSqlite)
             {
                 await MigrationLockSessions.UntilWaitedForAsync(_database, start, bound.Token);
@@ -165,6 +174,7 @@ public sealed class MigrationLockWaitTests : IDisposable
         {
             ddl.Commit();
             await Task.WhenAny(migrating);
+            await Task.WhenAny(start);
         }
 
         _database.Tables().ShouldContain("cms_media_preset");
@@ -182,22 +192,23 @@ public sealed class MigrationLockWaitTests : IDisposable
         using var bound = Bound();
 
         var held = await HoldAsync(host);
-        var holder = (await MigrationLockSessions.HoldersAsync(_database, bound.Token)).ShouldHaveSingleItem();
-
-        await using var inAnotherDatabase = await HoldAsync(otherHost);
-        await using var ofAnotherKey = MigrationLockSessions.Connect(_database);
-        await ofAnotherKey.OpenAsync(bound.Token);
-        await using (var command = ofAnotherKey.CreateCommand())
-        {
-            command.CommandText = TestProvider.IsPostgreSql
-                ? "SELECT pg_advisory_lock(42)"
-                : "EXEC sp_getapplock @Resource = '__EFMigrationsLockOfAnother', @LockOwner = 'Session', @LockMode = 'Exclusive'";
-            await command.ExecuteNonQueryAsync(bound.Token);
-        }
-
-        var waiting = waiter.Services.GetRequiredService<MigrationRunner>().MigrateAsync(bound.Token);
+        var waiting = Task.CompletedTask;
         try
         {
+            var holder = (await MigrationLockSessions.HoldersAsync(_database, bound.Token)).ShouldHaveSingleItem();
+
+            await using var inAnotherDatabase = await HoldAsync(otherHost);
+            await using var ofAnotherKey = MigrationLockSessions.Connect(_database);
+            await ofAnotherKey.OpenAsync(bound.Token);
+            await using (var command = ofAnotherKey.CreateCommand())
+            {
+                command.CommandText = TestProvider.IsPostgreSql
+                    ? "SELECT pg_advisory_lock(42)"
+                    : "EXEC sp_getapplock @Resource = '__EFMigrationsLockOfAnother', @LockOwner = 'Session', @LockMode = 'Exclusive'";
+                await command.ExecuteNonQueryAsync(bound.Token);
+            }
+
+            waiting = waiter.Services.GetRequiredService<MigrationRunner>().MigrateAsync(bound.Token);
             await MigrationLockSessions.UntilWaitedForAsync(_database, waiting, bound.Token);
 
             (await MigrationLockSessions.HoldersAsync(_database, bound.Token)).ShouldBe([holder]);

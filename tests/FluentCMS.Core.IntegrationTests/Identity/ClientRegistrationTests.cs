@@ -9,6 +9,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Core.IntegrationTests.Api;
 using FluentCMS.Core.Sites;
 using FluentCMS.Sites;
 using FluentCMS.Testing;
@@ -90,6 +91,23 @@ public sealed class ClientRegistrationTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await JsonAsync(response)).GetProperty("error").GetString().ShouldBe("invalid_client_metadata");
+    }
+
+    // No other test refuses a registration, so the one refusal is the only measurement under its policy.
+    [Fact]
+    public async Task ARegistrationPastTheLimitPerHourCountsOnceUnderClientRegistration()
+    {
+        using var counter = new RefusalCounter();
+        await using var host = NewHost(new Policy(McpClientRegistrationMode.Approval, perHour: 1));
+        using var client = host.CreateSecureClient();
+
+        using var allowed = await RegisterAsync(client);
+        using var refused = await RegisterAsync(client);
+
+        allowed.StatusCode.ShouldBe(HttpStatusCode.Created);
+        refused.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        (await JsonAsync(refused)).GetProperty("code").GetString().ShouldBe(LimitErrorCodes.RateLimited);
+        counter.Policies.Count(policy => policy == "client-registration").ShouldBe(1);
     }
 
     [Fact]
@@ -239,11 +257,11 @@ public sealed class ClientRegistrationTests
         return document.RootElement.Clone();
     }
 
-    private sealed class Policy(McpClientRegistrationMode mode) : IMcpClientRegistrationPolicy
+    private sealed class Policy(McpClientRegistrationMode mode, int perHour = 100) : IMcpClientRegistrationPolicy
     {
         public McpClientRegistrationMode Mode { get; set; } = mode;
 
         public ValueTask<McpClientRegistrationPolicy> GetAsync(CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(new McpClientRegistrationPolicy(Mode) { RegistrationsPerHour = 100 });
+            ValueTask.FromResult(new McpClientRegistrationPolicy(Mode) { RegistrationsPerHour = perHour });
     }
 }

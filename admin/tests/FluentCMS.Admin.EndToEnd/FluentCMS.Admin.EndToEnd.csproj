@@ -26,6 +26,12 @@
     <PackageReference Include="System.IO.Abstractions" />
   </ItemGroup>
 
+  <!-- The host's database, which EndToEndHost.LinkLoginAsync writes an external login to: no command or route of the host
+       links one. Its ADO.NET provider comes with the EF Core provider the repository already pins. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="landing.schema.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

@@ -56,9 +56,10 @@ public sealed class LockOrderTests
         return id;
     }
 
-    // A statement that locks that row of cms_document, by its primary key or, as before #3524, by its document id and locale.
+    // A statement that locks that row of cms_document, by its primary key or, as before #3524, by its document id and locale:
+    // an update, or the locking read of a hold on PostgreSQL (#3575).
     private static Func<System.Data.Common.DbCommand, bool> Locks(Document? row) =>
-        command => row is not null && TestProvider.IsUpdateOf(command.CommandText, "cms_document")
+        command => row is not null && (TestProvider.IsUpdateOf(command.CommandText, "cms_document") || TestProvider.IsLockingReadOf(command.CommandText, "cms_document"))
             && (RowLocks.Names(command, row.Id) || (RowLocks.Names(command, row.DocumentId) && RowLocks.Names(command, row.Locale)));
 
     // A publish of French copies the shared row and sets the status of English, which a shared write of English locks before
