@@ -100,6 +100,9 @@ internal sealed class AiAssistService(
     // The media plugin's field type, and the type of a rich text node that shows an asset.
     private const string MediaFieldType = "media";
 
+    // Core stores rich text up to 128 levels deep, past the reader's default of 64; its constant is internal to core.
+    private static readonly JsonDocumentOptions RichTextJson = new() { MaxDepth = 128 };
+
     private const string MediaRead = "media.read";
     private const string MediaUpdate = "media.update";
 
@@ -597,7 +600,7 @@ internal sealed class AiAssistService(
 
     private static bool ShowsMedia(RichText document, Guid mediaId)
     {
-        using var json = JsonDocument.Parse(document.Json);
+        using var json = JsonDocument.Parse(document.Json, RichTextJson);
         return Shows(json.RootElement);
 
         bool Shows(JsonElement node) =>

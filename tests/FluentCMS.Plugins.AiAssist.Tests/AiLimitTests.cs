@@ -101,10 +101,11 @@ public sealed class AiLimitTests : IClassFixture<AiHost>
         (await RefusedAsync(stillOver, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1687");
     }
 
-    // The limit is asked before the draft is read or an image decoded, so a caller over it gets no work done for it: an
-    // entry or an image that is not there is not found only once the caller is under the limit again.
+    // The limit is asked before the text of a draft is read or an image decoded, so a caller over it gets no work done for
+    // it: an entry that is not there is not found only once the caller is under the limit again. altText's checks of the
+    // image and of the entry that refers to it come before the limit, and its image is still not decoded.
     [Fact]
-    public async Task ACallerOverTheLimitIsRefusedBeforeTheDraftIsReadOrAnImageDecoded()
+    public async Task ACallerOverTheLimitIsRefusedBeforeTheTextOfADraftIsReadOrAnImageDecoded()
     {
         var site = await _ai.SiteAsync(settings => (settings.CallsPerMinute, settings.AssetAltText) = (1, true));
         using var admin = await _ai.AdminAsync(site);

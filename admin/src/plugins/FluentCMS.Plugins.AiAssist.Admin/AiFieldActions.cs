@@ -136,7 +136,8 @@ public sealed class SeoAction(IAdminOverlays overlays, IStringLocalizer<AiAssist
 
 // Alt text for one of the images of the entry's media fields, into this text field; the panel asks which when there are several.
 // The server describes only an image that the saved draft refers to in the form's locale, so the images are those of the draft
-// as it was saved, and an entry that is not saved, in that locale or at all, has none.
+// as it was saved, and an entry that is not saved, in that locale or at all, has none. It also asks the right to update the
+// image, so a caller to whom GET /ai/fields answers no assets, such as the built-in Author, has none either.
 [FieldAction(AiActionNames.AltText, FieldTypes = [AiActionNames.Text, AiActionNames.LongText], Permission = AiActionNames.Use, FieldsFrom = AiActionNames.OptedInFields)]
 public sealed class AltTextAction(IAdminOverlays overlays, IStringLocalizer<AiAssistResources> texts, IManagementApi api) : AiFieldAction(overlays, texts)
 {
@@ -155,7 +156,9 @@ public sealed class AltTextAction(IAdminOverlays overlays, IStringLocalizer<AiAs
     private async Task<IReadOnlyList<Guid>> ImagesAsync(FieldActionContext context, CancellationToken cancellationToken)
     {
         var fields = context.Type.Fields.Where(field => field.Type == AiActionNames.Media).Select(field => field.Name).ToList();
-        if (context.EntryId is not { } id || fields.Count == 0 || await new AiApi(api).DraftAsync(context.Type.Name, id, fields, context.ContentLocale, cancellationToken) is not { } draft)
+        var ai = new AiApi(api);
+        if (context.EntryId is not { } id || fields.Count == 0 || !await ai.AssetsAsync(cancellationToken)
+            || await ai.DraftAsync(context.Type.Name, id, fields, context.ContentLocale, cancellationToken) is not { } draft)
         {
             return [];
         }

@@ -146,7 +146,7 @@ public sealed class AiSuggestionTests : AiTestContext
         var document = new JsonObject { ["title"] = "", ["hero"] = unsaved.ToString("D"), ["gallery"] = new JsonArray(photo.ToString("D"), paper.ToString("D")) };
         var action = new AltTextAction(Overlays, Texts, Server);
         (await action.AppliesToAsync(Context("title", document, entryId: entry), Token)).ShouldBeTrue();
-        var draftRead = Server.Requests.ShouldHaveSingleItem();
+        var draftRead = Server.Requests.Single(request => request.Path.StartsWith("content/", StringComparison.Ordinal));
         (draftRead.Path, draftRead.Locale).ShouldBe(($"content/article/{entry:D}?fallback=none&fields=hero,gallery", "en"));
 
         var (result, panel) = Run(action, Context("title", document, entryId: entry));
@@ -181,6 +181,21 @@ public sealed class AiSuggestionTests : AiTestContext
         (await action.AppliesToAsync(Context("title", document, locale: "fr", entryId: entry), Token)).ShouldBeFalse();
         (await action.AppliesToAsync(Context("title", document, entryId: bare), Token)).ShouldBeFalse();
         (await action.AppliesToAsync(Context("title", document, entryId: entry), Token)).ShouldBeTrue();
+    }
+
+    // The server asks the right to update the image, so a caller without media.update, as the built-in Author, to whom
+    // GET /ai/fields answers no assets, is not offered the action, and its draft is not read.
+    [Fact]
+    public async Task AltTextIsNotOfferedToACallerWhoMayNotUpdateImages()
+    {
+        var hero = Server.AddImage("hero.png");
+        var entry = Guid.CreateVersion7();
+        Server.Drafts[(entry, "en")] = new JsonObject { ["id"] = entry, ["hero"] = Read(hero), ["gallery"] = new JsonArray() };
+        Server.MayDescribeAssets = false;
+
+        (await new AltTextAction(Overlays, Texts, Server).AppliesToAsync(Context("title", new JsonObject { ["title"] = "Ships", ["hero"] = hero.ToString("D") }, entryId: entry), Token)).ShouldBeFalse();
+
+        Server.Requests.Select(request => request.Path).ShouldBe(["ai/fields"]);
     }
 
     // A media field as a read gives it.

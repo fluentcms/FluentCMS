@@ -167,7 +167,8 @@ internal sealed record AiRequest(HttpMethod Method, string Path, JsonNode? Body,
 
 // The AI and media routes as the server answers them. An action's events are what a test writes to Events, one at a time,
 // or a problem the test sets before the first; GET /ai/usage answers Usage; media assets are read and their alt text saved;
-// and an entry's saved draft is read in a locale from Drafts, a 404 where it holds none.
+// GET /ai/fields answers MayDescribeAssets as assets; and an entry's saved draft is read in a locale from Drafts, a 404 where
+// it holds none.
 internal sealed class FakeAiServer : IManagementApi, IManagementEvents
 {
     public List<AiRequest> Requests { get; } = [];
@@ -183,6 +184,9 @@ internal sealed class FakeAiServer : IManagementApi, IManagementEvents
     public Dictionary<Guid, JsonObject> Assets { get; } = [];
 
     public Dictionary<(Guid Id, string? Locale), JsonObject> Drafts { get; } = [];
+
+    // What GET /ai/fields answers as assets: whether the caller may send images of the library for alt text.
+    public bool MayDescribeAssets { get; set; } = true;
 
     public JsonObject Usage { get; set; } = UsageOf([]);
 
@@ -237,6 +241,12 @@ internal sealed class FakeAiServer : IManagementApi, IManagementEvents
             var read = asset.DeepClone().AsObject();
             read["locale"] = AnsweredLocale(request.Locale);
             return Task.FromResult(new ApiResponse<T>(HttpStatusCode.OK, $"\"{asset["version"]}\"", read.Deserialize(answer)!));
+        }
+
+        if (path == "ai/fields")
+        {
+            var fields = new JsonObject { ["enabled"] = true, ["locale"] = "en", ["fields"] = new JsonObject(), ["assets"] = MayDescribeAssets };
+            return Task.FromResult(new ApiResponse<T>(HttpStatusCode.OK, null, fields.Deserialize(answer)!));
         }
 
         if (path.StartsWith("content/article/", StringComparison.Ordinal) && Guid.TryParse(path["content/article/".Length..], out var entry) && Drafts.TryGetValue((entry, request.Locale), out var draft))

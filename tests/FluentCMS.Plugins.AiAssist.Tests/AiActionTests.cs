@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Plugins.Media;
+using FluentCMS.Schema;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
@@ -397,7 +398,8 @@ public sealed class AiActionTests : IClassFixture<AiHost>
     }
 
     // #3600: altText for a field needs documentId, and describes an image the entry's draft refers to, by a media field or a
-    // media node of a rich text field, read as the caller. Any other image is refused the same way, whether or not it exists.
+    // media node of a rich text field, read as the caller. An image the draft does not refer to is refused on options.mediaId,
+    // and one that does not exist is not found by the check of the image before the entry is asked.
     [Fact]
     public async Task AltTextForAFieldDescribesAnImageTheEntryRefersTo()
     {
@@ -442,6 +444,31 @@ public sealed class AiActionTests : IClassFixture<AiHost>
 
         _ai.Chat.Calls.Count.ShouldBe(3);
         (await _ai.UsageAsync(site)).Count.ShouldBe(3);
+    }
+
+    // Rich text is read as deep as core stores it, past the default depth of a JSON reader.
+    [Fact]
+    public async Task AltTextForAFieldFindsAnImageDeepInRichText()
+    {
+        var site = await _ai.SiteAsync(settings => settings.AssetAltText = true);
+        using var admin = await _ai.AdminAsync(site);
+        var image = await UploadAsync(admin, "deep.png", Picture(40, 20));
+        var body = $$$"""{"type":"media","attrs":{"mediaId":"{{{image:D}}}"}}""";
+        for (var level = 0; level < 40; level++)
+        {
+            body = $$"""{"type":"blockquote","content":[{{body}}]}""";
+        }
+
+        // Through the content service, since the answer of the Management API's create stops at 64 levels.
+        Guid entry;
+        await using (var scope = _ai.Services.CreateAsyncScope())
+        {
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(site));
+            var article = new Article { Title = "Deep", Body = new RichText($$$"""{"type":"doc","content":[{{{body}}}]}""") };
+            entry = (await scope.ServiceProvider.GetRequiredService<IContentService<Article>>().CreateAsync(article, Token)).Id;
+        }
+
+        (await SuggestAsync(admin, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = image } }))["suggestion"]!.GetValue<string>().ShouldBe("A suggestion.");
     }
 
     // The draft is read in the locale of the suggestion: an image of the French body is not the English draft's.

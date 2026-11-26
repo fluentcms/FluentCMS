@@ -50,6 +50,14 @@ internal sealed class AiApi(IManagementApi api, IManagementEvents? events = null
         return answer.Value;
     }
 
+    // The assets of GET /ai/fields: whether the site's assetAltText is on, the media plugin is enabled for it and the caller
+    // holds media.read and media.update there, in every folder or some, which every altText needs.
+    public async Task<bool> AssetsAsync(CancellationToken cancellationToken)
+    {
+        var answer = await api.SendAsync(new ApiRequest(HttpMethod.Get, "ai/fields"), AiJsonContext.Default.JsonObject, cancellationToken);
+        return answer.Value["assets"] is JsonValue assets && assets.TryGetValue<bool>(out var allowed) && allowed;
+    }
+
     // The fields of the entry's saved draft in the locale named, without the fallback chain, as the server reads it for
     // altText; null for an entry that is not saved in that locale, or that the caller may not read.
     public async Task<JsonObject?> DraftAsync(string type, Guid id, IReadOnlyList<string> fields, string? locale, CancellationToken cancellationToken)
