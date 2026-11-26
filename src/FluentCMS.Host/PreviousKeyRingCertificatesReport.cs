@@ -18,7 +18,7 @@ internal sealed class PreviousKeyRingCertificatesReport(IReadOnlyList<string> th
             yield return new InsecureDefault
             {
                 Id = Id,
-                Message = $"The Data Protection key ring is also read with {named} a new key. Remove a previous certificate once a key of the current certificate is the default, 'fluentcms settings reprotect' ends with exit code 0, and nothing else protected under the older keys is still needed.",
+                Message = $"The Data Protection key ring is also read with {named} a new key. Remove a previous certificate once a key of the current certificate is the default, 'fluentcms keyring reprotect' ends with exit code 0, and nothing else protected under the older keys is still needed.",
             };
         }
     }

@@ -140,6 +140,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         Jobs(),
         Seed(),
         Settings(),
+        Keyring(),
         Keys(),
         Mcp(),
         Export(),

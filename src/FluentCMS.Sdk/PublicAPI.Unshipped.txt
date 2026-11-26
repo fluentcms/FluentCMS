@@ -2652,6 +2652,16 @@ FluentCMS.Schema.UrlAttribute.UrlAttribute() -> void
 FluentCMS.Schema.VisibleWhenAttribute
 FluentCMS.Schema.VisibleWhenAttribute.ConditionName.get -> string!
 FluentCMS.Schema.VisibleWhenAttribute.VisibleWhenAttribute(string! conditionName) -> void
+FluentCMS.Security.IProtectedValueSource
+FluentCMS.Security.IProtectedValueSource.ReadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Security.ProtectedValue!>!>!
+FluentCMS.Security.IProtectedValueSource.WriteAsync(FluentCMS.Security.ProtectedValue! value, string! reprotected, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+FluentCMS.Security.ProtectedValue
+FluentCMS.Security.ProtectedValue.Column.get -> string!
+FluentCMS.Security.ProtectedValue.Id.get -> string!
+FluentCMS.Security.ProtectedValue.ProtectedValue(string! table, string! id, string! column, string! purpose, string! stored) -> void
+FluentCMS.Security.ProtectedValue.Purpose.get -> string!
+FluentCMS.Security.ProtectedValue.Stored.get -> string!
+FluentCMS.Security.ProtectedValue.Table.get -> string!
 FluentCMS.Seeding.ISeedRunner
 FluentCMS.Seeding.ISeedRunner.RunAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Seeding.ISeeder

@@ -12,8 +12,11 @@ internal sealed class WebhookSigning(IDataProtectionProvider protection)
     public const int SecretMinLength = 16;
     public const int SecretMaxLength = 256;
 
-    private readonly IDataProtector _secrets = protection.CreateProtector("FluentCMS.Plugins.Webhooks.Secret");
-    private readonly IDataProtector _headers = protection.CreateProtector("FluentCMS.Plugins.Webhooks.Headers");
+    public const string SecretPurpose = "FluentCMS.Plugins.Webhooks.Secret";
+    public const string HeadersPurpose = "FluentCMS.Plugins.Webhooks.Headers";
+
+    private readonly IDataProtector _secrets = protection.CreateProtector(SecretPurpose);
+    private readonly IDataProtector _headers = protection.CreateProtector(HeadersPurpose);
 
     public static string NewSecret() => "whsec_" + Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32));
 

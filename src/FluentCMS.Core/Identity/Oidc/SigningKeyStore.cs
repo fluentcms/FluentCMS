@@ -15,10 +15,12 @@ namespace FluentCMS.Core.Identity.Oidc;
 // key. The ids are random, so a kid never names two keys.
 internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtectionProvider protection, TimeProvider time, ILogger<SigningKeyStore> logger)
 {
+    public const string Purpose = "FluentCMS.SigningKeys";
+
     private const int RsaKeySize = 2048;
     private const int EncryptionKeySize = 32;
 
-    private readonly IDataProtector _protector = protection.CreateProtector("FluentCMS.SigningKeys");
+    private readonly IDataProtector _protector = protection.CreateProtector(Purpose);
 
     // Every row, by use and sequence, after making a key for each of the uses that has none that has not retired.
     public IReadOnlyList<SigningKey> Read(IReadOnlyCollection<string> uses)

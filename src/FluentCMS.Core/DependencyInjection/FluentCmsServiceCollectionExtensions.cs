@@ -234,6 +234,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton<FluentCMS.Diagnostics.IInsecureDefaultSource, SecretSettingsReport>();
         services.AddScoped<SettingsService>();
         services.AddScoped<SecretSettingsReprotection>();
+        services.AddScoped<ProtectedValueReprotection>();
         services.TryAddScoped(typeof(ISettings<>), typeof(Settings<>));
 
         services.AddFluentCmsOptions(RichTextOptions.Section, HostErrorCodes.InvalidOption, new RichTextOptions(), richText => richText.Validate());
