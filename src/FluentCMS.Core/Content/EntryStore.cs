@@ -364,25 +364,13 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
     }
 
     // A compare that locks the row and changes nothing, for a write that moves its own row after the ones ordered behind it.
-    public async Task<bool> HoldVersionAsync(Document row, int expected, CancellationToken cancellationToken)
-    {
-        var key = row.Id;
-        var affected = await context.Documents
-            .Where(document => document.Id == key && document.DraftVersion == expected)
-            .ExecuteUpdateAsync(set => set.SetProperty(document => document.DraftVersion, expected), cancellationToken);
-
-        return affected == 1;
-    }
+    public Task<bool> HoldVersionAsync(Document row, int expected, CancellationToken cancellationToken) =>
+        provider.HoldDocumentAsync(context, row.Id, expected, cancellationToken);
 
     // A lock on the row that changes nothing, in the trash too, for a path that takes a row in its place in the lock order
     // (ContentService.HoldInOrderAsync) before it writes it.
-    public Task HoldAsync(Document row, CancellationToken cancellationToken)
-    {
-        var key = row.Id;
-        return context.Documents.IgnoreQueryFilters()
-            .Where(document => document.Id == key)
-            .ExecuteUpdateAsync(set => set.SetProperty(document => document.DraftVersion, document => document.DraftVersion), cancellationToken);
-    }
+    public Task HoldAsync(Document row, CancellationToken cancellationToken) =>
+        provider.HoldDocumentAsync(context, row.Id, null, cancellationToken);
 
     // What a write decides its status from, as stored now.
     public async Task<StoredState> StateAsync(Document row, CancellationToken cancellationToken)
