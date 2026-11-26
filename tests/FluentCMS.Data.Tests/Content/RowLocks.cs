@@ -162,6 +162,17 @@ internal sealed class CommandGate(Func<DbCommand, bool> matches, bool after = tr
         return result;
     }
 
+    // A read has run its one statement once its reader is open, and a locking read holds its rows from then.
+    public override async ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
+    {
+        if (after && command.CommandText.StartsWith("SELECT ", StringComparison.Ordinal))
+        {
+            await PassAsync(command, eventData.Context);
+        }
+
+        return result;
+    }
+
     private async Task PassAsync(DbCommand command, DbContext? context)
     {
         if (context is null || !ReferenceEquals(context, Context) || At is not { } at || !matches(command) || Interlocked.Exchange(ref _passed, 1) == 1)
