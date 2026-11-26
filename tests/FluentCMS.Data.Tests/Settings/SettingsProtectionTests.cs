@@ -129,6 +129,38 @@ public sealed class SettingsProtectionTests
     }
 
     [Fact]
+    public async Task AValueThatLooksProtectedUnderAKeyThatIsNoSecretIsRefusedByATypedWrite()
+    {
+        using var database = new SettingsDatabase();
+        var forged = SettingsProtection.Prefix + "forged-7713";
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => database.AsAsync(Admin, async (IServiceProvider services) =>
+        {
+            await services.GetRequiredService<ISettings<SeoSettings>>().SetAsync(SiteA, new SeoSettings { Title = forged }, Token);
+            return true;
+        }));
+
+        var error = refused.Errors.ShouldHaveSingleItem();
+        (error.Path, error.Code).ShouldBe(("title", "FCMS2805"));
+        error.Message.ShouldNotContain("forged-7713");
+        database.Rows().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AValueThatLooksProtectedUnderAKeyThatIsNoSecretIsRefusedByAnImport()
+    {
+        using var database = new SettingsDatabase();
+        var forged = SettingsProtection.Prefix + "forged-7713";
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(database, "seo", SiteA, $$"""{"title":"{{forged}}"}"""));
+
+        var error = refused.Errors.ShouldHaveSingleItem();
+        (error.Path, error.Code).ShouldBe(("title", "FCMS2805"));
+        error.Message.ShouldNotContain("forged-7713");
+        database.Rows().ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task ASiteSecretAnotherKeyRingProtectedReadsAsItsCodeDefaultAndOutlivesAWriteThatLeavesItOut()
     {
         using var database = new SettingsDatabase();
