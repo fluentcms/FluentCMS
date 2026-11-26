@@ -483,6 +483,29 @@ public sealed class OutboxFailureTests
         }
     }
 
+    // Tells when a timer longer than the cut-off of a delivery is set, which only the wait of a lane for a lease is.
+    private sealed class LongTimers(ManualTimeProvider clock, TimeSpan cutOff) : TimeProvider
+    {
+        public TaskCompletionSource Set { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override long TimestampFrequency => clock.TimestampFrequency;
+
+        public override DateTimeOffset GetUtcNow() => clock.GetUtcNow();
+
+        public override long GetTimestamp() => clock.GetTimestamp();
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = clock.CreateTimer(callback, state, dueTime, period);
+            if (dueTime > cutOff)
+            {
+                Set.TrySetResult();
+            }
+
+            return timer;
+        }
+    }
+
     [Fact]
     public async Task AWriteThatFailsToRecordItsRowLeavesNothingForTheNextWriteOfTheScopeToCommit()
     {
@@ -1799,6 +1822,67 @@ public sealed class OutboxFailureTests
         var rows = database.Rows();
         rows[0].Status.ShouldBe(OutboxStatus.Delivered);
         rows.Skip(1).ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 0 && row.LeaseOwner == null);
+    }
+
+    // Batches of three rows, and each delivery takes 20 seconds on the clock. The renewal before the second delivery fails, and
+    // so does the release of the two rows not tried, which keep their lease and their attempt. The next drain claims nothing of
+    // the owner, the fourth row included, until that lease has ended, and then delivers the three in the order of their events.
+    [Fact]
+    public async Task AnOwnersLaterRowsAreNotDeliveredBeforeTheRowsOfAReleaseThatFailed()
+    {
+        var seen = new Seen();
+        var faults = new JobFaults();
+        var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var cutOff = TimeSpan.FromSeconds(30);
+        var timers = new LongTimers(clock, cutOff);
+        seen.Behavior = (_, _) =>
+        {
+            clock.Advance(TimeSpan.FromSeconds(20));
+            return Task.CompletedTask;
+        };
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
+        {
+            cms.Services.AddSingleton<TimeProvider>(timers);
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(faults));
+            cms.Events.Outbox.BatchSize = 3;
+            cms.Events.Outbox.LeaseDuration = TimeSpan.FromMinutes(1);
+            cms.Events.Outbox.DeliveryTimeout = cutOff;
+        })));
+        for (var index = 0; index < 4; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        faults.Fail(command => command.CommandText.StartsWith("UPDATE", StringComparison.Ordinal)
+            && (command.CommandText.Contains($"{TestProvider.Quote("attempts")} - 1", StringComparison.Ordinal)
+                || (command.CommandText.Contains(TestProvider.Quote("lease_until"), StringComparison.Ordinal)
+                    && !command.CommandText.Contains(TestProvider.Quote("attempts"), StringComparison.Ordinal)
+                    && !command.CommandText.Contains(TestProvider.Quote("delivered_at"), StringComparison.Ordinal))));
+        var drainer = database.Database.Services.GetRequiredService<OutboxDrainer>();
+        (await drainer.DrainAsync(Token)).ShouldBe(1);
+        faults.Recover();
+
+        logs.Count("RenewFailed").ShouldBe(1);
+        logs.Count("SettleFailed").ShouldBe(2);
+        var rows = database.Rows();
+        rows.Skip(1).Take(2).ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 1 && row.LeaseOwner != null);
+        (rows[3].Attempts, rows[3].LeaseOwner).ShouldBe((0, null));
+
+        timers.Set.Task.IsCompleted.ShouldBeFalse();
+        seen.Behavior = (_, _) => Task.CompletedTask;
+        var drain = drainer.DrainAsync(Token);
+        await Task.WhenAny(timers.Set.Task, drain).WaitAsync(TimeSpan.FromSeconds(30), Token);
+        seen.Deliveries.Count.ShouldBe(1);
+        drain.IsCompleted.ShouldBeFalse();
+
+        clock.Advance(TimeSpan.FromMinutes(1));
+        (await drain.WaitAsync(TimeSpan.FromSeconds(30), Token)).ShouldBe(3);
+
+        seen.Deliveries.Select(delivery => delivery.Key).ShouldBe(rows.Select(row => row.Id));
+        seen.Deliveries.Select(delivery => delivery.Attempt).ShouldBe([1, 2, 2, 1]);
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Delivered);
     }
 
     // The prune is a job of its own, run hourly, so that the table is not walked for old rows on every drain.
