@@ -17,7 +17,7 @@ using AuthorizeRequest = FluentCMS.Core.IntegrationTests.Members.MemberPagesTest
 
 namespace FluentCMS.Core.IntegrationTests.Members;
 
-// Member sign-in through Google, Microsoft, GitHub, Apple and generic OIDC (#2993), driven the way a browser drives the
+// Member sign-in through Google, Microsoft, GitHub and generic OIDC (#2993), driven the way a browser drives the
 // member pages, against providers in the process.
 public sealed partial class MemberProviderTests(MemberProviderFixture fixture) : IClassFixture<MemberProviderFixture>
 {
@@ -76,6 +76,7 @@ public sealed partial class MemberProviderTests(MemberProviderFixture fixture) :
 
         // The code was redeemed with the callback of the public origin and the secret of the configuration.
         fixture.Providers.TokenRequests.ShouldContain(new TokenRequest("google", "https://localhost/account/members/sso/google", fixture.Providers.ClientSecret));
+        fixture.Providers.Unknown.ShouldBeEmpty();
 
         var rows = await MemberFixture.ActivityAsync(fixture.Host, "member.", member.Id.ToString("D"));
         rows.Select(row => row.Action).ShouldBe(["member.registered", "member.verified", "member.login_linked", "member.login_succeeded"], ignoreOrder: true);
@@ -266,43 +267,30 @@ public sealed partial class MemberProviderTests(MemberProviderFixture fixture) :
     }
 
     [Fact]
-    public async Task AnAppleProviderAndAGenericOidcProviderSignAMemberIn()
+    public async Task AGenericOidcProviderSignsAMemberIn()
     {
-        // Apple: the handler makes the client secret from the private key, which the provider checks, and the member's
-        // address and its flag come from the id token.
-        var appleAddress = MemberFixture.NewAddress();
-        var apple = new FakeAccount("001234." + Guid.NewGuid().ToString("N"), appleAddress);
+        // A provider that sends email_verified as text, as some do: "true" makes a verified member, and "false" one that
+        // verifies its address by mail.
+        var textAddress = MemberFixture.NewAddress();
         using (var browser = new HostedPagesBrowser(fixture.Host, "10.7.4.1"))
         {
-            var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthMemberClientId, "openid email");
-            var authorize = await StartAsync(browser, Apple, request.Url);
-            authorize.GetLeftPart(UriPartial.Path).ShouldBe("https://appleid.apple.com/auth/authorize");
-
-            using var back = await AnswerAsync(browser, Apple, authorize, apple);
-            var tokens = await request.ExchangeAsync(fixture.Host, await browser.FollowAsync(back));
-            tokens.GetProperty("access_token").GetString().ShouldNotBeNullOrEmpty();
+            using var back = await SignInWithAsync(browser, Corp, FakeAccount.Of(textAddress) with { EmailVerifiedAsText = true });
+            (await DecideAsync(browser, back)).ShouldBe("/");
         }
 
-        var appleMember = (await MemberAsync(fixture.Host, appleAddress)).ShouldNotBeNull();
-        appleMember.EmailConfirmed.ShouldBeTrue();
-        (await LoginsAsync(fixture.Host, appleMember.Id)).ShouldHaveSingleItem().ProviderKey.ShouldBe(apple.Subject);
-        var redeemed = fixture.Providers.TokenRequests.Last(sent => sent.Kind == "apple");
-        redeemed.RedirectUri.ShouldBe("https://localhost/account/members/sso/apple");
-        redeemed.ClientSecret.ShouldNotBeNull().Split('.').Length.ShouldBe(3);
-        fixture.Providers.Unknown.ShouldBeEmpty();
+        (await MemberAsync(fixture.Host, textAddress)).ShouldNotBeNull().EmailConfirmed.ShouldBeTrue();
 
-        // An Apple account whose address Apple has not verified makes a member that verifies it by mail.
         var unverifiedAddress = MemberFixture.NewAddress();
         using (var browser = new HostedPagesBrowser(fixture.Host, "10.7.4.2"))
         {
-            using var back = await SignInWithAsync(browser, Apple, new FakeAccount("001234." + Guid.NewGuid().ToString("N"), unverifiedAddress) { EmailVerified = false });
+            using var back = await SignInWithAsync(browser, Corp, FakeAccount.Of(unverifiedAddress) with { EmailVerified = false, EmailVerifiedAsText = true });
             using var page = await browser.FollowAsync(back);
             (await page.Content.ReadAsStringAsync(Token)).ShouldContain(CheckYourMail);
         }
 
         (await MemberAsync(fixture.Host, unverifiedAddress))!.EmailConfirmed.ShouldBeFalse();
 
-        // Generic OIDC: the code flow with PKCE, and email_verified of the id token.
+        // The code flow with PKCE, and email_verified of the id token.
         var corpAddress = MemberFixture.NewAddress();
         var corp = FakeAccount.Of(corpAddress);
         using (var browser = new HostedPagesBrowser(fixture.Host, "10.7.4.3"))
@@ -462,8 +450,8 @@ public sealed partial class MemberProviderTests(MemberProviderFixture fixture) :
         return challenge.Headers.Location!;
     }
 
-    // The visit to the provider and its answer back to the callback path: a form post from Apple and the OIDC provider,
-    // a redirect from the others. Returns the callback's answer.
+    // The visit to the provider and its answer back to the callback path: a form post from the OIDC provider, a redirect
+    // from the others. Returns the callback's answer.
     private async Task<HttpResponseMessage> AnswerAsync(HostedPagesBrowser browser, string provider, Uri authorize, FakeAccount account, string? error = null, string pathBase = "")
     {
         var callback = new Uri(QueryHelpers.ParseQuery(authorize.Query)["redirect_uri"].ToString());
@@ -471,13 +459,12 @@ public sealed partial class MemberProviderTests(MemberProviderFixture fixture) :
 
         if (provider is Corp or Partner)
         {
+            QueryHelpers.ParseQuery(authorize.Query)["response_mode"].ToString().ShouldBe("form_post");
             return await browser.PostAsync(callback.PathAndQuery, fixture.Oidc.Authorize(authorize, account.ToIdentity(), error));
         }
 
         var answer = fixture.Providers.Authorize(authorize, account, error);
-        return provider == Apple
-            ? await browser.PostAsync(callback.PathAndQuery, answer)
-            : await browser.GetAsync(callback.PathAndQuery + QueryString.Create(answer.Select(pair => KeyValuePair.Create(pair.Key, (string?)pair.Value))));
+        return await browser.GetAsync(callback.PathAndQuery + QueryString.Create(answer.Select(pair => KeyValuePair.Create(pair.Key, (string?)pair.Value))));
     }
 
     private async Task<HttpResponseMessage> SignInWithAsync(HostedPagesBrowser browser, string provider, FakeAccount account, string? returnUrl = null, string? error = null) =>
