@@ -483,6 +483,89 @@ public sealed class OutboxFailureTests
         }
     }
 
+    // Tells when a timer whose due time matches has been set, so that a test moves the clock only once the drain waits on it.
+    // A timer longer than the cut-off of a delivery is only ever the wait of a lane for a lease.
+    private sealed class WatchedTimers(ManualTimeProvider clock) : TimeProvider
+    {
+        private readonly Lock _lock = new();
+        private readonly List<TimeSpan> _set = [];
+        private readonly List<(Func<TimeSpan, bool> Matches, TaskCompletionSource Set)> _waiting = [];
+
+        public override long TimestampFrequency => clock.TimestampFrequency;
+
+        public override DateTimeOffset GetUtcNow() => clock.GetUtcNow();
+
+        public override long GetTimestamp() => clock.GetTimestamp();
+
+        public Task WhenSetAsync(Func<TimeSpan, bool> matches)
+        {
+            lock (_lock)
+            {
+                if (_set.Any(matches))
+                {
+                    return Task.CompletedTask;
+                }
+
+                var set = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _waiting.Add((matches, set));
+                return set.Task;
+            }
+        }
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = clock.CreateTimer(callback, state, dueTime, period);
+            lock (_lock)
+            {
+                _set.Add(dueTime);
+                foreach (var waiting in _waiting.Where(waiting => waiting.Matches(dueTime)).ToList())
+                {
+                    _waiting.Remove(waiting);
+                    waiting.Set.TrySetResult();
+                }
+            }
+
+            return timer;
+        }
+    }
+
+    // Once armed, fails the read-back of the next claim whose update landed as a busy database does, and the release that gives
+    // back what that claim took.
+    private sealed class BusyReadBack : DbCommandInterceptor
+    {
+        private int _armed;
+        private int _readBack;
+        private int _release;
+
+        public void Arm() => Volatile.Write(ref _armed, 1);
+
+        public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (result > 0 && command.CommandText.Contains($"{TestProvider.Quote("attempts")} + 1", StringComparison.Ordinal) && Interlocked.Exchange(ref _armed, 0) == 1)
+            {
+                Volatile.Write(ref _readBack, 1);
+                Volatile.Write(ref _release, 1);
+            }
+
+            return ValueTask.FromResult(result);
+        }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default) =>
+            command.CommandText.Contains("cms_outbox", StringComparison.Ordinal) && Interlocked.Exchange(ref _readBack, 0) == 1
+                ? throw new Busy()
+                : ValueTask.FromResult(result);
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default) =>
+            command.CommandText.Contains($"{TestProvider.Quote("attempts")} - 1", StringComparison.Ordinal) && Interlocked.Exchange(ref _release, 0) == 1
+                ? throw new InvalidOperationException("The database cannot be reached.")
+                : ValueTask.FromResult(result);
+
+        private sealed class Busy() : DbException("The database is locked.")
+        {
+            public override bool IsTransient => true;
+        }
+    }
+
     [Fact]
     public async Task AWriteThatFailsToRecordItsRowLeavesNothingForTheNextWriteOfTheScopeToCommit()
     {
@@ -995,6 +1078,7 @@ public sealed class OutboxFailureTests
         var claims = new OutboxTests.ClaimCounter();
         var faults = new JobFaults();
         var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
         using var stopping = new CancellationTokenSource();
         seen.Behavior = (_, _) =>
         {
@@ -1003,6 +1087,7 @@ public sealed class OutboxFailureTests
         };
         using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
         {
+            cms.Services.AddSingleton<TimeProvider>(clock);
             cms.Services.AddSingleton<ILoggerProvider>(logs);
             cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(claims, faults));
         })));
@@ -1019,8 +1104,9 @@ public sealed class OutboxFailureTests
         logs.Count("SettleFailed").ShouldBe(3);
         database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 1 && row.LeaseOwner != null);
 
+        // The clock moves to the end of the lease, which the lane waits for as well as the claim.
         seen.Behavior = (_, _) => Task.CompletedTask;
-        ExpireLeases(database);
+        clock.Advance(new OutboxOptions().LeaseDuration);
         var before = claims.Claims;
         (await DrainAsync(database.Database.Services)).ShouldBe(3);
 
@@ -1799,6 +1885,110 @@ public sealed class OutboxFailureTests
         var rows = database.Rows();
         rows[0].Status.ShouldBe(OutboxStatus.Delivered);
         rows.Skip(1).ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 0 && row.LeaseOwner == null);
+    }
+
+    // Batches of three rows, and each delivery takes 20 seconds on the clock. The renewal before the second delivery fails, and
+    // so does the release of the two rows not tried, which keep their lease and their attempt. The next drain claims nothing of
+    // the owner, the fourth row included, until that lease has ended, and then delivers the three in the order of their events.
+    [Fact]
+    public async Task AnOwnersLaterRowsAreNotDeliveredBeforeTheRowsOfAReleaseThatFailed()
+    {
+        var seen = new Seen();
+        var faults = new JobFaults();
+        var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var cutOff = TimeSpan.FromSeconds(30);
+        var timers = new WatchedTimers(clock);
+        seen.Behavior = (_, _) =>
+        {
+            clock.Advance(TimeSpan.FromSeconds(20));
+            return Task.CompletedTask;
+        };
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
+        {
+            cms.Services.AddSingleton<TimeProvider>(timers);
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(faults));
+            cms.Events.Outbox.BatchSize = 3;
+            cms.Events.Outbox.LeaseDuration = TimeSpan.FromMinutes(1);
+            cms.Events.Outbox.DeliveryTimeout = cutOff;
+        })));
+        for (var index = 0; index < 4; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        faults.Fail(command => command.CommandText.StartsWith("UPDATE", StringComparison.Ordinal)
+            && (command.CommandText.Contains($"{TestProvider.Quote("attempts")} - 1", StringComparison.Ordinal)
+                || (command.CommandText.Contains(TestProvider.Quote("lease_until"), StringComparison.Ordinal)
+                    && !command.CommandText.Contains(TestProvider.Quote("attempts"), StringComparison.Ordinal)
+                    && !command.CommandText.Contains(TestProvider.Quote("delivered_at"), StringComparison.Ordinal))));
+        var drainer = database.Database.Services.GetRequiredService<OutboxDrainer>();
+        (await drainer.DrainAsync(Token)).ShouldBe(1);
+        faults.Recover();
+
+        logs.Count("RenewFailed").ShouldBe(1);
+        logs.Count("SettleFailed").ShouldBe(2);
+        var rows = database.Rows();
+        rows.Skip(1).Take(2).ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 1 && row.LeaseOwner != null);
+        (rows[3].Attempts, rows[3].LeaseOwner).ShouldBe((0, null));
+
+        var waiting = timers.WhenSetAsync(due => due > cutOff);
+        waiting.IsCompleted.ShouldBeFalse();
+        seen.Behavior = (_, _) => Task.CompletedTask;
+        var drain = drainer.DrainAsync(Token);
+        await Task.WhenAny(waiting, drain).WaitAsync(TimeSpan.FromSeconds(30), Token);
+        seen.Deliveries.Count.ShouldBe(1);
+        drain.IsCompleted.ShouldBeFalse();
+
+        clock.Advance(TimeSpan.FromMinutes(1));
+        (await drain.WaitAsync(TimeSpan.FromSeconds(30), Token)).ShouldBe(3);
+
+        seen.Deliveries.Select(delivery => delivery.Key).ShouldBe(rows.Select(row => row.Id));
+        seen.Deliveries.Select(delivery => delivery.Attempt).ShouldBe([1, 2, 2, 1]);
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Delivered);
+    }
+
+    // Batches of two rows. The first claim's update lands and its read-back finds the database busy, and the release of what it
+    // took fails, so the first two rows keep their lease. The retry of the claim waits for that lease too, rather than claim the
+    // two rows after them, and then the four are delivered in the order of their events.
+    [Fact]
+    public async Task TheRetryOfAClaimWhoseReleaseFailedWaitsForItsLease()
+    {
+        var seen = new Seen();
+        var busy = new BusyReadBack();
+        var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var timers = new WatchedTimers(clock);
+        var outbox = new OutboxOptions();
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
+        {
+            cms.Services.AddSingleton<TimeProvider>(timers);
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(busy));
+            cms.Events.Outbox.BatchSize = 2;
+        })));
+        for (var index = 0; index < 4; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        busy.Arm();
+        var drain = DrainAsync(database.Database.Services);
+        await timers.WhenSetAsync(due => due == TimeSpan.FromMilliseconds(50)).WaitAsync(TimeSpan.FromSeconds(30), Token);
+        logs.Count("SettleFailed").ShouldBe(2);
+
+        var waiting = timers.WhenSetAsync(due => due > outbox.DeliveryTimeout);
+        clock.Advance(TimeSpan.FromMilliseconds(50));
+        await Task.WhenAny(waiting, drain).WaitAsync(TimeSpan.FromSeconds(30), Token);
+        seen.Deliveries.ShouldBeEmpty();
+        drain.IsCompleted.ShouldBeFalse();
+
+        clock.Advance(outbox.LeaseDuration);
+        (await drain.WaitAsync(TimeSpan.FromSeconds(30), Token)).ShouldBe(4);
+
+        seen.Deliveries.Select(delivery => delivery.Key).ShouldBe(database.Rows().Select(row => row.Id));
+        seen.Deliveries.Select(delivery => delivery.Attempt).ShouldBe([2, 2, 1, 1]);
     }
 
     // The prune is a job of its own, run hourly, so that the table is not walked for old rows on every drain.
