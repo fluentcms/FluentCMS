@@ -1,5 +1,6 @@
 using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Identity.Oidc;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -45,6 +46,7 @@ public static class FluentCmsApplicationBuilderExtensions
         app.UseMiddleware<HostedPageHttpsMiddleware>();
         app.UseMiddleware<PreAuthRateLimitMiddleware>();
         app.UseMiddleware<RequestLimitsMiddleware>();
+        app.UseMiddleware<SigningKeyRefreshMiddleware>();
         app.UseAuthentication();
         app.UseMiddleware<ApiAuthenticationMiddleware>();
         app.UseRateLimiter();

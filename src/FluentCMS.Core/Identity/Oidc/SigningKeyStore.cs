@@ -25,36 +25,64 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
         using var scope = scopes.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
-        var stored = Stored(context);
-        foreach (var use in uses)
+        var stored = Stored(context).ToList();
+        while (Missing(stored, uses) is { } generated)
         {
-            var now = time.GetUtcNow();
-            if (stored.Any(key => key.Use == use && !SigningKeyStates.IsRetired(key, now)))
-            {
-                continue;
-            }
-
-            var generated = Generate(use, NextSequence(stored, use), now, activeFrom: now);
             context.Add(generated);
             try
             {
                 context.SaveChanges();
             }
-            catch (DbUpdateException) when (Exists(use, generated.Sequence))
+            catch (DbUpdateException) when (Exists(generated))
             {
                 // Another instance stored the key of this sequence in the meantime; it is the one to use.
             }
 
             context.ChangeTracker.Clear();
-            stored = Stored(context);
+            stored = Stored(context).ToList();
         }
 
         return stored;
     }
 
-    public SecurityKey Unprotect(SigningKey row)
+    public async Task<IReadOnlyList<SigningKey>> ReadAsync(IReadOnlyCollection<string> uses, CancellationToken cancellationToken)
     {
-        var material = _protector.Unprotect(Convert.FromBase64String(row.ProtectedKey));
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+
+        var stored = await Stored(context).ToListAsync(cancellationToken);
+        while (Missing(stored, uses) is { } generated)
+        {
+            context.Add(generated);
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException) when (Exists(generated))
+            {
+            }
+
+            context.ChangeTracker.Clear();
+            stored = await Stored(context).ToListAsync(cancellationToken);
+        }
+
+        return stored;
+    }
+
+    // The key of a row, or null when the key ring cannot read it: the ring key that protected it is gone, or the row is
+    // not one this server wrote.
+    public SecurityKey? Unprotect(SigningKey row)
+    {
+        byte[] material;
+        try
+        {
+            material = _protector.Unprotect(Convert.FromBase64String(row.ProtectedKey));
+        }
+        catch (Exception exception) when (exception is CryptographicException or FormatException)
+        {
+            return null;
+        }
+
         SecurityKey key;
         if (row.Use == SigningKey.Signing)
         {
@@ -74,16 +102,25 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
 
     public static string KeyId(SigningKey row) => row.Id.ToString("N");
 
+    // The first key of a use, or the one after its last has retired, active at once.
+    private SigningKey? Missing(List<SigningKey> stored, IReadOnlyCollection<string> uses)
+    {
+        var now = time.GetUtcNow();
+        return uses.FirstOrDefault(use => !stored.Exists(key => key.Use == use && !SigningKeyStates.IsRetired(key, now))) is { } use
+            ? Generate(use, NextSequence(stored, use), now, activeFrom: now)
+            : null;
+    }
+
     private static int NextSequence(IEnumerable<SigningKey> stored, string use) =>
         stored.Where(key => key.Use == use).Select(key => key.Sequence).DefaultIfEmpty().Max() + 1;
 
-    private static List<SigningKey> Stored(SystemDbContext context) =>
-        [.. context.Set<SigningKey>().AsNoTracking().OrderBy(key => key.Use).ThenBy(key => key.Sequence)];
+    private static IQueryable<SigningKey> Stored(SystemDbContext context) =>
+        context.Set<SigningKey>().AsNoTracking().OrderBy(key => key.Use).ThenBy(key => key.Sequence);
 
-    private bool Exists(string use, int sequence)
+    private bool Exists(SigningKey generated)
     {
         using var scope = scopes.CreateScope();
-        return scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<SigningKey>().Any(key => key.Use == use && key.Sequence == sequence);
+        return scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<SigningKey>().Any(key => key.Use == generated.Use && key.Sequence == generated.Sequence);
     }
 
     private SigningKey Generate(string use, int sequence, DateTimeOffset now, DateTimeOffset activeFrom)
