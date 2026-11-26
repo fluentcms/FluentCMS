@@ -125,11 +125,11 @@
     [SupplyParameterFromQuery(Name = "page")]
     public string? PageQuery { get; set; }
 
-    private bool MayUpload => Context.Access.Allows(MediaPermissions.Upload);
+    private bool MayUpload => Context.Access.AllowsForSomeResources(MediaPermissions.Upload);
 
-    private bool MayMove => Context.Access.Allows(MediaPermissions.Update);
+    private bool MayMove => Context.Access.AllowsForSomeResources(MediaPermissions.Update);
 
-    private bool MayManageFolders => Context.Access.Allows(MediaPermissions.ManageFolders);
+    private bool MayManageFolders => Context.Access.AllowsForSomeResources(MediaPermissions.ManageFolders);
 
     private IReadOnlyList<MediaFolderInfo> Folders => browser?.Folders ?? [];
 

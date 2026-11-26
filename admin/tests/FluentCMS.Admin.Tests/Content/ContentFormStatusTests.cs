@@ -79,6 +79,23 @@ public sealed class ContentFormStatusTests : AdminTestContext
         Controls(app).ShouldBe(controls);
     }
 
+    // Create and publish grants whose patterns name some types only, which /me/access answers type by type.
+    [Theory]
+    [InlineData("post", new[] { "Save", "Publish" })]
+    [InlineData("note", new[] { "Save" })]
+    [InlineData("memo", new string[0])]
+    public void ANewEntryIsOfferedWhatTheGrantsGiveForItsType(string type, string[] controls)
+    {
+        Management.SetTypes(MainSite, Post(), Type("note", fields: [Field("title")]), Type("memo", fields: [Field("title")]));
+        Management.Access[MainSite]["types"]!["note"]!["publish"] = false;
+        Management.Access[MainSite]["types"]!["memo"]!["create"] = false;
+        Management.Access[MainSite]["types"]!["memo"]!["publish"] = false;
+
+        var app = Load($"content/{type}/new");
+
+        Controls(app).ShouldBe(controls);
+    }
+
     [Fact]
     public async Task ACallerWhoMayNotPublishHasNoPublishShortcut()
     {

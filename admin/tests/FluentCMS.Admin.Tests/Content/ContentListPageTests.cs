@@ -176,6 +176,23 @@ public sealed class ContentListPageTests : AdminTestContext
         Buttons(app).ShouldContain("Columns");
     }
 
+    // A create grant whose pattern names some types only: /me/access lists no content permission, and its types say which.
+    [Fact]
+    public void NewFollowsTheCreateGrantOfEachType()
+    {
+        Management.Access[MainSite]["types"]!["author"]!["create"] = false;
+        Management.Entries["author"] = [];
+        Management.Access[MainSite]["permissions"]!.AsArray().Select(name => name!.GetValue<string>()).ShouldNotContain(name => name.StartsWith("content.", StringComparison.Ordinal));
+
+        var app = Load();
+        Buttons(app).ShouldContain("New");
+
+        Navigation.NavigateTo("content/author");
+        app.WaitForAssertion(() => app.Find("main h1").TextContent.ShouldBe("Author"));
+        Buttons(app).ShouldNotContain("New");
+        Buttons(app).ShouldContain("Columns");
+    }
+
     [Fact]
     public void ARefusedListIsShownAsTheAnswer()
     {

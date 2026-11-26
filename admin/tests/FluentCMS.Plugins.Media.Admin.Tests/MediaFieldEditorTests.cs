@@ -189,6 +189,32 @@ public sealed class MediaFieldEditorTests : MediaTestContext
     }
 
     [Fact]
+    public void GrantsLimitedToFoldersOfferThePickerAndTheAltText()
+    {
+        Admin.GrantInFolders(MediaPermissions.Read, MediaPermissions.Update);
+        var hero = Library.AddAsset("hero.png");
+        var cut = Edit(Field(), JsonValue.Create(hero.ToString("D")));
+        cut.WaitForAssertion(() => cut.FindAll(".media-field-toggle").Count.ShouldBe(1));
+
+        cut.Find(".media-field-toggle").Click();
+
+        HasButton(cut, "Choose an asset").ShouldBeTrue();
+        Field(cut, "Alt text").HasAttribute("readonly").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void WithoutMediaReadTheFieldOffersNoPicker()
+    {
+        Admin.Permissions.Clear();
+        var hero = Library.AddAsset("hero.png");
+
+        var cut = Edit(Field(), JsonValue.Create(hero.ToString("D")));
+
+        cut.WaitForAssertion(() => Names(cut).ShouldBe(["hero.png"]));
+        HasButton(cut, "Choose an asset").ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task APickThatKeepsAnAssetThePickerCouldNotReadKeepsItInTheField()
     {
         var gone = Guid.NewGuid();

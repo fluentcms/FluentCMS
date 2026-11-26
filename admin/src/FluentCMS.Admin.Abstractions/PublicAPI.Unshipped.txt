@@ -593,6 +593,7 @@ FluentCMS.Admin.Forms.IUnsavedForm.CaptureDraft() -> FluentCMS.Admin.Forms.FormD
 FluentCMS.Admin.IAdminAccess
 FluentCMS.Admin.IAdminAccess.Allows(string! permission) -> bool
 FluentCMS.Admin.IAdminAccess.AllowsForInstance(string! permission) -> bool
+FluentCMS.Admin.IAdminAccess.AllowsForSomeResources(string! permission) -> bool
 FluentCMS.Admin.IAdminAccess.ForType(string! type) -> FluentCMS.Admin.Api.TypeAccessInfo?
 FluentCMS.Admin.IAdminContext
 FluentCMS.Admin.IAdminContext.Access.get -> FluentCMS.Admin.IAdminAccess!
