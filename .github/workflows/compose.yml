@@ -1,15 +1,14 @@
 name: Compose
 
 # The compose file of the reference host, src/FluentCMS.Host/compose.yaml, with a smoke test: the image, PostgreSQL, MinIO
-# and the CLI together. It runs on pushes to feature branches and when dispatched; CI calls it on pushes to main and when
-# dispatched there. Pull requests do not run it, but Publish calls it, on a pull request too, with the archive of the image it
+# and the CLI together. It runs when dispatched, on a feature branch too; CI calls it on pushes to main and when dispatched
+# there. Pushes to feature branches do not run it (#3699), since each merged issue pull request would start one, and pull
+# requests do not run it either, but Publish calls it, on a pull request too, with the archive of the image it
 # built and that image's digest, which the job loads instead of building one; Publish pushes that image only. A manual run with
 # an image runs the published one instead of building it, such as ghcr.io/fluentcms/fluentcms:1.0.0-preview.1 after a release
 # (docs/releasing.md); the image must be public. Beside the smoke test, the admin's end-to-end tests run against the image,
 # built or published, except when Publish calls the workflow with an archive.
 on:
-  push:
-    branches: ["feature/**"]
   workflow_dispatch:
     inputs:
       image:

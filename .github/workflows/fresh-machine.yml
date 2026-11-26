@@ -2,14 +2,13 @@ name: Fresh machine
 
 # The exit criteria of M6 (#3023): eng/fresh-machine.ps1 runs the sequence of a new user from the packages of this commit in a
 # folder feed, on clean runners. Linux runs it on SQLite and PostgreSQL, then checks that broken feeds fail it; Windows runs
-# SQLite. It runs on pushes to feature branches and when dispatched; CI calls it on pushes to main, on manual runs and on the
-# pull request of a feature branch into main. Issue pull requests do not run it. After a release, a manual run with a feed and
+# SQLite. It runs when dispatched, on a feature branch too; CI calls it on pushes to main, on manual runs and on the pull
+# request of a feature branch into main. Pushes to feature branches do not run it (#3699), since each merged issue pull
+# request would start one, and issue pull requests do not run it either. After a release, a manual run with a feed and
 # a version runs it against the published packages, such as nuget.org (docs/releasing.md). That run and its jobs have names of
 # their own, so that the check of the Publish workflow never takes it for a run of the packages of its commit.
 run-name: ${{ inputs.feed && format('Fresh machine of the published {0} from {1}', inputs.version, inputs.feed) || '' }}
 on:
-  push:
-    branches: ["feature/**"]
   workflow_dispatch:
     inputs:
       feed:
