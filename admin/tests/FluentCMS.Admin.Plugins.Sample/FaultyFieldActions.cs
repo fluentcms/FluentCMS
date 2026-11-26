@@ -42,6 +42,19 @@ public sealed class ObjectFieldAction : FieldActionBase
         Task.FromResult(FieldActionResult.Replace(new System.Text.Json.Nodes.JsonObject { ["a"] = 1 }));
 }
 
+// Puts a text into the field of another locale, the one the test names, as a translation does.
+public sealed class ElsewhereFieldAction : FieldActionBase
+{
+    public static string Locale { get; set; } = "fr";
+
+    public static string Text { get; set; } = "ailleurs";
+
+    public override string Label => "Elsewhere";
+
+    public override Task<FieldActionResult> RunAsync(FieldActionContext context, CancellationToken cancellationToken) =>
+        Task.FromResult(FieldActionResult.ReplaceIn(Locale, System.Text.Json.Nodes.JsonValue.Create(Text)));
+}
+
 // Answers when the test releases it, whatever its token says, with a text for the field.
 public sealed class HeldFieldAction : FieldActionBase
 {

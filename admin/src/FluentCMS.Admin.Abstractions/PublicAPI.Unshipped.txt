@@ -50,6 +50,7 @@ FluentCMS.Admin.Actions.FieldActionContext.Type.init -> void
 FluentCMS.Admin.Actions.FieldActionContext.Value.get -> System.Text.Json.Nodes.JsonNode?
 FluentCMS.Admin.Actions.FieldActionContext.Value.init -> void
 FluentCMS.Admin.Actions.FieldActionResult
+FluentCMS.Admin.Actions.FieldActionResult.Locale.get -> string?
 FluentCMS.Admin.Actions.FieldActionResult.Replaces.get -> bool
 FluentCMS.Admin.Actions.FieldActionResult.Value.get -> System.Text.Json.Nodes.JsonNode?
 FluentCMS.Admin.Actions.IBulkProgress
@@ -1053,6 +1054,7 @@ override FluentCMS.Admin.Plugins.AdminPluginManifest.Equals(object? obj) -> bool
 override FluentCMS.Admin.Plugins.AdminPluginManifest.GetHashCode() -> int
 override FluentCMS.Admin.Plugins.AdminPluginManifest.ToString() -> string!
 static FluentCMS.Admin.Actions.FieldActionResult.Replace(System.Text.Json.Nodes.JsonNode? value) -> FluentCMS.Admin.Actions.FieldActionResult!
+static FluentCMS.Admin.Actions.FieldActionResult.ReplaceIn(string! locale, System.Text.Json.Nodes.JsonNode? value) -> FluentCMS.Admin.Actions.FieldActionResult!
 static FluentCMS.Admin.Actions.FieldActionResult.Unchanged.get -> FluentCMS.Admin.Actions.FieldActionResult!
 static FluentCMS.Admin.Api.ApiProblem.operator !=(FluentCMS.Admin.Api.ApiProblem? left, FluentCMS.Admin.Api.ApiProblem? right) -> bool
 static FluentCMS.Admin.Api.ApiProblem.operator ==(FluentCMS.Admin.Api.ApiProblem? left, FluentCMS.Admin.Api.ApiProblem? right) -> bool

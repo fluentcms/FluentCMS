@@ -396,6 +396,142 @@ public sealed class FieldActionTests : AdminTestContext
         Announced(app).ShouldNotContain("The action failed. The browser's console has the cause.");
     }
 
+    // The contract's result for another locale (#3513): it names the locale, and the results of before name none.
+    [Fact]
+    public void ReplaceInNamesItsLocaleAndTheOtherResultsNameNone()
+    {
+        var value = JsonValue.Create("ailleurs");
+
+        var elsewhere = FluentCMS.Admin.Actions.FieldActionResult.ReplaceIn("fr", value);
+
+        (elsewhere.Replaces, elsewhere.Locale, elsewhere.Value).ShouldBe((true, "fr", (JsonNode?)value));
+        FluentCMS.Admin.Actions.FieldActionResult.Replace(value).Locale.ShouldBeNull();
+        FluentCMS.Admin.Actions.FieldActionResult.Unchanged.Locale.ShouldBeNull();
+        Should.Throw<ArgumentException>(() => FluentCMS.Admin.Actions.FieldActionResult.ReplaceIn(" ", value));
+    }
+
+    // Without unsaved changes the form moves to the locale at once; the value is an unsaved change there, saved with that
+    // locale's Save, and the locale the form showed keeps its value.
+    [Fact]
+    public void AValueForAnotherLocaleMovesTheFormThereAsAnUnsavedChangeAndTheLocaleShownKeepsItsValue()
+    {
+        var app = LoadTwoLocales();
+
+        RunElsewhere(app);
+
+        app.WaitForAssertion(() => NavigationUri.ShouldBe($"http://localhost/content/review/{_review:D}?locale=fr"));
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("ailleurs"));
+        Input(app, "body").GetAttribute("value").ShouldBe("Un bel endroit.");
+        Form(app).HasUnsavedChanges.ShouldBeTrue();
+        app.WaitForAssertion(() => Announced(app).ShouldContain("Elsewhere changed Title in fr. The change is not saved yet."));
+        _content.Writes.ShouldBeEmpty();
+
+        Button(app, "Save").Click();
+        app.WaitForAssertion(() => _content.Writes.ShouldHaveSingleItem().Locale.ShouldBe("fr"));
+        _content.Writes[0].Body["title"]!.GetValue<string>().ShouldBe("ailleurs");
+
+        Navigate($"content/review/{_review:D}?locale=en");
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("great"));
+    }
+
+    // Unsaved changes of the locale shown go through the form's own question; once the user leaves them, the value goes in.
+    [Fact]
+    public void WithUnsavedChangesTheFormAsksFirstAndALeaveTakesTheValueIntoTheOtherLocale()
+    {
+        var app = LoadTwoLocales();
+        Input(app, "body").Input("Mine");
+
+        RunElsewhere(app);
+
+        app.WaitForAssertion(() => LeaveQuestion(app).Instance.Open.ShouldBeTrue());
+        Leave(app, "fr");
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("ailleurs"));
+        Input(app, "body").GetAttribute("value").ShouldBe("Un bel endroit.");
+        Form(app).HasUnsavedChanges.ShouldBeTrue();
+        _content.Writes.ShouldBeEmpty();
+    }
+
+    // A declined leave keeps the locale shown as the user left it, drops the value and says so: a later switch does not
+    // bring it back.
+    [Fact]
+    public void ADeclinedLeaveDropsTheValueAndSaysSo()
+    {
+        var app = LoadTwoLocales();
+        Input(app, "body").Input("Mine");
+
+        RunElsewhere(app);
+        app.WaitForAssertion(() => LeaveQuestion(app).Instance.Open.ShouldBeTrue());
+        Button(app, "Keep editing").Click();
+
+        app.WaitForAssertion(() => Announced(app).ShouldContain("The value of Elsewhere for fr was dropped, since the form stayed in this locale. Nothing is changed."));
+        NavigationUri.ShouldBe($"http://localhost/content/review/{_review:D}?locale=en");
+        Input(app, "body").GetAttribute("value").ShouldBe("Mine");
+        Input(app, "title").GetAttribute("value").ShouldBe("great");
+
+        Navigate($"content/review/{_review:D}?locale=fr");
+        app.WaitForAssertion(() => LeaveQuestion(app).Instance.Open.ShouldBeTrue());
+        Leave(app, "fr");
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("génial"));
+        Form(app).HasUnsavedChanges.ShouldBeFalse();
+    }
+
+    // A field the user may not change in the locale, as one the locales share in a locale the entry is not translated into
+    // yet, does not take the value: it goes, and the form says why.
+    [Fact]
+    public void AFieldReadOnlyInTheOtherLocaleDropsTheValueAndTheFormSaysWhy()
+    {
+        var app = LoadTwoLocales(translated: false, titleLocalizable: false);
+
+        RunElsewhere(app);
+
+        app.WaitForAssertion(() => NavigationUri.ShouldBe($"http://localhost/content/review/{_review:D}?locale=fr"));
+        app.WaitForAssertion(() => Announced(app).ShouldContain("The value of Elsewhere for fr was dropped, since you may not change Title in fr. Nothing is changed."));
+        Input(app, "title").GetAttribute("value").ShouldBe("great");
+        Form(app).HasUnsavedChanges.ShouldBeFalse();
+    }
+
+    // The form loads another entry before the locale has loaded: the value never reaches it.
+    [Fact]
+    public void AValueNeverReachesAnotherEntryTheFormLoadedMeanwhile()
+    {
+        var app = LoadTwoLocales();
+        _content.Add("review", new JsonObject { ["title"] = "pauvre", ["body"] = "Soupe froide.", ["rating"] = 1 }, id: _other, locale: "fr");
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Management.HoldPath = path => path.Contains(_review.ToString("D"), StringComparison.Ordinal) ? held.Task : null;
+
+        RunElsewhere(app);
+        app.WaitForAssertion(() => NavigationUri.ShouldBe($"http://localhost/content/review/{_review:D}?locale=fr"));
+        Navigate($"content/review/{_other:D}?locale=fr");
+
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("pauvre"));
+        held.SetResult();
+        app.WaitForAssertion(() => Announced(app).ShouldContain("The value of Elsewhere for fr was dropped, since the form shows another entry or locale now. Nothing is changed."));
+        Input(app, "title").GetAttribute("value").ShouldBe("pauvre");
+        Form(app).HasUnsavedChanges.ShouldBeFalse();
+    }
+
+    // Any half may name a locale, so one that is not another enabled locale of the site, or one where the user may not change
+    // the field, is refused as a value of the wrong shape is: beside the field, and the form stays where it is.
+    [Theory]
+    [InlineData("xx", false)]
+    [InlineData("en", false)]
+    [InlineData("de", false)]
+    [InlineData("fr", true)]
+    public void AValueForALocaleTheFormCannotTakeItInIsRefusedBesideTheField(string locale, bool readOnly)
+    {
+        Management.AddLocale(MainSite, "de", 2, enabled: false);
+        var app = LoadTwoLocales(locale: locale, readOnlyInFrench: readOnly);
+
+        RunElsewhere(app);
+
+        var refused = $"The action gave a value for {locale}, which is not another locale of the site where you may change this field of the entry. Nothing is changed.";
+        app.WaitForAssertion(() => Wrapper(app, "title").QuerySelector(".field-actions-problem")!.TextContent.ShouldBe(refused));
+        Announced(app).ShouldContain(refused);
+        NavigationUri.ShouldBe($"http://localhost/content/review/{_review:D}?locale=en");
+        Input(app, "title").GetAttribute("value").ShouldBe("great");
+        Form(app).HasUnsavedChanges.ShouldBeFalse();
+    }
+
     // The shape a field action's value must have for the field: a field of several takes an array of values of its type, and
     // a number field a number.
     [Theory]
@@ -456,6 +592,58 @@ public sealed class FieldActionTests : AdminTestContext
     }
 
     private void Navigate(string route) => Services.GetRequiredService<NavigationManager>().NavigateTo(route);
+
+    private string NavigationUri => Services.GetRequiredService<NavigationManager>().Uri;
+
+    // The review in English and French, its title and body localizable unless the title is shared, with the sample's action
+    // that gives a value for the locale named; the French translation is there unless translated is false.
+    private IRenderedComponent<AdminApp> LoadTwoLocales(bool translated = true, bool titleLocalizable = true, string locale = "fr", bool readOnlyInFrench = false)
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        var title = Field("title");
+        title["localizable"] = titleLocalizable;
+        var body = Field("body", "longText");
+        body["localizable"] = true;
+        var review = Type("review", fields: [title, body, Field("rating", "integer")]);
+        review["localized"] = true;
+        Management.SetTypes(MainSite, review);
+        if (translated)
+        {
+            _content.Add("review", new JsonObject { ["title"] = "génial", ["body"] = "Un bel endroit.", ["rating"] = 4 }, id: _review, locale: "fr");
+        }
+
+        if (readOnlyInFrench)
+        {
+            var limited = Management.Access[MainSite].DeepClone().AsObject();
+            limited["types"]!["review"]!["update"] = false;
+            Management.LocaleAccess[(MainSite, "fr")] = limited;
+        }
+
+        ElsewhereFieldAction.Locale = locale;
+        var app = LoadReview(Reviews with { FieldActions = [Declared("ElsewhereFieldAction", "elsewhere")] });
+        app.WaitForAssertion(() => NavigationUri.ShouldBe($"http://localhost/content/review/{_review:D}?locale=en"));
+        return app;
+    }
+
+    private static void RunElsewhere(IRenderedComponent<AdminApp> app)
+    {
+        Open(app, "title");
+        app.WaitForAssertion(() => ActionButtons(app, "title").ShouldBe(["Elsewhere"]));
+        ActionButton(app, "title", "Elsewhere").Click();
+    }
+
+    // Answers the question with Leave. bUnit's navigation manager ends a navigation that a handler held off the renderer's
+    // dispatcher, so the page's render after it is lost; rendering the page again shows what the browser shows, as the
+    // end-to-end LocaleTests see.
+    private void Leave(IRenderedComponent<AdminApp> app, string locale)
+    {
+        Button(app, "Leave").Click();
+        app.WaitForAssertion(() => NavigationUri.ShouldBe($"http://localhost/content/review/{_review:D}?locale={locale}"));
+        app.FindComponent<ContentEntryPage>().Render();
+    }
+
+    private static IRenderedComponent<CmsDialog> LeaveQuestion(IRenderedComponent<AdminApp> app) =>
+        app.FindComponents<CmsDialog>().Single(found => found.Instance.Title == "Leave with unsaved changes?");
 
     private string? Focused() =>
         JSInterop.Invocations.Where(call => call.Identifier == "Blazor._internal.domWrapper.focus").Select(call => call.Arguments[0]).LastOrDefault() is ElementReference element ? element.Id : null;

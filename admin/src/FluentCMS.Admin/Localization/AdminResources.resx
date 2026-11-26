@@ -1202,6 +1202,21 @@
   <data name="Content.FieldActions.WrongValue" xml:space="preserve">
     <value>The action gave a value this field does not take. The field is unchanged.</value>
   </data>
+  <data name="Content.FieldActions.LocaleRefused" xml:space="preserve">
+    <value>The action gave a value for {0}, which is not another locale of the site where you may change this field of the entry. Nothing is changed.</value>
+  </data>
+  <data name="Content.FieldActions.ChangedIn" xml:space="preserve">
+    <value>{0} changed {1} in {2}. The change is not saved yet.</value>
+  </data>
+  <data name="Content.FieldActions.Stayed" xml:space="preserve">
+    <value>The value of {0} for {1} was dropped, since the form stayed in this locale. Nothing is changed.</value>
+  </data>
+  <data name="Content.FieldActions.DroppedElsewhere" xml:space="preserve">
+    <value>The value of {0} for {1} was dropped, since the form shows another entry or locale now. Nothing is changed.</value>
+  </data>
+  <data name="Content.FieldActions.DroppedReadOnly" xml:space="preserve">
+    <value>The value of {0} for {1} was dropped, since you may not change {2} in {1}. Nothing is changed.</value>
+  </data>
   <data name="Content.FieldActions.Failed" xml:space="preserve">
     <value>The action failed. The browser's console has the cause.</value>
   </data>

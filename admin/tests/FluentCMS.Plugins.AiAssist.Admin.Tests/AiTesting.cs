@@ -167,8 +167,8 @@ internal sealed record AiRequest(HttpMethod Method, string Path, JsonNode? Body,
 
 // The AI and media routes as the server answers them. An action's events are what a test writes to Events, one at a time,
 // or a problem the test sets before the first; GET /ai/usage answers Usage; media assets are read and their alt text saved;
-// GET /ai/fields answers MayDescribeAssets as assets; and an entry's saved draft is read in a locale from Drafts, a 404 where
-// it holds none.
+// GET /ai/fields answers MayDescribeAssets as assets; GET /me/access answers by ReadOnlyIn; and an entry's saved draft is read
+// in a locale from Drafts, a 404 where it holds none.
 internal sealed class FakeAiServer : IManagementApi, IManagementEvents
 {
     public List<AiRequest> Requests { get; } = [];
@@ -187,6 +187,10 @@ internal sealed class FakeAiServer : IManagementApi, IManagementEvents
 
     // What GET /ai/fields answers as assets: whether the caller may send images of the library for alt text.
     public bool MayDescribeAssets { get; set; } = true;
+
+    // The locales where GET /me/access says the caller may change no field of the article; in the others it may change
+    // the title and the summary.
+    public HashSet<string> ReadOnlyIn { get; } = [];
 
     public JsonObject Usage { get; set; } = UsageOf([]);
 
@@ -241,6 +245,13 @@ internal sealed class FakeAiServer : IManagementApi, IManagementEvents
             var read = asset.DeepClone().AsObject();
             read["locale"] = AnsweredLocale(request.Locale);
             return Task.FromResult(new ApiResponse<T>(HttpStatusCode.OK, $"\"{asset["version"]}\"", read.Deserialize(answer)!));
+        }
+
+        if (path == "me/access")
+        {
+            var update = !ReadOnlyIn.Contains(request.Locale ?? "en");
+            var access = new JsonObject { ["types"] = new JsonObject { ["article"] = new JsonObject { ["update"] = update, ["updatableFields"] = update ? new JsonArray("title", "summary") : new JsonArray() } } };
+            return Task.FromResult(new ApiResponse<T>(HttpStatusCode.OK, null, access.Deserialize(answer)!));
         }
 
         if (path == "ai/fields")

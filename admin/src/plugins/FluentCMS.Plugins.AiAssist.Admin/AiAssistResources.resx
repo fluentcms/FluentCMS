@@ -57,6 +57,18 @@
   <data name="Ai.Panel.Image" xml:space="preserve">
     <value>Image</value>
   </data>
+  <data name="Ai.Panel.TargetLocale" xml:space="preserve">
+    <value>Translate into</value>
+  </data>
+  <data name="Ai.Panel.LocaleName" xml:space="preserve">
+    <value>{1} ({0})</value>
+  </data>
+  <data name="Ai.Panel.IntoLocale" xml:space="preserve">
+    <value>Accepting moves the form to {0} with the translation in the field, not saved yet. The field in this locale keeps its text.</value>
+  </data>
+  <data name="Ai.Panel.ReadyTranslation" xml:space="preserve">
+    <value>The translation is ready. Accept it to put it into the field in {0}, or decline it.</value>
+  </data>
   <data name="Ai.Panel.MetaTitle" xml:space="preserve">
     <value>Meta title</value>
   </data>

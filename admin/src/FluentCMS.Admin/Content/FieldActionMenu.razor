@@ -1,7 +1,7 @@
 @* The actions of the admin halves on one field of a form (spec 5.1): a button that shows and hides them, which loads their
    halves the first time it opens and keeps those whose AppliesToAsync answers true. An action is confirmed when it asks, then
    runs with the field as the draft holds it; a result that fits the field's type goes into the draft through OnResult, as an
-   unsaved change. The form makes a new menu for each entry and locale it loads, so a result that comes after the draft
+   unsaved change, and one for another locale to the form through OnResultIn. The form makes a new menu for each entry and locale it loads, so a result that comes after the draft
    changed is dropped with the menu it was asked from. Escape closes the list, from the button or from inside it, and the
    loading, a failed load and no action are each announced once, as the list's region is new. *@
 @using FluentCMS.Admin.Actions
@@ -92,6 +92,11 @@
     // Raised with the value an action puts into the draft.
     [Parameter]
     public EventCallback<JsonNode?> OnResult { get; set; }
+
+    // Called with the action's label, the locale and the value an action gives for another locale of the entry; answers why
+    // the form refuses it, or null once it moves to that locale. Without it, such a value is refused.
+    [Parameter]
+    public Func<string, string, JsonNode?, Task<string?>>? OnResultIn { get; set; }
 
     // Taken once, so that a call after the menu went reads a cancelled token and not a disposed source.
     protected override void OnInitialized() => token = running.Token;
@@ -237,6 +242,18 @@
             {
                 PluginLog.FieldActionValueRefused(Logger, item.Declared.Half.Name, item.Declared.Declared.Type, context.Field.Type);
                 Fail(L["Content.FieldActions.WrongValue"]);
+                return;
+            }
+
+            // Any half may name a locale, so the form judges it as it judges a value; the locale shown keeps its value.
+            if (result.Locale is { } other)
+            {
+                var refused = OnResultIn is null ? L["Content.FieldActions.LocaleRefused", other].Value : await OnResultIn(item.Action.Label, other, result.Value);
+                if (refused is not null && !token.IsCancellationRequested)
+                {
+                    Fail(refused);
+                }
+
                 return;
             }
 

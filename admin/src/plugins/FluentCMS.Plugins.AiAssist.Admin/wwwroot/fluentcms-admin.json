@@ -26,6 +26,7 @@
     { "type": "FluentCMS.Plugins.AiAssist.Admin.TitleAction", "name": "title", "fieldTypes": ["text", "longText"], "permission": "ai.use", "fieldsFrom": "ai/fields#fields" },
     { "type": "FluentCMS.Plugins.AiAssist.Admin.SummaryAction", "name": "summary", "fieldTypes": ["text", "longText"], "permission": "ai.use", "fieldsFrom": "ai/fields#fields" },
     { "type": "FluentCMS.Plugins.AiAssist.Admin.SeoAction", "name": "seo", "fieldTypes": ["text", "longText"], "permission": "ai.use", "fieldsFrom": "ai/fields#fields" },
+    { "type": "FluentCMS.Plugins.AiAssist.Admin.TranslateAction", "name": "translate", "fieldTypes": ["text", "longText"], "permission": "ai.use", "fieldsFrom": "ai/fields#fields" },
     { "type": "FluentCMS.Plugins.AiAssist.Admin.AltTextAction", "name": "altText", "fieldTypes": ["text", "longText"], "permission": "ai.use", "fieldsFrom": "ai/fields#fields" },
     { "type": "FluentCMS.Plugins.AiAssist.Admin.AssetAltTextAction", "name": "assetAltText", "fieldTypes": ["media"], "permission": "ai.use", "fieldsFrom": "ai/fields#assets" }
   ]

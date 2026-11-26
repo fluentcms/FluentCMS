@@ -328,6 +328,15 @@ internal sealed class AdminContext(
         return [.. ContentLocales.Where(code => !access.TryGetValue(code, out var found) || found.Types.ContainsKey(type))];
     }
 
+    // Whether the user may change the field of the type in the locale. A locale whose access could not be read counts as one
+    // it may, since the form reads the access there again when it shows it, and the server judges the save.
+    public async Task<bool> MayUpdateInAsync(string type, string field, string locale)
+    {
+        var access = await LocaleAccessAsync();
+        return !access.TryGetValue(locale, out var found)
+            || (found.Types.TryGetValue(type, out var typed) && typed.Update && typed.UpdatableFields.Contains(field, StringComparer.Ordinal));
+    }
+
     // The other locales of the site in which the user may read some type, for a locale that shows none.
     public async Task<IReadOnlyList<string>> LocalesWithContentAsync()
     {
