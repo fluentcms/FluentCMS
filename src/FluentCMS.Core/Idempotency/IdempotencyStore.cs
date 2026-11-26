@@ -217,6 +217,10 @@ internal sealed class IdempotencyStore(IServiceScopeFactory scopes, IDataProvide
     // again; it stops InProgressTimeout after that, so that a request whose client is gone holds its key no longer than a lease.
     public IdempotencyCapture CaptureBound(CancellationToken aborted) => new(options.InProgressTimeout, time, aborted);
 
+    // What the work of a request is run with (IdempotentRequests): the client going away stops it at once until a write of
+    // it commits, and from then on only InProgressTimeout later, so that a retry gets the answer of what committed (#3590).
+    public IdempotencyWork WorkBound(CancellationToken aborted) => new(options.InProgressTimeout, time, aborted);
+
     public void NotCaptured(IdempotencyClaim claim)
     {
         ArgumentNullException.ThrowIfNull(claim);
@@ -305,6 +309,82 @@ internal sealed class IdempotencyCapture : IDisposable
         _gone.Dispose();
         _bound.Dispose();
     }
+}
+
+internal sealed class IdempotencyWork : IDisposable
+{
+    private readonly Lock _gate = new();
+    private readonly TimeSpan _bound;
+    private readonly CancellationTokenSource _stop;
+    private readonly CancellationTokenRegistration _gone;
+    private bool _clientGone;
+    private bool _committed;
+
+    public IdempotencyWork(TimeSpan bound, TimeProvider time, CancellationToken aborted)
+    {
+        _bound = bound;
+        _stop = new CancellationTokenSource(Timeout.InfiniteTimeSpan, time);
+        _gone = aborted.Register(Gone);
+    }
+
+    public CancellationToken Token => _stop.Token;
+
+    // The answer of the work is kept unless its client went away before any write of it committed: such work may have
+    // been cut short with nothing done, and runs again on a retry after the lease. Work that committed answers what it did,
+    // the items a bulk did not run within the bound as not run.
+    public bool Stands
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return !_clientGone || _committed;
+            }
+        }
+    }
+
+    public void Committed()
+    {
+        lock (_gate)
+        {
+            _committed = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        _gone.Dispose();
+        _stop.Dispose();
+    }
+
+    private void Gone()
+    {
+        bool committed;
+        lock (_gate)
+        {
+            _clientGone = true;
+            committed = _committed;
+        }
+
+        if (committed)
+        {
+            _stop.CancelAfter(_bound);
+        }
+        else
+        {
+            _stop.Cancel();
+        }
+    }
+}
+
+// The keyed request of a scope, which the content service tells of each write it commits (#3590).
+internal sealed class IdempotencyCommits
+{
+    private IdempotencyWork? _work;
+
+    public void Watch(IdempotencyWork? work) => Volatile.Write(ref _work, work);
+
+    public void Committed() => Volatile.Read(ref _work)?.Committed();
 }
 
 internal sealed class IdempotencyLease : IAsyncDisposable
