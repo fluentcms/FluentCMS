@@ -1,3 +1,4 @@
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.DependencyInjection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -104,7 +105,8 @@ internal sealed class SigningKeyRing(SigningKeyStore store, SecurityOptions secu
                 }
                 catch (Exception exception)
                 {
-                    Volatile.Write(ref _nextRead, (now + ReadInterval).UtcTicks);
+                    // From the end of the read: one that took the database's timeout to fail is not followed by the next at once.
+                    Volatile.Write(ref _nextRead, (time.GetUtcNow() + ReadInterval).UtcTicks);
                     OidcLog.KeysNotRead(logger, exception, (int)ReadInterval.TotalSeconds);
                 }
             }
@@ -233,11 +235,19 @@ internal sealed class KeyChangeTokenSource<TOptions> : IOptionsChangeTokenSource
     public void Dispose() => _source.Dispose();
 }
 
-// Reads the keys again when this instance's copy is 30 seconds old, before the request is authenticated against them.
+// Reads the keys again when this instance's copy is 30 seconds old, before the request is authenticated against them. The
+// probes, the docs and the static files a surface marks are never authenticated (ApiAuthenticationMiddleware), so they
+// neither read nor wait for a read: a database that hangs must not hold /health/live for its timeout.
 internal sealed class SigningKeyRefreshMiddleware(RequestDelegate next, SigningKeyRing ring)
 {
     public Task InvokeAsync(HttpContext context)
     {
+        var endpoint = context.GetEndpoint();
+        if (FluentCmsSurfaceMetadata.IsHealth(endpoint) || FluentCmsSurfaceMetadata.IsDocs(endpoint) || PreAuthRateLimiter.LimitOf(context) == PreAuthLimit.StaticFiles)
+        {
+            return next(context);
+        }
+
         var refresh = ring.RefreshAsync(context.RequestAborted);
         return refresh.IsCompletedSuccessfully ? next(context) : AwaitAsync(refresh, context);
     }
