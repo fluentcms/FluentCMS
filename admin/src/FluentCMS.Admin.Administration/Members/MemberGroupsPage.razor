@@ -1,13 +1,16 @@
 @* The member groups of the instance with their role (spec 4.15): one is made, changed (its name, description and role) and
    deleted after a question that names it; its members are the members list filtered by it, where each member's page puts
    it in a group or takes it out. Making, changing and deleting a group need every grant of its role, and changing its role
-   every grant of the new one too (FCMS3103), which the server decides; the page names the refusal. *@
+   every grant of the new one too (FCMS3103), which the server decides; the page names the refusal. A group form that
+   differs from what it started with asks before the page is left. *@
 @page "/members/groups"
 @implements IDisposable
 @inject IManagementApi Api
 @inject AdminContext Context
 @inject IStringLocalizer<MembersResources> L
 @inject IStringLocalizer<CommonResources> Common
+
+<UnsavedGuard Unsaved="@(() => Unsaved)" />
 
 <PageCrumb Text="@L["Members.GroupsPage.Heading"]" />
 <h1 tabindex="-1">@L["Members.GroupsPage.Heading"]</h1>
@@ -129,6 +132,14 @@
     private readonly CancellationTokenSource closing = new();
 
     private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    // The form against the group it changes, or an empty one for a new group, as a save would send it.
+    private bool Unsaved =>
+        (name?.Trim() ?? "") != (editing?.Name ?? "")
+        || Described(description) != Described(editing?.Description)
+        || role != editing?.RoleId;
+
+    private static string? Described(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
     protected override Task OnInitializedAsync() => ReadAsync();
 

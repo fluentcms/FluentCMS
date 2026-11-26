@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json.Nodes;
 using Bunit;
 using FluentCMS.Admin.Administration.Members;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Admin.Tests.Shell.FakeManagementServer;
@@ -12,6 +13,8 @@ namespace FluentCMS.Admin.Tests.Administration.Members;
 // each refusal by its meaning.
 public sealed class MemberGroupsPageTests : MembersTestContext
 {
+    private static readonly Guid Shop = new("0193a1b2-0000-7000-8000-00000000a002");
+
     public MemberGroupsPageTests()
     {
         UseNeutralResources();
@@ -281,5 +284,46 @@ public sealed class MemberGroupsPageTests : MembersTestContext
         app.WaitForAssertion(() => Message(app, "Groups").ShouldStartWith("The group writers was not deleted: its role gives a permission you do not hold."));
         Items(Section(app, "Groups")).Length.ShouldBe(2);
         Buttons(Section(app, "Groups")).ShouldContain("Delete the group writers");
+    }
+
+    // #3511: a group form that differs from what it started with asks before the page is left, and nothing of it is kept as
+    // a draft.
+    [Fact]
+    public async Task AGroupFormNotSavedAsksBeforeThePageIsLeftAndKeepsNoDraft()
+    {
+        Management.AddSite(Shop, "Shop", "shop");
+        var app = Open();
+        Button(Section(app, "Groups"), "Change the group writers").Click();
+        app.WaitForAssertion(() => Form(app).QuerySelector("h2")!.TextContent.ShouldBe("Change the group writers"));
+        Services.GetRequiredService<FluentCMS.Admin.Forms.IFormDraftStore>().HasUnsavedForms.ShouldBeFalse();
+        Form(app).QuerySelectorAll("input")[1].Input("People who write");
+
+        await LeavingAsksFirstAsync(app, () =>
+        {
+            Form(app).QuerySelector("h2")!.TextContent.ShouldBe("Change the group writers");
+            Form(app).QuerySelectorAll("input")[1].GetAttribute("value").ShouldBe("People who write");
+        }, "People who write");
+
+        LeaveWhenAsked(app, "members");
+    }
+
+    [Fact]
+    public void AGroupFormChangedBackCancelledOrSavedAsksNothing()
+    {
+        var app = Open();
+        Form(app).QuerySelectorAll("input")[0].Input("vip");
+        Form(app).QuerySelectorAll("input")[0].Input("");
+        Services.GetRequiredService<FluentCMS.Admin.Forms.IFormDraftStore>().HasUnsavedForms.ShouldBeFalse();
+        Button(Section(app, "Groups"), "Change the group writers").Click();
+        app.WaitForAssertion(() => Form(app).QuerySelector("h2")!.TextContent.ShouldBe("Change the group writers"));
+        Form(app).QuerySelectorAll("input")[1].Input("People who write");
+        Button(Form(app), "Cancel").Click();
+        Services.GetRequiredService<FluentCMS.Admin.Forms.IFormDraftStore>().HasUnsavedForms.ShouldBeFalse();
+
+        Fill(app, "vip", "Paying members", Author);
+        Form(app).QuerySelector("form")!.Submit();
+
+        app.WaitForAssertion(() => Message(app, "New group").ShouldBe("The group vip was created."));
+        NothingAsks(app, "members");
     }
 }

@@ -17,6 +17,8 @@ namespace FluentCMS.Admin.Tests.Administration.Members;
 // meaning.
 public sealed class MemberPageTests : MembersTestContext
 {
+    private static readonly Guid Shop = new("0193a1b2-0000-7000-8000-00000000a002");
+
     public MemberPageTests()
     {
         UseNeutralResources();
@@ -388,5 +390,33 @@ public sealed class MemberPageTests : MembersTestContext
 
         app.WaitForAssertion(() => Heading(app).ShouldBe(Text("Shell.NoAccess.Heading")));
         Management.Calls.ShouldNotContain(call => call.Path.StartsWith("member", StringComparison.Ordinal));
+    }
+
+    // #3511: a display name typed and not saved asks before the page is left, and nothing of it is kept as a draft.
+    [Fact]
+    public async Task ADisplayNameNotSavedAsksBeforeThePageIsLeftAndKeepsNoDraft()
+    {
+        Management.AddSite(Shop, "Shop", "shop");
+        var app = Open(Ada);
+        Section(app, "Account").QuerySelector("input")!.Input("Ada Lovelace");
+
+        await LeavingAsksFirstAsync(app, () => NameInput(app).ShouldBe("Ada Lovelace"), "Ada Lovelace");
+
+        LeaveWhenAsked(app, "members");
+    }
+
+    [Fact]
+    public void ADisplayNameChangedBackOrSavedAsksNothing()
+    {
+        var app = Open(Ada);
+        Section(app, "Account").QuerySelector("input")!.Input("Ada Lovelace");
+        Section(app, "Account").QuerySelector("input")!.Input("Ada ");
+        Services.GetRequiredService<FluentCMS.Admin.Forms.IFormDraftStore>().HasUnsavedForms.ShouldBeFalse();
+
+        Section(app, "Account").QuerySelector("input")!.Input("Ada Lovelace");
+        Section(app, "Account").QuerySelector("form")!.Submit();
+
+        app.WaitForAssertion(() => Message(app, "Account").ShouldBe("The display name was saved."));
+        NothingAsks(app, "members");
     }
 }
