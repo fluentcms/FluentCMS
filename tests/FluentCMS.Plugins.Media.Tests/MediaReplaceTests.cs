@@ -76,6 +76,29 @@ public sealed class MediaReplaceTests(PostHost media) : IClassFixture<PostHost>
         (await FilesOfAsync(media, asset)).Count.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task AReplaceHoldsAnSvgToTheSvgLimit()
+    {
+        using var admin = await media.AdminAsync();
+        var asset = await UploadAsync(admin, Bands(8, 8), "bands.png");
+        var svg = Files.Svg("""<rect width="5" height="5"/>""");
+        await using var limit = await media.ConfigureAsync(settings =>
+        {
+            settings.Svg = SvgHandling.Sanitize;
+            settings.MaxSvgFileSize = svg.Length;
+        });
+
+        using var over = await ReplaceAsync(admin, asset.Id, ("logo.svg", [.. svg, (byte)' ']));
+        var current = await GetAsync(admin, $"{Root}/{asset.Id:D}");
+        using var at = await ReplaceAsync(admin, asset.Id, ("logo.svg", svg));
+
+        over.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
+        (await CodeAsync(over)).ShouldBe(MediaErrorCodes.TooLarge);
+        current["checksum"]!.GetValue<string>().ShouldBe(asset.Checksum);
+        at.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await JsonAsync(at))["mimeType"]!.GetValue<string>().ShouldBe("image/svg+xml");
+    }
+
     // Concurrent replaces without If-Match of an asset with variants (#3343): the one that loses the race is applied again to
     // the row the other saved, so both answer, and the folder of the asset holds the file the row names and the files of its
     // variants, nothing else.

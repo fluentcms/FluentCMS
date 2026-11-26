@@ -1081,17 +1081,21 @@ internal sealed class MediaService(
             var type = MediaTypes.Detect(bytes);
             if (type is null && MediaTypes.MayBeSvg(bytes))
             {
+                // Parsing costs more than its size, so a file that may be an SVG is held to a limit of its own before it is read.
+                if (size > rules.MaxSvgFileSize)
+                {
+                    throw new PluginException(MediaErrorCodes.TooLarge, $"The file '{name}' is over the limit of {rules.MaxSvgFileSize} bytes an SVG.");
+                }
+
                 content.Position = 0;
-                if (SvgDocument.Parse(content) is { } svg)
+                if (SvgDocument.Parse(content, rules.MaxSvgFileSize, cancellationToken) is { } svg)
                 {
                     if (rules.Svg != SvgHandling.Sanitize)
                     {
                         throw new PluginException(MediaErrorCodes.SvgRefused, $"The file '{name}' is an SVG, which the media settings of the site refuse.");
                     }
 
-                    SvgDocument.Sanitize(svg);
-                    SvgDocument.Scope(svg);
-                    var sanitized = SvgDocument.Save(svg);
+                    var sanitized = SvgDocument.Sanitized(svg, cancellationToken);
                     await content.DisposeAsync();
                     content = new MemoryStream(sanitized, writable: false);
                     return new Upload(name, MediaTypes.Svg, content, sanitized.Length, Convert.ToHexStringLower(SHA256.HashData(sanitized)), checksum, null);

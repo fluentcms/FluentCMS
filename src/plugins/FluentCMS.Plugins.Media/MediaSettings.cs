@@ -23,6 +23,10 @@ public sealed class MediaSettings : IValidatableObject
 
     public SvgHandling Svg { get; set; } = SvgHandling.Refuse;
 
+    // The largest SVG, which is parsed whole before it is sanitised; MaxFileSize still holds when it is the smaller.
+    [Range(1, long.MaxValue)]
+    public long MaxSvgFileSize { get; set; } = 1024 * 1024;
+
     [Range(1, 16384)]
     public int MaxTransformWidth { get; set; } = 4096;
 

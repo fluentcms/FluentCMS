@@ -88,7 +88,7 @@ public sealed class MediaFileTests
     [Fact]
     public void SanitisingKeepsTheDrawingAndDropsWhatRunsOrReachesOut()
     {
-        var svg = SvgDocument.Parse(new MemoryStream(Files.Svg("""
+        var svg = Parse(Files.Svg("""
             <style>@import url(https://evil.example/x.css);</style>
             <style>rect { fill: red; }</style>
             <rect width="5" height="5" style="fill: url(javascript:alert(1))" onmouseover="alert(1)" OnLoad="alert(2)"/>
@@ -100,10 +100,10 @@ public sealed class MediaFileTests
             <animate attributeName="opacity" from="0" to="1" dur="1s"/>
             <html:script xmlns:html="http://www.w3.org/1999/xhtml">alert(6)</html:script>
             <circle r="1" inkscape:label="dot" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"/>
-            """))).ShouldNotBeNull();
+            """)).ShouldNotBeNull();
 
-        SvgDocument.Sanitize(svg);
-        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
+        SvgDocument.Sanitize(svg, Token);
+        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg, Token));
 
         text.ShouldContain("<rect width=\"5\" height=\"5\" />");
         text.ShouldContain("<g><text>link</text></g>");
@@ -153,10 +153,10 @@ public sealed class MediaFileTests
     [InlineData("""<?xml-stylesheet href="https://evil.example/x.css"?><rect width="1" height="1"/>""")]
     public void SanitisingLeavesNoReferenceOutOfTheDocument(string body)
     {
-        var svg = SvgDocument.Parse(new MemoryStream(Files.Svg(body + """<circle id="kept" r="1"/>"""))).ShouldNotBeNull();
+        var svg = Parse(Files.Svg(body + """<circle id="kept" r="1"/>""")).ShouldNotBeNull();
 
-        SvgDocument.Sanitize(svg);
-        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
+        SvgDocument.Sanitize(svg, Token);
+        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg, Token));
 
         text.ShouldContain("""<circle id="kept" r="1" />""");
         text.ShouldNotContain("evil.example", Case.Insensitive);
@@ -165,16 +165,16 @@ public sealed class MediaFileTests
     [Fact]
     public void AFragmentOfTheDocumentStaysAndAnImageInADataUrlGoes()
     {
-        var svg = SvgDocument.Parse(new MemoryStream(Files.Svg("""
+        var svg = Parse(Files.Svg("""
             <defs><linearGradient id="g"><stop offset="0"/></linearGradient><circle id="dot" r="1"/></defs>
             <use href="#dot"/>
             <use xlink:href=" #dot"/>
             <rect width="1" height="1" fill="url(#g)" style="stroke: url('#g')"/>
             <image href="data:image/png;base64,iVBORw0KGgo=" width="1" height="1"/>
-            """))).ShouldNotBeNull();
+            """)).ShouldNotBeNull();
 
-        SvgDocument.Sanitize(svg);
-        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
+        SvgDocument.Sanitize(svg, Token);
+        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg, Token));
 
         text.ShouldContain("""<use href="#dot" />""");
         text.ShouldContain("xlink:href=\" #dot\"");
@@ -188,17 +188,17 @@ public sealed class MediaFileTests
     [Fact]
     public void AnInlinedSvgReachesNoStyleNameOrElementOfThePage()
     {
-        var svg = SvgDocument.Parse(new MemoryStream(Files.Svg("""
+        var svg = Parse(Files.Svg("""
             <style>body { display: none } svg { position: fixed }</style>
             <g id="config"><rect id="location" width="1" height="1" style="fill: red"/></g>
             <use href="#login-form"/>
             <rect width="1" height="1" fill="url(#page-gradient)" aria-labelledby="page-label"/>
             <animate attributeName="opacity" to="0" begin="page-button.click" dur="1s"/>
-            """))).ShouldNotBeNull();
+            """)).ShouldNotBeNull();
 
-        SvgDocument.Sanitize(svg);
-        SvgDocument.Scope(svg);
-        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
+        SvgDocument.Sanitize(svg, Token);
+        SvgDocument.Scope(svg, Token);
+        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg, Token));
 
         var prefix = Prefix(text);
         text.ShouldNotContain("<style");
@@ -219,7 +219,7 @@ public sealed class MediaFileTests
     [Fact]
     public void ScopingKeepsEveryReferenceOfTheSvgToItsOwnElements()
     {
-        var svg = SvgDocument.Parse(new MemoryStream(Files.Svg("""
+        var svg = Parse(Files.Svg("""
             <title id="t">Logo</title>
             <defs>
               <linearGradient id="g"><stop offset="0"/></linearGradient>
@@ -238,11 +238,11 @@ public sealed class MediaFileTests
               <animate id="a" attributeName="opacity" values="0;1" dur="1s"/>
               <animate attributeName="fill" values="url(#g);url(#g2)" begin="a.end+1.5s; 2s; click; a.repeat(2)" end="indefinite" dur="1s"/>
             </g>
-            """))).ShouldNotBeNull();
+            """)).ShouldNotBeNull();
 
-        SvgDocument.Sanitize(svg);
-        SvgDocument.Scope(svg);
-        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
+        SvgDocument.Sanitize(svg, Token);
+        SvgDocument.Scope(svg, Token);
+        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg, Token));
 
         var prefix = Prefix(text);
         var ids = Ids(text, prefix);
@@ -344,14 +344,15 @@ public sealed class MediaFileTests
     }
 
     // A browser that reads the escapes of a begin or end value would time the animation by an element of the page, so a value
-    // with a backslash goes.
+    // with a backslash goes, and the animation with it.
     [Fact]
     public void ABeginOrEndWithABackslashGoes()
     {
-        var text = Encoding.UTF8.GetString(Sanitized(Files.Svg("""<animate attributeName="opacity" to="0" begin="\submit.click; pay\-now.click" end="\x.end" dur="1s"/>""")));
+        var text = Encoding.UTF8.GetString(Sanitized(Files.Svg("""<animate attributeName="opacity" to="0" begin="\submit.click; pay\-now.click" end="\x.end" dur="1s"/><circle id="kept" r="1"/>""")));
 
-        text.ShouldContain("<animate attributeName=\"opacity\" to=\"0\" dur=\"1s\" />");
+        text.ShouldNotContain("<animate");
         text.ShouldNotContain("\\");
+        text.ShouldContain("<circle id=\"fcms_");
     }
 
     // The root's overflow, style and transform would let the drawing paint over the page around it; the elements inside
@@ -420,19 +421,64 @@ public sealed class MediaFileTests
     // A file past the node limit, counting text, comments and processing instructions, or with an element past the
     // attribute limit, namespace declarations included, is refused by the pass of the reader, before the tree is built;
     // an element at the attribute limit and a drawing of a few hundred texts are taken.
+    // A file over the limit, from where the stream stands, is refused as too large before it is read as XML; one at it is read.
+    [Fact]
+    public void AnSvgOverItsLimitIsRefusedAsTooLargeAndOneAtItIsRead()
+    {
+        var bytes = Files.Svg("""<rect width="1" height="1"/>""");
+
+        Parse(bytes).ShouldNotBeNull();
+        SvgDocument.Parse(new MemoryStream(bytes), bytes.Length, Token).ShouldNotBeNull();
+        SvgDocument.Parse(new SkiaImageProcessorTests.ForwardOnlyStream(bytes), bytes.Length, Token).ShouldNotBeNull();
+        Should.Throw<PluginException>(() => SvgDocument.Parse(new MemoryStream(bytes), bytes.Length - 1, Token)).Code.ShouldBe(MediaErrorCodes.TooLarge);
+        Should.Throw<PluginException>(() => SvgDocument.Parse(new SkiaImageProcessorTests.ForwardOnlyStream(bytes), bytes.Length - 1, Token)).Code.ShouldBe(MediaErrorCodes.TooLarge);
+
+        var padded = new MemoryStream([.. "    "u8, .. bytes]) { Position = 4 };
+        SvgDocument.Parse(padded, bytes.Length, Token).ShouldNotBeNull();
+    }
+
+    // A stream that cannot seek is copied up to the limit and no further, so one without an end is refused, not read whole.
+    [Fact]
+    public void AStreamThatCannotSeekIsRefusedPastTheLimitWithoutBeingReadWhole()
+    {
+        var endless = new EndlessStream();
+
+        Should.Throw<PluginException>(() => SvgDocument.Sanitized(endless, 1024 * 1024, Token)).Code.ShouldBe(MediaErrorCodes.TooLarge);
+        endless.Given.ShouldBeLessThanOrEqualTo(1024 * 1024 + 81920);
+    }
+
+    // The reader's pass checks the token at each node and the passes over the tree at each element, so an aborted request
+    // stops the work rather than holding a core until it ends.
+    [Fact]
+    public void ACancelledTokenStopsTheParseAndEveryPass()
+    {
+        var bytes = Files.Svg(string.Concat(Enumerable.Range(0, 1000).Select(index => $"""<rect id="r{index}" width="1" height="1"/>""")));
+        using var source = new CancellationTokenSource();
+        Should.Throw<OperationCanceledException>(() => SvgDocument.Parse(new CancellingStream(bytes, source), long.MaxValue, source.Token));
+
+        using var unseekable = new CancellationTokenSource();
+        Should.Throw<OperationCanceledException>(() => SvgDocument.Parse(new CancellingStream(bytes, unseekable, canSeek: false), long.MaxValue, unseekable.Token));
+
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        Should.Throw<OperationCanceledException>(() => SvgDocument.Sanitize(Parse(bytes).ShouldNotBeNull(), cancelled.Token));
+        Should.Throw<OperationCanceledException>(() => SvgDocument.Scope(Parse(bytes).ShouldNotBeNull(), cancelled.Token));
+        Should.Throw<OperationCanceledException>(() => SvgDocument.Save(Parse(bytes).ShouldNotBeNull(), cancelled.Token));
+    }
+
     [Fact]
     public void AFileOfTooManyAttributesOrNodesOfAnyKindIsRefusedBeforeItsTreeIsBuilt()
     {
         static byte[] Declaring(int attributes) => Encoding.UTF8.GetBytes(
             "<svg xmlns=\"http://www.w3.org/2000/svg\"" + string.Concat(Enumerable.Range(1, attributes - 1).Select(index => $" xmlns:p{index}=\"u\"")) + "><rect width=\"1\" height=\"1\"/></svg>");
 
-        SvgDocument.Parse(new MemoryStream(Declaring(SvgDocument.MaxAttributes))).ShouldNotBeNull();
-        SvgDocument.Parse(new MemoryStream(Declaring(SvgDocument.MaxAttributes + 1))).ShouldBeNull();
+        Parse(Declaring(SvgDocument.MaxAttributes)).ShouldNotBeNull();
+        Parse(Declaring(SvgDocument.MaxAttributes + 1)).ShouldBeNull();
 
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        SvgDocument.Parse(new MemoryStream(Declaring(100_000))).ShouldBeNull();
-        SvgDocument.Parse(new MemoryStream(Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"><text>" + string.Concat(Enumerable.Repeat("x<!--c-->", 400_000)) + "</text></svg>"))).ShouldBeNull();
-        SvgDocument.Parse(new MemoryStream(Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\">" + string.Concat(Enumerable.Repeat("<?p?>", SvgDocument.MaxNodes)) + "</svg>"))).ShouldBeNull();
+        Parse(Declaring(100_000)).ShouldBeNull();
+        Parse(Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"><text>" + string.Concat(Enumerable.Repeat("x<!--c-->", 400_000)) + "</text></svg>")).ShouldBeNull();
+        Parse(Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\">" + string.Concat(Enumerable.Repeat("<?p?>", SvgDocument.MaxNodes)) + "</svg>")).ShouldBeNull();
         watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
 
         var drawing = Encoding.UTF8.GetString(Sanitized(Files.Svg(string.Concat(Enumerable.Range(0, 300).Select(index => $"\n  <text x=\"{index}\">label {index}</text>")))));
@@ -479,7 +525,7 @@ public sealed class MediaFileTests
         static byte[] Flat(int nodes) => Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\">" + string.Concat(Enumerable.Repeat("<g/>", nodes - 2)) + "<![CDATA[x]]></svg>");
 
         Regex.Count(Encoding.UTF8.GetString(Sanitized(Flat(SvgDocument.MaxNodes))), "<g />").ShouldBe(SvgDocument.MaxNodes - 2);
-        SvgDocument.Parse(new MemoryStream(Flat(SvgDocument.MaxNodes + 1))).ShouldBeNull();
+        Parse(Flat(SvgDocument.MaxNodes + 1)).ShouldBeNull();
     }
 
     // A file nests at most MaxDepth levels of elements, so that no pass over its tree, which recurses, runs out of stack or
@@ -493,12 +539,12 @@ public sealed class MediaFileTests
 
         var text = Encoding.UTF8.GetString(Sanitized(Nested(SvgDocument.MaxDepth)));
         Regex.Count(text, "<g>").ShouldBe(SvgDocument.MaxDepth - 1);
-        SvgDocument.Parse(new MemoryStream(Nested(SvgDocument.MaxDepth + 1))).ShouldBeNull();
+        Parse(Nested(SvgDocument.MaxDepth + 1)).ShouldBeNull();
 
         var deep = Nested(100_000);
         deep.Length.ShouldBeGreaterThan(700_000);
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        SvgDocument.Parse(new MemoryStream(deep)).ShouldBeNull();
+        Parse(deep).ShouldBeNull();
         watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(2));
     }
 
@@ -518,9 +564,28 @@ public sealed class MediaFileTests
     {
         var text = Encoding.UTF8.GetString(Sanitized(Files.Svg($"""<animate id="a" attributeName="opacity" to="0" begin="{begin}" end="{begin}" dur="1s"/>""")));
 
+        text.ShouldNotContain("<animate");
         text.ShouldNotContain("begin=");
         text.ShouldNotContain("end=");
-        text.ShouldContain("dur=\"1s\"");
+    }
+
+    // An animation that loses its begin or end, to the lists or to the timing grammar, would start when the drawing loads or
+    // never end, which its author did not ask for, so it goes; one that keeps both stays, and so do its siblings.
+    [Theory]
+    [InlineData("begin", "image(x)")]
+    [InlineData("end", "element(#x)")]
+    [InlineData("begin", "pg x.click")]
+    [InlineData("end", "wallclock(2026-01-01T00:00:00Z)")]
+    public void AnAnimationThatLosesItsBeginOrEndGoes(string attribute, string value)
+    {
+        var once = Sanitized(Files.Svg($"""<rect width="1" height="1"><animate attributeName="opacity" to="0" {attribute}="{value}" dur="1s"/><set attributeName="fill" to="red" begin="2s" end="3s"/><animateMotion path="M0 0" {attribute}="{value}" dur="1s"><mpath href="#p"/></animateMotion></rect><path id="p" d="M0 0"/>"""));
+        var text = Encoding.UTF8.GetString(once);
+
+        text.ShouldNotContain("<animate ");
+        text.ShouldNotContain("<animateMotion");
+        text.ShouldNotContain("<mpath");
+        text.ShouldContain("""<set attributeName="fill" to="red" begin="2s" end="3s" />""");
+        Sanitized(once).ShouldBe(once);
     }
 
     [Fact]
@@ -621,10 +686,10 @@ public sealed class MediaFileTests
     [MemberData(nameof(Found))]
     public void SanitisingKeepsOnlyWhatItsListsName(string body, string gone)
     {
-        var svg = SvgDocument.Parse(new MemoryStream(Files.Svg(body + """<circle id="kept" r="1"/>"""))).ShouldNotBeNull();
+        var svg = Parse(Files.Svg(body + """<circle id="kept" r="1"/>""")).ShouldNotBeNull();
 
-        SvgDocument.Sanitize(svg);
-        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
+        SvgDocument.Sanitize(svg, Token);
+        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg, Token));
 
         text.ShouldContain("""<circle id="kept" r="1" />""");
         text.ShouldNotContain(gone, Case.Insensitive);
@@ -635,10 +700,10 @@ public sealed class MediaFileTests
     [Fact]
     public void AnElementOrAttributeOfNoListGoesInAnyCaseAndTitlesKeepTheirText()
     {
-        var svg = SvgDocument.Parse(new MemoryStream(Files.Svg("""<SCRIPT>alert(1)</SCRIPT><Style>rect{}</Style><rect width="1" height="1" Fill="red" ONCLICK="alert(2)"/><title>A &lt;b&gt;logo&lt;/b&gt;</title>"""))).ShouldNotBeNull();
+        var svg = Parse(Files.Svg("""<SCRIPT>alert(1)</SCRIPT><Style>rect{}</Style><rect width="1" height="1" Fill="red" ONCLICK="alert(2)"/><title>A &lt;b&gt;logo&lt;/b&gt;</title>""")).ShouldNotBeNull();
 
-        SvgDocument.Sanitize(svg);
-        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
+        SvgDocument.Sanitize(svg, Token);
+        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg, Token));
 
         text.ShouldContain("""<rect width="1" height="1" />""");
         text.ShouldContain("<title>A &lt;b&gt;logo&lt;/b&gt;</title>");
@@ -660,23 +725,71 @@ public sealed class MediaFileTests
     [InlineData("""@&#x69;mport "https://evil.example/x.css";""")]
     public void AnImportIsRemovedHoweverItIsEscaped(string import)
     {
-        var svg = SvgDocument.Parse(new MemoryStream(Files.Svg($$"""<style>{{import}} rect { fill: red; }</style><circle id="kept" r="1"/>"""))).ShouldNotBeNull();
+        var svg = Parse(Files.Svg($$"""<style>{{import}} rect { fill: red; }</style><circle id="kept" r="1"/>""")).ShouldNotBeNull();
 
-        SvgDocument.Sanitize(svg);
-        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
+        SvgDocument.Sanitize(svg, Token);
+        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg, Token));
 
         text.ShouldNotContain("<style");
         text.ShouldNotContain("evil.example", Case.Insensitive);
         text.ShouldContain("""<circle id="kept" r="1" />""");
     }
 
-    private static byte[] Sanitized(byte[] bytes)
+    // Cancels the source on its first read, once the reader has started.
+    private sealed class CancellingStream(byte[] bytes, CancellationTokenSource source, bool canSeek = true) : MemoryStream(bytes)
     {
-        var svg = SvgDocument.Parse(new MemoryStream(bytes)).ShouldNotBeNull();
-        SvgDocument.Sanitize(svg);
-        SvgDocument.Scope(svg);
-        return SvgDocument.Save(svg);
+        public override bool CanSeek => canSeek && base.CanSeek;
+
+        // A read of a span reaches this one, since MemoryStream sends a subclass's to the base Stream.
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            source.Cancel();
+            return base.Read(buffer, offset, count);
+        }
     }
+
+    // An SVG's start and then white space without end, from a stream that cannot seek; counts what was read.
+    private sealed class EndlessStream : Stream
+    {
+        private static readonly byte[] Start = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\">");
+
+        public long Given { get; private set; }
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override void Flush()
+        {
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            for (var index = 0; index < count; index++)
+            {
+                buffer[offset + index] = Given + index < Start.Length ? Start[Given + index] : (byte)' ';
+            }
+
+            Given += count;
+            return count;
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    private static XDocument? Parse(byte[] bytes) => SvgDocument.Parse(new MemoryStream(bytes), long.MaxValue, Token);
+
+    private static byte[] Sanitized(byte[] bytes) => SvgDocument.Sanitized(new MemoryStream(bytes), long.MaxValue, Token).ShouldNotBeNull();
 
     // The prefix the file took, the first in it.
     private static string Prefix(string text)
@@ -732,7 +845,7 @@ public sealed class MediaFileTests
     [InlineData("""<html xmlns="http://www.w3.org/1999/xhtml"><body/></html>""")]
     [InlineData("""<svg xmlns="http://www.w3.org/2000/svg"><rect></svg>""")]
     public void ADocumentWithADtdAnotherRootOrBrokenMarkupIsNoSvg(string xml) =>
-        SvgDocument.Parse(new MemoryStream(Encoding.UTF8.GetBytes(xml))).ShouldBeNull();
+        Parse(Encoding.UTF8.GetBytes(xml)).ShouldBeNull();
 
     [Fact]
     public async Task TheLocalStorageWritesReadsReplacesAndDeletesUnderItsRoot()
