@@ -39,4 +39,5 @@ internal static class CommandErrorCodes
     public const string SchemaApplyFailed = "FCMS3339";
     public const string SchemaNotRecorded = "FCMS3340";
     public const string CertificateSigns = "FCMS3390";
+    public const string RevocationNotForced = "FCMS3391";
 }

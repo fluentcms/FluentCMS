@@ -30,6 +30,7 @@ internal static class CommandRegistry
         new SettingsReprotectCommand(),
         new KeysListCommand(),
         new KeysRotateCommand(),
+        new KeysRevokeCommand(),
         new ExportCommand(),
         new ImportCommand(),
         new BackupCommand(),

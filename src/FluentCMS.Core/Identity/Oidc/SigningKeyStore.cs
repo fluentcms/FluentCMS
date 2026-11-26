@@ -124,6 +124,53 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
         return new KeyRotation(made, Made: true);
     }
 
+    // For a key that is suspected, the opposite of a rotation: every stored key of the uses stops being accepted now,
+    // upcoming ones included and none of them read, so a row the key ring cannot read goes too; and each use the server
+    // generates gets a new key that is active at once, with no lead. A revoked key retires when its successor becomes active,
+    // which is how UpkeepAsync knows never to give it more time.
+    public async Task<KeyRevocation> RevokeAsync(IReadOnlyCollection<string> uses, IReadOnlyCollection<string> generated, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+            var keys = await context.Set<SigningKey>().OrderBy(key => key.Use).ThenBy(key => key.Sequence).ToListAsync(cancellationToken);
+            var now = time.GetUtcNow();
+
+            var retired = keys.Where(key => uses.Contains(key.Use) && !SigningKeyStates.IsRetired(key, now)).ToList();
+            foreach (var key in retired)
+            {
+                key.RetiredAt = now;
+            }
+
+            List<SigningKey> made = [.. uses.Where(generated.Contains).Select(use => Generate(use, NextSequence(keys, use), now, activeFrom: now))];
+            context.AddRange(made);
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException) when (made.Exists(Exists))
+            {
+                // A rotation made a key of the same sequence in the meantime; it is retired with the rest on the next pass.
+                continue;
+            }
+
+            foreach (var key in made)
+            {
+                OidcLog.KeyMade(logger, key.Id, key.Use, key.Sequence, key.ActiveFrom);
+            }
+
+            return new KeyRevocation(retired, made, now);
+        }
+    }
+
+    // How many keys of the uses a revocation would retire.
+    public async Task<int> CountAcceptedAsync(IReadOnlyCollection<string> uses, CancellationToken cancellationToken)
+    {
+        var now = time.GetUtcNow();
+        return (await ReadAsync([], cancellationToken)).Count(key => uses.Contains(key.Use) && !SigningKeyStates.IsRetired(key, now));
+    }
+
     // What the job does that needs no new key. It removes the rows that have retired, material included. While a certificate
     // signs it gives each generated signing key without a date the overlap from this run. And it moves the retirement of a
     // key later when the overlap has grown since its successor was made, never earlier. A key that retired no later than its
@@ -271,6 +318,9 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
 
 // The upcoming key of a use: the one a rotation made, or the one that was there already.
 internal sealed record KeyRotation(SigningKey Key, bool Made);
+
+// What a revocation did to cms_signing_key.
+internal sealed record KeyRevocation(IReadOnlyList<SigningKey> Retired, IReadOnlyList<SigningKey> Made, DateTimeOffset At);
 
 // Whether tokens are signed with a key the server generated, which Production refuses unless the host allows it.
 internal sealed class SigningKeyStatus(SecurityOptions security) : ISigningKeyStatus

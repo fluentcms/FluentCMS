@@ -219,10 +219,11 @@ internal sealed partial class CommandLine
         return command;
     }
 
-    private Command Keys() => new("keys", "The keys of the authorization server: list them and make the next one, in the host project.")
+    private Command Keys() => new("keys", "The keys of the authorization server: list them, make the next one, or revoke them all, in the host project.")
     {
         KeysList(),
         KeysRotate(),
+        KeysRevoke(),
     };
 
     private Command KeysList()
@@ -239,6 +240,16 @@ internal sealed partial class CommandLine
         var command = new Command("rotate", "Makes the next signing and encryption key: it is accepted at once, signs or encrypts after FluentCms:Security:KeyRotation:PublishLead, and the key before it stays accepted for the overlap after that, so nobody is signed out. Does nothing for a use that has an upcoming key. In the host project only.") { use };
         var project = ProjectOptions.AddTo(command);
         command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["keys", "rotate", .. Value(result, use)], cancellationToken));
+        return command;
+    }
+
+    private Command KeysRevoke()
+    {
+        var use = KeyUse("Only the keys of this use: sig or enc. Both when left out. The tokens and sessions are revoked either way.");
+        var force = new Option<bool>("--force") { Description = "Does it. Without it the command changes nothing and says what it would end." };
+        var command = new Command("revoke", "For a key that may have leaked: retires every key of the authorization server at once, makes new ones that sign and encrypt at once, and revokes every token and session of every user, member and client, who sign in again; consents are kept. Changes nothing without --force. In the host project only.") { use, force };
+        var project = ProjectOptions.AddTo(command);
+        command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["keys", "revoke", .. Value(result, use), .. Flag(result, force)], cancellationToken));
         return command;
     }
 

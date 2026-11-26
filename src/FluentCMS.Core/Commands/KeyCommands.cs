@@ -1,8 +1,17 @@
+using System.Globalization;
+using FluentCMS.Activity;
+using FluentCMS.Content;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Identity.PreviewTokens;
+using FluentCMS.Core.Storage;
+using FluentCMS.Events;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
 using OpenIddict.Server;
 using static FluentCMS.Core.Commands.AdminCommandSupport;
 
@@ -117,6 +126,94 @@ internal sealed class KeysRotateCommand : HostCommand
             await context.Output.WriteLineAsync(made
                 ? $"Made the {KeyCommandSupport.Name(use)} key {key.Id:D}. It is accepted now and {KeyCommandSupport.Verb(use)} from {Moment(key.ActiveFrom)} UTC; the key before it is accepted until {Moment(key.ActiveFrom + overlap)} UTC and removed by the job {OidcKeysJob.RecurringName} after that."
                 : $"The {KeyCommandSupport.Name(use)} key {key.Id:D} is upcoming already and {KeyCommandSupport.Verb(use)} from {Moment(key.ActiveFrom)} UTC, so no key was made.");
+        }
+
+        return CommandExitCodes.Success;
+    }
+}
+
+// For a key that may have leaked, where a rotation would go on accepting it for the overlap. It retires every stored key
+// at once and makes new ones with no lead, so every access token, refresh token, code, logout hint and preview token is
+// refused from then on: at once on an instance that restarts, within 30 seconds on one that does not. It also revokes
+// every valid token and every session, the ad-hoc authorizations, of every user, member and client, so that an instance
+// that has not read the keys yet refuses the tokens the server did issue, and the lists of sessions stay true; that does
+// not stop a forged token, which names no entry, and is why the keys are retired. Consents stay, and so does the sign-in
+// cookie of the hosted pages, which is under Data Protection, so a browser gets new tokens without a prompt. The keys are
+// not read, so the command works on rows the key ring can no longer read. One activity row for the instance records it.
+internal sealed class KeysRevokeCommand : HostCommand
+{
+    public const string Force = "--force";
+
+    public const string Action = "token_keys.revoked";
+
+    public override string Name => "keys revoke";
+
+    public override string Description => $"For a key that may have leaked: retires every key of the authorization server at once, makes new ones that sign and encrypt at once, and revokes every token and session of every user, member and client, who sign in again; consents are kept. Changes nothing without {Force}. To replace a key without signing anyone out, use 'keys rotate'.";
+
+    public override IReadOnlyList<CommandOption> Options { get; } =
+    [
+        KeyCommandSupport.UseOption($"Only the keys of this use: {SigningKey.Signing} or {SigningKey.Encryption}. Both when left out. The tokens and sessions are revoked either way."),
+        new(Force, "Does it. Without it the command changes nothing and says what it would end."),
+    ];
+
+    public override async Task<int> RunAsync(CommandContext context, CancellationToken cancellationToken)
+    {
+        var uses = KeyCommandSupport.Uses(context);
+        var certificate = context.Services.GetRequiredService<SecurityOptions>().SigningCertificate.IsConfigured;
+        IReadOnlyCollection<string> generated = certificate ? [SigningKey.Encryption] : SigningKey.Uses;
+        var store = context.Services.GetRequiredService<SigningKeyStore>();
+        var database = context.Services.GetRequiredService<SystemDbContext>();
+
+        if (!context.Arguments.Has(Force))
+        {
+            var keys = await store.CountAcceptedAsync(uses, cancellationToken);
+            var valid = await database.Set<OpenIddictEntityFrameworkCoreToken<Guid>>().CountAsync(token => token.Status == OpenIddictConstants.Statuses.Valid, cancellationToken);
+            var sessions = await database.Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>()
+                .CountAsync(authorization => authorization.Status == OpenIddictConstants.Statuses.Valid && authorization.Type == OpenIddictConstants.AuthorizationTypes.AdHoc, cancellationToken);
+            throw new CommandException(
+                CommandErrorCodes.RevocationNotForced,
+                $"nothing was changed. With {Force} this retires {keys} keys (use {string.Join(" and ", uses)}) at once, makes {uses.Count(generated.Contains)} that are active at once, and revokes {valid} valid tokens and {sessions} sessions of every user, member and client, who all sign in again or get new tokens from the sign-in cookie of the hosted pages; consents are kept. Pass {Force} when a key may have leaked; to replace a key without signing anyone out, run 'fluentcms keys rotate'");
+        }
+
+        // The keys first: from here on nothing signed with them is accepted by an instance that reads or restarts.
+        var revocation = await store.RevokeAsync(uses, generated, cancellationToken);
+        var tokens = await context.Services.GetRequiredService<IOpenIddictTokenManager>()
+            .RevokeAsync(subject: null, client: null, OpenIddictConstants.Statuses.Valid, type: null, cancellationToken);
+        var authorizations = await context.Services.GetRequiredService<IOpenIddictAuthorizationManager>()
+            .RevokeAsync(subject: null, client: null, OpenIddictConstants.Statuses.Valid, OpenIddictConstants.AuthorizationTypes.AdHoc, cancellationToken);
+
+        OidcLog.KeysRevoked(context.Services.GetRequiredService<ILogger<KeysRevokeCommand>>(), revocation.Retired.Count, string.Join(',', uses), revocation.At, tokens, authorizations);
+
+        // One row for the instance, and none per user: user.sessions_ended is what a user or an administrator ended.
+        var operation = context.Services.GetRequiredService<IOperationContextAccessor>().Current;
+        var source = (operation is null ? EventSource.FromSystem(revocation.At) : EventSource.From(operation)) with { SiteId = Guid.Empty };
+        await context.Services.GetRequiredService<IActivityLog>().WriteAsync(
+            new ActivityEntry(Action)
+            {
+                TargetType = "token_keys",
+                TargetLabel = string.Join(',', uses),
+                Details = new Dictionary<string, string?>
+                {
+                    ["uses"] = string.Join(',', uses),
+                    ["retired"] = string.Join(',', revocation.Retired.Select(key => key.Id.ToString("D"))),
+                    ["made"] = string.Join(',', revocation.Made.Select(key => key.Id.ToString("D"))),
+                    ["tokens"] = tokens.ToString(CultureInfo.InvariantCulture),
+                    ["sessions"] = authorizations.ToString(CultureInfo.InvariantCulture),
+                },
+            },
+            source,
+            cancellationToken);
+
+        await context.Output.WriteLineAsync($"Retired {revocation.Retired.Count} keys (use {string.Join(" and ", uses)}) at {Moment(revocation.At)} UTC and revoked {tokens} tokens and {authorizations} sessions; consents are kept.");
+        foreach (var key in revocation.Made)
+        {
+            await context.Output.WriteLineAsync($"Made the {KeyCommandSupport.Name(key.Use)} key {key.Id:D}, which {KeyCommandSupport.Verb(key.Use)} now.");
+        }
+
+        await context.Output.WriteLineAsync("Restart every instance now. One that is not restarted reads the keys within 30 seconds, and until then accepts the retired keys and refuses the tokens of the new ones.");
+        if (certificate && uses.Contains(SigningKey.Signing))
+        {
+            await context.Error.WriteLineAsync($"{SigningCertificates.Key} signs the tokens and this command does not change it. If it is the certificate that may have leaked, replace it without listing it under {SigningCertificates.PreviousKey} and restart every instance.");
         }
 
         return CommandExitCodes.Success;

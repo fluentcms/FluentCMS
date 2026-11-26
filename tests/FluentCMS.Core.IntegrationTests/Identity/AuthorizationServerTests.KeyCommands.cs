@@ -1,11 +1,22 @@
+using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
+using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Commands;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Core.IntegrationTests.Diagnostics;
+using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
 using Shouldly;
 using Xunit;
 
@@ -183,6 +194,224 @@ public sealed partial class AuthorizationServerTests
             validates.ShouldEndWith(previous.NotAfter.UtcDateTime.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture));
             lines.Count(line => line.StartsWith(certificate.Thumbprint, StringComparison.Ordinal)).ShouldBe(1);
         });
+    }
+
+    [Fact]
+    public async Task KeysRevokeWithoutForceChangesNothingAndSaysWhatItWouldEnd()
+    {
+        await InDatabaseFileAsync(async file =>
+        {
+            await using var host = NewHost().UseSqlite(file);
+            var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+            var tokens = await host.SignInAsync(editor, "openid", "offline_access", "management");
+            var before = SigningKeys(host);
+            var valid = await ValidTokensAsync(host);
+            await using var tool = NewHost().UseSqlite(file);
+
+            var refused = await tool.RunCommandAsync("keys", "revoke");
+
+            refused.ExitCode.ShouldBe(1);
+            refused.Output.ShouldBeEmpty();
+            refused.Error.ShouldStartWith($"FCMS3391: nothing was changed. With --force this retires 2 keys (use sig and enc) at once, makes 2 that are active at once, and revokes {valid} valid tokens and 1 sessions of every user, member and client");
+            SigningKeys(host).Select(key => (key.Id, key.RetiredAt)).ShouldBe(before.Select(key => (key.Id, key.RetiredAt)), ignoreOrder: true);
+            (await ValidTokensAsync(host)).ShouldBe(valid);
+            using var api = Bearer(tokens.AccessToken, host);
+            (await WhoAmIAsync(api)).GetProperty("id").GetGuid().ShouldBe(editor.Id);
+            (await ActivityActionsAsync(host)).ShouldNotContain(KeysRevokeCommand.Action);
+        });
+    }
+
+    [Fact]
+    public async Task KeysRevokeRetiresEveryKeyAtOnceAndEndsEveryTokenAndSessionWithOneActivityRow()
+    {
+        await InDatabaseFileAsync(async file =>
+        {
+            await using var host = NewHost().UseSqlite(file);
+            var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+            var other = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+            var tokens = await host.SignInAsync(editor, "openid", "offline_access", "management");
+            await host.SignInAsync(other, "openid", "offline_access", "management");
+            var cookie = await host.SignInCookieAsync(editor);
+            var consent = await AddConsentAsync(host, editor);
+            var logs = new LogCapture();
+            await using var tool = NewHost().UseSqlite(file).WithServices(services => services.AddLogging(logging => logging.AddProvider(logs)));
+            (await tool.RunCommandAsync("keys", "rotate")).ExitCode.ShouldBe(0);
+            var old = SigningKeys(host);
+            old.Count.ShouldBe(4);
+            using var client = host.CreateSecureClient();
+            (await KeySetAsync(client)).Count.ShouldBe(1);
+
+            var revoked = await tool.RunCommandAsync("keys", "revoke", "--force");
+
+            revoked.ExitCode.ShouldBe(0, revoked.Error);
+            var keys = SigningKeys(host);
+            var made = keys.Where(key => old.TrueForAll(before => before.Id != key.Id)).ToList();
+            made.Select(key => (key.Use, key.Sequence)).ShouldBe([(SigningKey.Signing, 3), (SigningKey.Encryption, 3)], ignoreOrder: true);
+            var at = made[0].ActiveFrom;
+            made.ShouldAllBe(key => key.ActiveFrom == at && key.CreatedAt == at && key.RetiredAt == null);
+            keys.Where(key => old.Exists(before => before.Id == key.Id)).ShouldAllBe(key => key.RetiredAt == at);
+            var signs = made.Single(key => key.Use == SigningKey.Signing);
+            revoked.Output.ShouldContain("Retired 4 keys (use sig and enc)");
+            revoked.Output.ShouldContain($"Made the signing key {signs.Id:D}, which signs now.");
+            revoked.Output.ShouldContain("Restart every instance now.");
+
+            // Every token and every session, the consent kept.
+            (await ValidTokensAsync(host)).ShouldBe(0);
+            await using (var scope = host.Services.CreateAsyncScope())
+            {
+                var authorizations = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().AsNoTracking().ToListAsync(Token);
+                authorizations.Where(authorization => authorization.Status == OpenIddictConstants.Statuses.Valid).ShouldHaveSingleItem().Id.ShouldBe(consent);
+                authorizations.Count(authorization => authorization.Type == OpenIddictConstants.AuthorizationTypes.AdHoc).ShouldBeGreaterThanOrEqualTo(2);
+            }
+
+            // One row for the instance, by the command, and none per user.
+            var actions = await ActivityActionsAsync(host);
+            actions.Count(action => action == KeysRevokeCommand.Action).ShouldBe(1);
+            actions.ShouldNotContain("user.sessions_ended");
+            await using (var scope = host.Services.CreateAsyncScope())
+            {
+                var row = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<ActivityRow>().AsNoTracking().SingleAsync(row => row.Action == KeysRevokeCommand.Action, Token);
+                row.SiteId.ShouldBeNull();
+                row.Origin.ShouldBe(Origin.Cli);
+                row.ActorType.ShouldBe(PrincipalKind.System);
+                row.Details.ShouldNotBeNull().ShouldContain(signs.Id.ToString("D"));
+                foreach (var key in keys)
+                {
+                    row.Details.ShouldNotContain(key.ProtectedKey);
+                }
+            }
+
+            var logged = logs.Entries.Where(entry => entry.EventId.Id == OidcLog.KeysRevokedId).ShouldHaveSingleItem();
+            logged.Level.ShouldBe(LogLevel.Warning);
+            logged.State["Keys"].ShouldBe(4);
+
+            // The instance that was not restarted has not read yet: it still lists the old key, and refuses the token by its entry.
+            (await KeySetAsync(client)).ShouldBe([KeyId(old.Single(key => key.Use == SigningKey.Signing && key.Sequence == 1))]);
+            using (var api = Bearer(tokens.AccessToken, host))
+            {
+                (await api.GetAsync("/api/management/v1/test/whoami", Token)).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+            }
+
+            // Within 30 seconds it has only the new keys.
+            host.Time.Advance(SigningKeyRing.ReadInterval);
+            (await KeySetAsync(client)).ShouldBe([KeyId(signs)]);
+            using (var refresh = await PostTokenAsync(client, Refresh(tokens.RefreshToken!)))
+            {
+                refresh.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+                (await ErrorAsync(refresh)).ShouldBe("invalid_grant");
+            }
+
+            // The sign-in cookie of the hosted pages is not under these keys, so the browser gets new tokens without a prompt.
+            (await AuthorizeAsync(host, cookie)).ShouldStartWith(FluentCmsTestHost.OAuthRedirectUri + "?code=");
+            Header((await host.SignInAsync(editor)).AccessToken).GetProperty("kid").GetString().ShouldBe(KeyId(signs));
+
+            // An instance that restarts has them at once, and the job removes what was revoked without giving it more time.
+            await using var restarted = NewHost().UseSqlite(file);
+            using var restartedClient = restarted.CreateSecureClient();
+            (await KeySetAsync(restartedClient)).ShouldBe([KeyId(signs)]);
+            await RunKeysJobAsync(restarted);
+            SigningKeys(restarted).Select(key => key.Id).ShouldBe(made.Select(key => key.Id), ignoreOrder: true);
+        });
+    }
+
+    [Fact]
+    public async Task KeysRevokeWorksOnAKeyTheKeyRingCannotRead()
+    {
+        await InDatabaseFileAsync(async file =>
+        {
+            TestUser editor;
+            await using (var host = NewHost().UseSqlite(file))
+            {
+                editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+                await host.SignInAsync(editor);
+                AddKey(host, SigningKey.Signing, sequence: 2, host.Time.GetUtcNow().AddMinutes(-1), protectedKey: Convert.ToBase64String(RandomNumberGenerator.GetBytes(256)));
+            }
+
+            await using (var stopped = NewHost().UseSqlite(file))
+            {
+                using var client = stopped.CreateSecureClient();
+                (await client.GetAsync("/.well-known/jwks", Token)).StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+            }
+
+            await using var tool = NewHost().UseSqlite(file);
+            var revoked = await tool.RunCommandAsync("keys", "revoke", "--force");
+            revoked.ExitCode.ShouldBe(0, revoked.Error);
+
+            await using var restarted = NewHost().UseSqlite(file);
+            var signs = SigningKeys(restarted).Single(key => key.Use == SigningKey.Signing && key.RetiredAt == null);
+            signs.Sequence.ShouldBe(3);
+            Header((await restarted.SignInAsync(editor)).AccessToken).GetProperty("kid").GetString().ShouldBe(KeyId(signs));
+        });
+    }
+
+    [Fact]
+    public async Task KeysRevokeLeavesTheSigningCertificateAndTakesOneUse()
+    {
+        await InDatabaseFileAsync(async file =>
+        {
+            var certificate = WriteCertificate(Path.GetDirectoryName(file)!, "signing.pfx");
+            await using var host = WithCertificate(NewHost().UseSqlite(file), certificate.Path);
+            var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+            var tokens = await host.SignInAsync(editor, "openid", "offline_access", "management");
+            var encryption = SigningKeys(host).ShouldHaveSingleItem();
+            await using var tool = WithCertificate(NewHost().UseSqlite(file), certificate.Path);
+
+            // The signing keys alone: there is none to retire or to make, and the tokens are revoked all the same.
+            var signing = await tool.RunCommandAsync("keys", "revoke", "--use", "sig", "--force");
+            signing.ExitCode.ShouldBe(0, signing.Error);
+            signing.Output.ShouldContain("Retired 0 keys (use sig)");
+            signing.Error.ShouldContain("FluentCms:Security:SigningCertificate signs the tokens and this command does not change it.");
+            SigningKeys(host).ShouldHaveSingleItem().RetiredAt.ShouldBeNull();
+            (await ValidTokensAsync(host)).ShouldBe(0);
+            using (var api = Bearer(tokens.AccessToken, host))
+            {
+                (await api.GetAsync("/api/management/v1/test/whoami", Token)).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+            }
+
+            var both = await tool.RunCommandAsync("keys", "revoke", "--force");
+            both.ExitCode.ShouldBe(0, both.Error);
+            var keys = SigningKeys(host);
+            keys.ShouldAllBe(key => key.Use == SigningKey.Encryption);
+            keys.Single(key => key.Id == encryption.Id).RetiredAt.ShouldNotBeNull();
+            keys.Single(key => key.Id != encryption.Id).Sequence.ShouldBe(2);
+            (await ActivityActionsAsync(host)).Count(action => action == KeysRevokeCommand.Action).ShouldBe(2);
+        });
+    }
+
+    private static async Task<int> ValidTokensAsync(FluentCmsTestHost host)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OpenIddictEntityFrameworkCoreToken<Guid>>()
+            .CountAsync(token => token.Status == OpenIddictConstants.Statuses.Valid, Token);
+    }
+
+    private static async Task<List<string>> ActivityActionsAsync(FluentCmsTestHost host)
+    {
+        while (await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token) > 0)
+        {
+        }
+
+        await using var scope = host.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<ActivityRow>().AsNoTracking().Select(row => row.Action).ToListAsync(Token);
+    }
+
+    // A consent, as the consent page stores one: a permanent authorization of no session.
+    private static async Task<Guid> AddConsentAsync(FluentCmsTestHost host, TestUser user)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var applications = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var application = await applications.FindByClientIdAsync(TestClientId, Token);
+        var authorizations = scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
+        var consent = await authorizations.CreateAsync(
+            new OpenIddictAuthorizationDescriptor
+            {
+                ApplicationId = await applications.GetIdAsync(application!, Token),
+                Subject = user.Id.ToString("D"),
+                Status = OpenIddictConstants.Statuses.Valid,
+                Type = OpenIddictConstants.AuthorizationTypes.Permanent,
+            },
+            Token);
+        return Guid.Parse((await authorizations.GetIdAsync(consent, Token))!);
     }
 
     [GeneratedRegex(" {2,}")]
