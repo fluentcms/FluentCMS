@@ -6,8 +6,8 @@ using static Microsoft.Playwright.Assertions;
 namespace FluentCMS.Admin.EndToEnd;
 
 // The account page of the signed-in user (spec 4.3, #3147) against the reference host: its sessions, two-factor sign-in by
-// choice and the password change. Each case changes its user, so each signs in as one of its own. The preferences card is
-// PreferencesTests'. The reference host has no external provider, so no case removes a login.
+// choice, an external login and the password change. Each case changes its user, so each signs in as one of its own. The
+// preferences card is PreferencesTests'.
 public sealed class AccountPageTests(EndToEndHost host) : BrowserTest(host)
 {
     private const string Route = "account";
@@ -153,6 +153,35 @@ public sealed class AccountPageTests(EndToEndHost host) : BrowserTest(host)
         states.ShouldNotBeEmpty();
         states.Distinct().Count().ShouldBe(1);
         tab.AuthorizeRequests.First().Query.ShouldNotContain("prompt=");
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    // The reference host has no external provider, so the login is written to its database (LinkLoginAsync), and its password
+    // keeps it removable. Removing it ends the user's sessions, the browser's own sign-in with them, so the page signs in
+    // again with the password, and the logins read after a reload no longer hold it.
+    [Fact]
+    [Trait("Host", "Publish")]
+    public async Task AnExternalLoginIsListedAndRemovedAndTheTabSignsInAgainWithThePassword()
+    {
+        var user = await Host.CreateEditorAsync();
+        await Host.LinkLoginAsync(user, "corp", "Corp");
+        var browser = await OpenBrowserAsync();
+        var tab = await SignedInTabAsync(browser, Route, user);
+        var card = Card(tab, "Account.Logins.Heading");
+        var rows = card.Locator("li.account-item");
+        var none = card.GetByText(Text("Account.Logins.None"), new() { Exact = true });
+        await Expect(rows).ToHaveCountAsync(1);
+        await Expect(rows.Locator(".account-item-name")).ToHaveTextAsync("Corp");
+
+        var removed = await tab.AnswerAsync(() => rows.Locator("fluent-button").ClickAsync(), "DELETE", tab.ManagementUrl("me/logins/corp"));
+        removed.Status.ShouldBe(204);
+        await browser.SignInOnTheHostedPageAsync(tab, user);
+        await Expect(none).ToBeVisibleAsync();
+        tab.Page.Url.ShouldBe(new Uri(Host.Admin, Route).AbsoluteUri);
+
+        await tab.ReloadAsync();
+        await Expect(none).ToBeVisibleAsync();
+        await Expect(rows).ToHaveCountAsync(0);
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
