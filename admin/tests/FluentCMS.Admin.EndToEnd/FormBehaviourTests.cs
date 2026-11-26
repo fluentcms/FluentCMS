@@ -99,6 +99,7 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
         await Expect(Title(tab)).ToHaveValueAsync(new Regex(" changed$"));
 
         // The browser asks before the tab closes; dismissed, the tab stays.
+        (await AsksBeforeUnloadAsync(tab)).ShouldBeTrue("the page's handlers of beforeunload would not ask before the tab closed");
         await tab.Page.CloseAsync(new PageCloseOptions { RunBeforeUnload = true });
         await Ui.UntilAsync(() => unloadQuestions == 1, "the browser did not ask before the tab closed");
         tab.Page.IsClosed.ShouldBeFalse();
@@ -179,9 +180,7 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
-    // Not on WebKit (spec 7, #3648): Playwright's WebKit runs the unload handlers of a close and never closes the page.
     [Fact]
-    [Trait("NotOn", "webkit")]
     public async Task ATabWithoutUnsavedChangesClosesWithoutAQuestion()
     {
         var browser = await OpenBrowserAsync();
@@ -198,13 +197,31 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
         await Title(tab).PressSequentiallyAsync($"{Mark} saved");
         await SaveAsync(tab, () => tab.Button("Content.Form.Save").ClickAsync(), "POST", tab.ManagementUrl("content/article"));
         await Expect(tab.Page).ToHaveURLAsync(new Regex("/admin/content/article/[0-9a-f-]{36}\\?locale=en$"), UrlWait);
+        (await AsksBeforeUnloadAsync(tab)).ShouldBeFalse("the page's handlers of beforeunload would ask before the tab closed");
 
-        await tab.Page.CloseAsync(new PageCloseOptions { RunBeforeUnload = true });
+        // Playwright's WebKit never closes a page closed with its unload handlers run, with a handler or without (#3648), so
+        // there the handlers' answer above is the check.
+        if (Host.Engine != BrowserEngine.WebKit)
+        {
+            await tab.Page.CloseAsync(new PageCloseOptions { RunBeforeUnload = true });
+            await Ui.UntilAsync(() => tab.Page.IsClosed, "the tab did not close");
+        }
 
-        await Ui.UntilAsync(() => tab.Page.IsClosed, "the tab did not close");
         unloadQuestions.ShouldBe(0);
         browser.PolicyViolations.ShouldBeEmpty();
     }
+
+    // Whether the page's handlers of beforeunload would ask before the tab unloads: a handler asks by cancelling the event or
+    // by setting its return value. The event is dispatched in the page, so the browser neither asks nor unloads.
+    private static Task<bool> AsksBeforeUnloadAsync(AdminTab tab) => tab.Page.EvaluateAsync<bool>("""
+        () => {
+            const unload = new Event('beforeunload', { cancelable: true });
+            let returned = false;
+            Object.defineProperty(unload, 'returnValue', { get: () => !returned, set: () => { returned = true; } });
+            window.dispatchEvent(unload);
+            return unload.defaultPrevented || returned;
+        }
+        """);
 
     private static ILocator Title(AdminTab tab) => tab.Page.Locator("[data-field='title'] input");
 

@@ -285,6 +285,21 @@ namespace FluentCMS.Data.SqlServer.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "cms_plugin_store",
+                columns: table => new
+                {
+                    plugin = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
+                    key = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    value = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: false),
+                    version = table.Column<long>(type: "bigint", nullable: false),
+                    updated_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_cms_plugin_store", x => new { x.plugin, x.key });
+                });
+
+            migrationBuilder.CreateTable(
                 name: "cms_recurring_job",
                 columns: table => new
                 {
@@ -1300,6 +1315,9 @@ namespace FluentCMS.Data.SqlServer.Migrations
 
             migrationBuilder.DropTable(
                 name: "cms_plugin_site");
+
+            migrationBuilder.DropTable(
+                name: "cms_plugin_store");
 
             migrationBuilder.DropTable(
                 name: "cms_recurring_job");

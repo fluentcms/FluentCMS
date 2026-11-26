@@ -27,6 +27,7 @@ internal static class StorageNames
     public const string Schedule = "cms_schedule";
     public const string Setting = "cms_setting";
     public const string PluginSite = "cms_plugin_site";
+    public const string PluginStore = "cms_plugin_store";
     public const string SchemaHistory = "cms_schema_history";
     public const string User = "cms_user";
     public const string UserRole = "cms_user_role";
@@ -81,7 +82,7 @@ internal static class StorageNames
         "member", "member_login", "member_token", "member_group", "member_group_member",
         "activity",
         "job", "job_attempt", "recurring_job", "lock", "outbox",
-        "setting", "plugin_site",
+        "setting", "plugin_site", "plugin_store",
         "media_asset", "media_folder", "media_variant", "media_preset",
         "webhooks_subscription", "webhooks_delivery",
         "mcp_instruction", "mcp_prompt",
