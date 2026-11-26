@@ -28,6 +28,8 @@ internal static class CommandRegistry
         new JobsRetryCommand(),
         new SeedCommand(),
         new SettingsReprotectCommand(),
+        new KeysListCommand(),
+        new KeysRotateCommand(),
         new ExportCommand(),
         new ImportCommand(),
         new BackupCommand(),
