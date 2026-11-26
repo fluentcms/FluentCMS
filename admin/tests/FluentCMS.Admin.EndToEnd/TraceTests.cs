@@ -103,6 +103,88 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
         trace.ShouldContain("[masked]");
     }
 
+    // The chunks recorded around an unrecorded scope are one trace: each event log under a name of its own, which the trace
+    // viewer reads as one more context, a resource both hold once, and every chunk masked and checked.
+    [Fact]
+    public void TheChunksOfATraceAreJoinedWithAnEventLogEachAndEveryResourceOnce()
+    {
+        var first = Path.Combine(_directory.FullName, "chunk-0.zip");
+        using (var archive = ZipFile.Open(first, ZipArchiveMode.Create))
+        {
+            Write(archive, "trace.trace", """{"type":"context-options","title":"first"}""");
+            Write(archive, "trace.network", "{}");
+            Write(archive, "trace.stacks", "{}");
+            Write(archive, "resources/4e5f.css", "body { color: red }");
+            Write(archive, "resources/page@1-1.jpeg", "jpeg");
+        }
+
+        var second = Path.Combine(_directory.FullName, "chunk-1.zip");
+        using (var archive = ZipFile.Open(second, ZipArchiveMode.Create))
+        {
+            Write(archive, "trace.trace", "{\"type\":\"context-options\",\"title\":\"second\"}\n{\"type\":\"after\",\"value\":\"" + Cookie + "\"}");
+            Write(archive, "trace.network", "{}");
+            Write(archive, "resources/4e5f.css", "body { color: red }");
+            Write(archive, "resources/page@1-2.jpeg", "jpeg");
+        }
+
+        var masked = Path.Combine(_directory.FullName, "masked.zip");
+        TraceScrubber.Scrub([first, second], masked, [Cookie]);
+
+        using var result = ZipFile.OpenRead(masked);
+        result.Entries.Select(entry => entry.FullName).ShouldBe(
+            ["trace.trace", "trace.stacks", "resources/4e5f.css", "resources/page@1-1.jpeg", "chunk1-trace.trace", "resources/page@1-2.jpeg"],
+            ignoreOrder: true);
+        Read(result.GetEntry("trace.trace")!).ShouldContain("first");
+        var later = Read(result.GetEntry("chunk1-trace.trace")!);
+        later.ShouldContain("second");
+        later.ShouldNotContain(Cookie);
+        TraceScrubber.Leaks(masked, [Cookie]).ShouldBeNull();
+    }
+
+    // A secret the case gives, which no pattern finds, is masked in the snapshots around an unrecorded scope, and the steps of
+    // the scope, which show another, leave no action, snapshot or screenshot in the kept trace. A value too short to mask is
+    // refused.
+    [Fact]
+    public async Task AnUnrecordedScopeLeavesNoStepInTheTraceAndAGivenSecretIsMaskedAroundIt()
+    {
+        var trace = Path.Combine(_directory.FullName, "unrecorded.zip");
+        var given = "given-" + Guid.NewGuid().ToString("N");
+        var unrecorded = "unrecorded-" + Guid.NewGuid().ToString("N");
+        var browser = await OpenBrowserAsync(traces: _directory.FullName);
+        var tab = await SignedInTabAsync(browser, "");
+        await Expect(tab.Sidebar).ToBeVisibleAsync();
+        Should.Throw<ArgumentOutOfRangeException>(() => browser.Mask("1234567"));
+
+        browser.Mask(given);
+        await ShowAsync(tab, "e2e-given", given);
+        await using (await browser.UnrecordedAsync())
+        {
+            await ShowAsync(tab, "e2e-unrecorded", unrecorded);
+            await tab.Page.EvaluateAsync("() => document.getElementById('e2e-unrecorded').remove()");
+            await Expect(tab.Page.Locator("#e2e-unrecorded")).ToHaveCountAsync(0);
+        }
+
+        await tab.Page.Locator("#e2e-given").ClickAsync();
+        await browser.SaveTraceAsync(trace);
+
+        using var archive = ZipFile.OpenRead(trace);
+        archive.Entries.Select(entry => entry.FullName).Where(name => name.EndsWith(".trace", StringComparison.Ordinal)).ShouldBe(["trace.trace", "chunk1-trace.trace"], ignoreOrder: true);
+        archive.Entries.Count(entry => entry.FullName.EndsWith(".jpeg", StringComparison.Ordinal)).ShouldBeGreaterThan(0);
+        var texts = archive.Entries.Select(entry => Read(entry)).ToList();
+        texts.ShouldContain(text => text.Contains("e2e-given", StringComparison.Ordinal), "the snapshots around the scope were not kept");
+        texts.ShouldNotContain(text => text.Contains("e2e-unrecorded", StringComparison.Ordinal), "a step of the unrecorded scope is in the trace");
+        TraceScrubber.Leaks(trace, [.. await browser.SecretsAsync(), unrecorded]).ShouldBeNull();
+    }
+
+    // A paragraph with the text over the page, clicked, so that its action has snapshots and a screenshot shows it.
+    private static async Task ShowAsync(AdminTab tab, string id, string text)
+    {
+        await tab.Page.EvaluateAsync(
+            "([id, text]) => { const shown = document.createElement('p'); shown.id = id; shown.textContent = text; shown.style.cssText = 'position: fixed; inset: 0 auto auto 0; z-index: 2147483647; margin: 0; background: white'; document.body.append(shown); }",
+            new[] { id, text });
+        await tab.Page.Locator("#" + id).ClickAsync();
+    }
+
     // The trace of a real sign-in, saved as a failed test saves it: screenshots and snapshots, and nothing of the network.
     [Fact]
     public async Task TheTraceOfASignInHoldsNoPasswordOrToken()

@@ -27,6 +27,12 @@ public sealed class AdminBrowser
     // How many of the requests the browser gave up, and of the answers it could not give, are kept, the last ones.
     private const int Kept = 20;
 
+    // The shortest value kept as a secret: a shorter one would mask ordinary text, and no secret of the sign-in is that short.
+    private const int ShortestSecret = 8;
+
+    // Until each page has painted twice, or a second at most for a page that paints no more, as one in the background.
+    private const string Painted = "() => new Promise(resolve => { requestAnimationFrame(() => requestAnimationFrame(resolve)); setTimeout(resolve, 1000); })";
+
     internal const string CancelledError = "net::ERR_ABORTED";
 
     private readonly EndToEndHost _host;
@@ -39,8 +45,11 @@ public sealed class AdminBrowser
     private readonly ConcurrentBag<Task> _reads = [];
     private readonly ConcurrentQueue<string> _givenUp = new();
     private readonly ConcurrentQueue<string> _unread = new();
+    private readonly List<string> _chunks = [];
+    private DirectoryInfo? _chunkDirectory;
     private int _cancelled;
     private bool _tracing;
+    private bool _unrecorded;
 
     private AdminBrowser(EndToEndHost host, IBrowserContext context, string? traces)
     {
@@ -120,26 +129,107 @@ public sealed class AdminBrowser
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign in", Exact = true }).ClickAsync();
     }
 
-    // The trace of this context, masked, at path; the same as a failed test leaves. The unmasked trace is written outside the
-    // traces folder, in a folder of the run's host, which is deleted with it if this process dies first.
+    // The trace of this context, masked, at path; the same as a failed test leaves: the chunks recorded around the unrecorded
+    // scopes, as one trace. The unmasked chunks are written outside the traces folder, in a folder of the run's host, which is
+    // deleted with them if this process dies first.
     public async Task SaveTraceAsync(string path)
     {
-        var raw = _host.NewDirectory();
+        var raw = ChunkDirectory();
+        var recording = _tracing;
         _tracing = false;
         try
         {
-            await _context.Tracing.StopAsync(new TracingStopOptions { Path = Path.Combine(raw.FullName, "trace.zip") });
+            List<string> chunks = [.. _chunks];
+            if (recording)
+            {
+                chunks.Add(Path.Combine(raw.FullName, $"chunk-{chunks.Count}.zip"));
+                await _context.Tracing.StopAsync(new TracingStopOptions { Path = chunks[^1] });
+            }
+            else
+            {
+                await _context.Tracing.StopAsync();
+            }
+
             await ReadsAsync();
-            TraceScrubber.Scrub(Path.Combine(raw.FullName, "trace.zip"), path, [.. _secrets.Keys]);
+            TraceScrubber.Scrub(chunks, path, [.. _secrets.Keys]);
         }
         finally
         {
-            raw.Delete(recursive: true);
+            DeleteChunks();
         }
     }
 
-    // A secret the test read from the page, as from the clipboard, so that a kept trace is masked of it and checked for it.
-    public void Mask(string secret) => Keep(secret);
+    // A secret the test read from the page, as from the clipboard or from a step that shows it once, such as an authenticator
+    // key, a recovery code or a new password, which no pattern finds: a kept trace is masked of it and checked for it, as it
+    // is written and in each encoding TraceScrubber knows. A value too short to be kept is refused rather than left unmasked.
+    public void Mask(string secret)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(secret.Length, ShortestSecret, nameof(secret));
+        Keep(secret);
+    }
+
+    // The steps that show a secret no mask reaches, since a screenshot holds it as pixels: nothing of them is recorded, no
+    // screenshot, snapshot or action, so that a kept trace holds none. The chunk recorded so far is kept aside for the kept
+    // trace, and a new one starts as the scope ends, once each page has painted again, so that its first screenshot is of the
+    // page without the secret. The scope ends once the page no longer shows it, and the secrets are given to Mask as well,
+    // for the text of the steps around it. Without traces it does nothing.
+    public async Task<IAsyncDisposable> UnrecordedAsync()
+    {
+        if (_unrecorded)
+        {
+            throw new InvalidOperationException("An unrecorded scope of this browser is open already.");
+        }
+
+        _unrecorded = true;
+        if (!_tracing)
+        {
+            return new Unrecorded(this, resume: false);
+        }
+
+        _tracing = false;
+        var chunk = Path.Combine(ChunkDirectory().FullName, $"chunk-{_chunks.Count}.zip");
+        await _context.Tracing.StopChunkAsync(new TracingStopChunkOptions { Path = chunk });
+        _chunks.Add(chunk);
+        return new Unrecorded(this, resume: true);
+    }
+
+    private async Task RecordAgainAsync(bool resume)
+    {
+        _unrecorded = false;
+        if (!resume)
+        {
+            return;
+        }
+
+        foreach (var page in _context.Pages)
+        {
+            try
+            {
+                await page.EvaluateAsync(Painted);
+            }
+            catch (PlaywrightException)
+            {
+                // A page that navigates away paints its next document after the chunk has started, without the secret.
+            }
+        }
+
+        await _context.Tracing.StartChunkAsync(new TracingStartChunkOptions { Title = TestContext.Current.Test?.TestDisplayName });
+        _tracing = true;
+    }
+
+    private DirectoryInfo ChunkDirectory() => _chunkDirectory ??= _host.NewDirectory();
+
+    private void DeleteChunks()
+    {
+        _chunks.Clear();
+        _chunkDirectory?.Delete(recursive: true);
+        _chunkDirectory = null;
+    }
+
+    private sealed class Unrecorded(AdminBrowser browser, bool resume) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync() => await browser.RecordAgainAsync(resume);
+    }
 
     // The address of each page of the context, masked, for the output of a failed test.
     internal IEnumerable<string> Addresses => _context.Pages.Select(page => Masked(page.Url));
@@ -165,7 +255,8 @@ public sealed class AdminBrowser
     {
         try
         {
-            if (_tracing)
+            // A case that failed in an unrecorded scope leaves the chunks recorded before it.
+            if (_tracing || _chunks.Count > 0)
             {
                 if (failed)
                 {
@@ -181,6 +272,7 @@ public sealed class AdminBrowser
         }
         finally
         {
+            DeleteChunks();
             await _context.CloseAsync();
         }
     }
@@ -362,10 +454,9 @@ public sealed class AdminBrowser
         }
     }
 
-    // A value under 8 characters is not kept: it would mask ordinary text, and no secret of the sign-in is that short.
     private void Keep(string value)
     {
-        if (value.Length >= 8)
+        if (value.Length >= ShortestSecret)
         {
             _secrets.TryAdd(value, true);
         }
