@@ -596,7 +596,7 @@ internal sealed partial class ContentService(
         }
     }
 
-    private static Task PauseAfterDeadlockAsync(int deadlocks, CancellationToken cancellationToken) =>
+    internal static Task PauseAfterDeadlockAsync(int deadlocks, CancellationToken cancellationToken) =>
         Task.Delay(TimeSpan.FromMilliseconds(20 * deadlocks * (1 + Random.Shared.NextDouble())), cancellationToken);
 
     private async Task<T> InOwnTransactionAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken)

@@ -155,6 +155,43 @@ public sealed class LockOrderTests
         (await database.GetAsync(Editor, id, locale: "fr"))!["views"].ShouldBe(5L);
     }
 
+    // A save replaces its entry's references under the hold of its row, and a removal of references by target, which a forced
+    // delete of media sends, holds the rows of the entries it changes before it deletes (#3572). Held once the save has taken
+    // its row, the removal waits for it and then removes what the save wrote; before, it deleted at once, unheld, and the save
+    // wrote the reference back.
+    [Fact]
+    public async Task ARemovalOfReferencesByTargetWaitsForASaveOfAnEntryItChanges()
+    {
+        Document? english = null;
+        var gate = new CommandGate(command => Locks(english)(command));
+        var deadlocks = new Deadlocks();
+        using var database = WithGate(gate, deadlocks);
+        var media = Guid.CreateVersion7();
+        var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Hello", ["hero"] = media }));
+        english = database.Document(id);
+        var removed = 0;
+        Task? removal = null;
+        gate.At = async () => removal = await RowLocks.BesideAsync(
+            database.Database.ConnectionString,
+            async () => removed = await database.AsAsync(Principal.System, services => services.GetRequiredService<IContentReferences>().RemoveAsync("media", media, Token)),
+            Token);
+
+        var saved = await OutcomeAsync(database.AsAsync(Editor, services =>
+        {
+            gate.Context = services.GetRequiredService<CmsDbContext>();
+            return services.GetRequiredService<IContentService>().PatchAsync("article", id, new() { ["title"] = "Two" }, 1, Token);
+        }));
+
+        gate.Passed.ShouldBeTrue();
+        var outcome = await OutcomeAsync(removal!);
+        await deadlocks.ShouldBeNoneAsync(database.Database.ConnectionString);
+        saved.ShouldBeNull();
+        outcome.ShouldBeNull();
+        removed.ShouldBe(1);
+        database.References(id).ShouldNotContain(reference => reference.TargetId == media);
+        database.Document(id).DraftVersion.ShouldBe(2);
+    }
+
     // A write decides its own status before its swap. What another request commits just before that swap, while the write
     // holds no row, moves what decides it without moving the version the swap compares, so the swap passes and the status is
     // decided again from what is stored. On SQLite the write lets the one write lock go for that request.
