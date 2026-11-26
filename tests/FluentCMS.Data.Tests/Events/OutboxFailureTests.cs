@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Data.Common;
 using FluentCMS.Content;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -10,6 +11,7 @@ using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Events;
 using FluentCMS.Hooks;
+using FluentCMS.Jobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -1116,7 +1118,7 @@ public sealed class OutboxFailureTests
         rows.ShouldAllBe(row => row.Status == OutboxStatus.Delivered && row.Attempts == 2);
     }
 
-    // The settle takes one of the three seconds of the stop, so the release has the two that are left.
+    // The settle takes one of the drain's three seconds of the stop, so the release has the two that are left.
     [Fact]
     public async Task TheWritesOfAStopShareTheReleaseTimeoutWithTheDeliveredRowsSettledFirst()
     {
@@ -1160,6 +1162,63 @@ public sealed class OutboxFailureTests
         seen.Behavior = (_, _) => Task.CompletedTask;
         clock.Advance(TimeSpan.FromMinutes(10));
         (await DrainAsync(database.Database.Services)).ShouldBe(3);
+    }
+
+    // The job runner stops the drain job with no grace, and the release of the row it gives back is held until the drain's
+    // three seconds are up, so the drain uses its whole time. Its job's outcome is written in the three that are left, so the
+    // stop returns with the clock short of the end of the runner's wait.
+    [Fact]
+    public async Task AStopWhoseDrainUsesItsWholeTimeStillWritesTheDrainJobsOutcomeBeforeItReturns()
+    {
+        var seen = new Seen();
+        var writes = new EndingWrites();
+        var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var delivering = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releasing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var handler = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        seen.Behavior = (_, _) =>
+        {
+            delivering.TrySetResult();
+            return handler.Task;
+        };
+        writes.Writing = async (kind, token) =>
+        {
+            if (kind == EndingWrites.Release)
+            {
+                releasing.TrySetResult();
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            }
+        };
+        using var database = StoppingDatabase(seen, clock, logs, writes, cms => cms.Jobs.Options.ShutdownGracePeriod = TimeSpan.Zero);
+        var runner = database.Database.Services.GetRequiredService<IJobRunner>();
+        await runner.StartAsync(Token);
+        try
+        {
+            await database.CreateAsync(Editor, Titled("T"));
+            await Eventually.CompletesAsync(delivering.Task);
+
+            var stopping = runner.StopAsync(Token);
+            await Eventually.CompletesAsync(releasing.Task);
+            stopping.IsCompleted.ShouldBeFalse("the drain has its time");
+
+            clock.Advance(TimeSpan.FromSeconds(3));
+            await Eventually.CompletesAsync(stopping);
+        }
+        finally
+        {
+            // So that a stop that does not return lets the held release go, and the test fails on it rather than on the file.
+            clock.Advance(TimeSpan.FromSeconds(3));
+            handler.TrySetResult();
+        }
+
+        logs.Count(nameof(JobLog.StoppedWithRunningJobs)).ShouldBe(0);
+        database.Read(context => context.Set<Job>().AsNoTracking().Where(job => job.Type == OutboxDrainJob.Type).ToList())
+            .ShouldHaveSingleItem().Status.ShouldBe(JobStatus.Succeeded);
+        var row = database.Rows().ShouldHaveSingleItem();
+        (row.Status, row.Attempts).ShouldBe((OutboxStatus.Pending, 1));
+        row.LeaseOwner.ShouldNotBeNull();
+        await Eventually.HoldsAsync(() => writes.Connections.Count == 0);
     }
 
     // The writes block their threads and ignore their tokens, as SQLite does while it waits for the write lock.
@@ -1596,8 +1655,8 @@ public sealed class OutboxFailureTests
     }
 
     // The first row waits for its handler, which this instance does not have, and the host stops before the second. The write
-    // that gives them back takes two of the three seconds of the stop; with one attempt a row, the sweep would fail a row it
-    // left leased, though no handler saw it.
+    // that gives them back takes two of the drain's three seconds of the stop; with one attempt a row, the sweep would fail a
+    // row it left leased, though no handler saw it.
     [Fact]
     public async Task TheRowsAStopGivesBackGoWithOneWriteSoASlowOneLeavesNoneOfThemLeased()
     {
@@ -2023,11 +2082,11 @@ public sealed class OutboxFailureTests
             throw new OperationCanceledException(stopping.Token);
         };
 
-    // A host that gives a stop three seconds, on a clock that only the test moves.
+    // A host that gives a stop six seconds, three of them to the drain, on a clock that only the test moves.
     private static ServiceDatabase StoppingDatabase(Seen seen, ManualTimeProvider clock, RecordingLogs logs, EndingWrites writes, Action<FluentCMS.Core.DependencyInjection.FluentCmsBuilder>? more = null) =>
         new(EventRegistrations.With(seen, Fast(cms =>
         {
-            cms.Jobs.Options.ReleaseTimeout = TimeSpan.FromSeconds(3);
+            cms.Jobs.Options.ReleaseTimeout = TimeSpan.FromSeconds(6);
             cms.Services.AddSingleton<TimeProvider>(clock);
             cms.Services.AddSingleton<ILoggerProvider>(logs);
             cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(writes, writes.Connections));

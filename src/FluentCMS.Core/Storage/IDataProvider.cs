@@ -110,6 +110,28 @@ public interface IDataProvider
             ? ReadSiteAsync(context, site, cancellationToken)
             : context.Set<Entities.Site>().AnyAsync(row => row.Id == site, cancellationToken);
 
+    // Locks the row of cms_document of that primary key to the end of the context's transaction, with the lock an update of
+    // it takes, and changes nothing: a hold, by which a write takes a row in its place in the lock order (spec 4.5, "Lock
+    // order as built"). With draftVersion, only a row outside the trash at that version; without, the row in the trash too.
+    // False when no row was locked. The default is an update that sets nothing new.
+    Task<bool> HoldDocumentAsync(DbContext context, Guid id, int? draftVersion, CancellationToken cancellationToken) =>
+        UpdateDocumentAsync(context, id, draftVersion, cancellationToken);
+
+    private static async Task<bool> UpdateDocumentAsync(DbContext context, Guid id, int? draftVersion, CancellationToken cancellationToken)
+    {
+        var documents = context.Set<Entities.Document>();
+        if (draftVersion is { } version)
+        {
+            return await documents
+                .Where(document => document.Id == id && document.DraftVersion == version)
+                .ExecuteUpdateAsync(set => set.SetProperty(document => document.DraftVersion, version), cancellationToken) == 1;
+        }
+
+        return await documents.IgnoreQueryFilters()
+            .Where(document => document.Id == id)
+            .ExecuteUpdateAsync(set => set.SetProperty(document => document.DraftVersion, document => document.DraftVersion), cancellationToken) == 1;
+    }
+
     private static async Task<bool> ReadSiteAsync(DbContext context, Guid site, CancellationToken cancellationToken) =>
         (await context.Database.SqlQuery<int>($"""SELECT 1 AS "Value" FROM cms_site WHERE id = {site}""").ToListAsync(cancellationToken)).Count > 0;
 }
