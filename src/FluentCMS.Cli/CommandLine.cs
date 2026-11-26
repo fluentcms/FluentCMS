@@ -567,10 +567,11 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         var authors = new Option<string>("--authors") { Description = "keep (the default) or importer: whether the entries keep the authors of the package, or name whoever runs the import as the creator of what it creates and the updater of what it writes.", HelpName = "mode" };
         authors.AcceptOnlyFromAmong("keep", "importer");
         var roles = new Option<bool>("--roles") { Description = "Imports the roles of the package too." };
+        var mediaNameKeys = new Option<bool>("--media-name-keys") { Description = "Lets a media asset whose line has no file name the key of the storage the line names, as the asset's file, instead of taking a copy under a key of its own. Only for instances that share the database as well as the storage: the instance that wrote the key deletes the file when it purges, replaces or removes the site of its asset, whatever the other instance's asset says." };
         var json = new Option<bool>("--json") { Description = "Writes the report as the endpoint's last line of JSON." };
         var command = new Command("import", "Imports an export package into a site and prints the report; exits with 1 when it has a conflict or an error.")
         {
-            file, dryRun, site, types, overwrite, webhooks, missingLocales, authors, roles, json,
+            file, dryRun, site, types, overwrite, webhooks, missingLocales, authors, roles, mediaNameKeys, json,
         };
         var instance = InstanceOptions.AddTo(command);
         var project = ProjectOptions.AddTo(command);
@@ -585,7 +586,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
                     [
                         "import", path,
                         .. Flag(result, dryRun), .. Value(result, site), .. Value(result, types), .. Flag(result, overwrite), .. Flag(result, webhooks),
-                        .. Value(result, missingLocales), .. Value(result, authors), .. Flag(result, roles), .. Flag(result, json),
+                        .. Value(result, missingLocales), .. Value(result, authors), .. Flag(result, roles), .. Flag(result, mediaNameKeys), .. Flag(result, json),
                     ],
                     output,
                     error,
@@ -600,6 +601,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
             AddQuery(query, "webhooks", result.GetValue(webhooks) ? "true" : null);
             AddQuery(query, "roles", result.GetValue(roles) ? "true" : null);
             AddQuery(query, "types", Types(result.GetValue(types)) is { } names ? string.Join(',', names) : null);
+            AddQuery(query, "options", result.GetValue(mediaNameKeys) ? "mediaNameKeys=true" : null);
 
             using var client = new TransferClient(at, _connect(at));
             var report = await client.ImportAsync(
