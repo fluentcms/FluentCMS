@@ -418,9 +418,6 @@ public sealed class MediaFileTests
         Sanitized(once).ShouldBe(once);
     }
 
-    // A file past the node limit, counting text, comments and processing instructions, or with an element past the
-    // attribute limit, namespace declarations included, is refused by the pass of the reader, before the tree is built;
-    // an element at the attribute limit and a drawing of a few hundred texts are taken.
     // A file over the limit, from where the stream stands, is refused as too large before it is read as XML; one at it is read.
     [Fact]
     public void AnSvgOverItsLimitIsRefusedAsTooLargeAndOneAtItIsRead()
@@ -466,6 +463,9 @@ public sealed class MediaFileTests
         Should.Throw<OperationCanceledException>(() => SvgDocument.Save(Parse(bytes).ShouldNotBeNull(), cancelled.Token));
     }
 
+    // A file past the node limit, counting text, comments and processing instructions, or with an element past the
+    // attribute limit, namespace declarations included, is refused by the pass of the reader, before the tree is built;
+    // an element at the attribute limit and a drawing of a few hundred texts are taken.
     [Fact]
     public void AFileOfTooManyAttributesOrNodesOfAnyKindIsRefusedBeforeItsTreeIsBuilt()
     {
