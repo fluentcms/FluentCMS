@@ -52,7 +52,7 @@ The admin is built for the last two versions of Chrome, Edge, Firefox and Safari
 
 The repository's end-to-end tests drive the admin in Chromium, against a publish of the reference host and against its image, and check every view with axe-core in the light and the dark theme, and on the publish right to left as well. Some cases also run at the width of a tablet.
 
-Every night the same tests run in Firefox and in WebKit, Safari's engine, against the publish. Five cases are left out in WebKit, each with an issue: closing a tab with nothing unsaved ([#3648](https://github.com/fluentcms/FluentCMS/issues/3648)), the loading state on the reload of a lazily loaded page, in two cases ([#3649](https://github.com/fluentcms/FluentCMS/issues/3649)), the preview after its page navigates to one without the preview script, a fault of the admin in WebKit ([#3650](https://github.com/fluentcms/FluentCMS/issues/3650)), and a link set by keyboard in the rich text editor ([#3651](https://github.com/fluentcms/FluentCMS/issues/3651)). The list is in section 7 of the [admin technical specification](planning/admin-technical-spec.md#7-testing).
+Every night the same tests run in Firefox and in WebKit, Safari's engine, against the publish. Four cases are left out in WebKit, each with an issue: closing a tab with nothing unsaved ([#3648](https://github.com/fluentcms/FluentCMS/issues/3648)), the loading state on the reload of a lazily loaded page, in two cases ([#3649](https://github.com/fluentcms/FluentCMS/issues/3649)), and a link set by keyboard in the rich text editor ([#3651](https://github.com/fluentcms/FluentCMS/issues/3651)). The list is in section 7 of the [admin technical specification](planning/admin-technical-spec.md#7-testing).
 
 ## Language and formats
 
