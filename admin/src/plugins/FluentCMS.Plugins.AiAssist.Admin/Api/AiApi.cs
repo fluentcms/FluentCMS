@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.Api;
@@ -8,8 +9,8 @@ namespace FluentCMS.Plugins.AiAssist.Admin.Api;
 // What a streamed action ended with: the suggestion of its done event, or the problem of its error event.
 internal sealed record AiOutcome(JsonNode? Suggestion, AiStreamProblem? Problem);
 
-// The AI routes of the Management API (spec 5.5) over the admin's one client, and the media routes the alt text of an asset
-// needs. A refusal before the provider is asked is the client's ApiProblemException, which is not sent again, a 429 included.
+// The AI routes of the Management API (spec 5.5) over the admin's one client, the media routes the alt text of an asset
+// needs, and the read of the draft whose images altText for a field offers. A refusal before the provider is asked is the client's ApiProblemException, which is not sent again, a 429 included.
 // A client that only reads, as the usage page, needs no event stream.
 internal sealed class AiApi(IManagementApi api, IManagementEvents? events = null)
 {
@@ -47,6 +48,21 @@ internal sealed class AiApi(IManagementApi api, IManagementEvents? events = null
         ArgumentNullException.ThrowIfNull(query);
         var answer = await api.SendAsync(new ApiRequest(HttpMethod.Get, "ai/usage" + query.ToQueryString()), AiJsonContext.Default.AiUsageAnswer, cancellationToken);
         return answer.Value;
+    }
+
+    // The fields of the entry's saved draft in the locale named, without the fallback chain, as the server reads it for
+    // altText; null for an entry that is not saved in that locale, or that the caller may not read.
+    public async Task<JsonObject?> DraftAsync(string type, Guid id, IReadOnlyList<string> fields, string? locale, CancellationToken cancellationToken)
+    {
+        var path = $"content/{Uri.EscapeDataString(type)}/{id:D}?fallback=none&fields={string.Join(',', fields.Select(Uri.EscapeDataString))}";
+        try
+        {
+            return (await api.SendAsync(new ApiRequest(HttpMethod.Get, path) { Locale = locale }, AiJsonContext.Default.JsonObject, cancellationToken)).Value;
+        }
+        catch (ApiProblemException missing) when (missing.Problem.Status == (int)HttpStatusCode.NotFound)
+        {
+            return null;
+        }
     }
 
     // The asset with its alt text in the locale named.

@@ -7,8 +7,8 @@ namespace FluentCMS.Plugins.AiAssist.Admin.Api;
 // The records of the AI routes the half reads, its own rather than the server half's (spec 5.1), which the API tests hold to
 // the reference host's OpenAPI document (spec 7). Each reads the members the half shows and skips the others.
 
-// The body of POST /ai/actions/{action}: the field the suggestion is for and its text, or neither for the alt text of an
-// asset alone.
+// The body of POST /ai/actions/{action}: the field the suggestion is for and its text, or for altText the entry whose image
+// it describes; neither for the alt text of an asset alone.
 internal sealed record AiActionBody
 {
     public string? Type { get; init; }
@@ -18,6 +18,8 @@ internal sealed record AiActionBody
     public string? Locale { get; init; }
 
     public string? Text { get; init; }
+
+    public Guid? DocumentId { get; init; }
 
     public AiActionOptions? Options { get; init; }
 }

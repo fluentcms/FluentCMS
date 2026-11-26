@@ -20,7 +20,8 @@ namespace FluentCMS.Plugins.AiAssist;
 // draft holds it. altText with neither a type nor a field is for the asset alone, as the media library edits it.
 public sealed record AiActionRequest(string? Type, string? Field, string? Locale, string? Text, Guid? DocumentId, AiActionOptions? Options);
 
-// TargetLocale is translate's, an enabled locale of the site, and MediaId altText's, an image of the media library.
+// TargetLocale is translate's, an enabled locale of the site, and MediaId altText's, an image of the media library, which
+// for a field is one the draft of the entry DocumentId names refers to.
 public sealed record AiActionOptions(string? TargetLocale, Guid? MediaId);
 
 // Suggestion is the text, and for seo an AiSeoSuggestion.
@@ -51,8 +52,9 @@ internal sealed record AiCall(
 
 // The actions of spec 5.5, in the site of the current operation. PrepareAsync checks, in this order: ai.use in the site,
 // that the site's settings opt the field in, for altText that they let images go with assetAltText, and that the caller
-// may update that field, since a suggestion is for a field the caller edits. It then checks the body; altText on an asset
-// alone has no field, so the media service's own check of an update of the asset stands for the right to update. It then
+// may update that field, since a suggestion is for a field the caller edits. It then checks the body. Every altText then
+// asks the media service's own check of an update of the asset, which for an asset alone, with no field, stands for the
+// right to update; altText for a field then also needs an image that the entry's draft refers to. It then
 // takes the call from the call limit, asks the slot for the site's client and reserves the call's estimate against the
 // site's daily budget, so that a caller who is over either is refused before any work is done for it, and reads what the
 // action works on as the caller, through the content and media services. A call refused on the way is given back to the
@@ -94,6 +96,9 @@ internal sealed class AiAssistService(
     private static readonly string[] TextFieldTypes = ["text", "longText", RichTextFieldType];
 
     private const string RichTextFieldType = "richText";
+
+    // The media plugin's field type, and the type of a rich text node that shows an asset.
+    private const string MediaFieldType = "media";
 
     private const string MediaRead = "media.read";
     private const string MediaUpdate = "media.update";
@@ -176,9 +181,10 @@ internal sealed class AiAssistService(
             throw new ValidationException(errors);
         }
 
+        ContentAccess? held = null;
         if (type is not null && field is not null)
         {
-            var held = await AccessInAsync(operation, type.Localized ? locale : operation.Locale, cancellationToken);
+            held = await AccessInAsync(operation, type.Localized ? locale : operation.Locale, cancellationToken);
             if (!held.Types.TryGetValue(type.Name, out var typeAccess) || !MayUpdate(typeAccess, field))
             {
                 throw new ContentAccessDeniedException(type.Name, "update");
@@ -208,6 +214,10 @@ internal sealed class AiAssistService(
         {
             errors.Add(Invalid("documentId", "altText for an asset alone names no field, so there is no draft to read."));
         }
+        else if (action == AiActions.AltText && !forAsset && request.DocumentId is null)
+        {
+            errors.Add(Invalid("documentId", "altText for a field takes the id of the entry whose draft refers to the image."));
+        }
         else if (action != AiActions.AltText && request.DocumentId is null && string.IsNullOrWhiteSpace(request.Text))
         {
             errors.Add(Invalid("text", "An action needs a text, or the id of the entry whose draft holds it."));
@@ -218,9 +228,15 @@ internal sealed class AiAssistService(
             throw new ValidationException(errors);
         }
 
-        if (forAsset)
+        // The image first, by the check of the asset route, whose answer does not depend on the entry; the tie to the entry
+        // is then asked only for an image the caller may update, and answers only what the caller may read in the draft.
+        if (action == AiActions.AltText)
         {
             await RequireUpdatableAsync(site, request.Options!.MediaId!.Value, cancellationToken);
+            if (!forAsset)
+            {
+                await RequireReferencedAsync(held!, type!, request.DocumentId!.Value, locale, request.Options.MediaId.Value, cancellationToken);
+            }
         }
 
         // Taken before any work is done for the call, so that calls sent together cannot all pass, and given back when the
@@ -244,10 +260,10 @@ internal sealed class AiAssistService(
                 ?? throw new PluginException(AiErrorCodes.NoProvider, "The site has no AI provider. An administrator names one in the AI settings of the site.");
 
             // Before the draft is read, a call is reckoned at the most text it may send; one that reads none sends only the
-            // text it was given, if any.
+            // text it was given, if any. altText's documentId names the entry of the image, and its field is not read.
             var image = action == AiActions.AltText;
             var richText = field?.FieldType == RichTextFieldType;
-            var draft = type is not null && field is not null ? request.DocumentId : null;
+            var draft = type is not null && field is not null && !image ? request.DocumentId : null;
             var instructions = AiActions.Instructions(action, type?.Name, field?.Name, richText, field?.MaxLength, locale, targetLocale);
             var sent = AiBudgets.Tokens(instructions) + (image ? AiBudgets.ImageTokens : 0);
             var reckoned = sent + (draft is null ? AiBudgets.Tokens(request.Text) : (long)options.Value.MaxInputLength * AiBudgets.MaxBytesPerChar);
@@ -546,6 +562,50 @@ internal sealed class AiAssistService(
         };
         var entry = await content.GetAsync(type.Name, id, read, cancellationToken) ?? throw new EntryNotFoundException(type.Name, id);
         return entry.TryGetValue(field.Name, out var value) ? value as string : null;
+    }
+
+    // altText for a field describes an image of its own entry: one that the draft refers to in the locale of the suggestion,
+    // by a media field or a media node of a rich text field, among the fields the caller may read. The draft is read as the
+    // caller, so an entry it may not read is not found, and an image in a field it may not read counts as none.
+    private async Task RequireReferencedAsync(ContentAccess held, SchemaType type, Guid id, string locale, Guid mediaId, CancellationToken cancellationToken)
+    {
+        var fields = held.Schema.FindContentType(type.Name)?.Fields
+            .Where(field => !field.Hidden && field.FieldType is MediaFieldType or RichTextFieldType)
+            .ToList() ?? [];
+        var read = new GetOptions
+        {
+            Status = QueryStatus.Draft,
+            Locale = type.Localized ? locale : null,
+            Fallback = LocaleFallback.None,
+            Select = fields.Count > 0 ? [.. fields.Select(field => field.Name)] : ["id"],
+        };
+        var entry = await content.GetAsync(type.Name, id, read, cancellationToken) ?? throw new EntryNotFoundException(type.Name, id);
+        if (!fields.Any(field => entry.TryGetValue(field.Name, out var value) && RefersTo(value, mediaId)))
+        {
+            throw new ValidationException([Invalid("options.mediaId", "altText for a field describes an image that the entry's draft refers to in the locale of the suggestion, by a media field or a media node of a rich text field.")]);
+        }
+    }
+
+    // A media field reads as { "id", "type" }, or a list of them, and rich text as its JSON document.
+    private static bool RefersTo(object? value, Guid mediaId) => value switch
+    {
+        ContentDocument media => media.TryGetValue("id", out var held) && held is Guid found && found == mediaId,
+        IEnumerable<ContentDocument> many => many.Any(media => RefersTo(media, mediaId)),
+        RichText document => ShowsMedia(document, mediaId),
+        _ => false,
+    };
+
+    private static bool ShowsMedia(RichText document, Guid mediaId)
+    {
+        using var json = JsonDocument.Parse(document.Json);
+        return Shows(json.RootElement);
+
+        bool Shows(JsonElement node) =>
+            node.ValueKind == JsonValueKind.Object
+            && ((node.TryGetProperty("type", out var kind) && kind.ValueKind == JsonValueKind.String && kind.GetString() == MediaFieldType
+                    && node.TryGetProperty("attrs", out var attrs) && attrs.ValueKind == JsonValueKind.Object
+                    && attrs.TryGetProperty("mediaId", out var named) && named.ValueKind == JsonValueKind.String && Guid.TryParse(named.GetString(), out var found) && found == mediaId)
+                || (node.TryGetProperty("content", out var children) && children.ValueKind == JsonValueKind.Array && children.EnumerateArray().Any(Shows)));
     }
 
     private async Task<IMediaService> MediaAsync(SiteId site, CancellationToken cancellationToken)

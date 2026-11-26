@@ -108,10 +108,12 @@ public sealed class AiLimitTests : IClassFixture<AiHost>
     {
         var site = await _ai.SiteAsync(settings => (settings.CallsPerMinute, settings.AssetAltText) = (1, true));
         using var admin = await _ai.AdminAsync(site);
+        var picture = await UploadAsync(admin, "harbour.png", Picture(40, 20));
+        var entry = await ArticleAsync(admin, new { title = "Harbour", image = picture });
 
         await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = "Ships are big boats." });
         using var draft = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", documentId = Guid.NewGuid() });
-        using var image = await ActAsync(admin, "altText", new { type = "article", field = "summary", options = new { mediaId = Guid.NewGuid() } });
+        using var image = await ActAsync(admin, "altText", new { type = "article", field = "summary", documentId = entry, options = new { mediaId = picture } });
         _ai.Host.Time.Advance(TimeSpan.FromSeconds(61));
         using var underAgain = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", documentId = Guid.NewGuid() });
 

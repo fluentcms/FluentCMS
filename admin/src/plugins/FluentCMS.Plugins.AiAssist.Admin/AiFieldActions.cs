@@ -1,7 +1,9 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Admin;
 using FluentCMS.Admin.Actions;
+using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Plugins;
+using FluentCMS.Plugins.AiAssist.Admin.Api;
 using Microsoft.Extensions.Localization;
 
 namespace FluentCMS.Plugins.AiAssist.Admin;
@@ -68,12 +70,15 @@ public abstract class AiFieldAction : FieldActionBase
     public override async Task<FieldActionResult> RunAsync(FieldActionContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
-        var accepted = await new AiSuggestions(_overlays).AskAsync(Request(context), cancellationToken);
+        var accepted = await new AiSuggestions(_overlays).AskAsync(await RequestAsync(context, cancellationToken), cancellationToken);
         return accepted is null || ForAsset ? FieldActionResult.Unchanged : FieldActionResult.Replace(JsonValue.Create(accepted));
     }
 
     // A text action works on the field's text, so a field without one has nothing to offer it.
     private protected virtual bool Applies(FieldActionContext context) => AiFieldValues.Text(context.Value) is not null;
+
+    private protected virtual ValueTask<AiSuggestionRequest> RequestAsync(FieldActionContext context, CancellationToken cancellationToken) =>
+        ValueTask.FromResult(Request(context));
 
     private protected virtual AiSuggestionRequest Request(FieldActionContext context) => new()
     {
@@ -130,23 +135,33 @@ public sealed class SeoAction(IAdminOverlays overlays, IStringLocalizer<AiAssist
 }
 
 // Alt text for one of the images of the entry's media fields, into this text field; the panel asks which when there are several.
+// The server describes only an image that the saved draft refers to in the form's locale, so the images are those of the draft
+// as it was saved, and an entry that is not saved, in that locale or at all, has none.
 [FieldAction(AiActionNames.AltText, FieldTypes = [AiActionNames.Text, AiActionNames.LongText], Permission = AiActionNames.Use, FieldsFrom = AiActionNames.OptedInFields)]
-public sealed class AltTextAction(IAdminOverlays overlays, IStringLocalizer<AiAssistResources> texts) : AiFieldAction(overlays, texts)
+public sealed class AltTextAction(IAdminOverlays overlays, IStringLocalizer<AiAssistResources> texts, IManagementApi api) : AiFieldAction(overlays, texts)
 {
     private protected override string Name => AiActionNames.AltText;
 
-    private protected override bool Applies(FieldActionContext context) => Images(context).Count > 0;
+    public override async ValueTask<bool> AppliesToAsync(FieldActionContext context, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return (await ImagesAsync(context, cancellationToken)).Count > 0;
+    }
 
-    private protected override AiSuggestionRequest Request(FieldActionContext context) => base.Request(context) with { Text = null, Images = Images(context) };
+    private protected override async ValueTask<AiSuggestionRequest> RequestAsync(FieldActionContext context, CancellationToken cancellationToken) =>
+        base.Request(context) with { Text = null, DocumentId = context.EntryId, Images = await ImagesAsync(context, cancellationToken) };
 
     // The assets of the media fields of the entry itself, not of its components and blocks.
-    private static List<Guid> Images(FieldActionContext context) =>
-    [
-        .. context.Type.Fields
-            .Where(field => field.Type == AiActionNames.Media)
-            .SelectMany(field => AiFieldValues.Ids(context.Document.GetValueOrDefault(field.Name)))
-            .Distinct(),
-    ];
+    private async Task<IReadOnlyList<Guid>> ImagesAsync(FieldActionContext context, CancellationToken cancellationToken)
+    {
+        var fields = context.Type.Fields.Where(field => field.Type == AiActionNames.Media).Select(field => field.Name).ToList();
+        if (context.EntryId is not { } id || fields.Count == 0 || await new AiApi(api).DraftAsync(context.Type.Name, id, fields, context.ContentLocale, cancellationToken) is not { } draft)
+        {
+            return [];
+        }
+
+        return [.. fields.SelectMany(field => AiFieldValues.Ids(draft[field])).Distinct()];
+    }
 }
 
 // The asset's own alt text, in the form's locale, for an image of this media field: saved on the asset when the user accepts
@@ -166,7 +181,8 @@ public sealed class AssetAltTextAction(IAdminOverlays overlays, IStringLocalizer
         base.Request(context) with { Type = null, Field = null, Text = null, Images = AiFieldValues.Ids(context.Value), ForAsset = true };
 }
 
-// What the half reads of a field's value: a text field's text, and a media field's id or ids.
+// What the half reads of a field's value: a text field's text, and a media field's id or ids, as the form holds them or as
+// a read gives them, { "id", "type" }.
 internal static class AiFieldValues
 {
     public static string? Text(JsonNode? value) =>
@@ -174,8 +190,15 @@ internal static class AiFieldValues
 
     public static IReadOnlyList<Guid> Ids(JsonNode? value) => value switch
     {
-        JsonValue single when single.TryGetValue<string>(out var text) && Guid.TryParse(text, out var id) => [id],
-        JsonArray many => [.. many.Select(item => item is JsonValue one && one.TryGetValue<string>(out var text) && Guid.TryParse(text, out var id) ? id : (Guid?)null).OfType<Guid>()],
+        JsonArray many => [.. many.Select(Id).OfType<Guid>()],
+        _ when Id(value) is { } id => [id],
         _ => [],
+    };
+
+    private static Guid? Id(JsonNode? value) => value switch
+    {
+        JsonValue one when one.TryGetValue<string>(out var text) && Guid.TryParse(text, out var id) => id,
+        JsonObject read => Id(read["id"]),
+        _ => null,
     };
 }
