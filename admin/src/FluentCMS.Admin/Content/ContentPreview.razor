@@ -2,8 +2,9 @@
    width, with a switch between the draft and the published page. The draft's URL comes with a preview token of the form's
    locale, minted as the pane opens and again when the frame loads after the token ended; a URL of an origin config.json does
    not list, or of the admin's own origin, is refused.
-   A page that speaks version 1 of the postMessage contract says ready and is told to refresh after a save, until it navigates
-   or the frame loads another page; a page that says nothing within five seconds is shown as it is, and a save loads it again. *@
+   A page that speaks the postMessage contract says ready and is told to refresh after a save, until it navigates or the frame
+   loads another page; after each load the pane says hello, which a page of version 2 answers with ready. A page that says
+   nothing within five seconds is shown as it is, and a save loads it again. *@
 @implements IAsyncDisposable
 @using FluentCMS.Admin.Configuration
 @inject ManagementClient Client
@@ -107,6 +108,8 @@
     private bool ready;
     // A ready arrived since the frame's last load, so that load was of the page that said it.
     private bool readySinceLoad;
+    // The version the last ready named, which refresh is posted in.
+    private int readyVersion;
     private bool silent;
     private string? navigated;
     private (string Type, Guid Id, string? Site, string? Locale)? shown;
@@ -271,7 +274,7 @@
         {
             try
             {
-                await Interop.PostAsync(pane, frameOrigin!, PreviewMessages.Refresh(Type, EntryId, TokenLocale, Version));
+                await Interop.PostAsync(pane, frameOrigin!, PreviewMessages.Refresh(readyVersion, Type, EntryId, TokenLocale, Version));
                 refreshFailed = false;
                 return;
             }
@@ -412,7 +415,7 @@
 
         if (message.Type == PreviewMessageType.Ready)
         {
-            (ready, readySinceLoad, silent) = (true, true, false);
+            (ready, readySinceLoad, readyVersion, silent) = (true, true, message.Version, false);
         }
         else
         {
@@ -428,18 +431,33 @@
         return InvokeAsync(StateHasChanged);
     }
 
-    // A load with no ready since the one before is of a page that does not speak the contract, such as one the page
-    // navigated to. A ready that comes after its load sets ready again.
-    private Task LoadedAsync()
+    // A load ends the ready of a page of version 2, and only a ready after it, such as the answer to the hello posted then,
+    // sets it again, whichever of the page's ready and the frame's load came first. A page of version 1 ignores hello, so for
+    // it a load with no ready since the one before is of a page that does not speak the contract, such as one it navigated to;
+    // where the load comes before the ready, a navigation it did not announce keeps ready until the next load (spec 4.12).
+    private async Task LoadedAsync()
     {
-        if (ready && !readySinceLoad)
+        if (ready && (readyVersion > 1 || !readySinceLoad))
         {
             ready = false;
             RestartReadyWait();
         }
 
         readySinceLoad = false;
-        return InvokeAsync(StateHasChanged);
+        await InvokeAsync(StateHasChanged);
+        if (frameOrigin is null || disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            await Interop.PostAsync(pane, frameOrigin, PreviewMessages.Hello());
+        }
+        catch (Microsoft.JSInterop.JSException)
+        {
+            // A page that does not hear it says no ready, and a save loads it again.
+        }
     }
 
     // Without the query and the fragment, and without the token where a template puts it in the path.

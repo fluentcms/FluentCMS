@@ -16,8 +16,8 @@ namespace FluentCMS.Admin.Tests.Content;
 // The preview pane of A-29 and its follow-ups (#3403): no button for a type the schema says has no template or without
 // preview origins, a token minted only as the pane opens, the draft's page in a frame at phone, tablet or full width, the
 // published page while the locale has one, a URL of another origin refused, the page's ready taken only from the frame's
-// origin, protocol and version and forgotten when the page navigates or the frame loads another, a save that tells a ready
-// page to refresh and reloads a silent one, a token minted again once it ended, and the newest mint's answer used.
+// origin, protocol and version and forgotten when the page navigates or the frame loads another, the hello after each load
+// that a page of version 2 answers, a save that tells a ready page to refresh in its version and reloads a silent one, a token minted again once it ended, and the newest mint's answer used.
 public sealed class ContentPreviewTests : AdminTestContext
 {
     private const string FrontEnd = "https://www.example.com";
@@ -174,7 +174,7 @@ public sealed class ContentPreviewTests : AdminTestContext
 
         Post(app, "https://elsewhere.example.com", Message("ready"));
         Post(app, FrontEnd, Message("ready", protocol: "other"));
-        Post(app, FrontEnd, Message("ready", version: 2));
+        Post(app, FrontEnd, Message("ready", version: 3));
         Post(app, FrontEnd, Message("hello"));
         Post(app, FrontEnd, "\"ready\"");
         Pane(app).HasAttribute("data-ready").ShouldBeFalse();
@@ -206,8 +206,8 @@ public sealed class ContentPreviewTests : AdminTestContext
         Pane(app).HasAttribute("data-ready").ShouldBeFalse();
     }
 
-    // A ready comes before the load of the page that sent it; a load with none since the one before is of another page,
-    // which gets the five seconds again and is loaded again by a save.
+    // For a page of version 1, which ignores hello, a ready that comes before the load of the page that sent it is kept; a
+    // load with none since the one before is of another page, which gets the five seconds again and is loaded again by a save.
     [Fact]
     public void ReadyIsForgottenWhenTheFrameLoadsAPageThatDoesNotSayIt()
     {
@@ -224,7 +224,80 @@ public sealed class ContentPreviewTests : AdminTestContext
         SaveChanged(app);
 
         app.WaitForAssertion(() => Notices(app).ShouldBeEmpty());
-        _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+        Posted("refresh").ShouldBeEmpty();
+    }
+
+    // After each load the pane says hello to the frame's origin, as version 2 and with nothing else.
+    [Fact]
+    public void EachLoadIsFollowedByAHello()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+
+        Loaded(app);
+        Loaded(app);
+
+        var hellos = _preview.Invocations.Where(call => call.Identifier == "post").ToList();
+        hellos.Count.ShouldBe(2);
+        hellos.ShouldAllBe(call => (string)call.Arguments[1]! == FrontEnd);
+        var hello = new JsonObject { ["protocol"] = "fluentcms-preview", ["version"] = 2, ["type"] = "hello" }.ToJsonString();
+        hellos.ShouldAllBe(call => (string)call.Arguments[2]! == hello);
+    }
+
+    // A load ends the ready of a page of version 2 whichever of the two came first, and the page's answer to the hello sets it
+    // again; a save then tells the page to refresh in version 2. A load of a page that answers no hello, such as one the page
+    // navigated to without saying so, leaves the pane waiting even though a ready came since the load before, and a save
+    // loads the frame again.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AReadyOfVersion2IsOfTheDocumentThatSaidIt(bool readyFirst)
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        if (readyFirst)
+        {
+            Post(app, FrontEnd, Message("ready", version: 2));
+            Pane(app).GetAttribute("data-ready").ShouldBe("true");
+        }
+
+        Loaded(app);
+        app.WaitForAssertion(() => Pane(app).HasAttribute("data-ready").ShouldBeFalse());
+        Posted("hello").Count.ShouldBe(1);
+        Post(app, FrontEnd, Message("ready", version: 2));
+        app.WaitForAssertion(() => Pane(app).GetAttribute("data-ready").ShouldBe("true"));
+
+        SaveChanged(app);
+        app.WaitForAssertion(() => Posted("refresh").Count.ShouldBe(1));
+        Posted("refresh").Single()["version"]!.GetValue<int>().ShouldBe(2);
+
+        Loaded(app);
+        app.WaitForAssertion(() => Pane(app).HasAttribute("data-ready").ShouldBeFalse());
+        Posted("hello").Count.ShouldBe(2);
+        _time.Advance(TimeSpan.FromSeconds(5));
+        app.WaitForAssertion(() => Notices(app).ShouldBe([Silent]));
+        SaveChanged(app);
+
+        app.WaitForAssertion(() => Notices(app).ShouldBeEmpty());
+        Posted("refresh").Count.ShouldBe(1);
+    }
+
+    // A page of version 1 keeps what it had: where the frame's load comes before its ready, a load of a page it navigated to
+    // without saying so is taken for its own, and a save tells it to refresh in version 1 (spec 4.12).
+    [Fact]
+    public void APageOfVersion1WhoseLoadComesFirstKeepsReadyThroughALoadItDidNotAnnounce()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Loaded(app);
+        Post(app, FrontEnd, Message("ready"));
+
+        Loaded(app);
+        Pane(app).GetAttribute("data-ready").ShouldBe("true");
+        SaveChanged(app);
+
+        app.WaitForAssertion(() => Posted("refresh").Count.ShouldBe(1));
+        Posted("refresh").Single()["version"]!.GetValue<int>().ShouldBe(1);
     }
 
     // The load starts the five seconds again, so the note of a silent page goes; the token still lasts, so none is minted.
@@ -1005,6 +1078,12 @@ public sealed class ContentPreviewTests : AdminTestContext
         app.InvokeAsync(() => Target().ReceiveAsync(origin, message)).GetAwaiter().GetResult();
 
     private void Loaded(IRenderedComponent<AdminApp> app) => app.InvokeAsync(() => Target().LoadedAsync()).GetAwaiter().GetResult();
+
+    // The messages of a type the pane posted to the frame.
+    private List<JsonObject> Posted(string type) =>
+        [.. _preview.Invocations.Where(call => call.Identifier == "post")
+            .Select(call => JsonNode.Parse((string)call.Arguments[2]!)!.AsObject())
+            .Where(message => (string?)message["type"] == type)];
 
     // The id of the element last focused.
     private string? Focused() =>
