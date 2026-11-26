@@ -143,12 +143,23 @@ internal sealed class AdminSession(
 
     public async Task<SignInCompletion> CompleteSignInAsync(string? code, string? state, string? error, CancellationToken cancellationToken)
     {
-        // Used once, whatever follows: a second callback with the same state, a replayed code, finds nothing.
-        var pending = await ReadAsync(SignInKey, Json.PendingSignIn);
-        await storage.RemoveAsync(SignInKey);
-        await TakePasswordChangeAsync();
+        SignInCompletion outcome;
+        try
+        {
+            // Used once, whatever follows: a second callback with the same state, a replayed code, finds nothing.
+            var pending = await ReadAsync(SignInKey, Json.PendingSignIn);
+            await storage.RemoveAsync(SignInKey);
+            await TakePasswordChangeAsync();
 
-        var outcome = await RedeemAsync(pending, code, state, error, cancellationToken);
+            outcome = await RedeemAsync(pending, code, state, error, cancellationToken);
+        }
+        catch (TabStorageRefusedException)
+        {
+            // The tab can keep no session, so it holds none, and the callback waits for the user rather than sign in again.
+            Forget();
+            outcome = SignInCompletion.Failed(SignInFailure.StorageRefused);
+        }
+
         if (outcome.Failure is { } failure)
         {
             SessionLog.SignInFailed(logger, failure, error);

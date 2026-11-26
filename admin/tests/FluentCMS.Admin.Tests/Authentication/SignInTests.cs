@@ -653,6 +653,53 @@ public sealed class SignInTests : IAsyncDisposable
         app.WaitForAssertion(() => app.Find("main#main p").TextContent.ShouldBe("The server that signs you in could not be reached."), TimeSpan.FromSeconds(10));
     }
 
+    // A browser that refuses the whole storage throws at the first read, the password change's mark; one that refuses writes
+    // only, at the sign-in's secrets. Either way the gate says so, offers no "Try again" and starts no sign-in, however often
+    // it is drawn again.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ABrowserThatRefusesTheTabsStorageGetsTheGatesMessageAndNoSignIn(bool readsToo)
+    {
+        var tab = NewTab(refusedStorage: StorageCalls(readsToo));
+
+        var app = tab.Load(Route);
+
+        app.WaitForAssertion(() => app.Find("main#main h1").TextContent.ShouldBe("The browser blocks the storage of this tab"));
+        app.Find("main#main p").TextContent.ShouldStartWith("The admin keeps your sign-in in the storage of this tab");
+        app.FindAll("main#main fluent-button").ShouldBeEmpty();
+        var calls = tab.JSInterop.Invocations.Count(call => call.Identifier.StartsWith("sessionStorage.", StringComparison.Ordinal));
+        tab.Navigation.NavigateTo("http://localhost/users");
+        app.WaitForAssertion(() => app.Find("main#main h1").TextContent.ShouldBe("The browser blocks the storage of this tab"));
+        tab.JSInterop.Invocations.Count(call => call.Identifier.StartsWith("sessionStorage.", StringComparison.Ordinal)).ShouldBe(calls);
+        tab.Navigation.History.ShouldAllBe(entry => !entry.Options.ForceLoad);
+        _authority.Requests.ShouldNotContain(request => request.Path == "/connect/token");
+        tab.Session.User.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ACallbackWhoseStorageTheBrowserRefusesShowsItsFailureAndStartsAgainFromTheBase(bool readsToo)
+    {
+        var tab = NewTab(refusedStorage: StorageCalls(readsToo));
+
+        var app = tab.Load(CallbackFor("anything"));
+
+        app.WaitForAssertion(() => app.Find("main#main p").TextContent.ShouldBe("The browser blocks the storage of this tab, which the admin needs to keep your sign-in. Allow this site to keep data in the browser's settings, then start again."));
+        app.Find("main#main h1").TextContent.ShouldBe("The sign-in did not complete");
+        _authority.Requests.ShouldNotContain(request => request.Path == "/connect/token");
+        tab.Navigation.History.ShouldAllBe(entry => !entry.Options.ForceLoad);
+        tab.Session.User.ShouldBeNull();
+        var startAgain = app.Find("main#main fluent-button");
+        startAgain.TextContent.Trim().ShouldBe("Start again");
+
+        startAgain.Click();
+
+        var reload = tab.Navigation.History.First();
+        (reload.Uri, reload.Options.ForceLoad).ShouldBe(("http://localhost/", true));
+    }
+
     [Fact]
     public async Task WithoutARefreshTokenA401IsTheAnswerAndNothingRedirects()
     {
@@ -860,6 +907,9 @@ public sealed class SignInTests : IAsyncDisposable
 
     private static string CallbackFor(string state) => $"authentication/login-callback?code={FakeAuthority.Code}&state={Uri.EscapeDataString(state)}";
 
+    private static string[] StorageCalls(bool readsToo) =>
+        readsToo ? ["sessionStorage.getItem", "sessionStorage.setItem", "sessionStorage.removeItem"] : ["sessionStorage.setItem", "sessionStorage.removeItem"];
+
     private static string Entry(int version, string title) =>
         $$"""{"id":"{{EntryId}}","status":"draft","locale":"en","version":{{version}},"title":"{{title}}"}""";
 
@@ -917,9 +967,9 @@ public sealed class SignInTests : IAsyncDisposable
         return tab;
     }
 
-    private Tab NewTab(bool browserStorage = false, string? pendingSignIn = null, HttpMessageHandler? api = null, TimeSpan? authorityTimeout = null, MemorySessionStorage? storage = null)
+    private Tab NewTab(bool browserStorage = false, string? pendingSignIn = null, HttpMessageHandler? api = null, TimeSpan? authorityTimeout = null, MemorySessionStorage? storage = null, string[]? refusedStorage = null)
     {
-        var tab = new Tab(storage ?? _storage, _browser, _authority, _time, api, browserStorage, pendingSignIn, authorityTimeout);
+        var tab = new Tab(storage ?? _storage, _browser, _authority, _time, api, browserStorage, pendingSignIn, authorityTimeout, refusedStorage);
         _tabs.Add(tab);
         return tab;
     }
@@ -927,7 +977,7 @@ public sealed class SignInTests : IAsyncDisposable
     // One page load of the tab.
     private sealed class Tab : AdminTestContext
     {
-        public Tab(MemorySessionStorage storage, BrowserTabs browser, FakeAuthority authority, TimeProvider time, HttpMessageHandler? api, bool browserStorage, string? pendingSignIn, TimeSpan? authorityTimeout)
+        public Tab(MemorySessionStorage storage, BrowserTabs browser, FakeAuthority authority, TimeProvider time, HttpMessageHandler? api, bool browserStorage, string? pendingSignIn, TimeSpan? authorityTimeout, string[]? refusedStorage)
         {
             UseNeutralResources();
             UseSignInFlow();
@@ -944,6 +994,24 @@ public sealed class SignInTests : IAsyncDisposable
             {
                 Services.AddScoped<FluentCMS.Admin.Interop.ISessionStorage, FluentCMS.Admin.Interop.SessionStorageInterop>();
                 JSInterop.Setup<string?>("sessionStorage.getItem", call => (string?)call.Arguments[0] == AdminSession.SignInKey).SetResult(pendingSignIn);
+            }
+
+            // As the browser answers a script that reads window.sessionStorage under a privacy setting that refuses it.
+            if (refusedStorage is not null)
+            {
+                Services.AddScoped<FluentCMS.Admin.Interop.ISessionStorage, FluentCMS.Admin.Interop.SessionStorageInterop>();
+                var refused = new Microsoft.JSInterop.JSException("The operation is insecure.");
+                foreach (var call in refusedStorage)
+                {
+                    if (call == "sessionStorage.getItem")
+                    {
+                        JSInterop.Setup<string?>(call, _ => true).SetException(refused);
+                    }
+                    else
+                    {
+                        JSInterop.SetupVoid(call, _ => true).SetException(refused);
+                    }
+                }
             }
 
             var scripted = api ?? new ScriptedServer();

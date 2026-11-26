@@ -16,7 +16,14 @@
     {
         <h1 tabindex="-1">@L["Authentication.Callback.FailedHeading"]</h1>
         <p>@L[$"Authentication.Callback.{reason}"]</p>
-        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="SignInAgainAsync">@L["Authentication.Callback.SignInAgain"]</CmsButton>
+        @if (reason == SignInFailure.StorageRefused)
+        {
+            <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="StartAgain">@L["Authentication.Callback.StartAgain"]</CmsButton>
+        }
+        else
+        {
+            <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="SignInAgainAsync">@L["Authentication.Callback.SignInAgain"]</CmsButton>
+        }
     }
     else
     {
@@ -74,5 +81,13 @@
         {
             failure = SignInFailure.Unreachable;
         }
+        catch (TabStorageRefusedException)
+        {
+            failure = SignInFailure.StorageRefused;
+        }
     }
+
+    // A new page load reads the browser's storage again, and the gate there says so while it is still refused, so that no
+    // sign-in starts that could not complete.
+    private void StartAgain() => Navigation.NavigateTo(Navigation.BaseUri, forceLoad: true);
 }
