@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using AspNet.Security.OAuth.Apple;
 using AspNet.Security.OAuth.GitHub;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Events;
@@ -93,20 +92,16 @@ internal static class MemberProviderRegistration
         Configure<GoogleOptions>(services, MemberProviderKind.Google, Google);
         Configure<MicrosoftAccountOptions>(services, MemberProviderKind.Microsoft, (options, _, provider) => OAuth(options, provider));
         Configure<GitHubAuthenticationOptions>(services, MemberProviderKind.GitHub, GitHub);
-        Configure<AppleAuthenticationOptions>(services, MemberProviderKind.Apple, Apple);
         Configure<OpenIdConnectOptions>(services, MemberProviderKind.Oidc, Oidc);
 
-        // What AddGoogle, AddMicrosoftAccount, AddGitHub, AddApple and AddOpenIdConnect register beside their scheme.
+        // What AddGoogle, AddMicrosoftAccount, AddGitHub and AddOpenIdConnect register beside their scheme.
         services.AddMemoryCache();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<GoogleOptions>, OAuthPostConfigureOptions<GoogleOptions, GoogleHandler>>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<MicrosoftAccountOptions>, OAuthPostConfigureOptions<MicrosoftAccountOptions, MicrosoftAccountHandler>>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<GitHubAuthenticationOptions>, GitHubPostConfigureOptions>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<GitHubAuthenticationOptions>, OAuthPostConfigureOptions<GitHubAuthenticationOptions, GitHubAuthenticationHandler>>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<AppleAuthenticationOptions>, ApplePostConfigureOptions>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<AppleAuthenticationOptions>, OAuthPostConfigureOptions<AppleAuthenticationOptions, AppleAuthenticationHandler>>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());
         services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, ChainedEvents>();
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<LoggerFilterOptions>, AppleLogLevel>());
 
         services.AddScoped<MemberExternalSignIn>();
         services.AddScoped<MemberLogins>();
@@ -117,7 +112,6 @@ internal static class MemberProviderRegistration
         MemberProviderKind.Google => typeof(MemberGoogleHandler),
         MemberProviderKind.Microsoft => typeof(MemberMicrosoftHandler),
         MemberProviderKind.GitHub => typeof(MemberGitHubHandler),
-        MemberProviderKind.Apple => typeof(MemberAppleHandler),
         _ => typeof(OpenIdConnectHandler),
     };
 
@@ -142,17 +136,6 @@ internal static class MemberProviderRegistration
         {
             options.Scope.Add(MemberGitHubHandler.EmailScope);
         }
-    }
-
-    // The handler signs a client secret with the private key each time one runs out; the id token it validates against
-    // Apple's keys carries the address and email_verified.
-    private static void Apple(AppleAuthenticationOptions options, string name, MemberProvider provider)
-    {
-        OAuth(options, provider);
-        options.TeamId = provider.TeamId!.Trim();
-        options.KeyId = provider.KeyId!.Trim();
-        options.GenerateClientSecret = true;
-        options.PrivateKey = (_, _) => Task.FromResult(provider.PrivateKey.AsMemory());
     }
 
     // The code flow with PKCE, as for a provider of cms.Sso. Claims keep the names of the token.

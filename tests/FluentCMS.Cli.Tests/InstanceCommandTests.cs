@@ -212,6 +212,26 @@ public sealed class InstanceCommandTests(InstanceFixture instance) : IClassFixtu
         refusing.Requests.ShouldBe(0);
     }
 
+    // --media-name-keys reaches the endpoint as the option of the media plugin's contributor.
+    [Fact]
+    public async Task AnImportWithMediaNameKeysSendsTheOptionOfTheMediaPlugin()
+    {
+        var package = Path.Combine(Path.GetTempPath(), $"fluentcms-import-{Guid.NewGuid():N}.zip");
+        await File.WriteAllBytesAsync(package, [0x50, 0x4B, 0x05, 0x06], Token);
+        try
+        {
+            var refusing = new Refusing();
+
+            (await new InstanceRun(refusing).RunAsync("import", package, "--dry-run", "--media-name-keys", "--url", "https://cms.example.com", "--token", "fcms_mk_secret")).ShouldBe(1);
+
+            refusing.Query.ShouldBe("?dryRun=true&options=mediaNameKeys%3Dtrue");
+        }
+        finally
+        {
+            File.Delete(package);
+        }
+    }
+
     [Fact]
     public async Task AProblemOfTheInstanceIsPrintedWithItsControlCharactersEscaped()
     {
@@ -343,9 +363,12 @@ public sealed class InstanceCommandTests(InstanceFixture instance) : IClassFixtu
 
         public int Requests => Volatile.Read(ref _requests);
 
+        public string? Query { get; private set; }
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref _requests);
+            Query = request.RequestUri!.Query;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Forbidden)
             {
                 Content = new StringContent(problem ?? """{"code":"FCMS1003","detail":"Refused."}""", System.Text.Encoding.UTF8, "application/problem+json"),

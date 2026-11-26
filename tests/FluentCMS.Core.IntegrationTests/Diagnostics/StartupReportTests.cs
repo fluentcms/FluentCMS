@@ -1,5 +1,4 @@
 using System.Net;
-using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
@@ -29,8 +28,6 @@ namespace FluentCMS.Core.IntegrationTests.Diagnostics;
 public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fixture) : IClassFixture<CmsWebHosts>, IClassFixture<NoteHostFixture>
 {
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
-
-    private static readonly string AppleKey = NewAppleKey();
 
     private readonly FluentCmsTestHost _shared = fixture.Host;
 
@@ -160,46 +157,6 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
 
         var development = await StartAsync(Environments.Development, new Dictionary<string, string?> { ["FluentCms:Members:AllowDirectLogin"] = "true" });
         development.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("member-direct-login");
-    }
-
-    // The Apple package writes its client secret and the tokens of a sign-in below Information; a level for every category
-    // does not reach its category, and naming the category does.
-    [Theory]
-    [InlineData("Production", "Logging:LogLevel:Default", true, false)]
-    [InlineData("Production", "Logging:FluentCMS.Core.IntegrationTests.Diagnostics.LogCapture:LogLevel:Default", true, false)]
-    [InlineData("Production", "Logging:LogLevel:AspNet.Security.OAuth.Apple", true, true)]
-    [InlineData("Production", "Logging:LogLevel:AspNet.Security.OAuth.Apple.Internal.DefaultAppleClientSecretGenerator", true, true)]
-    [InlineData("Production", "Logging:LogLevel:AspNet.Security.OAuth.Apple", false, false)]
-    [InlineData("Staging", "Logging:LogLevel:AspNet.Security.OAuth.Apple", true, true)]
-    [InlineData("Development", "Logging:LogLevel:AspNet.Security.OAuth.Apple", true, false)]
-    public async Task TheAppleCategoryBelowInformationIsReportedOutsideDevelopment(string environment, string level, bool apple, bool reported)
-    {
-        var settings = new Dictionary<string, string?> { [level] = "Trace" };
-        if (apple)
-        {
-            settings["FluentCms:Members:Providers:apple:Type"] = "Apple";
-            settings["FluentCms:Members:Providers:apple:ClientId"] = "com.example.members";
-            settings["FluentCms:Members:Providers:apple:TeamId"] = "TEAM123456";
-            settings["FluentCms:Members:Providers:apple:KeyId"] = "KEY1234567";
-            settings["FluentCms:Members:Providers:apple:PrivateKey"] = AppleKey;
-        }
-
-        var app = await webHosts.StartAsync(CmsWebHosts.SetUp(environment, settings, "logs"), async host =>
-        {
-            var started = host.Build(environment, settings, configure: builder => builder.Logging.AddProvider(new LogCapture()));
-            await started.StartAsync(Token);
-            return started;
-        });
-
-        var insecure = app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.SingleOrDefault(item => item.Id == "member-apple-logging");
-        if (reported)
-        {
-            insecure.ShouldNotBeNull().Message.ShouldContain("AspNet.Security.OAuth.Apple");
-        }
-        else
-        {
-            insecure.ShouldBeNull();
-        }
     }
 
     [Theory]
@@ -479,12 +436,6 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
             await app.StartAsync(Token);
             return app;
         });
-
-    private static string NewAppleKey()
-    {
-        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-        return key.ExportPkcs8PrivateKeyPem();
-    }
 
     private sealed class ThrowingCheck : IProductionStartupCheck
     {

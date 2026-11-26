@@ -14,10 +14,13 @@ namespace FluentCMS.Plugins.Media;
 // The media of a site in a transfer package: plugins/media/folders.jsonl, plugins/media/assets.jsonl and, with the option
 // mediaFiles=true, the files under plugins/media/files/{id}/. An import keeps the ids, times and authors of the package. An
 // asset whose file is neither in the package nor in the storage of the instance, under a key of the site's library that
-// the package names, is reported and not imported, so that no entry refers to an asset that cannot be served. A file the
-// import wrote for a row it then did not save is deleted again, as for an upload, and a file that an update replaces, with
-// its variants, after the save as by a replace, when the instance wrote it; a key that a line named is never deleted. The
-// import has checked transfer.manage, so the media permissions are not asked; the rules of an upload still hold: every file an asset takes, from the package or at a key of the storage, passes the checks
+// the package names, is reported and not imported, so that no entry refers to an asset that cannot be served. The file at a
+// key a line names is copied under a key of the asset's own, so that another instance that shares the storage and wrote the
+// key cannot delete it (#3604); with the option mediaNameKeys=true, for instances that share the database too, the asset
+// names the key instead. A file the import wrote for a row it then did not save is deleted again, as for an upload, and a
+// file that an update replaces, with its variants, after the save as by a replace, when the instance wrote it; a key that a
+// line named is never deleted.
+// The import has checked transfer.manage, so the media permissions are not asked; the rules of an upload still hold: every file an asset takes, from the package or at a key of the storage, passes the checks
 // of an upload in the site of the import, and its type, size and image size are those the checks find, never its line's.
 // The fields of a line and a folder's place are held to what the service allows, so that the database refuses none of them.
 // The lines are imported as they are read, and a file of the package or a key of the storage is taken by one line of an
@@ -33,6 +36,7 @@ internal sealed class MediaTransfer(
     ILogger<MediaTransfer> logger) : ITransferContributor
 {
     public const string FilesOption = "mediaFiles";
+    public const string NameKeysOption = "mediaNameKeys";
     public const string AssetsSection = MediaService.ReferenceTarget;
     public const string FoldersSection = "media/folders";
 
@@ -111,6 +115,7 @@ internal sealed class MediaTransfer(
 
         var library = (await libraries.OfAsync(context.Site, cancellationToken)).Value;
         var rules = await settings.GetAsync(context.Site, cancellationToken);
+        var namesKeys = context.Options.TryGetValue(NameKeysOption, out var names) && string.Equals(names, "true", StringComparison.OrdinalIgnoreCase);
 
         // The path of each folder of the library as the import leaves it, a dry run too, so that a line is checked against the
         // lines before it.
@@ -124,7 +129,7 @@ internal sealed class MediaTransfer(
             cancellationToken);
         await context.ReadAsync(
             Assets,
-            (stream, token) => ReadLinesAsync<AssetLine>(stream, context, AssetsSection, asset => ItemAsync(context, AssetsSection, asset.Id, () => ImportAssetAsync(context, library, rules, asset, folders, taken, token)), token),
+            (stream, token) => ReadLinesAsync<AssetLine>(stream, context, AssetsSection, asset => ItemAsync(context, AssetsSection, asset.Id, () => ImportAssetAsync(context, library, rules, namesKeys, asset, folders, taken, token)), token),
             cancellationToken);
     }
 
@@ -224,7 +229,7 @@ internal sealed class MediaTransfer(
         }
     }
 
-    private async Task<TransferOutcome> ImportAssetAsync(ITransferImport context, Guid library, MediaSettings rules, AssetLine line, Dictionary<Guid, string> folders, HashSet<string> taken, CancellationToken cancellationToken)
+    private async Task<TransferOutcome> ImportAssetAsync(ITransferImport context, Guid library, MediaSettings rules, bool namesKeys, AssetLine line, Dictionary<Guid, string> folders, HashSet<string> taken, CancellationToken cancellationToken)
     {
         var fields = Checked(line);
         var existing = await DatabaseAsync(() => database.Set<Asset>().FirstOrDefaultAsync(asset => asset.Id == line.Id, cancellationToken));
@@ -262,12 +267,20 @@ internal sealed class MediaTransfer(
         }
 
         var replacesFile = existing is null || existing.Checksum != (file?.Checksum ?? line.Checksum);
+
+        // A line without a file takes the file at the key it names, read and checked whole. Its checksum is the line's, so a
+        // rerun of the import keeps the copy it made as the asset's own file and copies nothing again.
+        await using var keyed = file is null && replacesFile
+            ? await KeyFileAsync(line, library, fields.FileName, rules, taken, cancellationToken)
+                ?? throw Refused(MediaErrorCodes.TransferFileMissing, $"The file of the asset {line.Id:D} is neither in the package nor in the storage of this instance; export with {FilesOption}=true to bring it.")
+            : null;
+        var source = file ?? (namesKeys ? null : keyed?.File);
         StoredFile stored;
-        if (file is not null && replacesFile)
+        if (source is not null && replacesFile)
         {
             // A key of this write's own, as a replace through the service has, so that the deletion of a file whose row was
             // not saved never takes one that another import, of another site of a shared library, wrote for its own row.
-            stored = new StoredFile(storages.Current.Name, $"{library:N}/{line.Id:N}/original-{Guid.CreateVersion7():N}{file.Type.Extension}", file, owned: true);
+            stored = new StoredFile(storages.Current.Name, $"{library:N}/{line.Id:N}/original-{Guid.CreateVersion7():N}{source.Type.Extension}", source, owned: true);
         }
         else if (existing is not null && !replacesFile)
         {
@@ -276,8 +289,7 @@ internal sealed class MediaTransfer(
         }
         else
         {
-            stored = await StoredFileAsync(line, library, fields.FileName, rules, taken, cancellationToken)
-                ?? throw Refused(MediaErrorCodes.TransferFileMissing, $"The file of the asset {line.Id:D} is neither in the package nor in the storage of this instance; export with {FilesOption}=true to bring it.");
+            stored = new StoredFile(keyed!.Provider, keyed.Key, keyed.File, owned: false) { Owner = keyed.Owner };
         }
 
         if (context.DryRun)
@@ -294,10 +306,10 @@ internal sealed class MediaTransfer(
 
         // A file the import wrote is deleted again when its row is not saved, as for an upload.
         string? written = null;
-        if (file is not null && replacesFile)
+        if (source is not null && replacesFile)
         {
-            file.Content.Position = 0;
-            await storages.Current.WriteAsync(stored.Key, file.Content, cancellationToken);
+            source.Content.Position = 0;
+            await storages.Current.WriteAsync(stored.Key, source.Content, cancellationToken);
             written = stored.Key;
         }
 
@@ -572,8 +584,8 @@ internal sealed class MediaTransfer(
 
     // A line without a file may name a key of the site's library in a storage of the instance, as a storage that instances
     // share has. The file there passes the same checks, so that a line cannot give it another type, and must be the file of
-    // the line as the checks would store it.
-    private async Task<StoredFile?> StoredFileAsync(AssetLine line, Guid library, string name, MediaSettings rules, HashSet<string> taken, CancellationToken cancellationToken)
+    // the line as the checks would store it. The checks are the same whether the asset takes a copy or names the key.
+    private async Task<KeyFile?> KeyFileAsync(AssetLine line, Guid library, string name, MediaSettings rules, HashSet<string> taken, CancellationToken cancellationToken)
     {
         if (line.StorageProvider is not { } provider
             || line.StorageKey is not { } key
@@ -609,19 +621,20 @@ internal sealed class MediaTransfer(
             return null;
         }
 
-        await using var file = await MediaService.PrepareAsync(name, content, rules, long.MaxValue, long.MaxValue, processor, cancellationToken);
+        var file = await MediaService.PrepareAsync(name, content, rules, long.MaxValue, long.MaxValue, processor, cancellationToken);
         if (!string.Equals(file.Received, line.Checksum, StringComparison.OrdinalIgnoreCase) || file.Checksum != file.Received)
         {
+            await file.DisposeAsync();
             throw Refused(MediaErrorCodes.TransferFileMissing, $"The file at {key} in the storage is not the file of the asset {line.Id:D} as the media settings of the site store it; export with {FilesOption}=true to bring it.");
         }
 
-        return new StoredFile(provider, key, file, owned: false) { Owner = owner };
+        return new KeyFile(provider, key, file, owner);
     }
 
     // The asset of this instance in whose folder the key is, read before the file is checked, which is the one that can delete
     // the file there. A deleted one is about to, with the daily cleanup, and so is a holder of its old files when the key is
-    // no longer its own, so the line is refused; one that owns the key is held by the save of the line. A key in the folder
-    // of no asset of this instance is another instance's, which this instance never deletes.
+    // no longer its own, so the line is refused; one that owns the key is held by the save of a line that names it. A key in
+    // the folder of no asset of this instance is another instance's, which this instance never deletes.
     private async Task<Asset?> OwnerAsync(AssetLine line, Guid library, string provider, string key, CancellationToken cancellationToken)
     {
         if (ReplacedFiles.FolderOf(key) is not { } folder || folder == line.Id
@@ -784,6 +797,12 @@ internal sealed class MediaTransfer(
 
         public static StoredFile Of(Asset asset) =>
             new(asset.FileName, asset.StorageProvider, asset.StorageKey, asset.OwnsFile, asset.MimeType, asset.Size, asset.Checksum, asset.Width, asset.Height, asset.Duration);
+    }
+
+    // The checked file at a key a line names, and the asset of this instance that owns it, as read before the check.
+    private sealed record KeyFile(string Provider, string Key, MediaService.Upload File, Asset? Owner) : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync() => File.DisposeAsync();
     }
 
     // What the checks of a line give: the file name, and the alternative texts, captions and tags as their columns hold them.
