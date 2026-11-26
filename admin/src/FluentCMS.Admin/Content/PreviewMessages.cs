@@ -10,7 +10,7 @@ internal enum PreviewMessageType
     Navigated,
 }
 
-// The version is the one the page's message named, which the admin's messages to that page are posted in.
+// The version is the one the page's message named, which refresh to that page is posted in; hello is always version 2.
 internal sealed record PreviewMessage(PreviewMessageType Type, string? Url, int Version);
 
 // Version 2 of the preview's postMessage contract (spec 4.12): every message is a JSON object of the protocol

@@ -17,7 +17,8 @@ namespace FluentCMS.Admin.Tests.Content;
 // preview origins, a token minted only as the pane opens, the draft's page in a frame at phone, tablet or full width, the
 // published page while the locale has one, a URL of another origin refused, the page's ready taken only from the frame's
 // origin, protocol and version and forgotten when the page navigates or the frame loads another, the hello after each load
-// that a page of version 2 answers, a save that tells a ready page to refresh in its version and reloads a silent one, a token minted again once it ended, and the newest mint's answer used.
+// that a page of version 2 answers, a save that tells a ready page to refresh in its version and reloads a silent one, a
+// token minted again once it ended, and the newest mint's answer used.
 public sealed class ContentPreviewTests : AdminTestContext
 {
     private const string FrontEnd = "https://www.example.com";
