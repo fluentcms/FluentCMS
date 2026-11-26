@@ -346,6 +346,27 @@ public sealed class ContentListBulkTests : AdminTestContext
     }
 
     [Fact]
+    public void AllThatMatchOfAnEveryLocaleListAreReadAsTheListIsAndIncludeAnEntryWithoutTheDefaultLocale()
+    {
+        var article = Type("article", fields: [Field("title", required: true)]);
+        article["localized"] = true;
+        Management.SetTypes(MainSite, article);
+        Management.AddLocale(MainSite, "fr", 1);
+        Matching = 130;
+        Management.Total = 130;
+        var app = Load();
+
+        SelectPage(app);
+        app.FindAll("fluent-button").First(button => button.TextContent.Trim() == "Select all 130 that match").Click();
+        Choose(MenuItem(app, "Move to trash"));
+        DialogButton(Dialog(app, "Move to trash"), "Move to trash").Click();
+
+        app.WaitForAssertion(() => Summary(app, "Move to trash: Article").ShouldBe("Done: 130 succeeded, 0 failed."));
+        idReads.ShouldAllBe(query => query.Contains("locale=all", StringComparison.Ordinal));
+        sent.SelectMany(call => Ids(call.Body)).ShouldContain(Id(2));
+    }
+
+    [Fact]
     public void AllThatMatchWithoutAFilterSaysSo()
     {
         Matching = 130;
@@ -592,7 +613,7 @@ public sealed class ContentListBulkTests : AdminTestContext
         }
 
         var count = Math.Max(0, Math.Min(100, Matching - from));
-        var rows = Enumerable.Range(from + 1, count).Select(n => (JsonNode)Entry(n));
+        var rows = Enumerable.Range(from + 1, count).Select(n => query.Contains("locale=all", StringComparison.Ordinal) ? EveryLocale(n) : (JsonNode)Entry(n));
         return Json(new JsonObject
         {
             ["items"] = new JsonArray([.. rows]),
@@ -600,6 +621,13 @@ public sealed class ContentListBulkTests : AdminTestContext
             ["nextCursor"] = from + count < Matching ? (from + count).ToString(System.Globalization.CultureInfo.InvariantCulture) : null,
         });
     }
+
+    // An entry of a list of every locale: entry 2 has no row in the default locale.
+    private static JsonObject EveryLocale(int n) => new JsonObject
+    {
+        ["id"] = Id(n),
+        ["locales"] = new JsonObject { [n == 2 ? "fr" : "en"] = Entry(n) },
+    };
 
     private static JsonObject Failed(int status, string code, string detail) => new()
     {

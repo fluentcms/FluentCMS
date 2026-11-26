@@ -134,6 +134,13 @@ internal sealed class AdminSession(
         return RedirectToSignInAsync(AppRoute(returnRoute));
     }
 
+    // Only this asks for prompt=login: every other sign-in is answered by the server's session where it holds.
+    public Task ReauthenticateAsync(string? returnRoute, CancellationToken cancellationToken)
+    {
+        _endedAfterSignIn = false;
+        return RedirectToSignInAsync(AppRoute(returnRoute), login: true);
+    }
+
     // The change ends the user's sessions, this tab's with them, so the tab is marked before it leaves.
     public async Task ChangePasswordAsync(string pageUrl, CancellationToken cancellationToken)
     {
@@ -280,7 +287,7 @@ internal sealed class AdminSession(
         return uri.StartsWith(navigation.BaseUri, StringComparison.Ordinal) ? AppRoute(navigation.ToBaseRelativePath(uri)) : "";
     }
 
-    private async Task RedirectToSignInAsync(string returnRoute)
+    private async Task RedirectToSignInAsync(string returnRoute, bool login = false)
     {
         _redirecting = true;
         try
@@ -288,19 +295,23 @@ internal sealed class AdminSession(
             var discovery = await authority.DiscoverAsync();
             var pending = new PendingSignIn(ProofKey.NewSecret(), ProofKey.NewSecret(), ProofKey.NewSecret(), returnRoute, time.GetUtcNow());
             await storage.SetAsync(SignInKey, JsonSerializer.Serialize(pending, Json.PendingSignIn));
-            navigation.NavigateTo(
-                WithQuery(discovery.AuthorizationEndpoint!, new Dictionary<string, string>
-                {
-                    ["response_type"] = "code",
-                    ["client_id"] = configuration.ClientId,
-                    ["redirect_uri"] = RedirectUri,
-                    ["scope"] = string.Join(' ', configuration.Scopes),
-                    ["state"] = pending.State,
-                    ["nonce"] = pending.Nonce,
-                    ["code_challenge"] = ProofKey.Challenge(pending.Verifier),
-                    ["code_challenge_method"] = "S256",
-                }),
-                forceLoad: true);
+            var parameters = new Dictionary<string, string>
+            {
+                ["response_type"] = "code",
+                ["client_id"] = configuration.ClientId,
+                ["redirect_uri"] = RedirectUri,
+                ["scope"] = string.Join(' ', configuration.Scopes),
+                ["state"] = pending.State,
+                ["nonce"] = pending.Nonce,
+                ["code_challenge"] = ProofKey.Challenge(pending.Verifier),
+                ["code_challenge_method"] = "S256",
+            };
+            if (login)
+            {
+                parameters["prompt"] = "login";
+            }
+
+            navigation.NavigateTo(WithQuery(discovery.AuthorizationEndpoint!, parameters), forceLoad: true);
         }
         catch
         {

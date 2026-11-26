@@ -96,6 +96,8 @@ internal sealed class FakeAdminContext : IAdminContext, IAdminAccess
 
     public bool AllowsForInstance(string permission) => ForInstance.Contains(permission);
 
+    public bool AllowsForSomeResources(string permission) => Allows(permission);
+
     public TypeAccessInfo? ForType(string type) => null;
 
     public Task ReadSitesAsync(Guid? gone = null)

@@ -374,6 +374,20 @@ internal sealed class SignedInTestSession : IAdminSession
         return Task.CompletedTask;
     }
 
+    // The routes the tab was asked to sign in again to on the login page, to come back to.
+    public List<string?> Reauthentications { get; } = [];
+
+    public Task ReauthenticateAsync(string? returnRoute, CancellationToken cancellationToken)
+    {
+        if (SignInError is { } failure)
+        {
+            return Task.FromException(failure);
+        }
+
+        Reauthentications.Add(returnRoute);
+        return Task.CompletedTask;
+    }
+
     // The addresses the tab was asked to leave for to change the password.
     public List<string> PasswordChanges { get; } = [];
 

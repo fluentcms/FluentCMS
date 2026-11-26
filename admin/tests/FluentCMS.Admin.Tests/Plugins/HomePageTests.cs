@@ -75,6 +75,14 @@ public sealed class HomePageTests : AdminTestContext
     }
 
     [Fact]
+    public void APermissionHeldForSomeResourcesOnlyShowsTheWidgetThatAsksForIt()
+    {
+        var app = Load([Half("reviews", Widget("ReviewsSettingsPage", WidgetSize.Small, Permission))], enabled: ["reviews"], permitted: false, limited: [Permission]);
+
+        app.WaitForAssertion(() => Headings(app).ShouldBe(["Content", "Reviews"]));
+    }
+
+    [Fact]
     public void ARoleInTheSiteOrInEverySiteShowsTheWidgetsThatAskForIt()
     {
         HoldRole("EDITOR", MainSite);
@@ -219,7 +227,7 @@ public sealed class HomePageTests : AdminTestContext
 
     private void HoldRole(string name, Guid? siteId) => Management.Roles.Add(Role(name, siteId));
 
-    private IRenderedComponent<AdminApp> Load(AdminPluginManifest[] halves, string[] enabled, string route = "", bool permitted = true, bool neutral = true)
+    private IRenderedComponent<AdminApp> Load(AdminPluginManifest[] halves, string[] enabled, string route = "", bool permitted = true, bool neutral = true, string[]? limited = null)
     {
         if (neutral)
         {
@@ -229,6 +237,7 @@ public sealed class HomePageTests : AdminTestContext
         Services.AddSingleton(new AdminPluginCatalog(halves, []));
         Services.AddScoped<IAdminAssemblyLoader>(_ => loader);
         Management.Grant(MainSite, permitted ? ["schema.read", Permission] : ["schema.read"]);
+        Management.Access[MainSite]["limitedPermissions"] = new JsonArray([.. (limited ?? []).Select(name => (JsonNode)name)]);
         Management.Plugins[MainSite] = [.. halves.Select(half => (JsonNode)Plugin(half.Name, enabled.Contains(half.Name)))];
         Start();
         Navigation.NavigateTo(route);

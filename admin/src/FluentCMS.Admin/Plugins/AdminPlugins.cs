@@ -79,12 +79,13 @@ internal sealed class AdminPlugins(
     public bool LoadFailed(AdminPluginManifest half) => _failed.ContainsKey(half.Name);
 
     // Whether a contribution of a half that declares a permission, or none, may be shown: its plugin is enabled in the site and
-    // the user holds the permission. The entry point of every contribution the shell draws from a manifest, such as a widget
-    // (A-22), an action (A5) or a settings page (A6), with ComponentAsync to load its class.
+    // the user holds the permission, for some resources at least, which the half's own calls answer. The entry point of every
+    // contribution the shell draws from a manifest, such as a widget (A-22), an action (A5) or a settings page (A6), with
+    // ComponentAsync to load its class.
     public bool Shows(AdminPluginManifest half, string? permission)
     {
         ArgumentNullException.ThrowIfNull(half);
-        return IsAvailable(half) && (permission is null || context.Allows(permission));
+        return IsAvailable(half) && (permission is null || context.AllowsForSomeResources(permission));
     }
 
     // The widgets of the home page the user may see, by the plugin's name and then in the order of its manifest: those whose

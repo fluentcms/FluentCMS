@@ -169,9 +169,9 @@
 
     private MediaApi Media => new(Api);
 
-    private bool MayUpdate => Context.Access.Allows(MediaPermissions.Update);
+    private bool MayUpdate => Context.Access.AllowsForSomeResources(MediaPermissions.Update);
 
-    private bool MayDelete => Context.Access.Allows(MediaPermissions.Delete);
+    private bool MayDelete => Context.Access.AllowsForSomeResources(MediaPermissions.Delete);
 
     private IReadOnlyList<CmsOption> Locales =>
         [.. (Context.Site?.Locales ?? []).Where(locale => locale.Enabled).OrderBy(locale => locale.Position).Select(locale => new CmsOption(locale.Code, locale.Code))];
