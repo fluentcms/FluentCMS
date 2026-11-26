@@ -1,0 +1,242 @@
+@* The MCP clients that count toward the user's maxConsentsPerUser, from GET /mcp/consents of the MCP plugin (spec 4.3),
+   each with a button that ends the consent after a question. A user at the cap is sent here by the hosted error page. The
+   section shows only while the shell has the plugin enabled in the site it shows, and hides when the route answers as a
+   plugin that is not installed or is disabled there. *@
+@inherits AccountCard
+@inject IManagementApi Api
+@inject AdminContext Context
+@inject FormatService Formats
+@inject IStringLocalizer<AccountResources> L
+
+@if (state != State.Hidden)
+{
+    <CmsCard Title="@L["Account.Consents.Heading"]">
+        <p>@L["Account.Consents.Explained"]</p>
+        @if (state == State.Loading)
+        {
+            <p role="status">@L["Account.Page.Loading"]</p>
+        }
+        else if (state == State.Failed)
+        {
+            <p>@L["Account.Page.Failed"]</p>
+            <CmsButton Disabled="@Held" OnClick="TryAgainAsync">@L["Account.Page.TryAgain"]</CmsButton>
+        }
+        else if (consents.Count == 0)
+        {
+            <p>@L["Account.Consents.None"]</p>
+        }
+        else
+        {
+            <ul class="account-list">
+                @foreach (var consent in consents)
+                {
+                    <li @key="consent.Id" class="account-item">
+                        <span class="account-item-text">
+                            <span class="account-item-name">@consent.Name</span>
+                            <span>@StateText(consent)</span>
+                        </span>
+                        <CmsButton Disabled="@(busy || Held)" OnClick="@(() => Ask(consent))">
+                            @L["Account.Consents.End"]<span class="cms-visually-hidden">@Which(consent)</span>
+                        </CmsButton>
+                    </li>
+                }
+            </ul>
+        }
+        <p class="account-message" tabindex="-1" @ref="messageElement">@message</p>
+        <CmsDialog Title="@L["Account.Consents.ConfirmTitle"]" Open="@(asked is not null)" OpenChanged="@(open => { if (!open) asked = null; })" OnClosed="OnDialogClosedAsync">
+            <ChildContent>
+                <p>@L["Account.Consents.ConfirmText", asked?.Name ?? string.Empty]</p>
+            </ChildContent>
+            <Actions>
+                <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(busy || Held)" OnClick="EndAsync">@L["Account.Consents.Confirm"]</CmsButton>
+                <CmsButton Disabled="@busy" OnClick="@(() => asked = null)">@L["Account.Consents.Keep"]</CmsButton>
+            </Actions>
+        </CmsDialog>
+    </CmsCard>
+}
+
+@code {
+    private enum State
+    {
+        Hidden,
+        Loading,
+        Ready,
+        Failed,
+    }
+
+    private IReadOnlyList<MyMcpConsent> consents = [];
+    private State state = State.Hidden;
+    private MyMcpConsent? asked;
+    private string? message;
+    private bool busy;
+    private bool focusMessage;
+    private ElementReference messageElement;
+
+    // The site the consents were last read in, null while the section is hidden.
+    private string? read;
+
+    // The consents are the instance's, but the route answers only where the plugin is enabled.
+    private string? Site => Context.Status == ShellStatus.Ready && Context.PluginEnabled(AccountConsentsApi.Plugin) ? Context.Site?.Id.ToString("D") : null;
+
+    protected override Task OnInitializedAsync()
+    {
+        Context.Changed += OnContextChanged;
+        Formats.Changed += OnFormatsChanged;
+        return FollowAsync();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Context.Changed -= OnContextChanged;
+            Formats.Changed -= OnFormatsChanged;
+        }
+
+        base.Dispose(disposing);
+    }
+
+    private void OnFormatsChanged() => _ = InvokeAsync(StateHasChanged);
+
+    // A site switch, or the shell's plugins read again, may show or hide the section.
+    private void OnContextChanged() => _ = InvokeAsync(async () =>
+    {
+        if (Site != read)
+        {
+            var following = FollowAsync();
+            StateHasChanged();
+            await following;
+            StateHasChanged();
+        }
+    });
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusMessage)
+        {
+            focusMessage = false;
+            await messageElement.FocusAsync();
+        }
+    }
+
+    private Task FollowAsync()
+    {
+        if (Site is null)
+        {
+            (read, state, consents, asked, message) = (null, State.Hidden, [], null, null);
+            return Task.CompletedTask;
+        }
+
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var site = read = Site;
+        if (site is null)
+        {
+            return;
+        }
+
+        state = State.Loading;
+        IReadOnlyList<MyMcpConsent>? found = null;
+        var next = State.Ready;
+        try
+        {
+            found = await Api.GetMyMcpConsentsAsync(site, CancellationToken.None);
+        }
+        catch (Exception exception) when (AccountProblems.IsPluginOff(exception))
+        {
+            next = State.Hidden;
+        }
+        catch (Exception exception) when (AccountProblems.IsFailure(exception))
+        {
+            next = State.Failed;
+        }
+
+        // A read for a site the shell no longer shows is dropped.
+        if (site != read)
+        {
+            return;
+        }
+
+        (consents, state) = (found ?? [], next);
+    }
+
+    private Task TryAgainAsync() => Held ? Task.CompletedTask : FollowAsync();
+
+    private void Ask(MyMcpConsent consent)
+    {
+        if (!Held)
+        {
+            (asked, message) = (consent, null);
+        }
+    }
+
+    private async Task EndAsync()
+    {
+        if (asked is not { } consent || busy || Held || read is not { } site)
+        {
+            return;
+        }
+
+        busy = true;
+        var readAgain = false;
+        try
+        {
+            await Api.EndMyMcpConsentAsync(site, consent.Id, CancellationToken.None);
+            (message, readAgain) = (L["Account.Consents.Ended", consent.Name], true);
+        }
+        catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.ConsentNotFound))
+        {
+            (message, readAgain) = (L["Account.Consents.Gone", consent.Name], true);
+        }
+        catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.ConsentChangedMeanwhile))
+        {
+            // What was revoked stays revoked, so the list is read again for the state of the consent.
+            (message, readAgain) = (L["Account.Consents.Changed", consent.Name], true);
+        }
+        catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.ConsentsBusy))
+        {
+            message = L["Account.Consents.Busy"];
+        }
+        catch (Exception exception) when (AccountProblems.IsFailure(exception))
+        {
+            message = L["Account.Consents.EndFailed"];
+        }
+        finally
+        {
+            (asked, busy) = (null, false);
+        }
+
+        // The row ended goes, and its button with it, so focus goes to the result.
+        if (readAgain)
+        {
+            await LoadAsync();
+        }
+
+        focusMessage = state != State.Hidden;
+    }
+
+    // The library gives focus back to the button that opened the dialog once it has closed, so the result takes it again.
+    private async Task OnDialogClosedAsync()
+    {
+        if (message is not null && state != State.Hidden)
+        {
+            await messageElement.FocusAsync();
+        }
+    }
+
+    private string StateText(MyMcpConsent consent) => (consent.Active, consent.ConsentedAt) switch
+    {
+        (true, { } at) => L["Account.Consents.Active", Formats.DateTime(at)],
+        (true, null) => L["Account.Consents.ActiveUndated"],
+        (false, { } at) => L["Account.Consents.Inactive", Formats.DateTime(at)],
+        _ => L["Account.Consents.InactiveUndated"],
+    };
+
+    // Two clients of one name are told apart by the time of the consent.
+    private string Which(MyMcpConsent consent) => consent.ConsentedAt is { } at
+        ? L["Account.Consents.EndWhichGiven", consent.Name, Formats.DateTime(at)]
+        : L["Account.Consents.EndWhich", consent.Name];
+}
