@@ -346,9 +346,12 @@ public sealed class LongNameModel : IPluginModelContributor
         var (named, given) = LongNamePlugin.Naming.Value;
         string Name(string what, string otherwise) => named == what ? given : otherwise;
 
+        // A "derived" key or foreign key gets no name, and its table the one the test sets, which EF's name is built from.
+        var derived = named is "derived key" or "derived foreign key";
+
         modelBuilder.Entity<LongNamedNote>(note =>
         {
-            note.ToTable(Name("table", "cms_long_note"), table =>
+            note.ToTable(derived ? given : Name("table", "cms_long_note"), table =>
             {
                 table.HasCheckConstraint(Name("check constraint", "ck_cms_long_note_parent"), "parent_id <> id");
                 if (named == "table column")
@@ -356,16 +359,131 @@ public sealed class LongNameModel : IPluginModelContributor
                     table.Property(item => item.ParentId).HasColumnName(given);
                 }
             });
-            note.HasKey(item => item.Id).HasName(Name("key", "pk_cms_long_note"));
+            if (named == "view")
+            {
+                note.ToView(given);
+            }
+
+            var key = note.HasKey(item => item.Id);
+            if (named != "derived key")
+            {
+                key.HasName(Name("key", "pk_cms_long_note"));
+            }
+
             note.Property(item => item.Id).HasColumnName("id");
             note.Property(item => item.ParentId).HasColumnName(Name("column", "parent_id"));
-            note.HasOne<LongNamedNote>().WithMany().HasForeignKey(item => item.ParentId).HasConstraintName(Name("foreign key", "fk_cms_long_note_parent"));
+            var parent = note.HasOne<LongNamedNote>().WithMany().HasForeignKey(item => item.ParentId);
+            if (named != "derived foreign key")
+            {
+                parent.HasConstraintName(Name("foreign key", "fk_cms_long_note_parent"));
+            }
+
             note.HasIndex(item => item.ParentId).HasDatabaseName(Name("index", "ix_cms_long_note_parent"));
             note.HasIndex(item => new { item.Id, item.ParentId }, Name("named index", "ix_cms_long_note_id_parent"));
 
-            // Named by EF: IX_cms_long_note_parent_id_id, or after the table and the column the test names.
-            note.HasIndex(item => new { item.ParentId, item.Id });
+            // Named by EF: IX_cms_long_note_parent_id_id, or after the table and the column the test names. Left out where
+            // the test measures the foreign key's name, which comes after it.
+            if (named != "derived foreign key")
+            {
+                note.HasIndex(item => new { item.ParentId, item.Id });
+            }
         });
+    }
+}
+
+// Its model maps an order and a second type in the shape the test sets, with the test's name on the table the shape names.
+[FluentCmsPlugin("shared", SdkRange = "[1.0.0,2.0.0)")]
+public sealed class SharedTablePlugin : IPlugin
+{
+    public const string Order = "cms_shared_order";
+
+    public static readonly AsyncLocal<(string Shape, string Table)> Shaping = new();
+
+    public void ConfigureServices(IPluginServiceBuilder plugin) => plugin.AddModel<SharedTableModel>();
+
+    public void Configure(IPluginAppBuilder app)
+    {
+    }
+}
+
+public sealed class SharedOrder
+{
+    public Guid Id { get; set; }
+
+    public SharedAddress Address { get; set; } = new();
+}
+
+public sealed class SharedAddress
+{
+    public string Street { get; set; } = string.Empty;
+}
+
+public sealed class SharedDetail
+{
+    public Guid Id { get; set; }
+
+    public string Note { get; set; } = string.Empty;
+}
+
+public sealed class SharedLine
+{
+    public Guid Id { get; set; }
+
+    public Guid OrderId { get; set; }
+}
+
+public sealed class SharedTableModel : IPluginModelContributor
+{
+    public void Configure(ModelBuilder modelBuilder)
+    {
+        var (shape, table) = SharedTablePlugin.Shaping.Value;
+
+        modelBuilder.Entity<SharedOrder>(order =>
+        {
+            order.ToTable(shape is "owned" or "split" ? table : SharedTablePlugin.Order);
+            order.HasKey(item => item.Id).HasName("pk_cms_shared_order");
+            order.Property(item => item.Id).HasColumnName("id");
+            switch (shape)
+            {
+                case "owned":
+                    order.OwnsOne(item => item.Address, address => address.Property(item => item.Street).HasColumnName("street"));
+                    break;
+                case "owned table":
+                    order.OwnsOne(item => item.Address, address =>
+                    {
+                        address.ToTable(table);
+                        address.Property(item => item.Street).HasColumnName("street");
+                    });
+                    break;
+                default:
+                    order.Ignore(item => item.Address);
+                    break;
+            }
+        });
+
+        if (shape == "split")
+        {
+            modelBuilder.Entity<SharedDetail>(detail =>
+            {
+                detail.ToTable(table);
+                detail.HasKey(item => item.Id).HasName("pk_cms_shared_order");
+                detail.Property(item => item.Id).HasColumnName("id");
+                detail.Property(item => item.Note).HasColumnName("note");
+                detail.HasOne<SharedOrder>().WithOne().HasForeignKey<SharedDetail>(item => item.Id);
+            });
+        }
+
+        if (shape == "two tables")
+        {
+            modelBuilder.Entity<SharedLine>(line =>
+            {
+                line.ToTable(table);
+                line.HasKey(item => item.Id).HasName("pk_cms_shared_line");
+                line.Property(item => item.Id).HasColumnName("id");
+                line.Property(item => item.OrderId).HasColumnName("order_id");
+                line.HasOne<SharedOrder>().WithMany().HasForeignKey(item => item.OrderId);
+            });
+        }
     }
 }
 

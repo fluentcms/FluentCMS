@@ -1,9 +1,9 @@
 using System.Data.Common;
 using System.Diagnostics;
 using FluentCMS.Core.Caching;
+using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.IntegrationTests.Diagnostics;
 using FluentCMS.Core.IntegrationTests.Testing;
-using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Providers;
@@ -704,7 +704,7 @@ public sealed class DistributedLockTests : IAsyncDisposable
     public async Task ACallbackOnLostThatDoesNotReturnKeepsTheDisposalWaitingOnlyForItsBound()
     {
         var clock = new ControllableTimeProvider();
-        var bound = new HeldTimers(clock, JobRunner.DisposeWait);
+        var bound = new HeldTimers(clock, DisposeWait.Bound);
         var logs = new LogCapture();
         var failed = new LoggedSignal(LockLog.LostCallbackFailedId);
         var renewals = new LeaseRenewalInterceptor();
