@@ -3,7 +3,11 @@ namespace FluentCMS.Plugins;
 /// <summary>A value of a plugin's store, with the version a write compares.</summary>
 /// <param name="Key">The key of the value.</param>
 /// <param name="Value">The value.</param>
-/// <param name="Version">The version, 1 when the value is added and one more at each write.</param>
+/// <param name="Version">
+/// The version, a token that a write compares for equality only. It is not a count of writes: a value added starts at a
+/// random version, and each write moves it on by one, so a value added again after a delete starts at an unrelated version
+/// and a write that read the earlier value loses.
+/// </param>
 /// <param name="UpdatedAt">When the value was last written, by the host's clock.</param>
 public sealed record PluginStoreValue(string Key, string Value, long Version, DateTimeOffset UpdatedAt);
 
@@ -15,8 +19,15 @@ public sealed record PluginStoreValue(string Key, string Value, long Version, Da
 /// <para>
 /// A key has 1 to 128 characters: lower case letters and digits, in groups joined by a single <c>.</c>, <c>-</c>, <c>_</c>
 /// or <c>:</c>, such as <c>media.dimensions.backfill</c>. A value is text of at most 4,000 characters; a plugin that keeps
-/// a structure serializes it, as JSON for example. Each call is one statement that commits on its own, so a call inside a
-/// transaction that the caller has open is refused: its outcome would not follow a later rollback of the transaction.
+/// a structure serializes it, as JSON for example, and holds no U+0000 character. Each call is one statement that commits on
+/// its own, so a call inside a transaction that the caller has open is refused: its outcome would not follow a later rollback
+/// of the transaction.
+/// </para>
+/// <para>
+/// A version is compared for equality only and is not a count of writes; a value added again after a delete starts at a
+/// version unrelated to the earlier one's, so that a write of the earlier version loses. A call that throws, other than for
+/// its arguments or an open transaction, such as on a lost connection, leaves its outcome unknown, since the statement may
+/// have landed: the caller reads the key again before it decides.
 /// </para>
 /// </summary>
 /// <typeparam name="TPlugin">The plugin whose values these are, which the host must register.</typeparam>
@@ -35,8 +46,8 @@ public interface IPluginStore<TPlugin>
     /// <param name="key">The key.</param>
     /// <param name="value">The value.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
-    /// <returns>The value added, at version 1, or <see langword="null"/> when the key has a value already.</returns>
-    /// <exception cref="ArgumentException">The key breaks the rule of keys, or the value is longer than 4,000 characters.</exception>
+    /// <returns>The value added, at a version of its own, or <see langword="null"/> when the key has a value already.</returns>
+    /// <exception cref="ArgumentException">The key breaks the rule of keys, or the value is longer than 4,000 characters or holds U+0000.</exception>
     /// <exception cref="InvalidOperationException">The caller has a transaction open.</exception>
     Task<PluginStoreValue?> TryAddAsync(string key, string value, CancellationToken cancellationToken = default);
 
@@ -46,10 +57,10 @@ public interface IPluginStore<TPlugin>
     /// <param name="version">The version the caller read.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>
-    /// The value written, at the next version, or <see langword="null"/> when another write moved the version on or removed
-    /// the value.
+    /// The value written, at the version given plus one, or <see langword="null"/> when another write moved the version on or
+    /// removed the value.
     /// </returns>
-    /// <exception cref="ArgumentException">The key breaks the rule of keys, or the value is longer than 4,000 characters.</exception>
+    /// <exception cref="ArgumentException">The key breaks the rule of keys, or the value is longer than 4,000 characters or holds U+0000.</exception>
     /// <exception cref="InvalidOperationException">The caller has a transaction open.</exception>
     Task<PluginStoreValue?> TrySetAsync(string key, string value, long version, CancellationToken cancellationToken = default);
 

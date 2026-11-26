@@ -67,27 +67,31 @@ public sealed class PluginStoreTests : IDisposable
         await using var scope = _services.CreateAsyncScope();
         var store = scope.ServiceProvider.GetRequiredService<IPluginStore<StoreAlphaPlugin>>();
 
-        var added = await store.TryAddAsync(Key, "", Token);
+        var added = (await store.TryAddAsync(Key, "", Token)).ShouldNotBeNull();
         var again = await store.TryAddAsync(Key, "other", Token);
         _clock.Advance(TimeSpan.FromMinutes(5));
-        var set = await store.TrySetAsync(Key, "0192e0a0-0000-7000-8000-000000000001", 1, Token);
-        var stale = await store.TrySetAsync(Key, "lost", 1, Token);
+        var set = await store.TrySetAsync(Key, "0192e0a0-0000-7000-8000-000000000001", added.Version, Token);
+        var stale = await store.TrySetAsync(Key, "lost", added.Version, Token);
         var read = await store.GetAsync(Key, Token);
-        var staleDelete = await store.DeleteAsync(Key, 1, Token);
-        var deleted = await store.DeleteAsync(Key, 2, Token);
+        var staleDelete = await store.DeleteAsync(Key, added.Version, Token);
+        var deleted = await store.DeleteAsync(Key, added.Version + 1, Token);
 
-        added.ShouldBe(new PluginStoreValue(Key, "", 1, Start));
+        added.ShouldSatisfyAllConditions(
+            value => value.Key.ShouldBe(Key),
+            value => value.Value.ShouldBe(""),
+            value => value.Version.ShouldBeInRange(1, (1L << 62) - 1),
+            value => value.UpdatedAt.ShouldBe(Start));
         again.ShouldBeNull();
-        set.ShouldBe(new PluginStoreValue(Key, "0192e0a0-0000-7000-8000-000000000001", 2, Start.AddMinutes(5)));
+        set.ShouldBe(new PluginStoreValue(Key, "0192e0a0-0000-7000-8000-000000000001", added.Version + 1, Start.AddMinutes(5)));
         stale.ShouldBeNull();
         read.ShouldNotBeNull().ShouldSatisfyAllConditions(
             value => value.Value.ShouldBe("0192e0a0-0000-7000-8000-000000000001"),
-            value => value.Version.ShouldBe(2),
+            value => value.Version.ShouldBe(added.Version + 1),
             value => value.UpdatedAt.ShouldBe(Start.AddMinutes(5)));
         staleDelete.ShouldBeFalse();
         deleted.ShouldBeTrue();
         (await store.GetAsync(Key, Token)).ShouldBeNull();
-        (await store.TrySetAsync(Key, "gone", 2, Token)).ShouldBeNull();
+        (await store.TrySetAsync(Key, "gone", added.Version + 1, Token)).ShouldBeNull();
         (await store.DeleteAsync(Key, cancellationToken: Token)).ShouldBeFalse();
     }
 
@@ -95,19 +99,52 @@ public sealed class PluginStoreTests : IDisposable
     public async Task ADeleteWithoutAVersionRemovesTheValueAtAnyVersion()
     {
         var store = Store<StoreAlphaPlugin>();
-        await store.TryAddAsync(Key, "a", Token);
-        await store.TrySetAsync(Key, "b", 1, Token);
+        var added = (await store.TryAddAsync(Key, "a", Token)).ShouldNotBeNull();
+        (await store.TrySetAsync(Key, "b", added.Version, Token)).ShouldNotBeNull();
 
         (await store.DeleteAsync(Key, cancellationToken: Token)).ShouldBeTrue();
         (await store.GetAsync(Key, Token)).ShouldBeNull();
-        (await store.TryAddAsync(Key, "c", Token)).ShouldNotBeNull().Version.ShouldBe(1);
+        (await store.TryAddAsync(Key, "c", Token)).ShouldNotBeNull().Value.ShouldBe("c");
     }
 
-    // Both writers read version 1 and write it at once, each on a scope of its own as two instances would.
+    // A writer that read the value, another that deletes it to release it and adds it again to claim it: the first writer's
+    // write of the version it read must lose, or both would be told they won.
+    [Fact]
+    public async Task AWriteOfAVersionReadBeforeADeleteAndAnAddLoses()
+    {
+        var reader = Store<StoreAlphaPlugin>();
+        var other = Store<StoreAlphaPlugin>();
+        await reader.TryAddAsync(Key, "old", Token);
+        var read = (await reader.GetAsync(Key, Token)).ShouldNotBeNull();
+
+        (await other.DeleteAsync(Key, read.Version, Token)).ShouldBeTrue();
+        var claimed = (await other.TryAddAsync(Key, "new", Token)).ShouldNotBeNull();
+        var stale = await reader.TrySetAsync(Key, "stale", read.Version, Token);
+
+        stale.ShouldBeNull();
+        claimed.Version.ShouldNotBe(read.Version);
+        (await reader.GetAsync(Key, Token)).ShouldNotBeNull().ShouldSatisfyAllConditions(
+            value => value.Value.ShouldBe("new"),
+            value => value.Version.ShouldBe(claimed.Version));
+    }
+
+    [Fact]
+    public async Task TwoAddsOfOneKeyAfterADeleteStartAtDifferentVersions()
+    {
+        var store = Store<StoreAlphaPlugin>();
+
+        var first = (await store.TryAddAsync(Key, "first", Token)).ShouldNotBeNull();
+        (await store.DeleteAsync(Key, cancellationToken: Token)).ShouldBeTrue();
+        var second = (await store.TryAddAsync(Key, "second", Token)).ShouldNotBeNull();
+
+        second.Version.ShouldNotBe(first.Version);
+    }
+
+    // Both writers read the version of the add and write it at once, each on a scope of its own as two instances would.
     [Fact]
     public async Task OfTwoWritersOfOneVersionExactlyOneWins()
     {
-        await Store<StoreAlphaPlugin>().TryAddAsync(Key, "start", Token);
+        var start = (await Store<StoreAlphaPlugin>().TryAddAsync(Key, "start", Token)).ShouldNotBeNull().Version;
         var go = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var writers = TwoValues.Select(value => WriteAtOnceAsync(go.Task, value)).ToArray();
@@ -116,17 +153,17 @@ public sealed class PluginStoreTests : IDisposable
 
         results.Count(result => result is not null).ShouldBe(1);
         var winner = results.Single(result => result is not null)!;
-        winner.Version.ShouldBe(2);
+        winner.Version.ShouldBe(start + 1);
         (await Store<StoreAlphaPlugin>().GetAsync(Key, Token)).ShouldNotBeNull().ShouldSatisfyAllConditions(
             value => value.Value.ShouldBe(winner.Value),
-            value => value.Version.ShouldBe(2));
+            value => value.Version.ShouldBe(start + 1));
 
-        async Task<PluginStoreValue?> WriteAtOnceAsync(Task start, string value)
+        async Task<PluginStoreValue?> WriteAtOnceAsync(Task go, string value)
         {
             await using var scope = _services.CreateAsyncScope();
             var store = scope.ServiceProvider.GetRequiredService<IPluginStore<StoreAlphaPlugin>>();
-            await start;
-            return await store.TrySetAsync(Key, value, 1, Token);
+            await go;
+            return await store.TrySetAsync(Key, value, start, Token);
         }
     }
 
@@ -136,7 +173,7 @@ public sealed class PluginStoreTests : IDisposable
     {
         const int Writers = 4;
         const int Increments = 10;
-        await Store<StoreAlphaPlugin>().TryAddAsync(Key, "0", Token);
+        var start = (await Store<StoreAlphaPlugin>().TryAddAsync(Key, "0", Token)).ShouldNotBeNull().Version;
         var go = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var writers = Enumerable.Range(0, Writers).Select(_ => IncrementAsync(go.Task)).ToArray();
@@ -145,11 +182,11 @@ public sealed class PluginStoreTests : IDisposable
 
         var value = await Store<StoreAlphaPlugin>().GetAsync(Key, Token);
         value.ShouldNotBeNull().Value.ShouldBe((Writers * Increments).ToString(System.Globalization.CultureInfo.InvariantCulture));
-        value.Version.ShouldBe(1 + (Writers * Increments));
+        value.Version.ShouldBe(start + (Writers * Increments));
 
-        async Task IncrementAsync(Task start)
+        async Task IncrementAsync(Task gate)
         {
-            await start;
+            await gate;
             for (var done = 0; done < Increments;)
             {
                 await using var scope = _services.CreateAsyncScope();
@@ -192,17 +229,16 @@ public sealed class PluginStoreTests : IDisposable
         var alpha = Store<StoreAlphaPlugin>();
         var beta = Store<StoreBetaPlugin>();
 
-        await alpha.TryAddAsync(Key, "alpha", Token);
-        var betaAdded = await beta.TryAddAsync(Key, "beta", Token);
-        await alpha.TrySetAsync(Key, "alpha again", 1, Token);
+        var alphaAdded = (await alpha.TryAddAsync(Key, "alpha", Token)).ShouldNotBeNull();
+        var betaAdded = (await beta.TryAddAsync(Key, "beta", Token)).ShouldNotBeNull();
+        (await alpha.TrySetAsync(Key, "alpha again", alphaAdded.Version, Token)).ShouldNotBeNull();
         var alphaDeleted = await alpha.DeleteAsync(Key, cancellationToken: Token);
 
-        betaAdded.ShouldNotBeNull().Version.ShouldBe(1);
         alphaDeleted.ShouldBeTrue();
         (await alpha.GetAsync(Key, Token)).ShouldBeNull();
         (await beta.GetAsync(Key, Token)).ShouldNotBeNull().ShouldSatisfyAllConditions(
             value => value.Value.ShouldBe("beta"),
-            value => value.Version.ShouldBe(1));
+            value => value.Version.ShouldBe(betaAdded.Version));
         await using var scope = _services.CreateAsyncScope();
         (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<PluginStoreRow>().AsNoTracking().Select(row => row.Plugin + "/" + row.Key).ToListAsync(Token))
             .ShouldBe(["store-beta/" + Key]);
@@ -257,6 +293,8 @@ public sealed class PluginStoreTests : IDisposable
         await Should.ThrowAsync<ArgumentException>(() => store.TryAddAsync(Key, value + "x", Token));
         await Should.ThrowAsync<ArgumentException>(() => store.TrySetAsync(key, value + "x", 1, Token));
         await Should.ThrowAsync<ArgumentNullException>(() => store.TryAddAsync(Key, null!, Token));
+        await Should.ThrowAsync<ArgumentException>(() => store.TryAddAsync(Key, "a\0b", Token));
+        await Should.ThrowAsync<ArgumentException>(() => store.TrySetAsync(key, "\0", 1, Token));
         _statements.Count.ShouldBe(before);
     }
 

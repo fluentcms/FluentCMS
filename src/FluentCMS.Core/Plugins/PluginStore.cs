@@ -14,6 +14,8 @@ namespace FluentCMS.Core.Plugins;
 internal sealed class PluginStore<TPlugin> : IPluginStore<TPlugin>
     where TPlugin : class, IPlugin
 {
+    private const long FirstVersionBound = 1L << 62;
+
     private readonly string _plugin;
     private readonly IServiceScopeFactory _scopes;
     private readonly ITransactionProbe _transaction;
@@ -44,7 +46,9 @@ internal sealed class PluginStore<TPlugin> : IPluginStore<TPlugin>
         Check(key, value);
         await using var scope = _scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-        var row = new PluginStoreRow { Plugin = _plugin, Key = key, Value = value, Version = 1, UpdatedAt = _time.GetUtcNow() };
+        // A row added again after a delete must not repeat a version that a writer of the earlier row may hold, and one more
+        // per write from below 2^62 never reaches long.MaxValue.
+        var row = new PluginStoreRow { Plugin = _plugin, Key = key, Value = value, Version = Random.Shared.NextInt64(1, FirstVersionBound), UpdatedAt = _time.GetUtcNow() };
         context.Add(row);
         try
         {
@@ -97,6 +101,12 @@ internal sealed class PluginStore<TPlugin> : IPluginStore<TPlugin>
         if (value is not null && value.Length > PluginStoreRow.ValueMaxLength)
         {
             throw new ArgumentException($"A value of a plugin's store has at most {PluginStoreRow.ValueMaxLength} characters; this one has {value.Length}.", nameof(value));
+        }
+
+        // PostgreSQL stores no U+0000 in text, and the other providers would, so no provider takes it.
+        if (value is not null && value.Contains('\0', StringComparison.Ordinal))
+        {
+            throw new ArgumentException("A value of a plugin's store holds no U+0000 character.", nameof(value));
         }
 
         // The statement commits at once, so a rollback of the caller's transaction would not take it back.
