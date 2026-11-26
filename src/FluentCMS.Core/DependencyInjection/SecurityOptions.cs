@@ -33,6 +33,10 @@ public sealed class SecurityOptions
     // The certificate the authorization server signs tokens with. Without one it signs with a key it generates and stores.
     public SigningCertificateOptions SigningCertificate { get; } = new();
 
+    // Certificates whose tokens are accepted and that are listed in the key set, and that never sign: the one a new
+    // SigningCertificate replaced, until its tokens have expired, and the next one, before it becomes the SigningCertificate.
+    public IList<SigningCertificateOptions> PreviousSigningCertificates { get; } = [];
+
     // When the keys the authorization server generates are replaced, and how long a key is published before it signs and
     // accepted after it stopped.
     public KeyRotationOptions KeyRotation { get; } = new();
@@ -44,6 +48,11 @@ public sealed class SecurityOptions
 
     // The sources that may frame the hosted pages, as the frame-ancestors directive takes them. None by default.
     public string FrameAncestors { get; set; } = "'none'";
+
+    // An entry whose Path and Password are both empty is absent, as an empty SigningCertificate:Path is, so that the
+    // environment can turn off an entry of a settings file, which it cannot remove.
+    internal IEnumerable<(SigningCertificateOptions Entry, int Index)> ConfiguredPreviousSigningCertificates =>
+        PreviousSigningCertificates.Select((entry, index) => (entry, index)).Where(item => item.entry.IsConfigured || !string.IsNullOrEmpty(item.entry.Password));
 
     internal void Validate()
     {
@@ -62,6 +71,11 @@ public sealed class SecurityOptions
         }
 
         SigningCertificate.Validate();
+        foreach (var (entry, index) in ConfiguredPreviousSigningCertificates)
+        {
+            entry.Load($"{nameof(PreviousSigningCertificates)}:{index}", privateKey: false).Dispose();
+        }
+
         KeyRotation.Validate();
         Cors.Delivery.Validate("Cors:Delivery");
         Cors.Management.Validate("Cors:Management");
@@ -82,8 +96,16 @@ public sealed class SigningCertificateOptions
     // there when the process is killed. Linux writes nothing either way, and macOS does not support an ephemeral key.
     internal static X509KeyStorageFlags KeyStorage => OperatingSystem.IsWindows() ? X509KeyStorageFlags.EphemeralKeySet : X509KeyStorageFlags.DefaultKeySet;
 
-    internal X509Certificate2 Load()
+    // key is where the configuration has the entry, for the message. A certificate that only validates needs no private key.
+    internal X509Certificate2 Load(string key = nameof(SecurityOptions.SigningCertificate), bool privateKey = true)
     {
+        if (!IsConfigured)
+        {
+            throw new FluentCmsConfigurationException(
+                OidcErrorCodes.SigningCertificateUnusable,
+                $"{key}:{nameof(Path)} is not set; each entry names its PKCS#12 file.");
+        }
+
         X509Certificate2 certificate;
         try
         {
@@ -93,16 +115,18 @@ public sealed class SigningCertificateOptions
         {
             throw new FluentCmsConfigurationException(
                 OidcErrorCodes.SigningCertificateUnusable,
-                $"{nameof(SecurityOptions.SigningCertificate)}:{nameof(Path)} is '{Path}', which cannot be read as a PKCS#12 file with this password: {exception.Message}");
+                $"{key}:{nameof(Path)} is '{Path}', which cannot be read as a PKCS#12 file with this password: {exception.Message}");
         }
 
-        using var rsa = certificate.GetRSAPrivateKey();
+        using var rsa = privateKey ? certificate.GetRSAPrivateKey() : certificate.GetRSAPublicKey();
         if (rsa is null)
         {
             certificate.Dispose();
             throw new FluentCmsConfigurationException(
                 OidcErrorCodes.SigningCertificateUnusable,
-                $"{nameof(SecurityOptions.SigningCertificate)}:{nameof(Path)} is '{Path}', which holds no RSA private key; the authorization server signs with RS256.");
+                privateKey
+                    ? $"{key}:{nameof(Path)} is '{Path}', which holds no RSA private key; the authorization server signs with RS256."
+                    : $"{key}:{nameof(Path)} is '{Path}', which holds no RSA key; the authorization server signs with RS256.");
         }
 
         return certificate;

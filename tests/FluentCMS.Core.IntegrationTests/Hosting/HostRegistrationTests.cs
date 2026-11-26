@@ -222,6 +222,49 @@ public sealed class HostRegistrationTests : IAsyncDisposable
         rotation.Overlap.ShouldBeNull();
     }
 
+    // The list binds from the configuration like FluentCms:DataProtection:PreviousCertificates, and the report names by
+    // thumbprint what never signs and is still accepted.
+    [Theory]
+    [InlineData("Production", true)]
+    [InlineData("Development", false)]
+    public async Task ThePreviousSigningCertificatesBindAndAreReportedOutsideDevelopment(string environment, bool listed)
+    {
+        var directory = Path.GetDirectoryName(_host.DatabaseFile)!;
+        var (signs, _) = WriteCertificate(directory, "signs.pfx");
+        var (previous, thumbprint) = WriteCertificate(directory, "previous.pfx");
+        var app = _host.Build(environment, new Dictionary<string, string?>
+        {
+            ["FluentCms:Security:SigningCertificate:Path"] = signs,
+            ["FluentCms:Security:SigningCertificate:Password"] = "test-password",
+            ["FluentCms:Security:PreviousSigningCertificates:0:Path"] = "",
+            ["FluentCms:Security:PreviousSigningCertificates:0:Password"] = "",
+            ["FluentCms:Security:PreviousSigningCertificates:1:Path"] = previous,
+            ["FluentCms:Security:PreviousSigningCertificates:1:Password"] = "test-password",
+        });
+
+        await app.StartAsync(Token);
+
+        app.Services.GetRequiredService<SecurityOptions>().PreviousSigningCertificates.Select(entry => entry.Path).ShouldBe(["", previous]);
+        var insecure = app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults;
+        insecure.Any(item => item.Id == "signing-validation-certificates").ShouldBe(listed);
+        if (listed)
+        {
+            var message = insecure.Single(item => item.Id == "signing-validation-certificates").Message;
+            message.ShouldContain($"1 certificate of FluentCms:Security:PreviousSigningCertificates (thumbprint {thumbprint}), which never signs");
+            message.ShouldNotContain("test-password");
+        }
+    }
+
+    private static (string Path, string Thumbprint) WriteCertificate(string directory, string name)
+    {
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        using var certificate = new System.Security.Cryptography.X509Certificates.CertificateRequest($"CN=FluentCMS test {name}", rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1)
+            .CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(30));
+        var path = Path.Combine(directory, name);
+        File.WriteAllBytes(path, certificate.Export(System.Security.Cryptography.X509Certificates.X509ContentType.Pkcs12, "test-password"));
+        return (path, certificate.Thumbprint);
+    }
+
     // The report is where an operator who accepted a generated key learns that it never changes.
     [Theory]
     [InlineData("Production", null, true, true)]

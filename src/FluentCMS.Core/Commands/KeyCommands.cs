@@ -50,7 +50,7 @@ internal sealed class KeysListCommand : HostCommand
             keys.Select(key => (IReadOnlyList<string>)
                 [key.Id.ToString("D"), key.Use, key.Algorithm, State(key, keys, security, now), Moment(key.CreatedAt), Moment(key.ActiveFrom), Moment(key.RetiredAt)]));
 
-        var certificates = SigningCertificates.Of(security);
+        var certificates = context.Services.GetRequiredService<SigningCertificates>().Describe();
         if (certificates.Count > 0)
         {
             await context.Output.WriteLineAsync();
@@ -97,7 +97,7 @@ internal sealed class KeysRotateCommand : HostCommand
             {
                 throw new CommandException(
                     CommandErrorCodes.CertificateSigns,
-                    $"{SigningCertificates.Key} signs the tokens, so there is no generated signing key to rotate; a certificate is replaced in the configuration",
+                    $"{SigningCertificates.Key} signs the tokens, so there is no generated signing key to rotate; to replace the certificate, set the new one there and list the one it replaces under {SigningCertificates.PreviousKey}",
                     CommandExitCodes.BadUsage);
             }
 

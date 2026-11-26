@@ -163,7 +163,8 @@ public sealed partial class AuthorizationServerTests
             }
 
             var certificate = WriteCertificate(Path.GetDirectoryName(file)!, "signing.pfx");
-            await using var tool = WithCertificate(NewHost().UseSqlite(file), certificate.Path);
+            var previous = WriteCertificate(Path.GetDirectoryName(file)!, "previous.pfx", DateTimeOffset.UtcNow.AddDays(-90), DateTimeOffset.UtcNow.AddDays(-1));
+            await using var tool = WithCertificate(NewHost().UseSqlite(file), certificate.Path, previous.Path, certificate.Path, previous.Path);
 
             var listed = await tool.RunCommandAsync("keys", "list");
 
@@ -175,6 +176,12 @@ public sealed partial class AuthorizationServerTests
             named.ShouldContain(certificate.NotBefore.UtcDateTime.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture));
             named.ShouldEndWith(certificate.NotAfter.UtcDateTime.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture));
             lines.ShouldContain(line => line.StartsWith("CERTIFICATE", StringComparison.Ordinal) && line.Contains("NOT AFTER", StringComparison.Ordinal));
+
+            // A certificate that only validates is listed once, however often the configuration names it.
+            var validates = lines.Where(line => line.StartsWith(previous.Thumbprint, StringComparison.Ordinal)).ShouldHaveSingleItem();
+            validates.ShouldContain(" validates ");
+            validates.ShouldEndWith(previous.NotAfter.UtcDateTime.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture));
+            lines.Count(line => line.StartsWith(certificate.Thumbprint, StringComparison.Ordinal)).ShouldBe(1);
         });
     }
 
@@ -183,11 +190,15 @@ public sealed partial class AuthorizationServerTests
 
     private static string Row(string[] lines, SigningKey key) => lines.Single(line => line.StartsWith(key.Id.ToString("D"), StringComparison.Ordinal)) + " ";
 
-    private static FluentCmsTestHost WithCertificate(FluentCmsTestHost host, string path) =>
+    private static FluentCmsTestHost WithCertificate(FluentCmsTestHost host, string? path, params string[] previous) =>
         host.WithServices(services => services.Configure<SecurityOptions>(security =>
         {
             security.SigningCertificate.Path = path;
-            security.SigningCertificate.Password = CertificatePassword;
+            security.SigningCertificate.Password = path is null ? null : CertificatePassword;
+            foreach (var validates in previous)
+            {
+                security.PreviousSigningCertificates.Add(new SigningCertificateOptions { Path = validates, Password = CertificatePassword });
+            }
         }));
 
     // A self-signed certificate with its RSA key in a PKCS#12 file, valid from yesterday for a month unless told otherwise.

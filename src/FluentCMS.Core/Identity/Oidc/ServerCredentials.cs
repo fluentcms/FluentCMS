@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using FluentCMS.Core.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Server;
@@ -12,24 +11,27 @@ namespace FluentCMS.Core.Identity.Oidc;
 // lists, which it sorts without telling two generated keys apart, so the active credential is marked here and put first
 // after that sort. A signing key that only validates is handed over without its private half, so that a wrong order would
 // fail a signature and never sign with the wrong key.
-internal sealed class ServerCredentials(SecurityOptions security, SigningKeyRing ring, TimeProvider time)
+internal sealed class ServerCredentials(SigningCertificates certificates, SigningKeyRing ring, TimeProvider time)
     : IConfigureOptions<OpenIddictServerOptions>, IPostConfigureOptions<OpenIddictServerOptions>
 {
-    // Loaded once: the options are built many times, and each load would open the file and leave a certificate behind.
-    private readonly Lazy<X509SecurityKey> _certificate = new(() => new X509SecurityKey(security.SigningCertificate.Load()));
-
     public void Configure(OpenIddictServerOptions options)
     {
         var set = ring.Current;
         var now = time.GetUtcNow();
-        var certificate = security.SigningCertificate.IsConfigured;
-        if (certificate)
+        var certificate = certificates.SigningKey;
+        if (certificate is not null)
         {
-            options.SigningCredentials.Add(new ActiveSigningCredentials(_certificate.Value));
+            options.SigningCredentials.Add(new ActiveSigningCredentials(certificate));
         }
 
+        foreach (var validates in certificates.ValidationKeys)
+        {
+            options.SigningCredentials.Add(new SigningCredentials(validates, SecurityAlgorithms.RsaSha256));
+        }
+
+        // While a certificate signs, the generated signing keys still in the table are accepted until they retire.
         var signing = Accepted(set, SigningKey.Signing, now);
-        var signs = certificate ? null : SigningKeyStates.ActiveOf(signing, now);
+        var signs = certificate is not null ? null : SigningKeyStates.ActiveOf(signing, now);
         foreach (var row in signing)
         {
             if (Key(set, row, row == signs) is RsaSecurityKey key)

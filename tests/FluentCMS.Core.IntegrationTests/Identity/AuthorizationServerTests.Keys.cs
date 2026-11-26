@@ -447,6 +447,229 @@ public sealed partial class AuthorizationServerTests
         });
     }
 
+    // The acceptance of #3313: replacing the configured certificate with the previous one listed signs nobody out, and the
+    // key set lists both. The new certificate expires before the old one, which OpenIddict's own order would let sign.
+    [Fact]
+    public async Task ReplacingTheSigningCertificateWithTheOldOneListedSignsNobodyOut()
+    {
+        await InDatabaseFileAsync(async file =>
+        {
+            var directory = Path.GetDirectoryName(file)!;
+            var old = WriteCertificate(directory, "old.pfx", notAfter: DateTimeOffset.UtcNow.AddDays(60));
+            var next = WriteCertificate(directory, "new.pfx", notAfter: DateTimeOffset.UtcNow.AddDays(30));
+            TestUser editor;
+            TestTokens before;
+            TestTokens published;
+            await using (var first = WithCertificate(NewHost().UseSqlite(file), old.Path))
+            {
+                editor = await first.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+                before = await first.SignInAsync(editor, "openid", "offline_access", "management");
+                Header(before.AccessToken).GetProperty("kid").GetString().ShouldBe(old.Thumbprint);
+            }
+
+            // With several instances the new certificate is listed first, so each accepts it before any signs with it.
+            await using (var publishing = WithCertificate(NewHost().UseSqlite(file), old.Path, next.Path))
+            {
+                using var client = publishing.CreateSecureClient();
+                (await KeySetAsync(client)).ShouldBe([old.Thumbprint, next.Thumbprint], ignoreOrder: true);
+                published = await publishing.SignInAsync(editor, "openid", "offline_access", "management");
+                Header(published.AccessToken).GetProperty("kid").GetString().ShouldBe(old.Thumbprint);
+            }
+
+            await using (var replaced = WithCertificate(NewHost().UseSqlite(file), next.Path, old.Path))
+            {
+                foreach (var tokens in new[] { before, published })
+                {
+                    using var api = Bearer(tokens.AccessToken, replaced);
+                    (await WhoAmIAsync(api)).GetProperty("id").GetGuid().ShouldBe(editor.Id);
+                }
+
+                using var client = replaced.CreateSecureClient();
+                var after = await TokenAsync(client, Refresh(before.RefreshToken!), Token);
+                Header(after.AccessToken).GetProperty("kid").GetString().ShouldBe(next.Thumbprint);
+                Header(after.IdentityToken!).GetProperty("kid").GetString().ShouldBe(next.Thumbprint);
+                (await KeySetAsync(client)).ShouldBe([next.Thumbprint, old.Thumbprint], ignoreOrder: true);
+
+                // The old certificate is handed over without its private key, so it could not sign whatever its place.
+                var options = replaced.Services.GetRequiredService<IOptionsMonitor<OpenIddictServerOptions>>().CurrentValue;
+                options.SigningCredentials.Select(credentials => credentials.Key.KeyId).ShouldBe([next.Thumbprint, old.Thumbprint]);
+                ((AsymmetricSecurityKey)options.SigningCredentials[1].Key).PrivateKeyStatus.ShouldBe(PrivateKeyStatus.DoesNotExist);
+                SigningKeys(replaced).ShouldAllBe(key => key.Use == SigningKey.Encryption);
+            }
+
+            // Not listed, the old certificate's tokens are refused.
+            await using var alone = WithCertificate(NewHost().UseSqlite(file), next.Path);
+            using var refused = Bearer(published.AccessToken, alone);
+            (await refused.GetAsync("/api/management/v1/test/whoami", Token)).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        });
+    }
+
+    // What ADR 0008 left to be proven: a signature of a certificate that has since expired validates while it is listed.
+    [Fact]
+    public async Task WhatACertificateSignedBeforeItExpiredIsAcceptedWhileItIsListed()
+    {
+        await InDatabaseFileAsync(async file =>
+        {
+            var directory = Path.GetDirectoryName(file)!;
+            var expired = WriteCertificate(directory, "expired.pfx", DateTimeOffset.UtcNow.AddDays(-30), DateTimeOffset.UtcNow.AddDays(-1));
+            var next = WriteCertificate(directory, "new.pfx");
+            TestUser editor;
+            TestTokens before;
+            var first = WithCertificate(NewHost().UseSqlite(file), expired.Path);
+            first.Time.Set(DateTimeOffset.UtcNow.AddDays(-2));
+            await using (first)
+            {
+                editor = await first.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+                before = await first.SignInAsync(editor, "openid", "offline_access", "management");
+                Header(before.RefreshToken!).GetProperty("kid").GetString().ShouldNotBeNull();
+            }
+
+            await using var host = WithCertificate(NewHost().UseSqlite(file), next.Path, expired.Path);
+            using var client = host.CreateSecureClient();
+
+            var after = await TokenAsync(client, Refresh(before.RefreshToken!), Token);
+
+            Header(after.AccessToken).GetProperty("kid").GetString().ShouldBe(next.Thumbprint);
+            (await KeySetAsync(client)).ShouldBe([next.Thumbprint, expired.Thumbprint], ignoreOrder: true);
+        });
+    }
+
+    [Fact]
+    public async Task ASigningCertificateOutsideItsValidityPeriodStopsTheHost()
+    {
+        await InDatabaseFileAsync(async file =>
+        {
+            var directory = Path.GetDirectoryName(file)!;
+            var expired = WriteCertificate(directory, "expired.pfx", DateTimeOffset.UtcNow.AddDays(-30), DateTimeOffset.UtcNow.AddDays(-1));
+            var early = WriteCertificate(directory, "early.pfx", DateTimeOffset.UtcNow.AddDays(1), DateTimeOffset.UtcNow.AddDays(30));
+            foreach (var certificate in new[] { expired, early })
+            {
+                await using var host = WithCertificate(NewHost().UseSqlite(file), certificate.Path);
+
+                var exception = Should.Throw<FluentCmsConfigurationException>(() => host.Services);
+
+                exception.Code.ShouldBe("FCMS3022");
+                exception.Message.ShouldStartWith($"FCMS3022: FluentCms:Security:SigningCertificate:Path is '{certificate.Path}', a certificate (thumbprint {certificate.Thumbprint}) that is valid from ");
+                exception.Message.ShouldNotContain(CertificatePassword);
+            }
+
+            // Either may be listed as a certificate that only validates.
+            var signs = WriteCertificate(directory, "signs.pfx");
+            await using var listed = WithCertificate(NewHost().UseSqlite(file), signs.Path, expired.Path, early.Path);
+            using var client = listed.CreateSecureClient();
+            (await KeySetAsync(client)).ShouldBe([signs.Thumbprint, expired.Thumbprint, early.Thumbprint], ignoreOrder: true);
+        });
+    }
+
+    [Fact]
+    public async Task APreviousSigningCertificateThatCannotBeLoadedStopsTheHost()
+    {
+        await InDatabaseFileAsync(async file =>
+        {
+            var directory = Path.GetDirectoryName(file)!;
+            var signs = WriteCertificate(directory, "signs.pfx");
+            var missing = Path.Combine(directory, "missing.pfx");
+
+            await using (var host = WithCertificate(NewHost().UseSqlite(file), signs.Path, signs.Path, missing))
+            {
+                var exception = Should.Throw<FluentCmsConfigurationException>(() => host.Services);
+                exception.Code.ShouldBe("FCMS3022");
+                exception.Message.ShouldStartWith($"FCMS3022: FluentCms:Security:PreviousSigningCertificates:1:Path is '{missing}', which cannot be read as a PKCS#12 file with this password");
+                exception.Message.ShouldNotContain(CertificatePassword);
+            }
+
+            await using (var host = NewHost().UseSqlite(file).WithServices(services => services.Configure<SecurityOptions>(security =>
+                security.PreviousSigningCertificates.Add(new SigningCertificateOptions { Password = CertificatePassword }))))
+            {
+                var exception = Should.Throw<FluentCmsConfigurationException>(() => host.Services);
+                exception.Code.ShouldBe("FCMS3022");
+                exception.Message.ShouldBe("FCMS3022: FluentCms:Security:PreviousSigningCertificates:0:Path is not set; each entry names its PKCS#12 file.");
+            }
+
+            // An entry with neither is absent, so the environment can blank one of a settings file.
+            await using var blank = NewHost().UseSqlite(file).WithServices(services => services.Configure<SecurityOptions>(security =>
+                security.PreviousSigningCertificates.Add(new SigningCertificateOptions { Path = "", Password = "" })));
+            using var client = blank.CreateSecureClient();
+            (await KeySetAsync(client)).ShouldHaveSingleItem();
+        });
+    }
+
+    // Moving between the modes: the generated keys a certificate replaced stay accepted until the job has retired them, and
+    // going back, the certificate is listed for the overlap while the newest generated key signs again.
+    [Fact]
+    public async Task ACertificateTakesOverFromAGeneratedKeyAndGivesBackToItWithoutSigningAnyoneOut()
+    {
+        await InDatabaseFileAsync(async file =>
+        {
+            var certificate = WriteCertificate(Path.GetDirectoryName(file)!, "signing.pfx");
+            TestUser editor;
+            TestTokens generated;
+            TestTokens certified;
+            SigningKey first;
+            await using (var before = NewHost().UseSqlite(file))
+            {
+                editor = await before.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+                generated = await before.SignInAsync(editor, "openid", "offline_access", "management");
+                first = SigningKeys(before).Single(key => key.Use == SigningKey.Signing);
+            }
+
+            await using (var host = WithCertificate(NewHost().UseSqlite(file), certificate.Path))
+            {
+                using (var api = Bearer(generated.AccessToken, host))
+                {
+                    (await WhoAmIAsync(api)).GetProperty("id").GetGuid().ShouldBe(editor.Id);
+                }
+
+                using var client = host.CreateSecureClient();
+                certified = await TokenAsync(client, Refresh(generated.RefreshToken!), Token);
+                Header(certified.AccessToken).GetProperty("kid").GetString().ShouldBe(certificate.Thumbprint);
+                (await KeySetAsync(client)).ShouldBe([certificate.Thumbprint, KeyId(first)], ignoreOrder: true);
+
+                // The job gives the generated key the overlap from its run, and makes no signing key while a certificate signs.
+                var run = host.Time.GetUtcNow();
+                await RunKeysJobAsync(host);
+                var keys = SigningKeys(host);
+                keys.Single(key => key.Use == SigningKey.Signing).RetiredAt.ShouldBe(run + DefaultOverlap);
+                keys.Single(key => key.Use == SigningKey.Encryption).RetiredAt.ShouldBeNull();
+                keys.Count.ShouldBe(2);
+            }
+
+            // Back to generated keys a day later: the certificate only validates now.
+            await using var back = WithCertificate(NewHost().UseSqlite(file), null, certificate.Path);
+            back.Time.Advance(TimeSpan.FromDays(1));
+            using (var api = Bearer((await back.SignInAsync(editor)).AccessToken, back))
+            {
+                (await WhoAmIAsync(api)).GetProperty("id").GetGuid().ShouldBe(editor.Id);
+            }
+
+            using var again = back.CreateSecureClient();
+            var regenerated = await TokenAsync(again, Refresh(certified.RefreshToken!), Token);
+            Header(regenerated.AccessToken).GetProperty("kid").GetString().ShouldBe(KeyId(first));
+            (await KeySetAsync(again)).ShouldBe([certificate.Thumbprint, KeyId(first)], ignoreOrder: true);
+
+            // The key that signs again is to retire, so the job makes its successor, with rotation off, and keeps it until then.
+            var now = back.Time.GetUtcNow();
+            await RunKeysJobAsync(back);
+            var signing = SigningKeys(back).Where(key => key.Use == SigningKey.Signing).OrderBy(key => key.Sequence).ToList();
+            signing.Count.ShouldBe(2);
+            signing[1].ActiveFrom.ShouldBe(now.AddDays(1));
+            signing[0].RetiredAt.ShouldBe(signing[1].ActiveFrom + DefaultOverlap);
+        });
+    }
+
+    // A cache that honours it holds no key that was revoked since.
+    [Fact]
+    public async Task TheKeySetIsNotToBeStored()
+    {
+        using var client = _host.CreateSecureClient();
+
+        using var response = await client.GetAsync("/.well-known/jwks", Token);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.Headers.CacheControl.ShouldNotBeNull().NoStore.ShouldBeTrue();
+        response.Headers.CacheControl.MaxAge.ShouldBeNull();
+    }
+
     private static string KeyId(SigningKey key) => key.Id.ToString("N");
 
     private static async Task<List<string>> KeySetAsync(HttpClient client)
