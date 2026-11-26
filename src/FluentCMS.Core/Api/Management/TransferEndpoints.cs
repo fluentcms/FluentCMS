@@ -50,7 +50,7 @@ internal static class TransferEndpoints
                 QueryParameter.OneOf("webhooks", Flags, "true delivers the webhooks of what the import writes, which are otherwise not delivered."),
                 QueryParameter.OneOf("roles", Flags, "true imports the roles of the package too."),
                 QueryParameter.Text("types", "The content types to import, separated by commas; every type of the package when left out. A caller with transfer.manage in the site only names the types it may import: an export has a file for every global type, empty or not, and importing one needs transfer.manage for the instance."),
-                QueryParameter.Text("options", "Options of the plugins' contributors, as name=value pairs separated by commas."),
+                QueryParameter.Text("options", "Options of the plugins' contributors, as name=value pairs separated by commas. mediaNameKeys=true lets a media asset whose line has no file name the key of the storage the line names instead of taking a copy under a key of its own; only for instances that share the database as well as the storage, since the instance that wrote the key deletes the file when it purges, replaces or removes the site of its asset."),
             ])
             .Produces<string>(StatusCodes.Status200OK, LinesType);
     }

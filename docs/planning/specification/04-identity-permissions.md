@@ -14,7 +14,7 @@ One authorization server (OpenIddict) issues every token: admin sessions, API ke
 | 8 | Public access configuration | Must | Per type and operation, what anonymous Delivery requests may read; closed by default. |
 | 9 | API keys | Must | Delivery, preview and management key classes; scoped to a role, sites and types; expiry, rotation, last-used, revoke; hashed at rest. |
 | 10 | Member authentication | Must | End-user accounts for sites and apps as a separate identity pool: registration, email verification, password reset, login, refresh tokens; member groups usable in row-level rules and public access. |
-| 11 | External identity providers for members | Must | Google, Microsoft, GitHub, Apple and generic OIDC for member login. |
+| 11 | External identity providers for members | Must | Google, Microsoft, GitHub and generic OIDC for member login. |
 | 12 | Permission checks in one place | Must | All checks run in the in-process service; HTTP, GraphQL and MCP layers only carry identity. Admin UI hides what the user cannot do by reading the same permission set. |
 | 13 | Security defaults | Must | No anonymous access until configured, CORS allow-list, secure cookie flags, rate-limited auth endpoints, no secrets in config files (user secrets, env vars, Key Vault providers). |
 | 14 | Activity log | Must | Who, what, when and origin (admin, API, MCP, job) for content, media, user, role, key and settings changes; 30-day default retention; queryable via Management API. |

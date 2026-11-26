@@ -77,7 +77,7 @@ internal sealed class FakeOidcProvider : IDisposable
 
         if (grant.User.EmailVerified is { } verified)
         {
-            claims["email_verified"] = verified;
+            claims["email_verified"] = grant.User.EmailVerifiedAsText ? (verified ? "true" : "false") : verified;
         }
 
         if (grant.User.Groups.Length > 0)
@@ -183,6 +183,9 @@ internal sealed record FakeIdentity(string Subject, string? Email, string[] Grou
 
     // As a provider that verifies addresses says; null leaves the claim out.
     public bool? EmailVerified { get; init; } = true;
+
+    // Some providers send the flag as text.
+    public bool EmailVerifiedAsText { get; init; }
 
     // The provider's session id, which a provider that supports front-channel logout puts in the token; null leaves it out.
     public string? Sid { get; init; }

@@ -73,7 +73,6 @@ internal sealed class MemberExternalSignIn(
         {
             MemberProviderKind.Oidc => principal.FindFirstValue("name"),
             MemberProviderKind.GitHub => principal.FindFirstValue(MemberProviders.GitHubNameClaim) ?? principal.FindFirstValue(ClaimTypes.Name),
-            MemberProviderKind.Apple => null,
             _ => principal.FindFirstValue(ClaimTypes.Name),
         };
 
