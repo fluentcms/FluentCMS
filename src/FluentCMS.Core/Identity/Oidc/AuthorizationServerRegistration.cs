@@ -142,7 +142,10 @@ internal static class AuthorizationServerRegistration
         });
 
         services.AddSingleton<SigningKeyStore>();
-        services.AddSingleton<IConfigureOptions<OpenIddictServerOptions>, ServerCredentials>();
+        // After AddServer, whose own post-configuration sorts the credentials that this one then puts in order.
+        services.AddSingleton<ServerCredentials>();
+        services.AddSingleton<IConfigureOptions<OpenIddictServerOptions>>(provider => provider.GetRequiredService<ServerCredentials>());
+        services.AddSingleton<IPostConfigureOptions<OpenIddictServerOptions>>(provider => provider.GetRequiredService<ServerCredentials>());
         services.TryAddSingleton<ISigningKeyStatus, SigningKeyStatus>();
         services.TryAddSingleton<IDataProtectionStatus, DataProtectionStatus>();
 

@@ -4,63 +4,89 @@ using FluentCMS.Core.Storage;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using OpenIddict.Server;
 
 namespace FluentCMS.Core.Identity.Oidc;
 
-// The keys of cms_signing_key, generated the first time one is asked for and the same for every instance after that. The
-// first key of a use has a fixed id, so instances that start together on an empty table race for one row: the insert that
-// loses fails on the primary key and reads the winner's key. Each instance reads its keys once, so they must agree then.
+// The keys of cms_signing_key. A use gets its first key the first time one is asked for, and a new one whenever none of
+// its keys is left that has not retired; that key is active at once. Instances that start together on an empty table race
+// for one row: each inserts the next sequence of the use, the unique index lets one in, and the others read the winner's
+// key. The ids are random, so a kid never names two keys.
 internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtectionProvider protection, TimeProvider time)
 {
     private const int RsaKeySize = 2048;
     private const int EncryptionKeySize = 32;
 
-    private static readonly Guid FirstSigningKey = new("0195f1c0-0000-7000-8000-000000000001");
-    private static readonly Guid FirstEncryptionKey = new("0195f1c0-0000-7000-8000-000000000002");
-
     private readonly IDataProtector _protector = protection.CreateProtector("FluentCMS.SigningKeys");
 
-    public IReadOnlyList<SecurityKey> Keys(string use)
+    // Every row, by use and sequence, after making a key for each of the uses that has none that has not retired.
+    public IReadOnlyList<SigningKey> Read(IReadOnlyCollection<string> uses)
     {
         using var scope = scopes.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
-        var stored = Stored(context, use);
-        if (stored.Count == 0)
+        var stored = Stored(context);
+        foreach (var use in uses)
         {
-            var generated = Generate(use);
+            var now = time.GetUtcNow();
+            if (stored.Any(key => key.Use == use && !SigningKeyStates.IsRetired(key, now)))
+            {
+                continue;
+            }
+
+            var generated = Generate(use, NextSequence(stored, use), now, activeFrom: now);
             context.Add(generated);
             try
             {
                 context.SaveChanges();
             }
-            catch (DbUpdateException) when (Exists(generated.Id))
+            catch (DbUpdateException) when (Exists(use, generated.Sequence))
             {
-                // Another instance stored the first key in the meantime; it is the one to use.
+                // Another instance stored the key of this sequence in the meantime; it is the one to use.
             }
 
             context.ChangeTracker.Clear();
-            stored = Stored(context, use);
+            stored = Stored(context);
         }
 
-        return [.. stored.Select(Read)];
+        return stored;
     }
 
-    // The oldest first, so that every instance signs with the same key. Sorted here because SQLite cannot order by a
-    // DateTimeOffset, and there are few rows.
-    private static List<SigningKey> Stored(SystemDbContext context, string use) =>
-        [.. context.Set<SigningKey>().Where(key => key.Use == use).AsEnumerable().OrderBy(key => key.CreatedAt).ThenBy(key => key.Id)];
+    public SecurityKey Unprotect(SigningKey row)
+    {
+        var material = _protector.Unprotect(Convert.FromBase64String(row.ProtectedKey));
+        SecurityKey key;
+        if (row.Use == SigningKey.Signing)
+        {
+            using var rsa = RSA.Create();
+            rsa.ImportRSAPrivateKey(material, out _);
+            CryptographicOperations.ZeroMemory(material);
+            key = new RsaSecurityKey(rsa.ExportParameters(includePrivateParameters: true));
+        }
+        else
+        {
+            key = new SymmetricSecurityKey(material);
+        }
 
-    private bool Exists(Guid id)
+        key.KeyId = KeyId(row);
+        return key;
+    }
+
+    public static string KeyId(SigningKey row) => row.Id.ToString("N");
+
+    private static int NextSequence(IEnumerable<SigningKey> stored, string use) =>
+        stored.Where(key => key.Use == use).Select(key => key.Sequence).DefaultIfEmpty().Max() + 1;
+
+    private static List<SigningKey> Stored(SystemDbContext context) =>
+        [.. context.Set<SigningKey>().AsNoTracking().OrderBy(key => key.Use).ThenBy(key => key.Sequence)];
+
+    private bool Exists(string use, int sequence)
     {
         using var scope = scopes.CreateScope();
-        return scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<SigningKey>().Any(key => key.Id == id);
+        return scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<SigningKey>().Any(key => key.Use == use && key.Sequence == sequence);
     }
 
-    private SigningKey Generate(string use)
+    private SigningKey Generate(string use, int sequence, DateTimeOffset now, DateTimeOffset activeFrom)
     {
         byte[] material;
         string algorithm;
@@ -80,11 +106,13 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
         {
             return new SigningKey
             {
-                Id = use == SigningKey.Signing ? FirstSigningKey : FirstEncryptionKey,
+                Id = Guid.NewGuid(),
                 Use = use,
+                Sequence = sequence,
                 Algorithm = algorithm,
                 ProtectedKey = Convert.ToBase64String(_protector.Protect(material)),
-                CreatedAt = time.GetUtcNow(),
+                CreatedAt = now,
+                ActiveFrom = activeFrom,
             };
         }
         finally
@@ -92,54 +120,10 @@ internal sealed class SigningKeyStore(IServiceScopeFactory scopes, IDataProtecti
             CryptographicOperations.ZeroMemory(material);
         }
     }
-
-    private SecurityKey Read(SigningKey row)
-    {
-        var material = _protector.Unprotect(Convert.FromBase64String(row.ProtectedKey));
-        SecurityKey key;
-        if (row.Use == SigningKey.Signing)
-        {
-            using var rsa = RSA.Create();
-            rsa.ImportRSAPrivateKey(material, out _);
-            CryptographicOperations.ZeroMemory(material);
-            key = new RsaSecurityKey(rsa.ExportParameters(includePrivateParameters: true));
-        }
-        else
-        {
-            key = new SymmetricSecurityKey(material);
-        }
-
-        key.KeyId = row.Id.ToString("N");
-        return key;
-    }
 }
 
 // Whether tokens are signed with a key the server generated, which Production refuses unless the host allows it.
 internal sealed class SigningKeyStatus(SecurityOptions security) : ISigningKeyStatus
 {
     public bool IsGenerated => !security.SigningCertificate.IsConfigured;
-}
-
-// Hands OpenIddict its keys when its options are first built, which is on the first request, after the migrations ran.
-internal sealed class ServerCredentials(SecurityOptions security, SigningKeyStore store) : IConfigureOptions<OpenIddictServerOptions>
-{
-    public void Configure(OpenIddictServerOptions options)
-    {
-        if (security.SigningCertificate.IsConfigured)
-        {
-            options.SigningCredentials.Add(new SigningCredentials(new X509SecurityKey(security.SigningCertificate.Load()), SecurityAlgorithms.RsaSha256));
-        }
-        else
-        {
-            foreach (var key in store.Keys(SigningKey.Signing))
-            {
-                options.SigningCredentials.Add(new SigningCredentials(key, SecurityAlgorithms.RsaSha256));
-            }
-        }
-
-        foreach (var key in store.Keys(SigningKey.Encryption))
-        {
-            options.EncryptionCredentials.Add(new EncryptingCredentials(key, SecurityAlgorithms.Aes256KW, SecurityAlgorithms.Aes256CbcHmacSha512));
-        }
-    }
 }
