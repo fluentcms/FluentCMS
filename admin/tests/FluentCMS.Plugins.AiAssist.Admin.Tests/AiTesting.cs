@@ -275,7 +275,7 @@ internal sealed class FakeAiServer : IManagementApi, IManagementEvents
         return Task.FromException<ApiResponse>(new ApiProblemException(new ApiProblem { Status = 404, Code = "FCMS3104", Title = "Not found" }));
     }
 
-    public static JsonObject UsageOf(IEnumerable<JsonObject> rows, int page = 1, long? total = null)
+    public static JsonObject UsageOf(IEnumerable<JsonObject> rows, int page = 1, long? total = null, bool groupsTruncated = false)
     {
         var all = rows.ToList();
         return new JsonObject
@@ -298,6 +298,7 @@ internal sealed class FakeAiServer : IManagementApi, IManagementEvents
                     ["promptTokens"] = group.Sum(row => row["promptTokens"]!.GetValue<long>()),
                     ["completionTokens"] = group.Sum(row => row["completionTokens"]!.GetValue<long>()),
                 })]),
+                ["groupsTruncated"] = groupsTruncated,
             },
         };
     }

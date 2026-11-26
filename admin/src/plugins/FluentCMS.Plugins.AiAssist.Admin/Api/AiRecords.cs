@@ -97,7 +97,8 @@ internal sealed record AiUsageRow
     public required DateTimeOffset CreatedAt { get; init; }
 }
 
-// The calls and tokens of every row the filter matches, in all and by principal and action.
+// The calls and tokens of every row the filter matches, in all and by principal and action: the groups that used the most
+// tokens, at most 100, with GroupsTruncated when the filter matched more.
 internal sealed record AiUsageTotals
 {
     public long Calls { get; init; }
@@ -107,6 +108,8 @@ internal sealed record AiUsageTotals
     public long CompletionTokens { get; init; }
 
     public required IReadOnlyList<AiUsageGroup> Groups { get; init; }
+
+    public bool GroupsTruncated { get; init; }
 }
 
 internal sealed record AiUsageGroup

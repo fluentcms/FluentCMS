@@ -150,6 +150,9 @@
   <data name="Ai.Usage.ByPrincipal" xml:space="preserve">
     <value>By principal and action</value>
   </data>
+  <data name="Ai.Usage.GroupsTruncated" xml:space="preserve">
+    <value>The table shows the {0} principals and actions that used the most tokens, and the filter matches more. Narrow it by principal, action or days to see them all.</value>
+  </data>
   <data name="Ai.Usage.Calls" xml:space="preserve">
     <value>Calls</value>
   </data>
