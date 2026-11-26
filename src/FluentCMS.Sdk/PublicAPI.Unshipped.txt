@@ -1938,6 +1938,11 @@ FluentCMS.Plugins.IPluginServiceBuilder.AddJob<TJob, TPayload>(string! type, Sys
 FluentCMS.Plugins.IPluginServiceBuilder.AddTransferContributor<TContributor>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginState
 FluentCMS.Plugins.IPluginState.IsEnabledAsync(string! plugin, FluentCMS.Sites.SiteId site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
+FluentCMS.Plugins.IPluginStore<TPlugin>
+FluentCMS.Plugins.IPluginStore<TPlugin>.DeleteAsync(string! key, long? version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+FluentCMS.Plugins.IPluginStore<TPlugin>.GetAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Plugins.PluginStoreValue?>!
+FluentCMS.Plugins.IPluginStore<TPlugin>.TryAddAsync(string! key, string! value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Plugins.PluginStoreValue?>!
+FluentCMS.Plugins.IPluginStore<TPlugin>.TrySetAsync(string! key, string! value, long version, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Plugins.PluginStoreValue?>!
 FluentCMS.Plugins.IPluginServiceBuilder
 FluentCMS.Plugins.IPluginServiceBuilder.AddActivity<TEvent>(string! name, System.Func<TEvent!, FluentCMS.Activity.ActivityEntry!>! describe) -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddErrorCode(string! code, int status, string! title) -> FluentCMS.Plugins.IPluginServiceBuilder!
@@ -1955,6 +1960,19 @@ FluentCMS.Plugins.IProblemDescriber.Describe(System.Exception! exception) -> Flu
 FluentCMS.Plugins.PluginException
 FluentCMS.Plugins.PluginException.Code.get -> string!
 FluentCMS.Plugins.PluginException.PluginException(string! code, string! message) -> void
+FluentCMS.Plugins.PluginStoreValue
+FluentCMS.Plugins.PluginStoreValue.<Clone>$() -> FluentCMS.Plugins.PluginStoreValue!
+FluentCMS.Plugins.PluginStoreValue.Deconstruct(out string! Key, out string! Value, out long Version, out System.DateTimeOffset UpdatedAt) -> void
+FluentCMS.Plugins.PluginStoreValue.Equals(FluentCMS.Plugins.PluginStoreValue? other) -> bool
+FluentCMS.Plugins.PluginStoreValue.Key.get -> string!
+FluentCMS.Plugins.PluginStoreValue.Key.init -> void
+FluentCMS.Plugins.PluginStoreValue.PluginStoreValue(string! Key, string! Value, long Version, System.DateTimeOffset UpdatedAt) -> void
+FluentCMS.Plugins.PluginStoreValue.UpdatedAt.get -> System.DateTimeOffset
+FluentCMS.Plugins.PluginStoreValue.UpdatedAt.init -> void
+FluentCMS.Plugins.PluginStoreValue.Value.get -> string!
+FluentCMS.Plugins.PluginStoreValue.Value.init -> void
+FluentCMS.Plugins.PluginStoreValue.Version.get -> long
+FluentCMS.Plugins.PluginStoreValue.Version.init -> void
 FluentCMS.Plugins.ProblemDescription
 FluentCMS.Plugins.ProblemDescription.<Clone>$() -> FluentCMS.Plugins.ProblemDescription!
 FluentCMS.Plugins.ProblemDescription.Code.get -> string!
@@ -2909,6 +2927,9 @@ override FluentCMS.Media.MediaUrls.ToString() -> string!
 override FluentCMS.Plugins.ProblemDescription.Equals(object? obj) -> bool
 override FluentCMS.Plugins.ProblemDescription.GetHashCode() -> int
 override FluentCMS.Plugins.ProblemDescription.ToString() -> string!
+override FluentCMS.Plugins.PluginStoreValue.Equals(object? obj) -> bool
+override FluentCMS.Plugins.PluginStoreValue.GetHashCode() -> int
+override FluentCMS.Plugins.PluginStoreValue.ToString() -> string!
 override abstract FluentCMS.Events.MediaAssetEvent.<Clone>$() -> FluentCMS.Events.MediaAssetEvent!
 override FluentCMS.Activity.ActivityEntry.Equals(object? obj) -> bool
 override FluentCMS.Activity.ActivityEntry.GetHashCode() -> int
@@ -3592,6 +3613,8 @@ static FluentCMS.Media.MediaUrls.operator !=(FluentCMS.Media.MediaUrls? left, Fl
 static FluentCMS.Media.MediaUrls.operator ==(FluentCMS.Media.MediaUrls? left, FluentCMS.Media.MediaUrls? right) -> bool
 static FluentCMS.Plugins.ProblemDescription.operator !=(FluentCMS.Plugins.ProblemDescription? left, FluentCMS.Plugins.ProblemDescription? right) -> bool
 static FluentCMS.Plugins.ProblemDescription.operator ==(FluentCMS.Plugins.ProblemDescription? left, FluentCMS.Plugins.ProblemDescription? right) -> bool
+static FluentCMS.Plugins.PluginStoreValue.operator !=(FluentCMS.Plugins.PluginStoreValue? left, FluentCMS.Plugins.PluginStoreValue? right) -> bool
+static FluentCMS.Plugins.PluginStoreValue.operator ==(FluentCMS.Plugins.PluginStoreValue? left, FluentCMS.Plugins.PluginStoreValue? right) -> bool
 static FluentCMS.Providers.EmailMessage.operator !=(FluentCMS.Providers.EmailMessage? left, FluentCMS.Providers.EmailMessage? right) -> bool
 static FluentCMS.Providers.EmailMessage.operator ==(FluentCMS.Providers.EmailMessage? left, FluentCMS.Providers.EmailMessage? right) -> bool
 static FluentCMS.Providers.SearchRequest.operator !=(FluentCMS.Providers.SearchRequest? left, FluentCMS.Providers.SearchRequest? right) -> bool

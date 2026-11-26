@@ -176,9 +176,11 @@ internal sealed class LogCapture : ILoggerProvider
 internal static class SecretChecks
 {
     // The fields of every component the page renders that hold the secret, by component and field: nothing of the page may
-    // keep it once its dialog has closed.
+    // keep it once its dialog has closed. Read on the renderer's dispatcher, so that no render removes a component between
+    // finding it and reading its fields.
     public static string[] Holders(IRenderedComponent<AdminApp> app, string secret) =>
-        [.. app.FindComponents<IComponent>().SelectMany(component => FieldsHolding(component.Instance, secret))];
+        app.InvokeAsync(() => (string[])[.. app.FindComponents<IComponent>().SelectMany(component => FieldsHolding(component.Instance, secret))])
+            .GetAwaiter().GetResult();
 
     // A button of the wrapped set by its whole text.
     public static AngleSharp.Dom.IElement Button(IRenderedComponent<AdminApp> app, string text) =>
