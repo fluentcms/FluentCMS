@@ -341,8 +341,9 @@ public sealed class KeyringReprotectionTests : IDisposable
         var services = scope.ServiceProvider;
         var row = await services.GetRequiredService<PluginDbContext<WebhooksPlugin>>().Set<Webhook>().AsNoTracking().SingleAsync(item => item.Id == webhook, Token);
         var media = await services.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<MediaKey>().AsNoTracking().Where(item => item.Id == MediaSigning.KeyId).Select(item => item.Key).SingleOrDefaultAsync(Token);
-        var settings = await services.GetRequiredService<SystemDbContext>().Set<SettingRow>().AsNoTracking().Where(item => item.Key == Vault.Area).Select(item => item.Json + "|" + item.Version).SingleOrDefaultAsync(Token);
-        return new Read(row.Secret, row.PreviousSecret, row.Headers, media, settings?.Split('|')[0], settings?.Split('|')[1]);
+        // Two columns, not one text: PostgreSQL keeps the settings as json and refuses text joined to it.
+        var settings = await services.GetRequiredService<SystemDbContext>().Set<SettingRow>().AsNoTracking().Where(item => item.Key == Vault.Area).Select(item => new { item.Json, item.Version }).SingleOrDefaultAsync(Token);
+        return new Read(row.Secret, row.PreviousSecret, row.Headers, media, settings?.Json, settings?.Version);
     }
 
     private async Task<List<string>> TokenKeysAsync()
@@ -366,7 +367,7 @@ public sealed class KeyringReprotectionTests : IDisposable
 
     private sealed record TokenRow(string Use, int Sequence, string ProtectedKey, DateTimeOffset? RetiredAt);
 
-    private sealed record Read(string Secret, string? PreviousSecret, string Headers, string? MediaKey, string? Settings, string? SettingsVersion);
+    private sealed record Read(string Secret, string? PreviousSecret, string Headers, string? MediaKey, string? Settings, int? SettingsVersion);
 
     [Settings("vault")]
     private sealed class VaultSettings
