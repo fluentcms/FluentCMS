@@ -35,11 +35,12 @@ namespace FluentCMS.Core.Events;
 // of a batch is renewed only when what is left of it would not cover one more delivery, with the rows given back so far. The
 // rows delivered are settled together then and at the end of the batch, and the rows given back with one write at the end, so
 // a batch whose handlers answer in time costs one write to claim it and one to settle it; a renewal that fails ends the batch
-// and gives back the rows not tried, and so does a stopping host. The writes of a stop have the job runner's ReleaseTimeout
-// in all: those before the release, the settle first, have half at most, and the release what is left. What does not fit
-// stays leased. A crash before the settle delivers the batch again. A delivery is cut off before its lease can end, so that a
-// worker never delivers on a lease it has lost, and every write of an outcome is conditional on the claim. No handler starts
-// once its lane is told of a stop.
+// and gives back the rows not tried, and so does a stopping host. The writes of a stop have half of the job runner's
+// ReleaseTimeout in all, which leaves the other half to the drain job's own outcome: those before the release, the settle
+// first, have half of that at most, and the release what is left. What does not fit stays leased. A crash before the
+// settle delivers the batch again. A delivery is cut off before its lease can end, so that a worker never delivers on a
+// lease it has lost, and every write of an outcome is conditional on the claim. No handler starts once its lane is told of
+// a stop.
 // A cut-off that comes before the handler starts, as when the thread pool is starved, gives the attempt back and leaves the
 // row out of this drain for one MissingHandlerDelay. A handler that has to be abandoned once it has started may still be running,
 // on a thread of its own; nothing here can stop it.
@@ -77,6 +78,10 @@ internal sealed class OutboxDrainer(
 
     private TaskCompletionSource _wake = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    // The job runner waits ReleaseTimeout for the drain job's own outcome too, counted from the same cancellation, so a drain
+    // that took all of it would return as the runner stops waiting and leave its job leased.
+    private TimeSpan StopTimeout => jobs.ReleaseTimeout / 2;
+
     // On a thread of its own, since a handler that blocks before its first await would never hand control back to the
     // cut-off. A test replaces it to hold a handler back past its cut-off.
     internal Func<Func<Task>, Task> HandOff { get; set; } = work => Task.Run(work);
@@ -104,7 +109,7 @@ internal sealed class OutboxDrainer(
         var first = true;
 
         // The drain's own, whose end no provider is given, so that none can hold it back by ignoring it or in its callback.
-        await using var stop = new Stop(jobs.ReleaseTimeout, time, cancellationToken);
+        await using var stop = new Stop(StopTimeout, time, cancellationToken);
         var outOfTime = Task.Delay(Timeout.InfiniteTimeSpan, stop.Ended);
 
         while (!stop.Ended.IsCancellationRequested)
@@ -182,7 +187,7 @@ internal sealed class OutboxDrainer(
 
     // Runs a drain unless one already runs on this instance, which is then asked to look again, so that an outbox queue with
     // more than one worker still gives one lane to each owner here and keeps the order of its events. A drain cancelled
-    // without a host stop, as when its job lost its lease, returns at the end of ReleaseTimeout while a lane may still wait for
+    // without a host stop, as when its job lost its lease, returns at the end of its time while a lane may still wait for
     // its release; it holds off the next drain until its lanes end, so that no new lane claims an owner's later rows while
     // its earlier ones are still leased. Nothing kicks a drain when they end, so the rows wait for the next kick or sweep.
     public async Task<int> DrainOnceAsync(CancellationToken cancellationToken = default)
@@ -320,7 +325,7 @@ internal sealed class OutboxDrainer(
     // than claim what it just gave back.
     private async Task<(int Delivered, bool Stopped)> LaneAsync(Lanes lanesOf, string key, Deferrals deferred, CancellationToken hostStopping)
     {
-        await using var stop = new Stop(jobs.ReleaseTimeout, time, hostStopping);
+        await using var stop = new Stop(StopTimeout, time, hostStopping);
         var cancellationToken = stop.Requested;
         var delivered = 0;
         while (!cancellationToken.IsCancellationRequested)
@@ -1031,7 +1036,7 @@ internal sealed class OutboxDrainer(
         StateUnavailable,
     }
 
-    // The host's stop as a lane, or the drain itself, sees it: that it came, the end of the half of ReleaseTimeout for what is
+    // The host's stop as a lane, or the drain itself, sees it: that it came, the end of the half of its time for what is
     // written before the release, and the end of it all. Each lane has its own, and each token is cancelled on a thread of its
     // own: what waits on one goes on, and a provider's callback runs, inside the call that cancels it, which would hold the
     // host, another lane or a timer. The sources are not disposed, since that can come before those threads are done.
