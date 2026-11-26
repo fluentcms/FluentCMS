@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Data.Common;
 using FluentCMS.Content;
 using FluentCMS.Core.Jobs;
@@ -28,7 +29,9 @@ namespace FluentCMS.Core.Events;
 // write of its own; a row that is not run to an end gives its attempt back. A row taken over from a worker of another process
 // whose lease lapsed is claimed alone, so that a delivery that kills its process costs the rows after it one attempt at most;
 // one that a claim of this instance gave up without a write, as when a release failed, was not killed by its delivery, so it
-// is claimed with the rest of its batch. A claim that fails or is stopped after its update gives back what it took. The lease
+// is claimed with the rest of its batch. Until the lease of the rows of a release that failed ends, the lane of their owner
+// claims nothing, so that the owner's later rows do not go first; that holds back no other owner, and is kept in memory, so it
+// is of this instance alone. A claim that fails or is stopped after its update gives back what it took. The lease
 // of a batch is renewed only when what is left of it would not cover one more delivery, with the rows given back so far. The
 // rows delivered are settled together then and at the end of the batch, and the rows given back with one write at the end, so
 // a batch whose handlers answer in time costs one write to claim it and one to settle it; a renewal that fails ends the batch
@@ -61,6 +64,10 @@ internal sealed class OutboxDrainer(
     private const string Unregistered = Lanes.Unregistered;
 
     private readonly string _instance = $"{Environment.MachineName}/{Guid.NewGuid():N}";
+
+    // For each lane whose release failed, when the lease of those rows ends at the latest. Kept by the drainer rather than the
+    // drain, so that a lane started again, by a later signal or a later drain, waits for it too.
+    private readonly ConcurrentDictionary<string, DateTimeOffset> _unreleased = new(StringComparer.Ordinal);
 
     private static readonly TimeSpan[] BusyRetries = [TimeSpan.FromMilliseconds(50), TimeSpan.FromMilliseconds(200), TimeSpan.FromSeconds(1)];
 
@@ -319,7 +326,7 @@ internal sealed class OutboxDrainer(
         while (!cancellationToken.IsCancellationRequested)
         {
             var claim = await ClaimWithRetryAsync(lanesOf, key, deferred, stop);
-            if (claim.Rows.Count == 0)
+            if (claim is not { Rows.Count: > 0 })
             {
                 break;
             }
@@ -335,11 +342,43 @@ internal sealed class OutboxDrainer(
         return (delivered, false);
     }
 
-    private async Task<Claim> ClaimWithRetryAsync(Lanes lanesOf, string key, Deferrals deferred, Stop stop)
+    // False when the lane is stopped while it waits.
+    private async Task<bool> UnreleasedEndedAsync(string key, CancellationToken cancellationToken)
+    {
+        if (!_unreleased.TryGetValue(key, out var until))
+        {
+            return true;
+        }
+
+        var left = until - time.GetUtcNow();
+        if (left > TimeSpan.Zero)
+        {
+            try
+            {
+                await Task.Delay(left, time, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
+        }
+
+        _unreleased.TryRemove(new KeyValuePair<string, DateTimeOffset>(key, until));
+        return true;
+    }
+
+    // Null when the lane is stopped while it waits for the lease of a release that failed, which every attempt does, so that a
+    // retry after a claim whose release failed waits too.
+    private async Task<Claim?> ClaimWithRetryAsync(Lanes lanesOf, string key, Deferrals deferred, Stop stop)
     {
         var cancellationToken = stop.Requested;
         for (var attempt = 1; ; attempt++)
         {
+            if (!await UnreleasedEndedAsync(key, cancellationToken))
+            {
+                return null;
+            }
+
             try
             {
                 return await ClaimAsync(lanesOf, key, deferred, stop);
@@ -377,7 +416,7 @@ internal sealed class OutboxDrainer(
 
         if (candidates.Count == 0)
         {
-            return new Claim(owner, leaseUntil, []);
+            return new Claim(key, owner, leaseUntil, []);
         }
 
         var ordered = candidates.OrderBy(candidate => candidate.Sequence).ThenBy(candidate => candidate.Id).Take(options.BatchSize).ToList();
@@ -403,7 +442,7 @@ internal sealed class OutboxDrainer(
 
             if (won == 0)
             {
-                return new Claim(owner, leaseUntil, []);
+                return new Claim(key, owner, leaseUntil, []);
             }
 
             var rows = await context.Set<OutboxMessage>().AsNoTracking()
@@ -411,13 +450,13 @@ internal sealed class OutboxDrainer(
                 .OrderBy(message => message.Sequence).ThenBy(message => message.Id)
                 .ToListAsync(cancellationToken);
 
-            return new Claim(owner, leaseUntil, rows);
+            return new Claim(key, owner, leaseUntil, rows);
         }
         catch (Exception) when (won > 0 || cancellationToken.IsCancellationRequested)
         {
             // The update may have landed though nothing of it was read back, let alone delivered, so what it took goes back
             // with the attempt it counted; the owner is this claim's alone, so a release of what it did not take matches nothing.
-            await ReleaseAsync(new Claim(owner, leaseUntil, []), ids, [], stop.Ended);
+            await ReleaseAsync(new Claim(key, owner, leaseUntil, []), ids, [], stop.Ended);
             throw;
         }
     }
@@ -508,7 +547,9 @@ internal sealed class OutboxDrainer(
         var ids = left.Concat(outcomes.Back).Concat(outcomes.Waiting).Select(row => row.Id).ToList();
         try
         {
+            // Before the write, which may land though it fails, so that a release that fails after it waits for this lease.
             var until = time.GetUtcNow() + options.LeaseDuration;
+            claim.LeaseUntil = until;
             var held = await InTimeAsync(
                 async (context, token) =>
                 {
@@ -516,7 +557,6 @@ internal sealed class OutboxDrainer(
                     return renewed == ids.Count ? ids : await HeldBy(context, claim, ids).Select(row => row.Id).ToListAsync(token);
                 },
                 limit);
-            claim.LeaseUntil = until;
             return [.. ids.Except(held)];
         }
         catch (Exception exception)
@@ -579,8 +619,9 @@ internal sealed class OutboxDrainer(
 
     // One update that gives the attempt of their claim back to rows whose handler did not run to an end: those that go back at
     // once keep their available_at, and those that wait have it moved by MissingHandlerDelay. A write that fails leaves them
-    // leased; once the lease ends, this instance claims them with the rest of their batch. After a stop this instance is gone,
-    // so the next one claims them one per claim, and its sweep fails those that were on their last attempt.
+    // leased; once the lease ends, this instance claims them with the rest of their batch, and until then their lane claims
+    // nothing. After a stop this instance is gone, so the next one claims them one per claim, and its sweep fails those that
+    // were on their last attempt.
     private async Task ReleaseAsync(Claim claim, List<Guid> back, List<Guid> waiting, CancellationToken limit)
     {
         List<Guid> ids = [.. back, .. waiting];
@@ -613,6 +654,7 @@ internal sealed class OutboxDrainer(
         }
         catch (Exception exception)
         {
+            _unreleased.AddOrUpdate(claim.Lane, claim.LeaseUntil, (_, held) => held > claim.LeaseUntil ? held : claim.LeaseUntil);
             foreach (var id in ids)
             {
                 EventLog.SettleFailed(logger, exception, id);
@@ -1048,8 +1090,10 @@ internal sealed class OutboxDrainer(
         public List<OutboxMessage> Waiting { get; } = [];
     }
 
-    private sealed class Claim(string owner, DateTimeOffset leaseUntil, List<OutboxMessage> rows)
+    private sealed class Claim(string lane, string owner, DateTimeOffset leaseUntil, List<OutboxMessage> rows)
     {
+        public string Lane { get; } = lane;
+
         public string Owner { get; } = owner;
 
         public DateTimeOffset LeaseUntil { get; set; } = leaseUntil;

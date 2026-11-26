@@ -212,7 +212,7 @@ public sealed class HookScopeTests : IDisposable
         failure.ShouldBeAssignableTo<OperationCanceledException>();
 
         // SqlClient without MARS throws its refusal of the rollback beside the open reader out of the disposal; Npgsql
-        // swallows a failed rollback, and SQLite rolls back beside the reader.
+        // closes the reader before it rolls back, and SQLite rolls back beside the reader.
         _logs.Of(9409).Count.ShouldBe(TestProvider.IsSqlServer ? 1 : 0);
         _script.Ended.Task.IsCompleted.ShouldBeFalse();
         await ReleaseAsync();

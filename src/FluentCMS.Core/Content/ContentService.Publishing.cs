@@ -855,14 +855,18 @@ internal sealed partial class ContentService
 
     // Holds rows read before the transaction held any, and reads the entry's rows again: one added between, which the holds
     // do not cover, would be taken out of the lock order or written unchecked (#3524). The write then runs again in a
-    // transaction of its own, which reads it; elsewhere it answers conflict, which a client retries.
-    private async Task HoldEveryRowAsync(Guid id, IReadOnlyCollection<Document> rows, Func<Task<Exception>>? conflict, CancellationToken cancellationToken)
+    // transaction of its own, which reads it; elsewhere it answers conflict, given the rows as stored. Answers the rows as
+    // read under the holds.
+    private async Task<List<Document>> HoldEveryRowAsync(Guid id, IReadOnlyCollection<Document> rows, Func<List<Document>, Task<Exception>>? conflict, CancellationToken cancellationToken)
     {
         await HoldInOrderAsync(rows, cancellationToken);
-        if ((await store.AllRowsAsync(id, cancellationToken)).Any(row => !rows.Any(held => held.Id == row.Id)))
+        var stored = await store.AllRowsAsync(id, cancellationToken);
+        if (stored.Any(row => !rows.Any(held => held.Id == row.Id)))
         {
-            throw new EntryRowsAddedException(conflict is null ? null : await conflict());
+            throw new EntryRowsAddedException(conflict is null ? null : await conflict(stored));
         }
+
+        return stored;
     }
 
     // Every compare and swap of one write, in the lock order, so that two writes that cross wait for each other rather than

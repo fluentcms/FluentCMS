@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
+using FluentCMS.Admin.Administration.Account;
 using FluentCMS.Admin.Api;
 using FluentCMS.Plugins.Media.Admin.Api;
 using Shouldly;
@@ -46,6 +47,10 @@ public sealed class OpenApiContractTests
         Check(ManagementJsonContext.Default.MyPreferences, Answer(paths, "/api/management/v1/me/preferences", "get"), "me/preferences", document, gaps);
         Check(ManagementJsonContext.Default.MyPreferences, Answer(paths, "/api/management/v1/me/preferences", "put"), "me/preferences put", document, gaps);
         Check(ManagementJsonContext.Default.MyPreferences, Answer(paths, "/api/management/v1/me/preferences", "patch"), "me/preferences patch", document, gaps);
+
+        // The account page's consents are the MCP plugin's route, read by the administration assembly (#3592).
+        Check(AccountJsonContext.Default.ItemListMyMcpConsent, Answer(paths, "/api/management/v1/mcp/consents", "get"), "mcp/consents", document, gaps);
+        paths["/api/management/v1/mcp/consents/{id}"]!["delete"]!["responses"]!["204"].ShouldNotBeNull();
         Check(ManagementJsonContext.Default.ApiProblem, document["components"]!["schemas"]!["problem"]!, "problem", document, gaps);
 
         gaps.ShouldBeEmpty();

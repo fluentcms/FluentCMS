@@ -13,9 +13,9 @@ namespace FluentCMS.Core.Api.Common;
 // for a repeat. Only a response below 500 is kept; a refused request, which throws, and a failure release the key, so
 // that a repeat runs again. The lease of the key is renewed while the request runs, however long it takes, and a request
 // whose key a repeat took over all the same, after renewals failed for a whole lease, is cancelled; one whose work answered
-// first answers what its work answered and keeps nothing. A key removed under its request, past its window, is put back.
-// The answer of work that answered before the client went away, or committed a write before it went, is kept also when it
-// goes away while the answer is written, so a retry is answered it.
+// first answers what its work answered and keeps nothing. A key removed under its request, after its lease ran out past its
+// window, is put back. The answer of work that answered before the client went away, or committed a write before it went,
+// is kept also when it goes away while the answer is written, so a retry is answered it.
 internal static class IdempotentRequests
 {
     public const string ReplayedHeader = "Idempotent-Replayed";
