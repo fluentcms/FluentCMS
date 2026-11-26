@@ -126,8 +126,10 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
             (refused.StatusCode == System.Net.HttpStatusCode.BadRequest).ShouldBeTrue("the token endpoint took the revoked refresh token");
         }
 
-        await tab.Page.WaitForURLAsync(url => new Uri(url).AbsolutePath == "/account/logout");
-        await tab.Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign out", Exact = true }).ClickAsync();
+        var signOut = tab.Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign out", Exact = true });
+        await Expect(signOut).ToBeVisibleAsync();
+        new Uri(tab.Page.Url).AbsolutePath.ShouldBe("/account/logout");
+        await signOut.ClickAsync();
 
         // Back at the admin's base, which finds no session in the tab and none on the server.
         await Expect(tab.LoginField).ToBeVisibleAsync();
