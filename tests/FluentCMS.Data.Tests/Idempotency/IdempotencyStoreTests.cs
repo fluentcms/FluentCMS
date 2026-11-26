@@ -43,6 +43,8 @@ public sealed class IdempotencyStoreTests : IDisposable
 
     private readonly AfterCommit _afterCommit = new();
 
+    private readonly LostAnswer _lostAnswer = new();
+
     private readonly ServiceDatabase _database;
 
     public IdempotencyStoreTests() =>
@@ -51,7 +53,7 @@ public sealed class IdempotencyStoreTests : IDisposable
             cms.Services.AddSingleton<TimeProvider>(_clock);
             cms.Services.AddSingleton<ILoggerProvider>(_logs);
             cms.Services.AddSingleton<IEntryChangeSink>(_afterCommit);
-            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(_gate));
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(_gate, _lostAnswer));
             cms.Idempotency.Window = TimeSpan.FromHours(24);
             cms.Idempotency.InProgressTimeout = TimeSpan.FromMinutes(5);
         });
@@ -222,7 +224,7 @@ public sealed class IdempotencyStoreTests : IDisposable
         if (answered)
         {
             await Store.CompleteAsync(repeat, Created);
-            _clock.Advance(TimeSpan.FromHours(24));
+            _clock.Advance(TimeSpan.FromHours(24) - TimeSpan.FromMinutes(5));
             await RetainAsync();
         }
         else
@@ -250,6 +252,34 @@ public sealed class IdempotencyStoreTests : IDisposable
 
         Rows().ShouldBeEmpty();
         (await Store.RenewAsync(first, Token)).ShouldBe(IdempotencyRenewal.Lost);
+    }
+
+    // #3582: a put-back whose insert committed but reported a failure leaves the claim with the window of the row it wrote,
+    // so that once a repeat took that row over, answered and the row went past its window, the request is not put back
+    // again against the window of the row before.
+    [Fact]
+    public async Task APutBackThatCommittedButFailedKeepsTheWindowOfItsRow()
+    {
+        var first = (await BeginAsync()).Claim!;
+        _clock.Advance(TimeSpan.FromHours(24));
+        (await Store.RenewAsync(first, Token)).ShouldBe(IdempotencyRenewal.Renewed);
+        _clock.Advance(TimeSpan.FromMinutes(5));
+        await RetainAsync();
+        Rows().ShouldBeEmpty();
+
+        _lostAnswer.Arm();
+        await Should.ThrowAsync<InvalidOperationException>(() => Store.RenewAsync(first, Token));
+        Rows().ShouldHaveSingleItem().Owner.ShouldBe(first.Owner);
+        (await Store.RenewAsync(first, Token)).ShouldBe(IdempotencyRenewal.Renewed);
+
+        _clock.Advance(TimeSpan.FromMinutes(5));
+        await Store.CompleteAsync((await BeginAsync()).Claim.ShouldNotBeNull(), Created);
+        _clock.Advance(TimeSpan.FromHours(24) - TimeSpan.FromMinutes(2));
+        await RetainAsync();
+        Rows().ShouldBeEmpty();
+
+        (await Store.RenewAsync(first, Token)).ShouldBe(IdempotencyRenewal.Lost);
+        Rows().ShouldBeEmpty();
     }
 
     // #3523: a repeat that read a lapsed lease loses its takeover to a renewal of that lease before its update.
@@ -931,6 +961,17 @@ public sealed class IdempotencyStoreTests : IDisposable
                 await _at!().WaitAsync(TimeSpan.FromSeconds(30), Token);
             }
         }
+    }
+
+    // Once armed, fails the next save of the store after it committed, as a connection lost before its answer would.
+    private sealed class LostAnswer : SaveChangesInterceptor
+    {
+        private int _armed;
+
+        public void Arm() => Volatile.Write(ref _armed, 1);
+
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default) =>
+            Interlocked.Exchange(ref _armed, 0) == 1 ? throw new InvalidOperationException("The answer of a save that committed was lost.") : ValueTask.FromResult(result);
     }
 
     // What the store logs, by event id.

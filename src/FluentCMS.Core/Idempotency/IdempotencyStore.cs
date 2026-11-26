@@ -207,11 +207,14 @@ internal sealed class IdempotencyStore(IServiceScopeFactory scopes, IDataProvide
             ExpiresAt = now + options.Window,
         };
         context.Add(row);
+
+        // Before the save, since an insert that committed may still report a failure: the claim must then match the row its
+        // next renewal finds, and when the insert did not land, the row's window makes the next missing row a lost claim.
+        claim.LeaseUntil = row.LeaseUntil;
+        claim.ExpiresAt = row.ExpiresAt;
         try
         {
             await context.SaveChangesAsync(cancellationToken);
-            claim.LeaseUntil = row.LeaseUntil;
-            claim.ExpiresAt = row.ExpiresAt;
             return IdempotencyRenewal.Restored;
         }
         catch (DbUpdateException exception) when (provider.IsUniqueViolation(exception))
