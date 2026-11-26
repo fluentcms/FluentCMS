@@ -321,6 +321,11 @@ else
         {
             user = await change(Id, CancellationToken.None);
             (rolesMessage, roleToAdd) = (done, null);
+            if (Self)
+            {
+                // The caller's own roles give what it may do, as users.manage, which this page needs.
+                await Context.ReadAccessAsync();
+            }
         }
         catch (Exception exception) when (UserProblems.Has(exception, UserProblems.LastSuperAdmin))
         {

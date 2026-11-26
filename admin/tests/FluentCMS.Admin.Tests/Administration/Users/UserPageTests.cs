@@ -4,6 +4,7 @@ using Bunit;
 using FluentCMS.Admin.Administration.Users;
 using FluentCMS.Admin.Authentication;
 using FluentCMS.Admin.Localization;
+using FluentCMS.Admin.Shell;
 using FluentCMS.Admin.Tests.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -275,6 +276,72 @@ public sealed class UserPageTests : UsersTestContext
         var app = Open(Ada);
 
         Buttons(Section(app, "Account")).ShouldBe(["Require a password change"]);
+    }
+
+    // The caller's own roles give what it may do, so once the role that gives users.manage is taken from it the page and its
+    // menu entry go, rather than every later change being refused as above its reach (#3502).
+    [Fact]
+    public void RemovingTheCallersOwnRoleThatGivesUsersManageShowsNoAccessAndTheMenuEntryGoes()
+    {
+        Management.UserId = Ada;
+        Management.Answer = (method, path) =>
+        {
+            if (method == HttpMethod.Delete && path == $"users/{Ada:D}/roles/{SuperAdmin:D}")
+            {
+                Grant([]);
+            }
+
+            return null;
+        };
+        var app = Open(Ada);
+        Links(app).ShouldContain("users");
+        var reads = Management.Count("me/access");
+
+        Button(Section(app, "Roles"), "Remove the role Super Admin").Click();
+
+        app.WaitForAssertion(() => Heading(app).ShouldBe(Text("Shell.NoAccess.Heading")));
+        Links(app).ShouldNotContain("users");
+        Management.Count("me/access").ShouldBe(reads + 1);
+    }
+
+    [Fact]
+    public void ARoleChangeOnAnotherUserReadsNothingMore()
+    {
+        Management.UserId = Ada;
+        var app = Open(Grace);
+        var reads = Management.Requests.Count;
+
+        Button(Section(app, "Roles"), "Remove the role Author (Main)").Click();
+
+        app.WaitForAssertion(() =>
+        {
+            Message(app, "Roles").ShouldBe("The role Author (Main) was removed.");
+            Section(app, "Roles").QuerySelector("select")!.HasAttribute("disabled").ShouldBeFalse();
+        });
+        Management.Requests.Count.ShouldBe(reads + 1);
+        Heading(app).ShouldBe("grace");
+    }
+
+    // The role is changed already, so a read of the access that fails leaves the page with what the change answered.
+    [Fact]
+    public void AnOwnRoleChangeWhoseAccessIsNotReadAgainIsStillDone()
+    {
+        Management.UserId = Ada;
+        var app = Open(Ada);
+        var reads = Management.Count("me/access");
+        Management.Answer = (method, path) => path == "me/access" ? new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) : null;
+
+        Button(Section(app, "Roles"), "Remove the role Super Admin").Click();
+
+        app.WaitForAssertion(() =>
+        {
+            Message(app, "Roles").ShouldBe("The role Super Admin was removed.");
+            Section(app, "Roles").QuerySelector("select")!.HasAttribute("disabled").ShouldBeFalse();
+        });
+        Management.Count("me/access").ShouldBeGreaterThan(reads);
+        Items(Section(app, "Roles")).ShouldBeEmpty();
+        Heading(app).ShouldBe("ada");
+        Context.Status.ShouldBe(ShellStatus.Ready);
     }
 
     [Fact]

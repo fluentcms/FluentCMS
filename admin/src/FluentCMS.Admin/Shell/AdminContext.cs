@@ -48,6 +48,9 @@ internal sealed class AdminContext(
 
     // The reads of ReadPluginsAsync, of which only the last one started applies.
     private int _pluginReads;
+
+    // The reads of ReadAccessAsync, of which only the last one started applies.
+    private int _accessReads;
     private Task _localeReads = Task.CompletedTask;
     private Task<IReadOnlyDictionary<string, MyAccessInfo>>? _localeAccess;
 
@@ -229,6 +232,40 @@ internal sealed class AdminContext(
         if (generation == _generation && read == _pluginReads)
         {
             Plugins = installed;
+            Changed?.Invoke();
+        }
+    }
+
+    // After a change of the caller's own roles (spec 4.15), so that the gates and the menu follow what it may now do without a
+    // reload: the access and the schema of the content locale are read again. The access of each locale and the schema read
+    // before are dropped first, as the change made them stale; a read that fails, or that a switch, a change of locale or a
+    // later read overtook, changes nothing else.
+    public async Task ReadAccessAsync()
+    {
+        if (Status != ShellStatus.Ready)
+        {
+            return;
+        }
+
+        var (generation, read, locale) = (_generation, ++_accessReads, site.ContentLocale);
+        _localeAccess = null;
+        metadata.ForgetSchema();
+        MyAccessInfo access;
+        (SchemaDescription? Schema, bool Refused) schema;
+        try
+        {
+            access = await client.GetMyAccessAsync(site.Site, locale, CancellationToken.None);
+            schema = await ReadSchemaAsync(access, CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)
+        {
+            ShellLog.AccessNotRead(logger, exception);
+            return;
+        }
+
+        if (generation == _generation && read == _accessReads)
+        {
+            (AccessInfo, _accessLocale, Schema, SchemaRefused) = (access, locale, schema.Schema, schema.Refused);
             Changed?.Invoke();
         }
     }
@@ -449,20 +486,7 @@ internal sealed class AdminContext(
         var locale = site.ContentLocale;
         var access = await client.GetMyAccessAsync(site.Site, locale, token);
         var plugins = metadata.GetPluginsAsync(token);
-        SchemaDescription? schema = null;
-        var refused = !Holds(access, SchemaRead);
-        if (!refused)
-        {
-            try
-            {
-                schema = await metadata.GetSchemaAsync(token);
-            }
-            catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.Forbidden)
-            {
-                refused = true;
-            }
-        }
-
+        var (schema, refused) = await ReadSchemaAsync(access, token);
         var installed = await plugins;
         if (generation != _generation)
         {
@@ -471,6 +495,23 @@ internal sealed class AdminContext(
 
         (AccessInfo, _accessLocale, Schema, SchemaRefused, Plugins) = (access, locale, schema, refused, installed);
         Status = ShellStatus.Ready;
+    }
+
+    private async Task<(SchemaDescription? Schema, bool Refused)> ReadSchemaAsync(MyAccessInfo access, CancellationToken token)
+    {
+        if (!Holds(access, SchemaRead))
+        {
+            return (null, true);
+        }
+
+        try
+        {
+            return (await metadata.GetSchemaAsync(token), false);
+        }
+        catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.Forbidden)
+        {
+            return (null, true);
+        }
     }
 
     private async Task RunAsync(int generation, Func<Task> reads)

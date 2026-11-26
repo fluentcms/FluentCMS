@@ -28,4 +28,7 @@ internal static partial class ShellLog
 
     [LoggerMessage(EventId = 27, EventName = "CultureNotApplied", Level = LogLevel.Warning, Message = "The app started in another interface language than the saved one again after a reload for it; it stays in this one.")]
     public static partial void CultureNotApplied(ILogger logger);
+
+    [LoggerMessage(EventId = 28, EventName = "AccessNotRead", Level = LogLevel.Warning, Message = "What the user may do in the site could not be read again after a change of its roles; the admin shows it as it was.")]
+    public static partial void AccessNotRead(ILogger logger, Exception exception);
 }
