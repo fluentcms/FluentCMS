@@ -59,6 +59,12 @@ public sealed class MediaPlugin : IPlugin
         plugin.Services.AddKeyedSingleton(
             LocalFileStorage.RootKey,
             (services, _) => new DirectoryInfo(((LocalFileStorage)services.GetRequiredKeyedService<IFileStorage>(LocalFileStorage.ProviderName)).Root));
+
+        // The run of `fluentcms media sanitize-svg`, under a key core names too: dry run, output, error; it answers the SVGs it left.
+        plugin.Services.AddScoped<StoredSvgSanitizer>();
+        plugin.Services.AddKeyedScoped<Func<bool, TextWriter, TextWriter, CancellationToken, Task<int>>>(
+            StoredSvgSanitizer.Key,
+            (services, _) => services.GetRequiredService<StoredSvgSanitizer>().RunAsync);
         plugin.Services.AddHealthChecks()
             .AddCheck<MediaStorageHealthCheck>(MediaStorageHealthCheck.Name, failureStatus: null, [FluentCmsHealthCheckTags.Ready], MediaStorageHealthCheck.Timeout);
 
