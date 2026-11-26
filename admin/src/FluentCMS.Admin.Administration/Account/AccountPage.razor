@@ -3,8 +3,10 @@
    it is not part of the first download (A-41). *@
 @page "/account"
 @implements IDisposable
+@using FluentCMS.Admin.Authentication
 @using FluentCMS.Admin.Configuration
 @inject AdminConfiguration Configuration
+@inject IAdminSession Session
 @inject NavigationManager Navigation
 @inject IStringLocalizer<AccountResources> L
 
@@ -23,7 +25,7 @@
                 }
                 else
                 {
-                    <p><a href="@ChangePasswordUrl">@L["Account.Password.Change"]</a></p>
+                    <p><a href="@ChangePasswordUrl" @onclick="ChangePasswordAsync" @onclick:preventDefault>@L["Account.Password.Change"]</a></p>
                 }
             </CmsCard>
             <AccountPreferences />
@@ -49,6 +51,10 @@
     private string ChangePasswordUrl => ReturnsHere
         ? $"{ChangePasswordPage.AbsoluteUri}?ReturnUrl={Uri.EscapeDataString(Here.AbsolutePath)}"
         : ChangePasswordPage.AbsoluteUri;
+
+    // Through the session, which marks the tab first: the change ends the user's sessions, this tab's with them, and the
+    // return signs in again however young the sign-in is.
+    private Task ChangePasswordAsync() => Session.ChangePasswordAsync(ChangePasswordUrl, CancellationToken.None);
 
     protected override void OnInitialized() => hold.Changed += OnHoldChanged;
 

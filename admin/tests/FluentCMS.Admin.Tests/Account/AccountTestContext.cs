@@ -27,6 +27,9 @@ public abstract class AccountTestContext : AdminTestContext
     // The routes the page asked the session to sign in again to come back to.
     protected List<string?> SignIns => ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).SignIns;
 
+    // The addresses the page asked the session to leave for to change the password.
+    protected List<string> PasswordChanges => ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).PasswordChanges;
+
     // The authorization server cannot be reached when the page signs in again.
     protected void FailSignIn() =>
         ((SignedInTestSession)Services.GetRequiredService<IAdminSession>()).SignInError = new HttpRequestException("The authorization server did not answer.");
