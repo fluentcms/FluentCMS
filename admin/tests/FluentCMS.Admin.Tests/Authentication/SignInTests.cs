@@ -725,6 +725,49 @@ public sealed class SignInTests : IAsyncDisposable
         _storage[AdminSession.SessionKey].ShouldBeNull();
     }
 
+    // The change on the hosted page ends the user's sessions, this tab's refresh token with them, within the minute.
+    [Fact]
+    public async Task TheReturnFromThePasswordPageRightAfterSignInSignsInAgainAndComesBackToTheAccountPage()
+    {
+        const string PasswordPage = "https://cms.example.com/account/change-password?ReturnUrl=%2Faccount";
+        var tab = SignIn(new FakeManagementServer(), AccountPage.Route);
+
+        await tab.Session.ChangePasswordAsync(PasswordPage, Token);
+
+        var leave = tab.Navigation.History.First();
+        (leave.Uri, leave.Options.ForceLoad).ShouldBe((PasswordPage, true));
+        _storage[AdminSession.PasswordChangeKey].ShouldNotBeNull();
+        _authority.Expire("refresh-1");
+        var back = NewTab();
+
+        back.WaitForRedirect(back.Load(AccountPage.Route)).GetLeftPart(UriPartial.Path).ShouldBe("https://cms.example.com/connect/authorize");
+        Pending().ReturnRoute.ShouldBe(AccountPage.Route);
+        _storage[AdminSession.PasswordChangeKey].ShouldBeNull();
+        _time.Now.ShouldBeLessThan(_signedInAt + AdminSession.RepeatWindow);
+
+        var again = SignInAgain(new FakeManagementServer());
+        again.Navigation.Uri.ShouldBe("http://localhost/account");
+        again.Session.User.ShouldNotBeNull();
+    }
+
+    // Back from the password page without a change, the session holds, and the mark is gone with that start.
+    [Fact]
+    public async Task AReturnFromThePasswordPageTakesTheMarkSoALaterRefusalRightAfterSignInStillWaitsForTheUser()
+    {
+        var tab = SignIn(new FakeManagementServer(), AccountPage.Route);
+        await tab.Session.ChangePasswordAsync("https://cms.example.com/account/change-password?ReturnUrl=%2Faccount", Token);
+        var back = NewTab(api: new FakeManagementServer());
+        back.WaitForSignIn(back.Load(AccountPage.Route));
+        _storage[AdminSession.PasswordChangeKey].ShouldBeNull();
+        _authority.Expire(_authority.LastRefreshToken!);
+        var reload = NewTab();
+
+        var app = reload.Load(AccountPage.Route);
+
+        app.WaitForAssertion(() => app.Find("main#main h1").TextContent.ShouldBe("The session ended right after sign-in"));
+        reload.Navigation.History.ShouldAllBe(entry => !entry.Options.ForceLoad);
+    }
+
     [Fact]
     public async Task WithoutARefreshTokenAShortSessionEndsAndSignsInAgainAtItsExpiry()
     {

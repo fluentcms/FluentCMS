@@ -29,6 +29,7 @@ internal sealed class AdminSession(
     internal const string SignInKey = "fluentcms-admin/sign-in";
     internal const string SignedInAtKey = "fluentcms-admin/signed-in-at";
     internal const string TabKey = "fluentcms-admin/tab";
+    internal const string PasswordChangeKey = "fluentcms-admin/password-change";
 
     // How long the user may take on the hosted pages, a password change and a two-factor enrolment included.
     public static readonly TimeSpan SignInLifetime = TimeSpan.FromMinutes(30);
@@ -53,6 +54,7 @@ internal sealed class AdminSession(
     private Task<RefreshOutcome>? _refreshing;
     private bool _redirecting;
     private bool _endedAfterSignIn;
+    private bool _passwordChanged;
 
     public event Action? Changed;
 
@@ -86,6 +88,9 @@ internal sealed class AdminSession(
             return false;
         }
 
+        // The first start after the tab left for the hosted password page takes the mark, whatever it finds.
+        var passwordChanged = await TakePasswordChangeAsync();
+
         // A value another build or page wrote, without a token or a user, is no session. A copy of a tab that still holds the
         // session forgets it and signs in for itself, since a refresh token redeemed by both would end one of them.
         if (await ReadAsync(SessionKey, Json.StoredSession) is { RefreshToken: { Length: > 0 }, User.Subject: { Length: > 0 } } stored
@@ -94,7 +99,18 @@ internal sealed class AdminSession(
             await HoldTabAsync();
             _user = stored.User;
             _refreshToken = stored.RefreshToken;
-            switch (await RefreshOnceAsync())
+            RefreshOutcome outcome;
+            _passwordChanged = passwordChanged;
+            try
+            {
+                outcome = await RefreshOnceAsync();
+            }
+            finally
+            {
+                _passwordChanged = false;
+            }
+
+            switch (outcome)
             {
                 case RefreshOutcome.Refreshed:
                     Changed?.Invoke();
@@ -118,11 +134,19 @@ internal sealed class AdminSession(
         return RedirectToSignInAsync(AppRoute(returnRoute));
     }
 
+    // The change ends the user's sessions, this tab's with them, so the tab is marked before it leaves.
+    public async Task ChangePasswordAsync(string pageUrl, CancellationToken cancellationToken)
+    {
+        await storage.SetAsync(PasswordChangeKey, "1");
+        navigation.NavigateTo(pageUrl, forceLoad: true);
+    }
+
     public async Task<SignInCompletion> CompleteSignInAsync(string? code, string? state, string? error, CancellationToken cancellationToken)
     {
         // Used once, whatever follows: a second callback with the same state, a replayed code, finds nothing.
         var pending = await ReadAsync(SignInKey, Json.PendingSignIn);
         await storage.RemoveAsync(SignInKey);
+        await TakePasswordChangeAsync();
 
         var outcome = await RedeemAsync(pending, code, state, error, cancellationToken);
         if (outcome.Failure is { } failure)
@@ -146,6 +170,7 @@ internal sealed class AdminSession(
         await storage.RemoveAsync(SignInKey);
         await storage.RemoveAsync(SignedInAtKey);
         await storage.RemoveAsync(TabKey);
+        await storage.RemoveAsync(PasswordChangeKey);
         await storage.RemoveAsync(TabStorageKeys.Site);
         await drafts.ClearAsync();
         Changed?.Invoke();
@@ -419,7 +444,8 @@ internal sealed class AdminSession(
     }
 
     // The session is over: the unsaved forms are written under the user, the tab forgets the session, then the page goes to
-    // sign in and comes back to the route, unless the server ended it right after the sign-in.
+    // sign in and comes back to the route, unless the server ended it right after the sign-in and not for the user's own
+    // change of password.
     private async Task EndAsync(bool serverEnded)
     {
         var user = _user;
@@ -438,7 +464,7 @@ internal sealed class AdminSession(
         }
 
         await storage.RemoveAsync(SessionKey);
-        if (serverEnded && await SignedInRecentlyAsync())
+        if (serverEnded && !_passwordChanged && await SignedInRecentlyAsync())
         {
             SessionLog.SessionEndedAfterSignIn(logger);
             (_redirecting, _endedAfterSignIn) = (false, true);
@@ -480,6 +506,17 @@ internal sealed class AdminSession(
         }
 
         await tabs.HoldAsync(tabId);
+    }
+
+    private async Task<bool> TakePasswordChangeAsync()
+    {
+        if (await storage.GetAsync(PasswordChangeKey) is not { Length: > 0 })
+        {
+            return false;
+        }
+
+        await storage.RemoveAsync(PasswordChangeKey);
+        return true;
     }
 
     private async Task<bool> SignedInRecentlyAsync() =>
