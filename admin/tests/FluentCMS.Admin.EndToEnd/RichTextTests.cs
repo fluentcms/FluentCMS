@@ -18,9 +18,7 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
     private const string Pasted =
         """<p>Pasted <span style="color:red">red</span> <a href="javascript:alert(1)">bad</a><img src="x.png"> <a href="https://example.org/">good</a></p><table><tr><td>cell</td></tr></table>""";
 
-    // Not on WebKit (spec 7, #3651): after Ctrl+K on a selection and an address the selected text is gone, with no link.
     [Fact]
-    [Trait("NotOn", "webkit")]
     public async Task TheEditorWritesABodyByKeyboardSavesItAndReadsItBackUnchanged()
     {
         var browser = await OpenBrowserAsync();
