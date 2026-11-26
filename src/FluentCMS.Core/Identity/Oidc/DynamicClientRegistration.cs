@@ -4,6 +4,7 @@ using System.Text.Json;
 using FluentCMS.Agents;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Telemetry;
 using FluentCMS.Events;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -64,6 +65,7 @@ internal static class DynamicClientRegistration
             // After the metadata is checked, so that a refused registration spends nothing of the address's hour.
             if (!services.GetRequiredService<ClientRegistrationLimiter>().TryAcquire(ApiCaller.Address(context), policy.RegistrationsPerHour, out var retryAfter))
             {
+                FluentCmsTelemetry.RateLimitRefused.Add(1, new KeyValuePair<string, object?>(FluentCmsTelemetry.Tags.Policy, RateLimitPolicyNames.ClientRegistration));
                 var seconds = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds));
                 context.Response.Headers.RetryAfter = seconds.ToString(CultureInfo.InvariantCulture);
                 await ProblemWriter.WriteAsync(context, ProblemMapper.Known(LimitErrorCodes.RateLimited, $"Too many clients were registered from this address; try again in {seconds} seconds."), cancellationToken: context.RequestAborted);

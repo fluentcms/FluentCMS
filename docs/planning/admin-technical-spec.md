@@ -1048,7 +1048,8 @@ The nightly run has a job for each, `End-to-end (admin, firefox)` and `End-to-en
 | Case | Left out on | Why | Issue |
 | --- | --- | --- | --- |
 | `FormBehaviourTests.ATabWithoutUnsavedChangesClosesWithoutAQuestion` | WebKit | Playwright's WebKit runs the unload handlers of `close` with `RunBeforeUnload` and never closes the page, with or without a handler | [#3648] |
-| `NavigationProgressTests.AReloadOfAnAdministrationRouteShowsTheShellAndALoadingStateBeforeThePage` and `.AReloadOfAHalfsRouteShowsTheShellAndALoadingStateBeforeThePage` | WebKit | on the reload WebKit takes the lazily loaded assembly from its cache, often enough to fail a run, so the route that holds its download never sees a request and the page shows at once | [#3649] |
+
+The two reload cases of `NavigationProgressTests` run in WebKit too ([#3649]): there the case answers the lazily loaded assembly of its first visit as not to be stored, since WebKit would take it from its cache on the reload and the route that holds its download would never see a request.
 
 ## 8. Feature inventory
 

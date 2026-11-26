@@ -72,7 +72,7 @@ public static class FluentCmsTelemetry
         Instruments.ApiKeysRefused, "{request}", "Requests whose API key was refused, by the FCMS code of the reason: wrong, expired, revoked, or sent with another credential.");
 
     internal static readonly Counter<long> RateLimitRefused = Meter.CreateCounter<long>(
-        Instruments.RateLimitRefused, "{request}", "Requests a rate limit refused with a 429, by the policy that refused it: pre-auth, auth, health, static-files, delivery, management or caller.");
+        Instruments.RateLimitRefused, "{request}", "Requests a rate limit refused with a 429, by the policy that refused it: pre-auth, auth, health, static-files, delivery, management, caller or client-registration.");
 
     // Reports hits / (hits + misses) per cache since the process started. A cache that nothing has looked up reports nothing.
     internal static readonly ObservableGauge<double> CacheHitRatio = Meter.CreateObservableGauge(
