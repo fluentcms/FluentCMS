@@ -56,8 +56,7 @@ public sealed class AccountPageTests(EndToEndHost host) : BrowserTest(host)
         var codesShown = page.Locator("pre.account-codes");
         await Expect(card.GetByText(Text("Account.TwoFactor.Off"), new() { Exact = true })).ToBeVisibleAsync();
 
-        string[] codes;
-        await using (await browser.UnrecordedAsync())
+        var codes = await browser.UnrecordedAsync(async () =>
         {
             await Ui.ButtonIn(card, Text("Account.TwoFactor.Enrol")).ClickAsync();
             var key = browser.MaskAuthenticatorKey(await card.Locator("code.account-key").InnerTextAsync());
@@ -66,9 +65,9 @@ public sealed class AccountPageTests(EndToEndHost host) : BrowserTest(host)
 
             var title = Text("Account.TwoFactor.CodesHeading");
             await Expect(tab.ShownDialog(title)).ToBeVisibleAsync();
-            codes = (await tab.Dialog(title).Locator("pre.account-codes").InnerTextAsync()).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            codes.Length.ShouldBe(10);
-            foreach (var code in codes)
+            var shown = (await tab.Dialog(title).Locator("pre.account-codes").InnerTextAsync()).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            shown.Length.ShouldBe(10);
+            foreach (var code in shown)
             {
                 browser.Mask(code);
             }
@@ -79,10 +78,11 @@ public sealed class AccountPageTests(EndToEndHost host) : BrowserTest(host)
             await Expect(recovery).ToBeVisibleAsync();
             new Uri(page.Url).AbsolutePath.ShouldBe("/account/two-factor");
             await recovery.ClickAsync();
-            await page.GetByLabel("Recovery code", new() { Exact = true }).FillAsync(codes[0]);
+            await page.GetByLabel("Recovery code", new() { Exact = true }).FillAsync(shown[0]);
             await page.GetByRole(AriaRole.Button, new() { Name = "Sign in", Exact = true }).ClickAsync();
             await Expect(card.GetByText(Ui.Format(Text("Account.TwoFactor.On"), "9"), new() { Exact = true })).ToBeVisibleAsync();
-        }
+            return shown;
+        });
 
         page.Url.ShouldBe(new Uri(Host.Admin, Route).AbsoluteUri);
         await Expect(codesShown).ToHaveCountAsync(0);
@@ -91,12 +91,12 @@ public sealed class AccountPageTests(EndToEndHost host) : BrowserTest(host)
         await Expect(codesShown).ToHaveCountAsync(0);
 
         await Ui.ButtonIn(card, Text("Account.TwoFactor.Disable")).ClickAsync();
-        await using (await browser.UnrecordedAsync())
+        await browser.UnrecordedAsync(async () =>
         {
             await card.GetByRole(AriaRole.Textbox).FillAsync(codes[1]);
             await Ui.ButtonIn(card, Text("Account.TwoFactor.Disable")).ClickAsync();
             await Expect(tab.LoginField).ToBeVisibleAsync();
-        }
+        });
 
         await browser.SignInOnTheHostedPageAsync(tab, user);
         await Expect(card.GetByText(Text("Account.TwoFactor.Off"), new() { Exact = true })).ToBeVisibleAsync();

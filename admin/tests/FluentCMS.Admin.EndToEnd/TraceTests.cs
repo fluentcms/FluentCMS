@@ -157,12 +157,12 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
 
         browser.Mask(given);
         await ShowAsync(tab, "e2e-given", given);
-        await using (await browser.UnrecordedAsync())
+        await browser.UnrecordedAsync(async () =>
         {
             await ShowAsync(tab, "e2e-unrecorded", unrecorded);
             await tab.Page.EvaluateAsync("() => document.getElementById('e2e-unrecorded').remove()");
             await Expect(tab.Page.Locator("#e2e-unrecorded")).ToHaveCountAsync(0);
-        }
+        });
 
         await tab.Page.Locator("#e2e-given").ClickAsync();
         await browser.SaveTraceAsync(trace);
@@ -174,6 +174,32 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
         texts.ShouldContain(text => text.Contains("e2e-given", StringComparison.Ordinal), "the snapshots around the scope were not kept");
         texts.ShouldNotContain(text => text.Contains("e2e-unrecorded", StringComparison.Ordinal), "a step of the unrecorded scope is in the trace");
         TraceScrubber.Leaks(trace, [.. await browser.SecretsAsync(), unrecorded]).ShouldBeNull();
+    }
+
+    // Steps that fail may leave their secret on the page, so nothing is recorded after them: the trace a failed case keeps
+    // holds the chunk recorded before them alone.
+    [Fact]
+    public async Task UnrecordedStepsThatFailRecordNothingAgainAndTheKeptTraceEndsBeforeThem()
+    {
+        var trace = Path.Combine(_directory.FullName, "failed.zip");
+        var shown = "shown-" + Guid.NewGuid().ToString("N");
+        var browser = await OpenBrowserAsync(traces: _directory.FullName);
+        var tab = await SignedInTabAsync(browser, "");
+        await Expect(tab.Sidebar).ToBeVisibleAsync();
+
+        await Should.ThrowAsync<InvalidOperationException>(() => browser.UnrecordedAsync(async () =>
+        {
+            await ShowAsync(tab, "e2e-failed", shown);
+            throw new InvalidOperationException("The steps failed with their secret on the page.");
+        }));
+
+        await tab.Page.Locator("#e2e-failed").ClickAsync();
+        await browser.SaveTraceAsync(trace);
+
+        using var archive = ZipFile.OpenRead(trace);
+        archive.Entries.Select(entry => entry.FullName).Where(name => name.EndsWith(".trace", StringComparison.Ordinal)).ShouldBe(["trace.trace"]);
+        archive.Entries.Select(entry => Read(entry)).ShouldNotContain(text => text.Contains("e2e-failed", StringComparison.Ordinal), "a step during or after the failed steps is in the trace");
+        TraceScrubber.Leaks(trace, [.. await browser.SecretsAsync(), shown]).ShouldBeNull();
     }
 
     // A paragraph with the text over the page, clicked, so that its action has snapshots and a screenshot shows it.

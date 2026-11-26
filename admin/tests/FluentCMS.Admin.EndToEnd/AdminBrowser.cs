@@ -207,37 +207,45 @@ public sealed class AdminBrowser
 
     // The steps that show a secret no mask reaches, since a screenshot holds it as pixels: nothing of them is recorded, no
     // screenshot, snapshot or action, so that a kept trace holds none. The chunk recorded so far is kept aside for the kept
-    // trace, and a new one starts as the scope ends, once each page has painted again, so that its first screenshot is of the
-    // page without the secret. The scope ends once the page no longer shows it, and the secrets are given to Mask as well,
-    // for the text of the steps around it. Without traces it does nothing.
-    public async Task<IAsyncDisposable> UnrecordedAsync()
+    // trace, and a new one starts once the steps have returned, each page has painted again, so that its first screenshot is
+    // of the page without the secret. The steps end once the page no longer shows it, and the secrets are given to Mask as
+    // well, for the text of the steps around them. Steps that throw may leave the secret on the page, so nothing is recorded
+    // again: a failed case keeps the chunks recorded before them. Without traces only the steps run.
+    public Task UnrecordedAsync(Func<Task> steps) => UnrecordedAsync(async () =>
+    {
+        await steps();
+        return true;
+    });
+
+    public async Task<T> UnrecordedAsync<T>(Func<Task<T>> steps)
     {
         if (_unrecorded)
         {
-            throw new InvalidOperationException("An unrecorded scope of this browser is open already.");
+            throw new InvalidOperationException("Unrecorded steps of this browser are under way already.");
         }
 
         _unrecorded = true;
-        if (!_tracing)
+        var resume = _tracing;
+        if (resume)
         {
-            return new Unrecorded(this, resume: false);
+            _tracing = false;
+            var chunk = Path.Combine(ChunkDirectory().FullName, $"chunk-{_chunks.Count}.zip");
+            await _context.Tracing.StopChunkAsync(new TracingStopChunkOptions { Path = chunk });
+            _chunks.Add(chunk);
         }
 
-        _tracing = false;
-        var chunk = Path.Combine(ChunkDirectory().FullName, $"chunk-{_chunks.Count}.zip");
-        await _context.Tracing.StopChunkAsync(new TracingStopChunkOptions { Path = chunk });
-        _chunks.Add(chunk);
-        return new Unrecorded(this, resume: true);
+        var result = await steps();
+        _unrecorded = false;
+        if (resume)
+        {
+            await RecordAgainAsync();
+        }
+
+        return result;
     }
 
-    private async Task RecordAgainAsync(bool resume)
+    private async Task RecordAgainAsync()
     {
-        _unrecorded = false;
-        if (!resume)
-        {
-            return;
-        }
-
         foreach (var page in _context.Pages)
         {
             try
@@ -261,11 +269,6 @@ public sealed class AdminBrowser
         _chunks.Clear();
         _chunkDirectory?.Delete(recursive: true);
         _chunkDirectory = null;
-    }
-
-    private sealed class Unrecorded(AdminBrowser browser, bool resume) : IAsyncDisposable
-    {
-        public async ValueTask DisposeAsync() => await browser.RecordAgainAsync(resume);
     }
 
     // The address of each page of the context, masked, for the output of a failed test.
@@ -292,7 +295,7 @@ public sealed class AdminBrowser
     {
         try
         {
-            // A case that failed in an unrecorded scope leaves the chunks recorded before it.
+            // A case that failed in unrecorded steps, which record nothing again, leaves the chunks recorded before them.
             if (_tracing || _chunks.Count > 0)
             {
                 if (failed)

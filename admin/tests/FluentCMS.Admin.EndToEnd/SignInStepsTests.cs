@@ -46,8 +46,8 @@ public sealed class SignInStepsTests(EndToEndHost host) : BrowserTest(host)
         device.PolicyViolations.ShouldBeEmpty();
     }
 
-    // The key and the recovery codes the enrolment page shows are left out of a kept trace: the page is read and the code
-    // sent in an unrecorded scope, which ends once the admin is back.
+    // The key and the recovery codes the enrolment page shows are left out of a kept trace: the sign-in that leads to the page
+    // and the steps on it are unrecorded, until the admin is back.
     [Fact]
     public async Task AUserWhoseRoleRequiresTwoFactorEnrolsOnTheHostedPageAndComesBackToTheRoute()
     {
@@ -56,13 +56,13 @@ public sealed class SignInStepsTests(EndToEndHost host) : BrowserTest(host)
         var tab = await browser.NewTabAsync();
         var page = tab.Page;
         await page.GotoAsync(new Uri(Host.Admin, Route).AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, user);
-        await Expect(page.GetByLabel("Code from the app", new() { Exact = true })).ToBeVisibleAsync();
-        new Uri(page.Url).AbsolutePath.ShouldBe("/account/enable-two-factor");
 
-        TokenRequest exchange;
-        await using (await browser.UnrecordedAsync())
+        var exchange = await browser.UnrecordedAsync(async () =>
         {
+            await browser.SignInOnTheHostedPageAsync(tab, user);
+            await Expect(page.GetByLabel("Code from the app", new() { Exact = true })).ToBeVisibleAsync();
+            new Uri(page.Url).AbsolutePath.ShouldBe("/account/enable-two-factor");
+
             var key = browser.MaskAuthenticatorKey(await page.Locator("main code").First.InnerTextAsync());
             await page.GetByLabel("Code from the app", new() { Exact = true }).FillAsync(Ui.AuthenticatorCode(key));
             await page.GetByRole(AriaRole.Button, new() { Name = "Turn on two-factor sign-in", Exact = true }).ClickAsync();
@@ -75,10 +75,11 @@ public sealed class SignInStepsTests(EndToEndHost host) : BrowserTest(host)
                 browser.Mask(code.Trim());
             }
 
-            exchange = await tab.TokenRequestOfAsync(() => page.GetByRole(AriaRole.Link, new() { Name = "Continue", Exact = true }).ClickAsync());
+            var granted = await tab.TokenRequestOfAsync(() => page.GetByRole(AriaRole.Link, new() { Name = "Continue", Exact = true }).ClickAsync());
             await Expect(tab.Sidebar).ToBeVisibleAsync();
-        await Expect(GalleryHeading(tab)).ToBeVisibleAsync();
-        }
+            await Expect(GalleryHeading(tab)).ToBeVisibleAsync();
+            return granted;
+        });
 
         exchange.ShouldBeGranted("authorization_code");
         page.Url.ShouldBe(new Uri(Host.Admin, Route).AbsoluteUri);
