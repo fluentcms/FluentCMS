@@ -109,6 +109,21 @@ A review sorts each finding as a blocker or a follow-up and names its evidence: 
 
 You need the .NET 10 SDK, at the version in `global.json`. The tests use SQLite by default, so no database server is needed and Docker is not required.
 
+To run the reference host from a clone, trust the ASP.NET Core development certificate once and start the host. It runs in Development on SQLite, makes `src/FluentCMS.Host/fluentcms.db` at its first start and serves the admin at `https://localhost:5001/admin/`:
+
+```bash
+dotnet dev-certs https --trust
+dotnet run --project src/FluentCMS.Host
+```
+
+A new instance has no users, and the admin signs in the users of the instance, so make the first administrator after that first start. Stop the host, or add `--no-build` so that the command does not build over the running host. The arguments start with `fluentcms`, which is how the host tells a command from a start, and the command asks for the password twice. A password has at least 12 characters; a shorter one is refused with `FCMS3049`, a line that is easy to miss among the log lines of Development, and no user is made. The command ends with `Created the user` when it worked:
+
+```bash
+dotnet run --project src/FluentCMS.Host -- fluentcms user create --email you@example.com --role "Super Admin"
+```
+
+[The first sign-in](docs/admin.md#the-first-sign-in) has the rest, and [host configuration](docs/host-configuration.md) the two loops that rebuild the admin as its files change.
+
 To run the data tests on another provider, set `FLUENTCMS_TEST_PROVIDER` to `postgresql`, `sqlserver-2019` or `sqlserver-2025`. The tests then start that server once in a container through Testcontainers and give each test a database of its own on it, so they need Docker with Linux containers. Tests of SQLite itself, such as its journal modes, file locking, conventions and query plans, are skipped on the other providers with the reason. Run one provider at a time:
 
 ```bash
