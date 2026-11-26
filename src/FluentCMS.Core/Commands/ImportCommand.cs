@@ -15,6 +15,7 @@ internal sealed class ImportCommand : HostCommand
     public const string MissingLocales = "--missing-locales";
     public const string Authors = "--authors";
     public const string Roles = "--roles";
+    public const string MediaNameKeys = "--media-name-keys";
     public const string Json = "--json";
 
     private static readonly string[] MissingLocaleChoices = ["refuse", "skip"];
@@ -36,6 +37,7 @@ internal sealed class ImportCommand : HostCommand
         new(MissingLocales, "refuse (the default) or skip: whether the locales the site does not allow refuse the import or are left out.", "mode"),
         new(Authors, "keep (the default) or importer: whether the entries keep the authors of the package, or name whoever runs the import as the creator of what it creates and the updater of what it writes.", "mode"),
         new(Roles, "Imports the roles of the package too."),
+        new(MediaNameKeys, "Lets a media asset whose line has no file name the key of the storage the line names, as the asset's file, instead of taking a copy under a key of its own. Only for instances that share the database as well as the storage: the instance that wrote the key deletes the file when it purges, replaces or removes the site of its asset, whatever the other instance's asset says."),
         new(Json, "Writes the report as the endpoint's last line of JSON: {\"report\":{..}}."),
     ];
 
@@ -77,6 +79,7 @@ internal sealed class ImportCommand : HostCommand
                 Webhooks = arguments.Has(Webhooks),
                 Roles = arguments.Has(Roles),
                 Types = TransferCommands.TypesOf(arguments),
+                Options = arguments.Has(MediaNameKeys) ? new Dictionary<string, string> { ["mediaNameKeys"] = "true" } : new Dictionary<string, string>(),
             };
 
             var importer = context.Services.GetRequiredService<TransferImporter>();
