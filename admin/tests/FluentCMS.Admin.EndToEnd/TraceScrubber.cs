@@ -14,8 +14,12 @@ namespace FluentCMS.Admin.EndToEnd;
 // (Uri.EscapeDataString and WebUtility.UrlEncode), form-encoded as a browser posts it (a space as +, ! as %21), escaped
 // for JSON, and with its quotes and backslashes escaped as JavaScript writes them. Anything with the pattern of a JWS or
 // JWE, a Data Protection payload or a field of the code flow is masked too. Base64, UTF-16 and a secret split across
-// events are not checked. The masked trace is built beside the raw one, outside the folder CI uploads, and moved there only
-// once no secret in those forms, and no pattern, is found in any entry; otherwise it is deleted and not kept.
+// events are not checked. A secret no pattern finds, such as an authenticator key or a recovery code, is masked only once the
+// case gives it (AdminBrowser.Mask), and a screenshot is not masked at all, so the steps that show such a secret are not
+// recorded (AdminBrowser.UnrecordedAsync): the chunks recorded around them are joined into one trace here, the event logs of
+// each under a name of its own, which the trace viewer shows as one timeline. The masked trace is built beside the raw one,
+// outside the folder CI uploads, and moved there only once no secret in those forms, and no pattern, is found in any entry;
+// otherwise it is deleted and not kept.
 internal static partial class TraceScrubber
 {
     private const string Mask = "[masked]";
@@ -30,31 +34,40 @@ internal static partial class TraceScrubber
         ".png", ".jpeg", ".jpg", ".webp", ".gif", ".ico", ".woff", ".woff2", ".ttf",
     };
 
-    public static void Scrub(string source, string destination, IReadOnlyCollection<string> secrets)
+    public static void Scrub(string source, string destination, IReadOnlyCollection<string> secrets) => Scrub([source], destination, secrets);
+
+    // The chunks of one context, in the order they were recorded, as one trace. A resource a later chunk holds again, as a
+    // style the pages kept using, is kept once.
+    public static void Scrub(IReadOnlyList<string> sources, string destination, IReadOnlyCollection<string> secrets)
     {
         var forms = Forms(secrets);
-        var masked = source + ".masked";
+        var masked = sources[0] + ".masked";
         File.Delete(masked);
         try
         {
-            using (var input = ZipFile.OpenRead(source))
             using (var output = ZipFile.Open(masked, ZipArchiveMode.Create))
             {
-                foreach (var entry in input.Entries)
+                var written = new HashSet<string>(StringComparer.Ordinal);
+                for (var chunk = 0; chunk < sources.Count; chunk++)
                 {
-                    if (!Kept(entry.FullName))
+                    using var input = ZipFile.OpenRead(sources[chunk]);
+                    foreach (var entry in input.Entries)
                     {
-                        continue;
-                    }
+                        var name = chunk > 0 && LogEntry().IsMatch(entry.FullName) ? $"chunk{chunk}-{entry.FullName}" : entry.FullName;
+                        if (!Kept(entry.FullName) || !written.Add(name))
+                        {
+                            continue;
+                        }
 
-                    var bytes = Read(entry);
-                    if (IsText(entry.FullName))
-                    {
-                        bytes = Encoding.UTF8.GetBytes(MaskText(Encoding.UTF8.GetString(bytes), forms));
-                    }
+                        var bytes = Read(entry);
+                        if (IsText(entry.FullName))
+                        {
+                            bytes = Encoding.UTF8.GetBytes(MaskText(Encoding.UTF8.GetString(bytes), forms));
+                        }
 
-                    using var write = output.CreateEntry(entry.FullName, CompressionLevel.Optimal).Open();
-                    write.Write(bytes);
+                        using var write = output.CreateEntry(name, CompressionLevel.Optimal).Open();
+                        write.Write(bytes);
+                    }
                 }
             }
 

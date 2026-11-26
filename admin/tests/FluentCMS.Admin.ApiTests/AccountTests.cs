@@ -1,8 +1,7 @@
-using System.Buffers.Binary;
-using System.Security.Cryptography;
 using FluentCMS.Admin.Account;
 using FluentCMS.Admin.Administration.Account;
 using FluentCMS.Admin.Api;
+using FluentCMS.Admin.Testing;
 using FluentCMS.Core.Authorization;
 using Shouldly;
 using Xunit;
@@ -130,51 +129,19 @@ public sealed class AccountTests
         (await second.Client.GetMyPreferencesAsync(Token)).NumberFormat.ShouldBe("fr-FR");
     }
 
-    // RFC 6238 with the defaults of an authenticator app: SHA-1, six digits, 30 seconds.
-    private static string Totp(string key, DateTimeOffset at)
-    {
-        Span<byte> counter = stackalloc byte[8];
-        BinaryPrimitives.WriteInt64BigEndian(counter, at.ToUnixTimeSeconds() / 30);
-#pragma warning disable CA5350 // TOTP is defined on HMAC-SHA1.
-        var hash = HMACSHA1.HashData(Base32(key), counter);
-#pragma warning restore CA5350
-        var offset = hash[^1] & 0x0F;
-        var value = (BinaryPrimitives.ReadInt32BigEndian(hash.AsSpan(offset)) & 0x7FFFFFFF) % 1_000_000;
-        return value.ToString("D6", System.Globalization.CultureInfo.InvariantCulture);
-    }
-
     // The server checks codes on the host's clock and takes a code of each 30-second step once, so each code the test gives
     // is of the next step.
     private static string NextCode(AdminHost admin, string key)
     {
         admin.Host.Time.Advance(TimeSpan.FromSeconds(30));
-        return Totp(key, admin.Host.Time.GetUtcNow());
+        return Totp.Code(key, admin.Host.Time.GetUtcNow());
     }
 
     // A code no window of the key around the host's now gives.
     private static string WrongCode(AdminHost admin, string key)
     {
         var now = admin.Host.Time.GetUtcNow();
-        var valid = Enumerable.Range(-2, 5).Select(step => Totp(key, now.AddSeconds(step * 30))).ToHashSet(StringComparer.Ordinal);
+        var valid = Enumerable.Range(-2, 5).Select(step => Totp.Code(key, now.AddSeconds(step * 30))).ToHashSet(StringComparer.Ordinal);
         return Enumerable.Range(0, 1_000_000).Select(code => code.ToString("D6", System.Globalization.CultureInfo.InvariantCulture)).First(code => !valid.Contains(code));
-    }
-
-    private static byte[] Base32(string text)
-    {
-        const string Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-        List<byte> bytes = [];
-        int buffer = 0, bits = 0;
-        foreach (var c in text.TrimEnd('=').ToUpperInvariant())
-        {
-            buffer = (buffer << 5) | Alphabet.IndexOf(c, StringComparison.Ordinal);
-            bits += 5;
-            if (bits >= 8)
-            {
-                bits -= 8;
-                bytes.Add((byte)(buffer >> bits));
-            }
-        }
-
-        return [.. bytes];
     }
 }

@@ -27,6 +27,12 @@ public sealed class AdminBrowser
     // How many of the requests the browser gave up, and of the answers it could not give, are kept, the last ones.
     private const int Kept = 20;
 
+    // The shortest value kept as a secret: a shorter one would mask ordinary text, and no secret of the sign-in is that short.
+    private const int ShortestSecret = 8;
+
+    // Until each page has painted twice, or a second at most for a page that paints no more, as one in the background.
+    private const string Painted = "() => new Promise(resolve => { requestAnimationFrame(() => requestAnimationFrame(resolve)); setTimeout(resolve, 1000); })";
+
     internal const string CancelledError = "net::ERR_ABORTED";
 
     private readonly EndToEndHost _host;
@@ -39,8 +45,11 @@ public sealed class AdminBrowser
     private readonly ConcurrentBag<Task> _reads = [];
     private readonly ConcurrentQueue<string> _givenUp = new();
     private readonly ConcurrentQueue<string> _unread = new();
+    private readonly List<string> _chunks = [];
+    private DirectoryInfo? _chunkDirectory;
     private int _cancelled;
     private bool _tracing;
+    private bool _unrecorded;
 
     private AdminBrowser(EndToEndHost host, IBrowserContext context, string? traces)
     {
@@ -120,26 +129,147 @@ public sealed class AdminBrowser
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign in", Exact = true }).ClickAsync();
     }
 
-    // The trace of this context, masked, at path; the same as a failed test leaves. The unmasked trace is written outside the
-    // traces folder, in a folder of the run's host, which is deleted with it if this process dies first.
+    // The hosted page that changes the password, filled in and sent as the editor does; the editor with its new password,
+    // which the mask knows from here on.
+    public async Task<Editor> ChangePasswordOnTheHostedPageAsync(AdminTab tab, Editor editor)
+    {
+        var changed = editor with { Password = EndToEndHost.NewPassword() };
+        Mask(editor.Password);
+        Mask(changed.Password);
+        var page = tab.Page;
+        var current = page.GetByLabel("Current password", new PageGetByLabelOptions { Exact = true });
+        await current.WaitForAsync(new LocatorWaitForOptions { Timeout = (float)Wait.TotalMilliseconds });
+        new Uri(page.Url).AbsolutePath.ShouldBe("/account/change-password");
+        try
+        {
+            await current.FillAsync(editor.Password);
+            await page.GetByLabel("New password", new PageGetByLabelOptions { Exact = true }).FillAsync(changed.Password);
+            await page.GetByLabel("Repeat the new password", new PageGetByLabelOptions { Exact = true }).FillAsync(changed.Password);
+        }
+        catch (PlaywrightException exception)
+        {
+            throw new PlaywrightException(Masked(exception.Message));
+        }
+
+        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Change the password", Exact = true }).ClickAsync();
+        return changed;
+    }
+
+    // The trace of this context, masked, at path; the same as a failed test leaves: the chunks recorded around the unrecorded
+    // scopes, as one trace. The unmasked chunks are written outside the traces folder, in a folder of the run's host, which is
+    // deleted with them if this process dies first.
     public async Task SaveTraceAsync(string path)
     {
-        var raw = _host.NewDirectory();
+        var raw = ChunkDirectory();
+        var recording = _tracing;
         _tracing = false;
         try
         {
-            await _context.Tracing.StopAsync(new TracingStopOptions { Path = Path.Combine(raw.FullName, "trace.zip") });
+            List<string> chunks = [.. _chunks];
+            if (recording)
+            {
+                chunks.Add(Path.Combine(raw.FullName, $"chunk-{chunks.Count}.zip"));
+                await _context.Tracing.StopAsync(new TracingStopOptions { Path = chunks[^1] });
+            }
+            else
+            {
+                await _context.Tracing.StopAsync();
+            }
+
             await ReadsAsync();
-            TraceScrubber.Scrub(Path.Combine(raw.FullName, "trace.zip"), path, [.. _secrets.Keys]);
+            TraceScrubber.Scrub(chunks, path, [.. _secrets.Keys]);
         }
         finally
         {
-            raw.Delete(recursive: true);
+            DeleteChunks();
         }
     }
 
-    // A secret the test read from the page, as from the clipboard, so that a kept trace is masked of it and checked for it.
-    public void Mask(string secret) => Keep(secret);
+    // A secret the test read from the page, as from the clipboard or from a step that shows it once, such as an authenticator
+    // key, a recovery code or a new password, which no pattern finds: a kept trace is masked of it and checked for it, as it
+    // is written and in each encoding TraceScrubber knows. A value too short to be kept is refused rather than left unmasked.
+    public void Mask(string secret)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(secret.Length, ShortestSecret, nameof(secret));
+        Keep(secret);
+    }
+
+    // An authenticator key as a page shows it, in groups of four in lower case, masked in that form and in the forms a page or
+    // the authenticator URI writes it, and returned without its spaces.
+    public string MaskAuthenticatorKey(string shown)
+    {
+        var key = shown.Replace(" ", "", StringComparison.Ordinal).Trim();
+        Mask(shown.Trim());
+        Mask(key.ToLowerInvariant());
+        Mask(key.ToUpperInvariant());
+        return key;
+    }
+
+    // The steps that show a secret no mask reaches, since a screenshot holds it as pixels: nothing of them is recorded, no
+    // screenshot, snapshot or action, so that a kept trace holds none. The chunk recorded so far is kept aside for the kept
+    // trace, and a new one starts once the steps have returned, each page has painted again, so that its first screenshot is
+    // of the page without the secret. The steps end once the page no longer shows it, and the secrets are given to Mask as
+    // well, for the text of the steps around them. Steps that throw may leave the secret on the page, so nothing is recorded
+    // again: a failed case keeps the chunks recorded before them. Without traces only the steps run.
+    public Task UnrecordedAsync(Func<Task> steps) => UnrecordedAsync(async () =>
+    {
+        await steps();
+        return true;
+    });
+
+    public async Task<T> UnrecordedAsync<T>(Func<Task<T>> steps)
+    {
+        if (_unrecorded)
+        {
+            throw new InvalidOperationException("Unrecorded steps of this browser are under way already.");
+        }
+
+        _unrecorded = true;
+        var resume = _tracing;
+        if (resume)
+        {
+            _tracing = false;
+            var chunk = Path.Combine(ChunkDirectory().FullName, $"chunk-{_chunks.Count}.zip");
+            await _context.Tracing.StopChunkAsync(new TracingStopChunkOptions { Path = chunk });
+            _chunks.Add(chunk);
+        }
+
+        var result = await steps();
+        _unrecorded = false;
+        if (resume)
+        {
+            await RecordAgainAsync();
+        }
+
+        return result;
+    }
+
+    private async Task RecordAgainAsync()
+    {
+        foreach (var page in _context.Pages)
+        {
+            try
+            {
+                await page.EvaluateAsync(Painted);
+            }
+            catch (PlaywrightException)
+            {
+                // A page that navigates away paints its next document after the chunk has started, without the secret.
+            }
+        }
+
+        await _context.Tracing.StartChunkAsync(new TracingStartChunkOptions { Title = TestContext.Current.Test?.TestDisplayName });
+        _tracing = true;
+    }
+
+    private DirectoryInfo ChunkDirectory() => _chunkDirectory ??= _host.NewDirectory();
+
+    private void DeleteChunks()
+    {
+        _chunks.Clear();
+        _chunkDirectory?.Delete(recursive: true);
+        _chunkDirectory = null;
+    }
 
     // The address of each page of the context, masked, for the output of a failed test.
     internal IEnumerable<string> Addresses => _context.Pages.Select(page => Masked(page.Url));
@@ -165,7 +295,8 @@ public sealed class AdminBrowser
     {
         try
         {
-            if (_tracing)
+            // A case that failed in unrecorded steps, which record nothing again, leaves the chunks recorded before them.
+            if (_tracing || _chunks.Count > 0)
             {
                 if (failed)
                 {
@@ -181,6 +312,7 @@ public sealed class AdminBrowser
         }
         finally
         {
+            DeleteChunks();
             await _context.CloseAsync();
         }
     }
@@ -362,10 +494,9 @@ public sealed class AdminBrowser
         }
     }
 
-    // A value under 8 characters is not kept: it would mask ordinary text, and no secret of the sign-in is that short.
     private void Keep(string value)
     {
-        if (value.Length >= 8)
+        if (value.Length >= ShortestSecret)
         {
             _secrets.TryAdd(value, true);
         }
@@ -389,6 +520,7 @@ public sealed class AdminTab
     private readonly ConcurrentQueue<Call> _calls = new();
     private long _callsSeen;
     private long _lastGrant;
+    private long _lastSignIn;
 
     internal AdminTab(EndToEndHost host, IPage page, Func<string, string> masked)
     {
@@ -539,10 +671,33 @@ public sealed class AdminTab
     {
         if (request.Status == 200)
         {
-            Interlocked.Exchange(ref _lastGrant, DateTime.UtcNow.Ticks);
+            var now = DateTime.UtcNow.Ticks;
+            Interlocked.Exchange(ref _lastGrant, now);
+            if (request.GrantType == "authorization_code")
+            {
+                Interlocked.Exchange(ref _lastSignIn, now);
+            }
         }
 
         _tokenRequests.Enqueue(request);
+    }
+
+    // Returns once the tab's last grant is older than the age, as for a time the server counts from the redemption of the
+    // refresh token the tab last sent. No request is sent meanwhile.
+    public Task LastGrantOlderThanAsync(TimeSpan age) => OlderThanAsync(Interlocked.Read(ref _lastGrant), age);
+
+    // Returns once the tab's last sign-in, its last code redeemed, is older than the age; a tab the admin opened from it
+    // keeps that time with the copy of its sessionStorage.
+    public Task SignInOlderThanAsync(TimeSpan age) => OlderThanAsync(Interlocked.Read(ref _lastSignIn), age);
+
+    private static async Task OlderThanAsync(long granted, TimeSpan age)
+    {
+        granted.ShouldBeGreaterThan(0, "the tab has no such grant yet");
+        var wait = new DateTime(granted, DateTimeKind.Utc) + age - DateTime.UtcNow;
+        if (wait > TimeSpan.Zero)
+        {
+            await Task.Delay(wait, TestContext.Current.CancellationToken);
+        }
     }
 
     // Returns once the tab's access token is due for its refresh on demand, half its lifetime after the last grant, so that
