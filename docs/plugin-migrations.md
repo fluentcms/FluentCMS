@@ -61,6 +61,8 @@ EF cuts a check constraint's given name of more than 63 characters to 63 in the 
 
 The check maps the contributor on a model without EF's conventions, so what only the conventions find or make is not measured: a property that no call of the contributor configures, and the foreign key that links the table of a TPT type or of an entity splitting fragment to the table it extends, such as `FK_{table}_{main table}_{key}`.
 
+Without conventions that model also has two names that EF never emits, so they are left out ([#3562](https://github.com/fluentcms/FluentCMS/issues/3562)). This is where an owned type maps to its owner's table, or a type maps to its principal's table with a foreign key on its own primary key to the principal's (table splitting): the two types are one row. EF emits no foreign key for that link, and it maps the dependent's key to the principal's key columns, whose names the principal's measure. The model without conventions still has the foreign key, such as `FK_{table}_{table}_OrderId`, and gives an owned type a key column of its own, such as `Address_OrderId`. Every other foreign key is measured: one to another table, an owned type's on a table of its own included, and one to the same table on other columns, such as a parent reference.
+
 ## Adding a migration
 
 You need the `dotnet-ef` tool (`dotnet tool install --global dotnet-ef`).

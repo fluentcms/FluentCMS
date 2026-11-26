@@ -119,6 +119,19 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
     // only, so they are not on this model and not measured.
     private static IEnumerable<StoreName> NamesOnPostgreSql(IMutableEntityType entity)
     {
+        // An owned type on its owner's table, or a type split from its principal's table by a foreign key on its own key, is
+        // one row with its principal: EF emits no foreign key for that link and maps its properties to the principal's key
+        // columns, which the principal's names hold. Without conventions the model still has the foreign key, and an owned
+        // type a key column of its own, such as Address_OrderId, so both are left out here. A foreign key to another table,
+        // an owned type's on a table of its own included, or to the same table on other columns, is measured.
+        var table = StoreObjectIdentifier.Create(entity, StoreObjectType.Table);
+        var links = entity.GetDeclaredForeignKeys()
+            .Where(foreignKey => table is { } shared
+                && StoreObjectIdentifier.Create(foreignKey.PrincipalEntityType, StoreObjectType.Table) == shared
+                && (foreignKey.IsOwnership || (foreignKey.PrincipalKey.IsPrimaryKey() && entity.FindPrimaryKey()?.Properties.SequenceEqual(foreignKey.Properties) == true)))
+            .ToList();
+        var linkColumns = links.SelectMany(foreignKey => foreignKey.Properties).ToHashSet<IReadOnlyProperty>();
+
         List<StoreObjectIdentifier> stores = [];
         foreach (var type in new[] { StoreObjectType.Table, StoreObjectType.View })
         {
@@ -135,6 +148,11 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
 
             foreach (var property in Properties(entity))
             {
+                if (store == table && linkColumns.Contains(property))
+                {
+                    continue;
+                }
+
                 if (property.GetColumnName(store) is { } column)
                 {
                     yield return StoreName.Of("the column", column, property.GetDefaultColumnName(store), "HasColumnName");
@@ -163,7 +181,7 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
             }
         }
 
-        foreach (var foreignKey in entity.GetDeclaredForeignKeys())
+        foreach (var foreignKey in entity.GetDeclaredForeignKeys().Except(links))
         {
             if (foreignKey.GetConstraintName() is { } name)
             {

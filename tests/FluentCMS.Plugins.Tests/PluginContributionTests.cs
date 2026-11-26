@@ -194,6 +194,33 @@ public sealed class PluginContributionTests(PluginContributionFixture fixture) :
         Refused(cms => cms.AddPlugin<LongNamePlugin>(), "FCMS1529", $"gives the check constraint of LongNamedNote the name '{given}' in ", $"which EF cuts to 'ck_{new string('é', 59)}~', of 122 bytes");
     }
 
+    // EF emits no foreign key, and no key column of the dependent's own, where an owned type or a type split from its owner
+    // shares the owner's table by its key, so a long table name with é passes there; the key columns are the owner's (#3562).
+    [Theory]
+    [InlineData("owned")]
+    [InlineData("split")]
+    public void ATypeOnItsPrincipalsTableByItsKeyIsMeasuredWithoutTheForeignKeyEFDoesNotEmit(string shape)
+    {
+        SharedTablePlugin.Shaping.Value = (shape, LongSharedTable);
+        new ServiceCollection().AddFluentCms(cms =>
+        {
+            cms.UseSqlite("Data Source=:memory:");
+            cms.AddPlugin<SharedTablePlugin>();
+        });
+    }
+
+    // A foreign key EF does emit is still measured: between two tables, of an owned type mapped to a table of its own too.
+    [Theory]
+    [InlineData("two tables")]
+    [InlineData("owned table")]
+    public void AForeignKeyBetweenTwoTablesOverSixtyThreeBytesStopsTheHost(string shape)
+    {
+        SharedTablePlugin.Shaping.Value = (shape, LongSharedTable);
+        Refused(cms => cms.AddPlugin<SharedTablePlugin>(), "FCMS1529", "'shared'", "gives the foreign key of ", $"'FK_{LongSharedTable}_cms_shared_", "Give it a shorter one with HasConstraintName.");
+    }
+
+    private static string LongSharedTable => "cms_shared_" + new string('é', 26);
+
     private static void AcceptedLongName(string named, string name)
     {
         LongNamePlugin.Naming.Value = (named, name);

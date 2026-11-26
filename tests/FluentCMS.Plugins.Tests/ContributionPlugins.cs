@@ -391,6 +391,102 @@ public sealed class LongNameModel : IPluginModelContributor
     }
 }
 
+// Its model maps an order and a second type in the shape the test sets, with the test's name on the table the shape names.
+[FluentCmsPlugin("shared", SdkRange = "[1.0.0,2.0.0)")]
+public sealed class SharedTablePlugin : IPlugin
+{
+    public const string Order = "cms_shared_order";
+
+    public static readonly AsyncLocal<(string Shape, string Table)> Shaping = new();
+
+    public void ConfigureServices(IPluginServiceBuilder plugin) => plugin.AddModel<SharedTableModel>();
+
+    public void Configure(IPluginAppBuilder app)
+    {
+    }
+}
+
+public sealed class SharedOrder
+{
+    public Guid Id { get; set; }
+
+    public SharedAddress Address { get; set; } = new();
+}
+
+public sealed class SharedAddress
+{
+    public string Street { get; set; } = string.Empty;
+}
+
+public sealed class SharedDetail
+{
+    public Guid Id { get; set; }
+
+    public string Note { get; set; } = string.Empty;
+}
+
+public sealed class SharedLine
+{
+    public Guid Id { get; set; }
+
+    public Guid OrderId { get; set; }
+}
+
+public sealed class SharedTableModel : IPluginModelContributor
+{
+    public void Configure(ModelBuilder modelBuilder)
+    {
+        var (shape, table) = SharedTablePlugin.Shaping.Value;
+
+        modelBuilder.Entity<SharedOrder>(order =>
+        {
+            order.ToTable(shape is "owned" or "split" ? table : SharedTablePlugin.Order);
+            order.HasKey(item => item.Id).HasName("pk_cms_shared_order");
+            order.Property(item => item.Id).HasColumnName("id");
+            switch (shape)
+            {
+                case "owned":
+                    order.OwnsOne(item => item.Address, address => address.Property(item => item.Street).HasColumnName("street"));
+                    break;
+                case "owned table":
+                    order.OwnsOne(item => item.Address, address =>
+                    {
+                        address.ToTable(table);
+                        address.Property(item => item.Street).HasColumnName("street");
+                    });
+                    break;
+                default:
+                    order.Ignore(item => item.Address);
+                    break;
+            }
+        });
+
+        if (shape == "split")
+        {
+            modelBuilder.Entity<SharedDetail>(detail =>
+            {
+                detail.ToTable(table);
+                detail.HasKey(item => item.Id).HasName("pk_cms_shared_order");
+                detail.Property(item => item.Id).HasColumnName("id");
+                detail.Property(item => item.Note).HasColumnName("note");
+                detail.HasOne<SharedOrder>().WithOne().HasForeignKey<SharedDetail>(item => item.Id);
+            });
+        }
+
+        if (shape == "two tables")
+        {
+            modelBuilder.Entity<SharedLine>(line =>
+            {
+                line.ToTable(table);
+                line.HasKey(item => item.Id).HasName("pk_cms_shared_line");
+                line.Property(item => item.Id).HasColumnName("id");
+                line.Property(item => item.OrderId).HasColumnName("order_id");
+                line.HasOne<SharedOrder>().WithMany().HasForeignKey(item => item.OrderId);
+            });
+        }
+    }
+}
+
 [FluentCmsPlugin("required", SdkRange = "[1.0.0,2.0.0)")]
 public sealed class RequiredReferencePlugin : IPlugin
 {
