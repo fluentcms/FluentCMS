@@ -340,6 +340,51 @@ public sealed class SettingsPageTests : AdministrationTestContext
         log.Lines.ShouldAllBe(line => !line.Contains(Typed, StringComparison.Ordinal));
     }
 
+    // #3511: a form that differs from its read asks before it is left, and neither the secret typed nor any other value of it
+    // reaches the draft store.
+    [Fact]
+    public async Task AChangedFormAsksBeforeItIsLeftAndItsSecretReachesNoDraft()
+    {
+        Management.AddSite(new Guid("0193a1b2-0000-7000-8000-00000000a002"), "Shop", "shop");
+        settings.Areas.Add(FakeSettings.Area("blog", site: true, defaults: false));
+        settings.Add("blog", BlogSchema(), BlogValue(), source: "site", version: 2);
+        GrantArea("settings.blog.manage", instanceOnly: false);
+        var app = Load("settings/blog");
+        app.WaitForAssertion(() => Source(app).ShouldBe("site"));
+        Input(app, "Site name").Input("Shop news");
+        Input(app, "Api key").Input(Typed);
+
+        await LeavingAsksFirstAsync(app, () =>
+        {
+            Input(app, "Site name").GetAttribute("value").ShouldBe("Shop news");
+            Button(app, "Save").IsDisabled().ShouldBeFalse();
+        }, Typed, "Shop news");
+
+        LeaveWhenAsked(app, "settings");
+        settings.Writes.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AFormChangedBackOrSavedAsksNothing()
+    {
+        settings.Areas.Add(FakeSettings.Area("blog", site: true, defaults: false));
+        settings.Add("blog", BlogSchema(), BlogValue(), source: "site", version: 2);
+        GrantArea("settings.blog.manage", instanceOnly: false);
+        var app = Load("settings/blog");
+        app.WaitForAssertion(() => Source(app).ShouldBe("site"));
+        Input(app, "Site name").Input("Shop news");
+        Input(app, "Api key").Input(Typed);
+        Input(app, "Site name").Input("My blog");
+        Input(app, "Api key").Input("");
+        Services.GetRequiredService<FluentCMS.Admin.Forms.IFormDraftStore>().HasUnsavedForms.ShouldBeFalse();
+
+        Input(app, "Site name").Input("Shop news");
+        Button(app, "Save").Click();
+
+        app.WaitForAssertion(() => app.Find(".settings-message").TextContent.ShouldBe("The settings are saved."));
+        NothingAsks(app, "settings");
+    }
+
     [Fact]
     public void AnInheritedSecretShowsAsInherited()
     {

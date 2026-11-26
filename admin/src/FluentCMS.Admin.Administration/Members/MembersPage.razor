@@ -1,6 +1,7 @@
 @* The members of the instance, read in pages with a search by name and address and the filters group, verified and active,
    and a member added (spec 4.15). Every call needs members.manage for the instance, which the shell's gate asks for before
-   the page shows. *@
+   the page shows. A member typed and not added asks before the page is left; a search, filter or page of the list keeps
+   it. *@
 @page "/members"
 @implements IDisposable
 @inject IManagementApi Api
@@ -9,6 +10,8 @@
 @inject FormatService Formats
 @inject TimeProvider Time
 @inject IStringLocalizer<MembersResources> L
+
+<UnsavedGuard Unsaved="@(() => !string.IsNullOrWhiteSpace(email) || !string.IsNullOrWhiteSpace(displayName))" />
 
 <h1 tabindex="-1">@L["Members.Page.Heading"]</h1>
 <p><a href="members/groups">@L["Members.Page.Groups"]</a></p>
@@ -175,6 +178,7 @@
         {
             var added = await Api.CreateMemberAsync(email.Trim(), string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim(), Closing);
             Announcer.Announce(L["Members.Add.Added", added.Email]);
+            (email, displayName) = (null, null);
             Navigation.NavigateTo(Route(added));
             return;
         }

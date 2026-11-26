@@ -1,7 +1,8 @@
 @* A new API key (spec 4.15): its class, role, sites, types, expiry, rate limit and allowed addresses. The server checks
    apikeys.manage where the key reaches before it checks that the role and the sites exist, so a caller without it is shown
    the refusal and no field errors. The secret is shown once by CmsSecretDialog and held in one field until the dialog
-   closes, which then goes to the key's page; it is in no draft, log, storage or address. *@
+   closes, which then goes to the key's page; it is in no draft, log, storage or address. A key filled in and not made
+   asks before it is left. *@
 @page "/api-keys/new"
 @inject IManagementApi Api
 @inject AdminContext Context
@@ -9,6 +10,8 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<ApiKeysResources> L
 @inject IStringLocalizer<AdminResources> AdminTexts
+
+<UnsavedGuard Unsaved="@(() => Unsaved)" />
 
 <PageCrumb Text="@L["ApiKeys.New.Heading"]" />
 <h1 tabindex="-1">@L["ApiKeys.New.Heading"]</h1>
@@ -97,9 +100,15 @@
     private bool busy;
     private string? secret;
     private Guid created;
+    private Guid? siteRead;
 
     // A key bound to no site reaches every one, which needs the permission for the instance.
     private bool MayBindToNoSite => Context.Access.AllowsForInstance(Permission);
+
+    // What the user filled in since the page opened, until the key is made.
+    private bool Unsaved => created == Guid.Empty
+        && (!string.IsNullOrWhiteSpace(name) || keyClass != Delivery || roleId is not null || everySite || types.Count > 0 || expiresAt is not null
+            || rateLimit is not null || !string.IsNullOrWhiteSpace(addresses) || !sites.SetEquals(siteRead is { } site ? [site] : []));
 
     private IReadOnlyList<CmsOption> Classes =>
         [.. new[] { Delivery, "preview", "management" }.Select(value => new CmsOption(value, L[$"ApiKeys.Class.{value}"]))];
@@ -109,6 +118,7 @@
         if (Context.Site is { } current)
         {
             sites.Add(current.Id);
+            siteRead = current.Id;
         }
     }
 

@@ -125,6 +125,16 @@ internal sealed class RoleDraft
         ["grants"] = new JsonArray([.. Grants.Select(grant => (JsonNode)grant.ToJson())]),
     };
 
+    // Whether a save of this draft would send the other's role: the grants are compared as the server tells them apart, in
+    // any order, so a grant taken away and added again as it was is no change.
+    public bool SameAs(RoleDraft other)
+    {
+        var (mine, theirs) = (ToJson(), other.ToJson());
+        mine.Remove("grants");
+        theirs.Remove("grants");
+        return JsonNode.DeepEquals(mine, theirs) && Identities(this).SequenceEqual(Identities(other), StringComparer.Ordinal);
+    }
+
     // After another change of the role was saved during this one (FCMS3045): the role as it is now, with what the user
     // changed since the read put back on it. A field the user changed keeps the user's value; a grant the user took away is
     // taken from the role as it is now, and one the user added is added to it, so that a grant the other change added or
@@ -264,6 +274,8 @@ internal sealed class RoleDraft
 
     private static bool Same(string? left, string? right) =>
         string.Equals(string.IsNullOrWhiteSpace(left) ? null : left.Trim(), string.IsNullOrWhiteSpace(right) ? null : right.Trim(), StringComparison.Ordinal);
+
+    private static IEnumerable<string> Identities(RoleDraft role) => role.Grants.Select(grant => grant.Identity).Order(StringComparer.Ordinal);
 
     private static Dictionary<string, int> Counted(IEnumerable<GrantDraft> grants)
     {

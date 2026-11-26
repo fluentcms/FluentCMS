@@ -1,0 +1,110 @@
+@* The dirty guard of an editor of the areas (spec 4.5, #3511): while Unsaved says the editor differs from what it read, it is
+   tracked, so the site switch, sign-out and a closed tab ask first, and a route to another page asks here, as the content
+   form does. It is tracked for the question only: nothing of it goes to the draft store, since it may hold a secret and no
+   form restores it. Unsaved is asked again at each render of the editor, which renders again after each change, and as a
+   navigation starts, so a save that navigates passes. *@
+@implements IDisposable
+@using FluentCMS.Admin.Forms
+@inject FormDrafts Drafts
+@inject NavigationManager Navigation
+@inject IStringLocalizer<CommonResources> L
+
+@* Drawn while it asks only, so that the editor's page holds no buttons of it otherwise. *@
+@if (leaveAnswer is not null)
+{
+    <CmsDialog Title="@L["Common.Leave.Title"]" Open="true" OpenChanged="@(open => { if (!open) Answer(false); })">
+        <ChildContent>
+            <p>@L["Common.Leave.Text"]</p>
+        </ChildContent>
+        <Actions>
+            <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => Answer(true))">@L["Common.Leave.Confirm"]</CmsButton>
+            <CmsButton OnClick="@(() => Answer(false))">@L["Common.Leave.Cancel"]</CmsButton>
+        </Actions>
+    </CmsDialog>
+}
+
+@code {
+    private IDisposable? tracking;
+    private IDisposable? leaveGuard;
+    private TaskCompletionSource<bool>? leaveAnswer;
+
+    [Parameter, EditorRequired]
+    public Func<bool> Unsaved { get; set; } = null!;
+
+    // A confirmed site switch or sign-out gives the tracking up, which then stays given up until the editor is saved or
+    // changed back, as the content form's does.
+    private bool Asks => tracking is not null && Drafts.HasTracked && Unsaved();
+
+    protected override void OnParametersSet()
+    {
+        if (!Unsaved())
+        {
+            Release();
+        }
+        else if (tracking is null)
+        {
+            tracking = Drafts.TrackUnsaved();
+
+            // Registered at the first change, not as the editor starts: while a handler is registered, Blazor takes each Back
+            // back, asks and goes again (#3395).
+            leaveGuard ??= Navigation.RegisterLocationChangingHandler(OnLocationChanging);
+        }
+    }
+
+    public void Dispose()
+    {
+        Release();
+        leaveAnswer?.TrySetResult(false);
+        leaveGuard?.Dispose();
+    }
+
+    private void Release()
+    {
+        tracking?.Dispose();
+        tracking = null;
+    }
+
+    // A route to another page asks first and waits for the answer, so a confirmed leave goes on as the navigation it was. One
+    // that stays on the page, as a list's search or filter in its query, keeps the editor and passes.
+    private async ValueTask OnLocationChanging(LocationChangingContext context)
+    {
+        if (!Asks || SamePage(context.TargetLocation))
+        {
+            return;
+        }
+
+        leaveAnswer?.TrySetResult(false);
+        var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        leaveAnswer = answer;
+        await InvokeAsync(StateHasChanged);
+        bool leave;
+        using (context.CancellationToken.Register(() => answer.TrySetResult(false)))
+        {
+            leave = await answer.Task;
+        }
+
+        if (leaveAnswer == answer)
+        {
+            leaveAnswer = null;
+            await InvokeAsync(StateHasChanged);
+        }
+
+        if (context.CancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (!leave)
+        {
+            context.PreventNavigation();
+            return;
+        }
+
+        Release();
+    }
+
+    private void Answer(bool leave) => leaveAnswer?.TrySetResult(leave);
+
+    private bool SamePage(string target) =>
+        string.Equals(Navigation.ToAbsoluteUri(target).GetLeftPart(UriPartial.Path), new Uri(Navigation.Uri).GetLeftPart(UriPartial.Path), StringComparison.Ordinal);
+}
