@@ -18,6 +18,9 @@ internal static class RateLimitPolicyNames
     public const string PreAuth = "pre-auth";
     public const string Health = "health";
     public const string StaticFiles = "static-files";
+
+    // Not a policy of the rate limiter: the registrations per hour that DynamicClientRegistration counts itself.
+    public const string ClientRegistration = "client-registration";
 }
 
 // One policy of the ASP.NET Core rate limiter, a token bucket per caller. Responses carry the IETF draft fields
