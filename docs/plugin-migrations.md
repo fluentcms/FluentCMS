@@ -53,6 +53,14 @@ public sealed class WebhooksDbContextFactory : IDesignTimeDbContextFactory<Plugi
 
 The factory names every model contributor the plugin adds. It never opens a database. The startup project references `Microsoft.EntityFrameworkCore.Design` with `PrivateAssets` set to `all`. A missing or unknown set name stops the command with the names it takes.
 
+## Names of the model
+
+The tables and views a model contributor maps are named `cms_{plugin}_...`, or the host stops with `FCMS1523`. Each name of the model has at most 63 bytes in UTF-8, the most of a name PostgreSQL keeps, or the host stops in `AddFluentCms` with `FCMS1529`, on every provider ([#3533](https://github.com/fluentcms/FluentCMS/issues/3533)). That holds for each table, view, column, key, foreign key, index and check constraint, with the name the model gives or else the one EF derives, such as `IX_{table}_{columns}` for an index given none. EF cuts a name it derives to 63 characters, which is 63 bytes only in ASCII, so a derived name built from names with other characters can be refused although each name the model gives fits. The refusal then says that EF derived the name and which call gives a shorter one: `HasColumnName`, `HasName` for a key, `HasConstraintName` for a foreign key or `HasDatabaseName` for an index ([#3562](https://github.com/fluentcms/FluentCMS/issues/3562)).
+
+EF cuts a check constraint's given name of more than 63 characters to 63 in the same way before it is measured, so a longer ASCII name passes and PostgreSQL keeps it cut, ending in `~`. Give a check constraint a name of at most 63 bytes to keep the one you chose.
+
+The check maps the contributor on a model without EF's conventions, so what only the conventions find or make is not measured: a property that no call of the contributor configures, and the foreign key that links the table of a TPT type or of an entity splitting fragment to the table it extends, such as `FK_{table}_{main table}_{key}`.
+
 ## Adding a migration
 
 You need the `dotnet-ef` tool (`dotnet tool install --global dotnet-ef`).

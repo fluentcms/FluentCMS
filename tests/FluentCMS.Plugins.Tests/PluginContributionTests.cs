@@ -139,6 +139,7 @@ public sealed class PluginContributionTests(PluginContributionFixture fixture) :
     // passes where EF derives no name from it.
     [Theory]
     [InlineData("table", "the table", true)]
+    [InlineData("view", "the view", false)]
     [InlineData("column", "the column", true)]
     [InlineData("table column", "the column", true)]
     [InlineData("key", "the key", false)]
@@ -150,33 +151,57 @@ public sealed class PluginContributionTests(PluginContributionFixture fixture) :
     {
         var tooLong = "cms_long_" + new string('é', 28);
         LongNamePlugin.Naming.Value = (named, tooLong);
-        Refused(cms => cms.AddPlugin<LongNamePlugin>(), "FCMS1529", "'long'", $"gives {what} of ", $"'{tooLong}'", "65 bytes", "at most 63");
+        Refused(cms => cms.AddPlugin<LongNamePlugin>(), "FCMS1529", "'long'", $"gives {what} of LongNamedNote the name '{tooLong}' in ", "65 bytes", "at most 63");
 
-        Accepted(named, "cms_long_" + new string('a', 54));
+        AcceptedLongName(named, "cms_long_" + new string('a', 54));
         if (!derives)
         {
-            Accepted(named, "cms_long_" + new string('é', 27));
-        }
-
-        static void Accepted(string named, string name)
-        {
-            LongNamePlugin.Naming.Value = (named, name);
-            new ServiceCollection().AddFluentCms(cms =>
-            {
-                cms.UseSqlite("Data Source=:memory:");
-                cms.AddPlugin<LongNamePlugin>();
-            });
+            AcceptedLongName(named, "cms_long_" + new string('é', 27));
         }
     }
 
     // EF cuts the names it derives by characters, so the index it names after a column of 63 bytes with é, of 56 characters,
-    // has 83 bytes, which PostgreSQL would cut.
+    // has 83 bytes, which PostgreSQL would cut. The refusal says that EF derived it and how to give one (#3562).
     [Fact]
     public void ANameThatEFDerivesOverSixtyThreeBytesStopsTheHost()
     {
         var column = "cms_long_" + new string('é', 27);
         LongNamePlugin.Naming.Value = ("column", column);
-        Refused(cms => cms.AddPlugin<LongNamePlugin>(), "FCMS1529", "gives the index of ", $"'IX_cms_long_note_{column}_id'", "83 bytes");
+        Refused(cms => cms.AddPlugin<LongNamePlugin>(), "FCMS1529", "gives the index of LongNamedNote no name in ", $"the name EF derives for it, 'IX_cms_long_note_{column}_id', has 83 bytes", "Give it a shorter one with HasDatabaseName.");
+    }
+
+    // The same for a key and a foreign key given no name on a table of 63 bytes with é, which EF's name starts with.
+    [Theory]
+    [InlineData("derived key", "the key", "'PK_cms_long_", "66 bytes", "HasName")]
+    [InlineData("derived foreign key", "the foreign key", "'FK_cms_long_", "103 bytes", "HasConstraintName")]
+    public void AKeyOrForeignKeyNameThatEFDerivesOverSixtyThreeBytesStopsTheHost(string named, string what, string name, string bytes, string call)
+    {
+        LongNamePlugin.Naming.Value = (named, "cms_long_" + new string('é', 27));
+        Refused(cms => cms.AddPlugin<LongNamePlugin>(), "FCMS1529", $"gives {what} of LongNamedNote no name in ", $"the name EF derives for it, {name}", bytes, $"Give it a shorter one with {call}.");
+
+        AcceptedLongName(named, "cms_long_note");
+    }
+
+    // EF cuts a check constraint's given name of more than 63 characters to 63 before it is measured, as it cuts a name it
+    // derives, so an ASCII name of 70 passes, as PostgreSQL would keep it cut; with é the name it cuts to is too long (#3562).
+    [Fact]
+    public void ACheckConstraintNameIsMeasuredAsEFCutsIt()
+    {
+        AcceptedLongName("check constraint", "ck_" + new string('c', 67));
+
+        var given = "ck_" + new string('é', 67);
+        LongNamePlugin.Naming.Value = ("check constraint", given);
+        Refused(cms => cms.AddPlugin<LongNamePlugin>(), "FCMS1529", $"gives the check constraint of LongNamedNote the name '{given}' in ", $"which EF cuts to 'ck_{new string('é', 59)}~', of 122 bytes");
+    }
+
+    private static void AcceptedLongName(string named, string name)
+    {
+        LongNamePlugin.Naming.Value = (named, name);
+        new ServiceCollection().AddFluentCms(cms =>
+        {
+            cms.UseSqlite("Data Source=:memory:");
+            cms.AddPlugin<LongNamePlugin>();
+        });
     }
 
     [Fact]

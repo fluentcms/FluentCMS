@@ -346,9 +346,12 @@ public sealed class LongNameModel : IPluginModelContributor
         var (named, given) = LongNamePlugin.Naming.Value;
         string Name(string what, string otherwise) => named == what ? given : otherwise;
 
+        // A "derived" key or foreign key gets no name, and its table the one the test sets, which EF's name is built from.
+        var derived = named is "derived key" or "derived foreign key";
+
         modelBuilder.Entity<LongNamedNote>(note =>
         {
-            note.ToTable(Name("table", "cms_long_note"), table =>
+            note.ToTable(derived ? given : Name("table", "cms_long_note"), table =>
             {
                 table.HasCheckConstraint(Name("check constraint", "ck_cms_long_note_parent"), "parent_id <> id");
                 if (named == "table column")
@@ -356,15 +359,34 @@ public sealed class LongNameModel : IPluginModelContributor
                     table.Property(item => item.ParentId).HasColumnName(given);
                 }
             });
-            note.HasKey(item => item.Id).HasName(Name("key", "pk_cms_long_note"));
+            if (named == "view")
+            {
+                note.ToView(given);
+            }
+
+            var key = note.HasKey(item => item.Id);
+            if (named != "derived key")
+            {
+                key.HasName(Name("key", "pk_cms_long_note"));
+            }
+
             note.Property(item => item.Id).HasColumnName("id");
             note.Property(item => item.ParentId).HasColumnName(Name("column", "parent_id"));
-            note.HasOne<LongNamedNote>().WithMany().HasForeignKey(item => item.ParentId).HasConstraintName(Name("foreign key", "fk_cms_long_note_parent"));
+            var parent = note.HasOne<LongNamedNote>().WithMany().HasForeignKey(item => item.ParentId);
+            if (named != "derived foreign key")
+            {
+                parent.HasConstraintName(Name("foreign key", "fk_cms_long_note_parent"));
+            }
+
             note.HasIndex(item => item.ParentId).HasDatabaseName(Name("index", "ix_cms_long_note_parent"));
             note.HasIndex(item => new { item.Id, item.ParentId }, Name("named index", "ix_cms_long_note_id_parent"));
 
-            // Named by EF: IX_cms_long_note_parent_id_id, or after the table and the column the test names.
-            note.HasIndex(item => new { item.ParentId, item.Id });
+            // Named by EF: IX_cms_long_note_parent_id_id, or after the table and the column the test names. Left out where
+            // the test measures the foreign key's name, which comes after it.
+            if (named != "derived foreign key")
+            {
+                note.HasIndex(item => new { item.ParentId, item.Id });
+            }
         });
     }
 }

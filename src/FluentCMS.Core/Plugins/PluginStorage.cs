@@ -84,24 +84,40 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
     // tables, columns and indexes of the model by name, would not find them. Refused on every provider, so that a plugin that
     // runs on SQLite does not fail on PostgreSQL later (#3533). The names are read as EF gives them on PostgreSQL: the model
     // has its limit of 63, so a name EF derives, such as IX_..., is cut as EF cuts it there, by characters, and one with
-    // characters of more than a byte can still be too long.
+    // characters of more than a byte can still be too long. EF cuts a check constraint's given name the same way.
     private void CheckLengths(IPluginModelContributor contributor, IMutableEntityType entity)
     {
-        foreach (var (what, name) in NamesOnPostgreSql(entity))
+        foreach (var name in NamesOnPostgreSql(entity))
         {
-            var bytes = Encoding.UTF8.GetByteCount(name);
-            if (bytes > StorageNames.MaxIdentifierLength)
+            var bytes = Encoding.UTF8.GetByteCount(name.Value);
+            if (bytes <= StorageNames.MaxIdentifierLength)
             {
-                throw new FluentCmsConfigurationException(
-                    PluginErrorCodes.NameTooLong,
-                    $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) gives {what} of {entity.DisplayName()} the name '{name}' in {contributor.GetType().FullName}, which has {bytes} bytes in UTF-8; a name has at most {StorageNames.MaxIdentifierLength}, as PostgreSQL keeps no more of it.");
+                continue;
             }
+
+            var where = $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) gives {name.What} of {entity.DisplayName()}";
+            var limit = $"a name has at most {StorageNames.MaxIdentifierLength}, as PostgreSQL keeps no more of it";
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.NameTooLong,
+                name.Call is { } call ? $"{where} no name in {contributor.GetType().FullName}, and the name EF derives for it, '{name.Value}', has {bytes} bytes in UTF-8; {limit}. Give it a shorter one with {call}."
+                : name.Given is { } given ? $"{where} the name '{given}' in {contributor.GetType().FullName}, which EF cuts to '{name.Value}', of {bytes} bytes in UTF-8; {limit}."
+                : $"{where} the name '{name.Value}' in {contributor.GetType().FullName}, which has {bytes} bytes in UTF-8; {limit}.");
         }
     }
 
+    // A name as EF emits it. Call is how the model gives one where EF derives it, and Given the name the model gives where EF
+    // cuts it.
+    private readonly record struct StoreName(string What, string Value, string? Call = null, string? Given = null)
+    {
+        public static StoreName Of(string what, string value, string? derived, string call) =>
+            new(what, value, value == derived ? call : null);
+    }
+
     // Each table or view the entity maps to, the fragments of entity splitting and the tables of TPT and TPC included, with
-    // the columns, keys and indexes it has there, so that a column named for one table alone is read too.
-    private static IEnumerable<(string What, string Name)> NamesOnPostgreSql(IMutableEntityType entity)
+    // the columns, keys and indexes it has there, so that a column named for one table alone is read too. The foreign keys
+    // that EF adds to link the table of a TPT type or an entity splitting fragment to the main table are made by conventions
+    // only, so they are not on this model and not measured.
+    private static IEnumerable<StoreName> NamesOnPostgreSql(IMutableEntityType entity)
     {
         List<StoreObjectIdentifier> stores = [];
         foreach (var type in new[] { StoreObjectType.Table, StoreObjectType.View })
@@ -115,11 +131,14 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
         stores.AddRange(entity.GetMappingFragments().Select(fragment => fragment.StoreObject));
         foreach (var store in stores.Distinct())
         {
-            yield return (store.StoreObjectType == StoreObjectType.View ? "the view" : "the table", store.Name);
+            yield return new(store.StoreObjectType == StoreObjectType.View ? "the view" : "the table", store.Name);
 
-            foreach (var column in Properties(entity).Select(property => property.GetColumnName(store)).OfType<string>())
+            foreach (var property in Properties(entity))
             {
-                yield return ("the column", column);
+                if (property.GetColumnName(store) is { } column)
+                {
+                    yield return StoreName.Of("the column", column, property.GetDefaultColumnName(store), "HasColumnName");
+                }
             }
 
             if (store.StoreObjectType != StoreObjectType.Table)
@@ -127,26 +146,39 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
                 continue;
             }
 
-            foreach (var key in entity.GetKeys().Select(key => key.GetName(store)).OfType<string>())
+            foreach (var key in entity.GetKeys())
             {
-                yield return ("the key", key);
+                if (key.GetName(store) is { } name)
+                {
+                    yield return StoreName.Of("the key", name, key.GetDefaultName(store), "HasName");
+                }
             }
 
-            foreach (var index in entity.GetIndexes().Select(index => index.GetDatabaseName(store)).OfType<string>())
+            foreach (var index in entity.GetIndexes())
             {
-                yield return ("the index", index);
+                if (index.GetDatabaseName(store) is { } name)
+                {
+                    yield return StoreName.Of("the index", name, index.GetDefaultDatabaseName(store), "HasDatabaseName");
+                }
             }
         }
 
-        foreach (var foreignKey in entity.GetDeclaredForeignKeys().Select(foreignKey => foreignKey.GetConstraintName()).OfType<string>())
+        foreach (var foreignKey in entity.GetDeclaredForeignKeys())
         {
-            yield return ("the foreign key", foreignKey);
+            if (foreignKey.GetConstraintName() is { } name)
+            {
+                yield return StoreName.Of("the foreign key", name, foreignKey.GetDefaultName(), "HasConstraintName");
+            }
         }
 
-        // The name given, or else the one EF derives from the model's name.
-        foreach (var check in entity.GetDeclaredCheckConstraints().Select(check => check.Name).OfType<string>())
+        // A check constraint always has a name given, and EF cuts one of more than 63 characters to 63 as it cuts a name it
+        // derives, so an ASCII name of more passes, as PostgreSQL would keep it cut.
+        foreach (var check in entity.GetDeclaredCheckConstraints())
         {
-            yield return ("the check constraint", check);
+            if (check.Name is { } name)
+            {
+                yield return new("the check constraint", name, Given: name != check.ModelName && name == check.GetDefaultName() ? check.ModelName : null);
+            }
         }
 
         static IEnumerable<IReadOnlyProperty> Properties(IReadOnlyTypeBase type) =>
