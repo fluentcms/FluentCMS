@@ -63,6 +63,7 @@ public sealed class SignInTests : IAsyncDisposable
         query["state"].ShouldBe(pending.State);
         query["nonce"].ShouldBe(pending.Nonce);
         query.AllKeys.ShouldNotContain("code_verifier");
+        query.AllKeys.ShouldNotContain("prompt");
         redirect.OriginalString.ShouldNotContain(pending.Verifier);
         new[] { pending.State, pending.Nonce, pending.Verifier }.ShouldAllBe(secret => secret.Length == 43);
         new[] { pending.State, pending.Nonce, pending.Verifier }.Distinct().Count().ShouldBe(3);
@@ -390,6 +391,32 @@ public sealed class SignInTests : IAsyncDisposable
         _storage[AdminSession.SignInKey].ShouldBeNull();
         var page = again.App.ShouldNotBeNull();
         page.WaitForAssertion(() => page.Find("main h1").TextContent.ShouldBe("Your account"));
+    }
+
+    // What the account page asks when a change needs a recent sign-in (#3445): prompt=login, which only this sends, and the
+    // page's own route back, query included, never a place of the caller's outside the app.
+    [Fact]
+    public async Task ReauthenticatingAsksForTheLoginPageAndComesBackToTheRoute()
+    {
+        const string ReturnRoute = "account?two-factor=enrol";
+        var tab = SignIn();
+
+        await tab.Session.ReauthenticateAsync(ReturnRoute, Token);
+
+        var redirect = tab.Navigation.History.First();
+        redirect.Options.ForceLoad.ShouldBeTrue();
+        var authorize = new Uri(redirect.Uri);
+        authorize.GetLeftPart(UriPartial.Path).ShouldBe("https://cms.example.com/connect/authorize");
+        HttpUtility.ParseQueryString(authorize.Query)["prompt"].ShouldBe("login");
+        Pending().ReturnRoute.ShouldBe(ReturnRoute);
+
+        var again = SignInAgain(new FakeManagementServer());
+
+        again.Navigation.Uri.ShouldStartWith("http://localhost/account");
+        again.Session.User.ShouldNotBeNull();
+
+        await again.Session.ReauthenticateAsync("https://evil.example/", Token);
+        Pending().ReturnRoute.ShouldBe("");
     }
 
     [Fact]

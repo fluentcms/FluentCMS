@@ -20,6 +20,10 @@ internal interface IAdminSession
     // Redirects the whole page to the authorize endpoint; after sign-in the admin returns to the route, one of its own.
     Task SignInAsync(string? returnRoute, CancellationToken cancellationToken);
 
+    // As SignInAsync, with prompt=login: the hosted pages show the login page even while their own session holds, so that the
+    // new tokens carry a sign-in of now, which a change that needs a recent sign-in asks for.
+    Task ReauthenticateAsync(string? returnRoute, CancellationToken cancellationToken);
+
     // Redirects the whole page to the hosted page that changes the password. The next start of the tab, the return from it,
     // signs in again if its session has ended, even right after its sign-in.
     Task ChangePasswordAsync(string pageUrl, CancellationToken cancellationToken);

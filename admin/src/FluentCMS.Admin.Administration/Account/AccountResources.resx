@@ -126,7 +126,13 @@
     <value>Two-factor sign-in is on already.</value>
   </data>
   <data name="Account.TwoFactor.SignInAgainFirst" xml:space="preserve">
-    <value>Setting up two-factor sign-in needs a recent sign-in, and yours is more than a few minutes old. Sign out, sign in again, then set it up.</value>
+    <value>Setting up two-factor sign-in needs a recent sign-in, and yours is more than a few minutes old. Sign in again, and the setup goes on here.</value>
+  </data>
+  <data name="Account.TwoFactor.SignInAgain" xml:space="preserve">
+    <value>Sign in again</value>
+  </data>
+  <data name="Account.TwoFactor.SignInAgainFailed" xml:space="preserve">
+    <value>The sign-in server could not be reached, so you are still signed in as before. Try again in a moment.</value>
   </data>
   <data name="Account.TwoFactor.Changed" xml:space="preserve">
     <value>Two-factor sign-in was changed meanwhile, so nothing was done. Its status is shown again.</value>
