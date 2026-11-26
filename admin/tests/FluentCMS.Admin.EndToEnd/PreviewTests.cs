@@ -13,9 +13,10 @@ namespace FluentCMS.Admin.EndToEnd;
 
 // The preview of A-29 for the class's editor: a draft of showcase, the one type with a preview template, is shown in the pane
 // at phone, tablet and full width from the preview origin of config.json, which the browser answers with a page that speaks
-// version 1 of the postMessage contract; a save tells the page to refresh, and the page shows it without loading again. The
-// pane takes focus as it opens, sits beside the form or below it and fits any window, forgets ready when the page navigates to
-// one that does not say it, and ignores a message of another window than its frame's.
+// the postMessage contract; a save tells the page to refresh, and the page shows it without loading again. The pane takes
+// focus as it opens, sits beside the form or below it and fits any window, forgets ready when a page of version 2 navigates
+// to one that does not say it, is ready again when it navigates to one that answers hello, and ignores a message of another
+// window than its frame's.
 public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
 {
     private const string Template = EndToEndHost.PreviewOrigin + "/showcase/{id}?preview={token}";
@@ -33,7 +34,7 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
         var tab = await EntryTabAsync(browser, id, route =>
         {
             Interlocked.Increment(ref loads);
-            return route.FulfillAsync(new RouteFulfillOptions { Status = 200, ContentType = "text/html", Body = Page(admin) });
+            return route.FulfillAsync(new RouteFulfillOptions { Status = 200, ContentType = "text/html", Body = Page(admin, 1) });
         });
 
         await Ui.PressAsync(Open(tab), "Enter");
@@ -111,11 +112,10 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
-    // The page said ready, then the editor follows its link to a page without the script, whose load is the frame's next: the
-    // pane forgets ready, gives the five seconds again, and the next save loads the frame instead of telling it to refresh.
-    // Not on WebKit (spec 7, #3650): WebKit reports the frame's load before the page's ready, and the pane keeps ready.
+    // The page of version 2 said ready, then the editor follows its link to a page without the script, whose load is the
+    // frame's next: the pane forgets ready, whichever of the page's ready and the frame's load the browser reported first,
+    // gives the five seconds again, and the next save loads the frame instead of telling it to refresh.
     [Fact]
-    [Trait("NotOn", "webkit")]
     public async Task APageThatNavigatesToOneWithoutTheContractIsLoadedAgainOnASave()
     {
         using var api = await Host.ManagementClientAsync();
@@ -132,7 +132,7 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
             {
                 Status = 200,
                 ContentType = "text/html",
-                Body = route.Request.Url.EndsWith("/plain", StringComparison.Ordinal) ? """<!doctype html><title>Plain</title><p id="state">plain</p>""" : Page(admin),
+                Body = route.Request.Url.EndsWith("/plain", StringComparison.Ordinal) ? """<!doctype html><title>Plain</title><p id="state">plain</p>""" : Page(admin, 2),
             });
         });
 
@@ -156,6 +156,50 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
 
         await Expect(page.Locator("#state")).ToHaveTextAsync("ready");
         Volatile.Read(ref loads).ShouldBe(3);
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    // The page of version 2 said ready, then the editor follows its link to another page of version 2, which says ready and
+    // answers the hello after its load: the pane is ready again, and the next save tells it to refresh without a load.
+    [Fact]
+    public async Task APageThatNavigatesToOneWithTheContractIsRefreshedOnASave()
+    {
+        using var api = await Host.ManagementClientAsync();
+        await SetTemplateAsync(api);
+        var id = await CreateAsync(api, $"Showcase {Mark}");
+
+        var browser = await OpenBrowserAsync();
+        var loads = 0;
+        var admin = Host.Origin.GetLeftPart(UriPartial.Authority);
+        var tab = await EntryTabAsync(browser, id, route =>
+        {
+            Interlocked.Increment(ref loads);
+            return route.FulfillAsync(new RouteFulfillOptions
+            {
+                Status = 200,
+                ContentType = "text/html",
+                Body = Page(admin, 2, route.Request.Url.EndsWith("/onward", StringComparison.Ordinal) ? "onward" : "showcase"),
+            });
+        });
+
+        await Ui.PressAsync(Open(tab), "Enter");
+        var pane = tab.Page.Locator(".content-preview");
+        var page = tab.Page.FrameLocator(".content-preview iframe");
+        await Expect(pane).ToHaveAttributeAsync("data-ready", "true");
+
+        await page.Locator("#onward").ClickAsync();
+
+        // The pane ends the ready state before it says hello, so a ready once the page heard it is the page's answer.
+        await Expect(page.Locator("#where")).ToHaveTextAsync("onward");
+        await Expect(page.Locator("body")).ToHaveAttributeAsync("data-heard", "hello");
+        await Expect(pane).ToHaveAttributeAsync("data-ready", "true");
+        Volatile.Read(ref loads).ShouldBe(2);
+
+        await SaveAsync(tab, id);
+
+        await Expect(page.Locator("#state")).ToHaveTextAsync("refresh 2");
+        await Expect(page.Locator("#where")).ToHaveTextAsync("onward");
+        Volatile.Read(ref loads).ShouldBe(2);
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
@@ -199,30 +243,38 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
         </html>
         """;
 
-    // The page a front end serves for a preview, reduced to the contract: it says ready to the admin's origin alone, with no
-    // token, shows each refresh it is told of, and links to a page without the script.
-    private static string Page(string admin) => $$"""
+    // The page a front end serves for a preview, reduced to the contract of the version given: it says ready to the admin's
+    // origin alone, with no token, shows each refresh it is told of, from version 2 answers hello and marks that it heard it,
+    // and links to a page without the script and to another with it.
+    private static string Page(string admin, int version, string where = "showcase") => $$"""
         <!doctype html>
         <html lang="en">
         <head><meta charset="utf-8"><title>Showcase</title></head>
         <body>
+        <p id="where">{{where}}</p>
         <p id="state">loading</p>
         <script>
         const admin = {{System.Text.Json.JsonSerializer.Serialize(admin)}};
+        const version = {{version}};
+        const ready = () => parent.postMessage({ protocol: "fluentcms-preview", version, type: "ready", url: location.origin + location.pathname }, admin);
         addEventListener("message", event => {
             const message = event.data;
-            if (event.origin !== admin || message?.protocol !== "fluentcms-preview" || message.version !== 1) {
+            if (event.origin !== admin || message?.protocol !== "fluentcms-preview" || !(message.version >= 1 && message.version <= version)) {
                 return;
             }
 
             if (message.type === "refresh") {
                 document.getElementById("state").textContent = "refresh " + message.entry.version;
+            } else if (message.type === "hello") {
+                document.body.dataset.heard = "hello";
+                ready();
             }
         });
-        parent.postMessage({ protocol: "fluentcms-preview", version: 1, type: "ready", url: location.origin + location.pathname }, admin);
+        ready();
         document.getElementById("state").textContent = "ready";
         </script>
         <a id="away" href="/plain">Away</a>
+        <a id="onward" href="/onward">Onward</a>
         </body>
         </html>
         """;
