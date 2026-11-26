@@ -127,11 +127,18 @@ internal sealed class SigningKeyRing(SigningKeyStore store, SecurityOptions secu
             Note(now, log: true);
         }
 
+        // The server's first: the validation copies the server's keys when its own options are built. Each on its own, so
+        // that options that could not be built do not keep the others from being built again.
+        Signal(ServerChanges.Signal);
+        Signal(ValidationChanges.Signal);
+    }
+
+    // The monitor builds the options as it is told, and what that throws comes back here; the next request builds them again.
+    private void Signal(Action signal)
+    {
         try
         {
-            // The server's first: the validation copies the server's keys when its own options are built.
-            ServerChanges.Signal();
-            ValidationChanges.Signal();
+            signal();
         }
         catch (Exception exception)
         {
