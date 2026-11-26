@@ -1,6 +1,6 @@
 # Accessibility of the admin
 
-The admin targets WCAG 2.2 at level AA (section 4.18 of the [admin technical specification](planning/admin-technical-spec.md#418-accessibility-baseline)). Most of it is checked on every full CI run; what a machine cannot hear is checked by hand, with the script on this page, before a release of the admin.
+The admin targets WCAG 2.2 at level AA (section 4.18 of the [admin technical specification](planning/admin-technical-spec.md#418-accessibility-baseline)). Most of it is checked on every full CI run; what a machine cannot hear can be checked by hand, with the script on this page. That pass is optional: no release of the admin waits on it.
 
 ## What CI checks
 
@@ -11,7 +11,7 @@ The admin targets WCAG 2.2 at level AA (section 4.18 of the [admin technical spe
 
 ## The screen reader pass
 
-The pass is the maintainer's: a person runs the loop below with each pair of screen reader and browser, hears each step, and fills in the table. What the pass finds is filed as a bug with the label `area:admin` and fixed before the release of the admin (A-47); the tracking issue of the release links the filled table.
+The pass is optional, and it has not been run so far: the admin's accessibility rests on the checks of CI above. Whoever runs it goes through the loop below with either pair of screen reader and browser, hears each step, and fills in the table. What the pass finds is filed as a bug with the label `area:admin`.
 
 ### Set-up
 
@@ -61,7 +61,7 @@ A speech recognition user, such as Voice Control on macOS, may also check step 1
 
 ### The result
 
-Copy this table into the tracking issue of the release, or a comment on it, with the versions used and the date. Write **pass**, or **fail** with the number of the bug filed; leave a step that was not run as **not run**, with the reason.
+Copy this table into an issue with the label `area:admin`, with the versions used and the date. Write **pass**, or **fail** with the number of the bug filed; leave a step that was not run as **not run**, with the reason.
 
 Versions: NVDA … with Firefox …; VoiceOver of macOS … with Safari …. Date: ….
 
