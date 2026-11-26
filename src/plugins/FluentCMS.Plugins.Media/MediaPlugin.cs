@@ -5,6 +5,7 @@ using FluentCMS.Events;
 using FluentCMS.Media;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.Media;
+using FluentCMS.Security;
 using Microsoft.Extensions.DependencyInjection;
 
 [assembly: FluentCmsPlugin(typeof(MediaPlugin))]
@@ -48,6 +49,7 @@ public sealed class MediaPlugin : IPlugin
         plugin.Services.AddScoped<MediaOriginals>();
         plugin.Services.AddScoped<MediaCache>();
         plugin.Services.AddSingleton<MediaSigning>();
+        plugin.Services.AddScoped<IProtectedValueSource, MediaProtectedValues>();
         plugin.Services.AddSingleton<MediaDecodes>();
         plugin.Services.AddSingleton<IInsecureDefaultSource, MediaInsecureDefaults>();
         plugin.Services.AddSingleton<IInsecureDefaultSource, SharedLibraryReport>();

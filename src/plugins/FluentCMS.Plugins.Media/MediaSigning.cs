@@ -25,11 +25,12 @@ internal sealed class MediaSigning(
     public const string LockName = "fluentcms:media-signing-key";
     public const int KeyId = 1;
     public const int KeyLength = 32;
+    public const string Purpose = "FluentCMS.Plugins.Media.SigningKey";
 
     // Long enough for a holder that stopped without releasing the lock to lose its lease, as for SuperAdminGuard.
     private static readonly TimeSpan Wait = TimeSpan.FromSeconds(45);
 
-    private readonly IDataProtector _protector = protection.CreateProtector("FluentCMS.Plugins.Media.SigningKey");
+    private readonly IDataProtector _protector = protection.CreateProtector(Purpose);
     private readonly byte[]? _configured = options.Value.SigningKeyBytes;
     private readonly SemaphoreSlim _loading = new(1, 1);
     private byte[]? _key;

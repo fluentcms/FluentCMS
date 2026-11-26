@@ -7,7 +7,7 @@ namespace FluentCMS.Cli;
 
 // The commands that administer an instance (B-91). In project mode they run inside the host as the system with the Cli
 // origin; with --url they call the Management API with the key of --token, as that key's principal. `user create`,
-// `user reset-password`, `jobs run`, `seed`, `settings reprotect` and the `keys` commands run in the host only, and `mcp`
+// `user reset-password`, `jobs run`, `seed`, `settings reprotect`, `keyring reprotect` and the `keys` commands run in the host only, and `mcp`
 // reaches a running instance only.
 internal sealed partial class CommandLine
 {
@@ -216,6 +216,19 @@ internal sealed partial class CommandLine
         var command = new Command("reprotect", "Protects every stored secret setting again under the current default key of the Data Protection key ring and names that key; run it before retiring a ring key or certificate. In the host project only.");
         var project = ProjectOptions.AddTo(command);
         command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["settings", "reprotect"], cancellationToken));
+        return command;
+    }
+
+    private Command Keyring() => new("keyring", "The Data Protection key ring: protect every stored value again under its current key, in the host project.")
+    {
+        KeyringReprotect(),
+    };
+
+    private Command KeyringReprotect()
+    {
+        var command = new Command("reprotect", "Protects every stored value that Data Protection protects in place, the secret settings, webhook secrets and headers and the media signing key, again under the current default key of the key ring and names that key, and counts the token keys still under an older one; run it before removing a previous ring certificate. In the host project only.");
+        var project = ProjectOptions.AddTo(command);
+        command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["keyring", "reprotect"], cancellationToken));
         return command;
     }
 

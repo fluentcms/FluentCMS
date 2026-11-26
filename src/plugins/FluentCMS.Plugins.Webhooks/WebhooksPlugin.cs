@@ -4,6 +4,7 @@ using FluentCMS.Diagnostics;
 using FluentCMS.Events;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.Webhooks;
+using FluentCMS.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -31,6 +32,7 @@ public sealed class WebhooksPlugin : IPlugin
         plugin.Services.AddScoped<WebhookService>();
         plugin.Services.AddScoped<WebhookDispatcher>();
         plugin.Services.AddSingleton<IInsecureDefaultSource, WebhookInsecureDefaults>();
+        plugin.Services.AddScoped<IProtectedValueSource, WebhookProtectedValues>();
         plugin.Services.AddHostedService<WebhookStartup>();
 
         plugin
