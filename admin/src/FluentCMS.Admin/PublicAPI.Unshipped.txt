@@ -173,6 +173,8 @@ FluentCMS.Admin.Content.FieldActionMenu.FieldLabel.get -> string!
 FluentCMS.Admin.Content.FieldActionMenu.FieldLabel.set -> void
 FluentCMS.Admin.Content.FieldActionMenu.OnResult.get -> Microsoft.AspNetCore.Components.EventCallback<System.Text.Json.Nodes.JsonNode?>
 FluentCMS.Admin.Content.FieldActionMenu.OnResult.set -> void
+FluentCMS.Admin.Content.FieldActionMenu.OnResultIn.get -> System.Func<string!, string!, System.Text.Json.Nodes.JsonNode?, System.Threading.Tasks.Task<string?>!>?
+FluentCMS.Admin.Content.FieldActionMenu.OnResultIn.set -> void
 FluentCMS.Admin.Content.ListBulkActions
 FluentCMS.Admin.Content.ListBulkActions.AllMatching.get -> bool
 FluentCMS.Admin.Content.ListBulkActions.AllMatching.set -> void

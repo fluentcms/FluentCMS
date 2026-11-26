@@ -58,6 +58,23 @@ internal sealed class AiApi(IManagementApi api, IManagementEvents? events = null
         return answer.Value["assets"] is JsonValue assets && assets.TryGetValue<bool>(out var allowed) && allowed;
     }
 
+    // Whether GET /me/access in the locale says the caller may change the field of the type there, since a grant may be
+    // limited to locales. A read that fails offers nothing.
+    public async Task<bool> MayUpdateAsync(string type, string field, string locale, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var access = (await api.SendAsync(new ApiRequest(HttpMethod.Get, "me/access") { Locale = locale }, AiJsonContext.Default.JsonObject, cancellationToken)).Value;
+            return access["types"]?[type] is JsonObject typed
+                && typed["update"] is JsonValue update && update.TryGetValue<bool>(out var may) && may
+                && typed["updatableFields"] is JsonArray fields && fields.Any(name => name is JsonValue value && value.TryGetValue<string>(out var text) && text == field);
+        }
+        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or JsonException)
+        {
+            return false;
+        }
+    }
+
     // The fields of the entry's saved draft in the locale named, without the fallback chain, as the server reads it for
     // altText; null for an entry that is not saved in that locale, or that the caller may not read.
     public async Task<JsonObject?> DraftAsync(string type, Guid id, IReadOnlyList<string> fields, string? locale, CancellationToken cancellationToken)

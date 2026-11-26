@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin;
 using FluentCMS.Admin.Actions;
@@ -40,7 +41,8 @@ internal static class AiActionNames
 }
 
 // An action of the half on a field of the form (spec 5.5): it shows the panel of AiSuggestions and puts the suggestion the
-// user accepted into the draft, as an unsaved change; anything else leaves the draft as it was. It saves nothing.
+// user accepted into the draft, or for translate into the draft of the locale chosen, as an unsaved change; anything else
+// leaves the draft as it was. It saves nothing.
 public abstract class AiFieldAction : FieldActionBase
 {
     private readonly IAdminOverlays _overlays;
@@ -53,6 +55,8 @@ public abstract class AiFieldAction : FieldActionBase
     }
 
     public override string Label => _texts[$"Ai.Action.{LabelKey}"];
+
+    private protected IStringLocalizer<AiAssistResources> Texts => _texts;
 
     // The name of the action on the server.
     private protected abstract string Name { get; }
@@ -71,8 +75,10 @@ public abstract class AiFieldAction : FieldActionBase
     {
         ArgumentNullException.ThrowIfNull(context);
         var accepted = await new AiSuggestions(_overlays).AskAsync(await RequestAsync(context, cancellationToken), cancellationToken);
-        return accepted is null || ForAsset ? FieldActionResult.Unchanged : FieldActionResult.Replace(JsonValue.Create(accepted));
+        return accepted is null || ForAsset ? FieldActionResult.Unchanged : Result(accepted);
     }
+
+    private protected virtual FieldActionResult Result(AiAccepted accepted) => FieldActionResult.Replace(JsonValue.Create(accepted.Text));
 
     // A text action works on the field's text, so a field without one has nothing to offer it.
     private protected virtual bool Applies(FieldActionContext context) => AiFieldValues.Text(context.Value) is not null;
@@ -132,6 +138,61 @@ public sealed class SummaryAction(IAdminOverlays overlays, IStringLocalizer<AiAs
 public sealed class SeoAction(IAdminOverlays overlays, IStringLocalizer<AiAssistResources> texts) : AiFieldAction(overlays, texts)
 {
     private protected override string Name => AiActionNames.Seo;
+}
+
+// The field's text in another enabled locale of the site, for an entry that is saved, of a localized type. The panel offers
+// the locales where the caller may change the field, and an accepted translation goes into that locale's draft: the form
+// moves there with it as an unsaved change, and the field in the locale shown keeps its text.
+[FieldAction(AiActionNames.Translate, FieldTypes = [AiActionNames.Text, AiActionNames.LongText], Permission = AiActionNames.Use, FieldsFrom = AiActionNames.OptedInFields)]
+public sealed class TranslateAction(IAdminOverlays overlays, IStringLocalizer<AiAssistResources> texts, IAdminContext admin, IManagementApi api) : AiFieldAction(overlays, texts)
+{
+    private protected override string Name => AiActionNames.Translate;
+
+    public override async ValueTask<bool> AppliesToAsync(FieldActionContext context, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return Applies(context) && (await TargetsAsync(context, cancellationToken)).Count > 0;
+    }
+
+    private protected override async ValueTask<AiSuggestionRequest> RequestAsync(FieldActionContext context, CancellationToken cancellationToken) =>
+        base.Request(context) with { Targets = await TargetsAsync(context, cancellationToken) };
+
+    private protected override FieldActionResult Result(AiAccepted accepted) =>
+        accepted.Locale is { } locale ? FieldActionResult.ReplaceIn(locale, JsonValue.Create(accepted.Text)) : FieldActionResult.Unchanged;
+
+    // The site's enabled locales in its order, but the one shown, where GET /me/access says the caller may change the field.
+    private async Task<IReadOnlyList<AiTargetLocale>> TargetsAsync(FieldActionContext context, CancellationToken cancellationToken)
+    {
+        if (context.ContentLocale is not { } shown || context.EntryId is null || admin.Site is not { } site)
+        {
+            return [];
+        }
+
+        var ai = new AiApi(api);
+        List<AiTargetLocale> found = [];
+        foreach (var locale in site.Locales.Where(item => item.Enabled && !string.Equals(item.Code, shown, StringComparison.OrdinalIgnoreCase)).OrderBy(item => item.Position))
+        {
+            if (await ai.MayUpdateAsync(context.Type.Name, context.Field.Name, locale.Code, cancellationToken))
+            {
+                found.Add(new AiTargetLocale(locale.Code, NameOf(locale.Code)));
+            }
+        }
+
+        return found;
+    }
+
+    // The language in itself beside its code, as the form's locale switcher names it.
+    private string NameOf(string code)
+    {
+        try
+        {
+            return Texts["Ai.Panel.LocaleName", code, CultureInfo.GetCultureInfo(code, predefinedOnly: true).NativeName];
+        }
+        catch (CultureNotFoundException)
+        {
+            return code;
+        }
+    }
 }
 
 // Alt text for one of the images of the entry's media fields, into this text field; the panel asks which when there are several.
