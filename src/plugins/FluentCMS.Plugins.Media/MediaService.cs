@@ -527,6 +527,25 @@ internal sealed class MediaService(
         Expect(await FindAssetAsync(library, id, reach, tracked: false, cancellationToken), expectedVersion);
         var rules = await settings.GetAsync(site, cancellationToken);
         var prepared = await PrepareAsync(file, 0, rules, Math.Min(rules.MaxRequestSize, options.Value.MaxRequestBodySize), cancellationToken);
+        return Versioned(await StoreAsync(library, id, reach, expectedVersion, prepared, operation, cancellationToken), operation.Locale);
+    }
+
+    // A stored SVG sanitised again (fluentcms media sanitize-svg, #3605): the bytes the pass wrote replace the file as a
+    // replace does, at the version the command read. The checks of an upload are not run again, so that a site whose
+    // settings now refuse SVGs still gets its stored ones sanitised.
+    internal async Task<Asset> ResanitizeAsync(Guid id, int expectedVersion, string fileName, byte[] sanitized, CancellationToken cancellationToken)
+    {
+        var operation = Operation();
+        var (site, library) = await ScopeAsync(operation, cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.Update, site, library, cancellationToken);
+        Expect(await FindAssetAsync(library, id, reach, tracked: false, cancellationToken), expectedVersion);
+        var checksum = Convert.ToHexStringLower(SHA256.HashData(sanitized));
+        var prepared = new Upload(fileName, MediaTypes.Svg, new MemoryStream(sanitized, writable: false), sanitized.Length, checksum, checksum, null);
+        return await StoreAsync(library, id, reach, expectedVersion, prepared, operation, cancellationToken);
+    }
+
+    private async Task<Asset> StoreAsync(SiteId library, Guid id, FolderReach reach, int? expectedVersion, Upload prepared, OperationContext operation, CancellationToken cancellationToken)
+    {
         string? written = null;
         try
         {
@@ -557,7 +576,7 @@ internal sealed class MediaService(
 
             await replaced!.DeleteAsync(database, asset, storages, logger);
             await events.PublishAsync(new MediaAssetReplacedEvent(asset.Id, asset.FolderId, asset.FileName, asset.MimeType, asset.Size), cancellationToken);
-            return Versioned(asset, operation.Locale);
+            return asset;
         }
         finally
         {

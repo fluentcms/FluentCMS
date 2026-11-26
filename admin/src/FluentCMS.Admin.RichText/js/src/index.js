@@ -424,20 +424,23 @@ export async function create(element, toolbar, host, json, options) {
         flush: take,
         // The href of the link at the selection, or null.
         link: () => (editor.isActive("link") ? editor.getAttributes("link").href ?? null : null),
-        // A link the server would refuse is not set; an empty selection outside a link gets the address as its text.
+        // A link the server would refuse is not set; an empty selection outside a link gets the address as its text. Focus
+        // returns once the Enter that confirmed the address has ended: Tiptap focuses at once in Safari, where that Enter would
+        // then reach the text too and replace the selection (#3651).
         setLink: (href) => {
             const value = href?.trim();
             if (!isSafeHref(value)) {
                 return false;
             }
 
-            const chain = editor.chain().focus();
+            const chain = editor.chain();
             if (editor.state.selection.empty && !editor.isActive("link")) {
                 chain.insertContent({ type: "text", text: value, marks: [{ type: "link", attrs: { href: value } }] }).run();
             } else {
                 chain.extendMarkRange("link").setLink({ href: value }).run();
             }
 
+            setTimeout(() => !editor.isDestroyed && editor.commands.focus());
             return true;
         },
         unsetLink: () => editor.chain().focus().extendMarkRange("link").unsetLink().run(),
