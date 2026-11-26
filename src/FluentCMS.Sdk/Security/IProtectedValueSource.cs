@@ -4,7 +4,9 @@ namespace FluentCMS.Security;
 /// Names the values a plugin stores protected with Data Protection, so that <c>fluentcms keyring reprotect</c> protects them
 /// again under the current default key of the key ring before an older ring key or certificate is retired. Register an
 /// implementation in the service collection, scoped or as a singleton. The command reads the values, protects again each
-/// one that is under another key, and writes it back through <see cref="WriteAsync"/>; it never shows a value.
+/// one that is under another key, and writes it back through <see cref="WriteAsync"/>; it never shows a value. An exception
+/// from a source ends the command, after the pass over the secret settings has written what it wrote; a second run is safe,
+/// since a value already under the default key is not written again.
 /// </summary>
 public interface IProtectedValueSource
 {
@@ -25,7 +27,8 @@ public interface IProtectedValueSource
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>
     /// <see langword="true"/> when it was written; <see langword="false"/> when the stored value changed or is gone since it
-    /// was read, which the command then reads again.
+    /// was read, which the command then reads again. The command counts a value as done when this is
+    /// <see langword="true"/>, so an implementation answers <see langword="true"/> only once the write is made.
     /// </returns>
     Task<bool> WriteAsync(ProtectedValue value, string reprotected, CancellationToken cancellationToken);
 }

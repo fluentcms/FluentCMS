@@ -38,7 +38,7 @@ public sealed class KeyringReprotectionTests : IDisposable
     private const string ApiKey = "sk-keyring-settings-7731";
 
     private static readonly SettingsDescriptor Vault = new("vault", typeof(VaultSettings));
-    private static readonly EphemeralDataProtectionProvider Foreign =new EphemeralDataProtectionProvider();
+    private static readonly EphemeralDataProtectionProvider Foreign = new();
     private static readonly byte[] MediaBytes = [.. Enumerable.Range(1, MediaSigning.KeyLength).Select(value => (byte)value)];
 
     private readonly TestDatabase _database = TestDatabase.Create();
