@@ -839,7 +839,10 @@ public sealed class UserStoreTests : IDisposable
         string[] refusals = next == "a"
             ? [answers[0].Answer]
             : [CmsUserManager.LockedOutCode, nameof(IdentityErrorDescriber.ConcurrencyFailure)];
-        answers.Where(answer => !checkedGuesses.Contains(answer.Guess)).ShouldAllBe(answer => refusals.Contains(answer.Answer), string.Join(", ", answers));
+        // Once the right guess has changed the password the count starts again, so a guess that takes its place after that
+        // is checked against the new password and answered as a mismatch: it was checked, though not against the old one.
+        var checkedAtAll = hasher.Verified.Select(verified => verified.Provided).ToHashSet();
+        answers.Where(answer => !checkedAtAll.Contains(answer.Guess)).ShouldAllBe(answer => refusals.Contains(answer.Answer), string.Join(", ", answers));
         if (next == "a")
         {
             checkedGuesses.ShouldBeEmpty();
