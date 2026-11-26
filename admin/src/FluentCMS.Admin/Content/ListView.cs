@@ -151,8 +151,8 @@ internal sealed class ListView
     // fields= names the label and the shown columns, system members included, since a read with fields= has only what it
     // names, and the pending schedules with the status; populate= names the relations among them, and the fields whose
     // half's cell asks for it (ListCellAttribute.Populate), such as media, so that a page needs no read per row (spec 2.7). A list that shows nothing else still names
-    // the id, since a read without fields= has every field. Under locale=all the engine matches, sorts and pages in the
-    // site's default locale and answers every locale of each entry.
+    // the id, since a read without fields= has every field. Under locale=all the engine lists each entry once by its row in the
+    // first locale the caller may read, and answers every locale of it.
     public ContentQuery Query(IReadOnlyList<ListColumn> shown, IReadOnlyList<SortField> sort, int page, int pageSize, IReadOnlyList<FieldFilter>? filters = null, string? search = null, bool everyLocale = false)
     {
         ArgumentNullException.ThrowIfNull(shown);
@@ -184,7 +184,8 @@ internal sealed class ListView
     public const int MaxStatusIds = 99;
 
     // The status of a page's entries in another locale than the one the page was matched in, which locale=all cannot give:
-    // it matches in the site's default locale, which an entry may lack. A read of that locale limited to their ids.
+    // it lists each entry by its row in the first locale the caller may read, not the content locale's. A read of that locale
+    // limited to their ids.
     public static ContentQuery StatusQuery(string locale, IReadOnlyCollection<Guid> ids)
     {
         ArgumentNullException.ThrowIfNull(ids);
