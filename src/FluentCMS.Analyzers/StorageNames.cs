@@ -28,7 +28,7 @@ internal static class StorageNames
         "member", "member_login", "member_token", "member_group", "member_group_member",
         "activity",
         "job", "job_attempt", "recurring_job", "lock", "outbox",
-        "setting", "plugin_site",
+        "setting", "plugin_site", "plugin_store",
         "media_asset", "media_folder", "media_variant", "media_preset",
         "webhooks_subscription", "webhooks_delivery",
         "mcp_instruction", "mcp_prompt",

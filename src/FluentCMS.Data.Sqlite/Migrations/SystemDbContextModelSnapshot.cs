@@ -1242,6 +1242,37 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     b.ToTable("cms_plugin_site", (string)null);
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.PluginStoreRow", b =>
+                {
+                    b.Property<string>("Plugin")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("plugin");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key");
+
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("value");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
+                    b.HasKey("Plugin", "Key");
+
+                    b.ToTable("cms_plugin_store", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.RecurringJob", b =>
                 {
                     b.Property<string>("Name")

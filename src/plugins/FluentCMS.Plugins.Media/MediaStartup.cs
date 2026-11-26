@@ -72,7 +72,7 @@ internal sealed class MediaStartup(
                 try
                 {
                     await using var scope = scopes.CreateAsyncScope();
-                    await start.RunAsync(scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>(), stoppingToken);
+                    await start.RunAsync(scope.ServiceProvider.GetRequiredService<IPluginStore<MediaPlugin>>(), stoppingToken);
                     checking = true;
                 }
                 catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
