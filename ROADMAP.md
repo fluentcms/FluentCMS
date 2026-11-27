@@ -8,9 +8,10 @@ What the project's own planning documents say comes next. It gives no dates. The
 
 ## Before 1.0.0
 
-- **AI assist on Azure OpenAI**, verified against the real service (H3 of the [backend technical specification](docs/planning/backend-technical-spec.md)).
-- **At 1.0.0, the contract freezes**: the public API files of the contract packages move to shipped, and package validation compares each later release with the release before it ([releasing](docs/releasing.md#cutting-a-release), steps 2 and 7).
-- **The documentation site, with its `llms.txt`, and the frontend starters**, Must rows 11.7, 11.8 and 11.10 of the [specification](docs/planning/specification/11-developer-experience-tooling.md), are not built; no document gives them a release.
+- [ ] **Verify AI assist on a real Azure OpenAI deployment.** The maintainer with access to the deployment runs the [AI verification steps](docs/ai-assist-verification.md) and records the model, results for plain and streamed responses, usage, timeout, cancellation and log privacy. Existing runs against OpenRouter, Ollama or a stand-in do not verify Azure.
+- [ ] **Finish member sign-in verification with Entra ID** ([#3160](https://github.com/fluentcms/FluentCMS/issues/3160)). A maintainer with a test tenant records a successful generic OIDC sign-in with a user who has a mail attribute, a denied Microsoft consent, and the result of an unregistered redirect URI in the [sign-in verification record](docs/member-sign-in-verification.md). Record outcomes, not tokens or credentials. Apple sign-in was removed and needs no run.
+- [ ] **Assign a release to each outstanding developer-experience Must** ([specification, rows 11.7–11.10](docs/planning/specification/11-developer-experience-tooling.md)): the versioned documentation site; `llms.txt`, `llms-full.txt` and the MCP docs resource; agent instructions and skills for the repository and templates; and the Next.js, Astro and Blazor starters. Before freezing the contract, the maintainer records for each row either its 1.0 delivery issue or an explicit deferral with a reason and follow-up. None is marked delivered by this checklist.
+- [ ] **Freeze the public contract at 1.0.0, not in a preview.** Move the five packages' public API entries to shipped as part of the stable release. After it is published, set the four package-validation baselines in a follow-up ([releasing](docs/releasing.md#cutting-a-release), steps 2 and 7).
 
 ## After 1.0.0
 
