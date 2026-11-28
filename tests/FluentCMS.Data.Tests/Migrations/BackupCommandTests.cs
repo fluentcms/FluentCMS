@@ -1,8 +1,11 @@
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Commands;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Data.Tests.Sqlite;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Shouldly;
 using Xunit;
@@ -26,6 +29,8 @@ public sealed class BackupCommandTests : IDisposable
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     private string Archive => Path.Combine(_directory.FullName, "backup.zip");
+
+    private string DatabasePath => new SqliteConnectionStringBuilder(_database.ConnectionString).DataSource;
 
     public void Dispose()
     {
@@ -51,6 +56,92 @@ public sealed class BackupCommandTests : IDisposable
         }
 
         File.Exists(Archive).ShouldBeFalse();
+    }
+
+    [SqliteTheory("paths of a SQLite backup")]
+    [InlineData("")]
+    [InlineData("-wal")]
+    [InlineData("-shm")]
+    [InlineData("-journal")]
+    public async Task BackupRefusesTheDatabaseAndItsSideFilesBeforeOpeningThem(string suffix)
+    {
+        using var host = Host(_database);
+        string[] paths = [DatabasePath, DatabasePath + "-wal", DatabasePath + "-shm", DatabasePath + "-journal"];
+        foreach (var path in paths)
+        {
+            await File.WriteAllTextAsync(path, path, Token);
+        }
+
+        var (exitCode, output, error) = await RunAsync(host, "backup", "--output", DatabasePath + suffix);
+
+        exitCode.ShouldBe(1);
+        output.ShouldBeEmpty();
+        error.ShouldStartWith("FCMS3254: ");
+        foreach (var path in paths)
+        {
+            (await File.ReadAllTextAsync(path, Token)).ShouldBe(path);
+        }
+    }
+
+    [SqliteTheory("paths of a SQLite backup")]
+    [InlineData(".")]
+    [InlineData("new/sub/backup.zip")]
+    public async Task BackupRefusesTheMediaRootAndItsDescendantsBeforeCreatingAnything(string destination)
+    {
+        var media = Path.Combine(_directory.FullName, "media");
+        using var host = Host(_database, media);
+
+        var (exitCode, _, error) = await RunAsync(host, "backup", "--output", Path.Combine(media, destination));
+
+        exitCode.ShouldBe(1);
+        error.ShouldStartWith("FCMS3254: ");
+        Directory.Exists(media).ShouldBeFalse();
+        File.Exists(DatabasePath).ShouldBeFalse();
+    }
+
+    [SqliteFact("paths of a SQLite backup")]
+    public async Task BackupChecksTheMediaRootAndDatabaseThroughDirectoryLinks()
+    {
+        var storage = _directory.CreateSubdirectory("storage");
+        var media = storage.CreateSubdirectory("media");
+        var alias = Path.Combine(_directory.FullName, "linked");
+        await LinkDirectoryAsync(alias, storage.FullName);
+        var linkedDatabaseFolder = Path.Combine(_directory.FullName, "linked-db");
+        await LinkDirectoryAsync(linkedDatabaseFolder, Path.GetDirectoryName(DatabasePath)!);
+        try
+        {
+            using var host = Host(_database, Path.Combine(alias, "media"));
+            foreach (var path in new[] { Path.Combine(media.FullName, "new", "backup.zip"), Path.Combine(linkedDatabaseFolder, Path.GetFileName(DatabasePath) + "-wal") })
+            {
+                var (exitCode, _, error) = await RunAsync(host, "backup", "--output", path);
+                exitCode.ShouldBe(1);
+                error.ShouldStartWith("FCMS3254: ");
+            }
+
+            media.EnumerateFileSystemInfos().ShouldBeEmpty();
+            File.Exists(DatabasePath).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(alias);
+            Directory.Delete(linkedDatabaseFolder);
+        }
+    }
+
+    [SqliteFact("paths of a SQLite backup")]
+    public async Task BackupCanReplaceAnArchiveInASiblingOfTheMediaRoot()
+    {
+        var media = _directory.CreateSubdirectory("media");
+        using var host = Host(_database, media.FullName);
+        (await RunAsync(host, "migrate")).ExitCode.ShouldBe(0);
+        var path = Path.Combine(_directory.CreateSubdirectory("media-backups").FullName, "backup.zip");
+        await File.WriteAllTextAsync(path, "previous archive", Token);
+
+        var (exitCode, _, error) = await RunAsync(host, "backup", "--output", path);
+
+        exitCode.ShouldBe(0, error);
+        using var archive = ZipFile.OpenRead(path);
+        archive.GetEntry(BackupArchive.Database).ShouldNotBeNull();
     }
 
     [SqliteFact("the backup of a SQLite database")]
@@ -253,6 +344,20 @@ public sealed class BackupCommandTests : IDisposable
 
     private Task SetVersionAsync(string version) => EditManifestAsync(manifest => manifest["fluentCmsVersion"] = version);
 
+    private static async Task LinkDirectoryAsync(string link, string directory)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Directory.CreateSymbolicLink(link, directory);
+            return;
+        }
+
+        // A junction, unlike a symbolic link, needs no special permission on Windows.
+        using var mklink = Process.Start(new ProcessStartInfo("cmd.exe", $"/d /c mklink /j \"{link}\" \"{directory}\"") { UseShellExecute = false })!;
+        await mklink.WaitForExitAsync(Token);
+        mklink.ExitCode.ShouldBe(0);
+    }
+
     private async Task EditManifestAsync(Action<JsonNode> edit)
     {
         await using var zip = await ZipArchive.CreateAsync(File.Open(Archive, FileMode.Open), ZipArchiveMode.Update, leaveOpen: false, entryNameEncoding: null, Token);
@@ -269,8 +374,14 @@ public sealed class BackupCommandTests : IDisposable
         await write.WriteAsync(System.Text.Encoding.UTF8.GetBytes(manifest.ToJsonString()), Token);
     }
 
-    private static IHost Host(TestDatabase database) =>
-        database.CreateHost(ArticleSchemas.Titled, Production, Migrations.Value, NoMigrationOnStartup);
+    private static IHost Host(TestDatabase database, string? mediaRoot = null) =>
+        database.CreateHost(ArticleSchemas.Titled, Production, Migrations.Value, NoMigrationOnStartup, services =>
+        {
+            if (mediaRoot is not null)
+            {
+                services.AddKeyedSingleton(BackupArchive.LocalMediaRootKey, new DirectoryInfo(mediaRoot));
+            }
+        });
 
     private static async Task<(int ExitCode, string Output, string Error)> RunAsync(IHost host, params string[] args)
     {

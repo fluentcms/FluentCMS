@@ -23,6 +23,8 @@ fluentcms restore backups/fluentcms-2026-11-12.zip
 
 `backup` takes the snapshot while the host runs. It goes through SQLite's online backup, which copies every page under one read transaction, so the copy is consistent and the host goes on writing in WAL mode meanwhile; copying `fluentcms.db` by hand is not, since recent commits are still in `fluentcms.db-wal`. Then it adds the files of the local media storage, under `FluentCms:Media:Local:Root`, leaving out the temporary files of an upload in progress. The archive is a zip with `backup.json` (the FluentCMS version, the provider, the schema hash, the applied migrations of every stream, the time and the number of media files), `database/fluentcms.db` and `media/`. When new uploads go to S3 or Azure Blob, the archive has the database and the files that are still on the local disk, and the command says that the files in the cloud storage are not in it: back those up as below.
 
+Choose an `--output` outside the local media folder. Before opening the database or creating files, `backup` refuses the media folder and its descendants, the database itself and its `-wal`, `-shm` and `-journal` files (`FCMS3254`). It also refuses ambiguous paths: a case-only difference is not enough, and a new archive beside a database with a non-ASCII name can be refused even if the names look different. Use a separate, clearly named backup directory in that case. Use a trusted directory whose links and mounts stay unchanged during the backup; the check does not identify a second bind mount or network share of the same storage. An existing archive at a safe destination is replaced on success.
+
 The archive is a secret: it holds the password hashes, the key hashes, the tokens and the Data Protection key ring. On Linux and macOS `backup` writes it, and the database snapshot it takes first, readable and writable by its owner only (mode `600`); on Windows the file takes the permissions of its folder, so write it to a folder that only the operators can read. Keep it that way wherever it goes: copy it with a tool that keeps the mode (`scp -p`, `rsync -p`), keep it in a store that only the operators reach, encrypt it before it leaves the machine (for example with `age` or `gpg`), and never put it in source control.
 
 `restore` puts a backup back into a host that is stopped. It refuses, before it changes anything:
@@ -62,6 +64,7 @@ Copy the archive off the machine: a backup on the same disk as the database is l
 | `FCMS3247` | The backup has media files and the host has no local media storage. |
 | `FCMS3248` | The file given cannot be read. |
 | `FCMS3249` | The backup is of another schema, or has a migration the host does not have, and `--allow-schema-mismatch` is not given; with it, a warning. |
+| `FCMS3254` | The backup destination is unsafe: use a different path, outside the database, its journal files and the local media folder. |
 
 ## PostgreSQL
 

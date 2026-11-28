@@ -15,4 +15,5 @@ internal static class TransferCommandErrorCodes
     public const string FileNotRead = "FCMS3248";
     public const string BackupOfAnotherSchema = "FCMS3249";
     public const string ImportNotClean = "FCMS3250";
+    public const string UnsafeBackupDestination = "FCMS3254";
 }

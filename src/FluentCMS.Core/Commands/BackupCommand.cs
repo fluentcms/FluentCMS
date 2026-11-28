@@ -31,13 +31,14 @@ internal sealed class BackupCommand : HostCommand
         var path = Path.GetFullPath(file);
         var services = context.Services;
         var (database, databasePath) = BackupArchive.DatabaseOf(services, Name);
+        var root = BackupArchive.LocalMediaRoot(services);
+        BackupDestination.Check(path, databasePath, root);
         if (!File.Exists(databasePath))
         {
             throw new CommandException(TransferCommandErrorCodes.NoDatabaseFile, $"{databasePath} does not exist, so there is nothing to back up.");
         }
 
         var streams = await services.GetRequiredService<MigrationRunner>().ListAsync(cancellationToken);
-        var root = BackupArchive.LocalMediaRoot(services);
         var storage = services.GetService<IFileStorage>()?.Name;
 
         var temporary = $"{path}.{Guid.NewGuid():N}.tmp";
