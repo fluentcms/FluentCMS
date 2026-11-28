@@ -1,5 +1,6 @@
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,12 +18,17 @@ internal sealed class OutboxWriter(IServiceScopeFactory scopes, OutboxRows rows,
     public async ValueTask StageAsync(DbContext context, IEnumerable<CmsEvent> events, CancellationToken cancellationToken)
     {
         var built = await rows.BuildAsync(events, cancellationToken);
-        if (built.Count == 0)
+        await StagePreparedAsync(context, built, cancellationToken);
+    }
+
+    public async ValueTask StagePreparedAsync(DbContext context, IReadOnlyList<OutboxMessage> prepared, CancellationToken cancellationToken)
+    {
+        if (prepared.Count == 0)
         {
             return;
         }
 
-        await OutboxStaging.SaveAsync(context, built, cancellationToken);
+        await OutboxStaging.SaveAsync(context, prepared, cancellationToken);
         _staged = true;
     }
 
