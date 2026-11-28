@@ -46,7 +46,9 @@ internal sealed class SettingsService(
     SettingsProtection protection,
     IAuthorizationEvaluator authorization,
     IOperationContextAccessor accessor,
-    IEventBus bus,
+    OutboxRows outboxRows,
+    OutboxWriter outbox,
+    EventBuffer events,
     ITransactionProbe transaction,
     IEnumerable<ISettingsCheck> checks,
     TimeProvider time,
@@ -98,7 +100,7 @@ internal sealed class SettingsService(
         var scope = site?.Value ?? SettingsCache.InstanceScope;
         if (site is { IsEmpty: true })
         {
-            throw SiteNotFound(site.Value);
+            throw SettingRows.SiteNotFound(site.Value);
         }
 
         if (cache.TryGet(scope, descriptor.Area, out var cached))
@@ -129,7 +131,7 @@ internal sealed class SettingsService(
 
         if (site is not null && rows.All(row => row.SiteId is null) && !await context.Set<Site>().AnyAsync(item => item.Id == scope, cancellationToken))
         {
-            throw SiteNotFound(site.Value);
+            throw SettingRows.SiteNotFound(site.Value);
         }
 
         var own = rows.FirstOrDefault(row => row.SiteId is not null);
@@ -183,8 +185,7 @@ internal sealed class SettingsService(
         // Refused before the database is touched; the document that is stored is built again from the row it replaces.
         Checked(descriptor, json);
 
-        await StoreAsync(descriptor, site, json, expectedVersion, operation.AuditPrincipal.Id, cancellationToken);
-        await ChangedAsync(descriptor, site, operation, "changed", cancellationToken);
+        await StoreAsync(descriptor, site, json, expectedVersion, operation, cancellationToken);
     }
 
     // Removes a document, so that the level below shows through again. Nothing was there, nothing is raised.
@@ -192,12 +193,36 @@ internal sealed class SettingsService(
     {
         var operation = await AuthorizeAsync(descriptor, site, cancellationToken);
 
-        if (!await RemoveAsync(descriptor, site, expectedVersion, cancellationToken))
+        var message = Change(descriptor, site, operation);
+        await using var scope = scopes.CreateAsyncScope();
+        var rows = new SettingRows(scope.ServiceProvider.GetRequiredService<SystemDbContext>(), descriptor.Area, site?.Value, outbox);
+        await rows.EnsureSiteAsync(cancellationToken);
+
+        var current = await rows.For(site?.Value).Select(row => (int?)row.Version).FirstOrDefaultAsync(cancellationToken);
+        if (current is null)
         {
-            return;
+            if (expectedVersion is null or 0)
+            {
+                return;
+            }
+
+            throw Conflict(descriptor);
         }
 
-        await ChangedAsync(descriptor, site, operation, "reset", cancellationToken);
+        if (expectedVersion is { } expected && (expected == 0 || current != expected))
+        {
+            throw Conflict(descriptor);
+        }
+
+        var prepared = await outboxRows.BuildAsync([message], cancellationToken);
+        if (await rows.TryRemoveAsync(expectedVersion, prepared, cancellationToken))
+        {
+            await ChangedAsync(message, "reset");
+        }
+        else if (expectedVersion is not null)
+        {
+            throw Conflict(descriptor);
+        }
     }
 
     // For an export, which has checked transfer.manage: the site's own documents, without their secrets. One that its class
@@ -256,8 +281,7 @@ internal sealed class SettingsService(
         if (!dryRun)
         {
             var operation = await AuthorizeAsync(descriptor, site, cancellationToken);
-            await StoreAsync(descriptor, site, document, expectedVersion: null, operation.AuditPrincipal.Id, cancellationToken, requireOwnSecrets: true);
-            await ChangedAsync(descriptor, site, operation, "changed", cancellationToken);
+            await StoreAsync(descriptor, site, document, expectedVersion: null, operation, cancellationToken, requireOwnSecrets: true);
         }
 
         return stored is null ? TransferOutcome.Created : TransferOutcome.Updated;
@@ -383,26 +407,19 @@ internal sealed class SettingsService(
         return operation;
     }
 
-    private static async Task EnsureSiteAsync(SystemDbContext db, Guid? site, CancellationToken cancellationToken)
-    {
-        if (site is { } one && (one == Guid.Empty || !await db.Set<Site>().AnyAsync(item => item.Id == one, cancellationToken)))
-        {
-            throw SiteNotFound(new SiteId(one));
-        }
-    }
-
     // With requireOwnSecrets, as for an import, a secret the class requires must be held by the row this write replaces, checked
     // on the row as each round reads it, so that a reset in between cannot leave a site's row without it.
-    private async Task StoreAsync(SettingsDescriptor descriptor, SiteId? siteId, string json, int? expectedVersion, Guid actor, CancellationToken cancellationToken, bool requireOwnSecrets = false)
+    private async Task StoreAsync(SettingsDescriptor descriptor, SiteId? siteId, string json, int? expectedVersion, OperationContext operation, CancellationToken cancellationToken, bool requireOwnSecrets = false)
     {
         var site = siteId?.Value;
+        var message = Change(descriptor, siteId, operation);
         await using var scope = scopes.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-        await EnsureSiteAsync(db, site, cancellationToken);
+        var rows = new SettingRows(scope.ServiceProvider.GetRequiredService<SystemDbContext>(), descriptor.Area, site, outbox);
+        await rows.EnsureSiteAsync(cancellationToken);
 
         for (var attempt = 0; attempt < Attempts; attempt++)
         {
-            var current = await Rows(db, descriptor.Area, site).AsNoTracking()
+            var current = await rows.For(site).AsNoTracking()
                 .Select(row => new { row.Json, row.Version })
                 .FirstOrDefaultAsync(cancellationToken);
             IReadOnlyDictionary<string, string> unreadable = new Dictionary<string, string>();
@@ -445,7 +462,7 @@ internal sealed class SettingsService(
             if (site is not null)
             {
                 inherited = descriptor.SecretsLeftToDefault(json, stored);
-                var instance = await Rows(db, descriptor.Area, null).AsNoTracking().Select(row => row.Json).FirstOrDefaultAsync(cancellationToken) is { } found
+                var instance = await rows.For(null).AsNoTracking().Select(row => row.Json).FirstOrDefaultAsync(cancellationToken) is { } found
                     ? protection.Unprotect(descriptor, found, null)
                     : null;
                 if (instance is not null && descriptor.CanRead(instance))
@@ -462,42 +479,14 @@ internal sealed class SettingsService(
 
             // A secret of the row that the key ring cannot unprotect was not shown and is not the writer's to lose: unless the
             // document names it, the row keeps it as it was, for a key ring that can read it again.
+            // Protect before taking the write lock: Data Protection can save a new key through another connection.
             var protectedJson = protection.Protect(descriptor, canonical, site, unreadable, json);
-            var now = time.GetUtcNow();
-            if (current is not null)
+            // Resolving outbox handlers can also need a separate connection for a cold plugin-state cache.
+            var prepared = await outboxRows.BuildAsync([message], cancellationToken);
+            if (await rows.TryStoreAsync(current?.Version, protectedJson, message.Source.ActorId, time.GetUtcNow(), prepared, cancellationToken))
             {
-                var updated = await Rows(db, descriptor.Area, site).Where(row => row.Version == version).ExecuteUpdateAsync(
-                    set => set
-                        .SetProperty(row => row.Json, protectedJson)
-                        .SetProperty(row => row.Version, version + 1)
-                        .SetProperty(row => row.UpdatedAt, now)
-                        .SetProperty(row => row.UpdatedBy, actor),
-                    cancellationToken);
-
-                if (updated > 0)
-                {
-                    return;
-                }
-            }
-            else
-            {
-                db.Add(new SettingRow { Id = Guid.CreateVersion7(), SiteId = site, Key = descriptor.Area, Json = protectedJson, Version = 1, UpdatedAt = now, UpdatedBy = actor });
-                try
-                {
-                    await db.SaveChangesAsync(cancellationToken);
-                    return;
-                }
-                catch (DbUpdateException)
-                {
-                    db.ChangeTracker.Clear();
-                    await EnsureSiteAsync(db, site, cancellationToken);
-
-                    // Another writer inserted the row first, which the next round sees; anything else is a real failure.
-                    if (!await Rows(db, descriptor.Area, site).AnyAsync(cancellationToken))
-                    {
-                        throw;
-                    }
-                }
+                await ChangedAsync(message, "changed");
+                return;
             }
 
             // The row moved between the read and the write. A caller that named a version has lost; any other starts again.
@@ -510,53 +499,18 @@ internal sealed class SettingsService(
         throw Conflict(descriptor);
     }
 
-    // Whether there was a document to remove. Version 0 says there was none, so a row that is there is a conflict.
-    private async Task<bool> RemoveAsync(SettingsDescriptor descriptor, SiteId? siteId, int? expectedVersion, CancellationToken cancellationToken)
+    private static SettingsChangedEvent Change(SettingsDescriptor descriptor, SiteId? site, OperationContext operation) =>
+        new(descriptor.Area) { Source = EventSource.From(operation) with { SiteId = site?.Value ?? Guid.Empty } };
+
+    private ValueTask ChangedAsync(SettingsChangedEvent message, string change)
     {
-        var site = siteId?.Value;
-        await using var scope = scopes.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-        await EnsureSiteAsync(db, site, cancellationToken);
-
-        var rows = Rows(db, descriptor.Area, site);
-        if (expectedVersion == 0)
-        {
-            return await rows.AnyAsync(cancellationToken) ? throw Conflict(descriptor) : false;
-        }
-
-        if (expectedVersion is { } version)
-        {
-            rows = rows.Where(row => row.Version == version);
-        }
-
-        if (await rows.ExecuteDeleteAsync(cancellationToken) > 0)
-        {
-            return true;
-        }
-
-        return expectedVersion is null ? false : throw Conflict(descriptor);
-    }
-
-    private static IQueryable<SettingRow> Rows(SystemDbContext db, string area, Guid? site)
-    {
-        var rows = db.Set<SettingRow>().Where(row => row.Key == area);
-        return site is { } one ? rows.Where(row => row.SiteId == one) : rows.Where(row => row.SiteId == null);
-    }
-
-    private async Task ChangedAsync(SettingsDescriptor descriptor, SiteId? site, OperationContext operation, string change, CancellationToken cancellationToken)
-    {
-        cache.Invalidate(descriptor.Area);
-        var scope = ScopeName(site?.Value ?? SettingsCache.InstanceScope);
-        SettingsLog.Changed(logger, descriptor.Area, scope, change, operation.AuditPrincipal.Id);
-
-        var source = EventSource.From(operation) with { SiteId = site?.Value ?? Guid.Empty };
-        await bus.PublishAsync(new SettingsChangedEvent(descriptor.Area) { Source = source }, cancellationToken);
+        cache.Invalidate(message.Area);
+        var scope = ScopeName(message.Source.SiteId);
+        SettingsLog.Changed(logger, message.Area, scope, change, message.Source.ActorId);
+        return events.DispatchNowAsync(message);
     }
 
     private static string ScopeName(Guid scope) => scope == SettingsCache.InstanceScope ? "the instance" : $"site {scope}";
-
-    private static ValidationException SiteNotFound(SiteId site) =>
-        SettingsDescriptor.Fail("site", SettingsErrorCodes.SiteNotFound, $"There is no site {site}.");
 
     private static ValidationException Conflict(SettingsDescriptor descriptor) =>
         SettingsDescriptor.Fail("", SettingsErrorCodes.VersionConflict, $"The settings area '{descriptor.Area}' changed since it was read; read it again and retry.");
