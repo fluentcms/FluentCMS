@@ -8,6 +8,8 @@ public sealed class BackupDestinationTests : IDisposable
 {
     private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory("fluentcms-destination-tests-");
 
+    private static CancellationToken Token => TestContext.Current.CancellationToken;
+
     public void Dispose() => _root.Delete(recursive: true);
 
     [Fact]
@@ -94,8 +96,8 @@ public sealed class BackupDestinationTests : IDisposable
         var media = _root.CreateSubdirectory("media");
         var sibling = _root.CreateSubdirectory("media-backups");
         var existing = Sentinel(sibling, "archive");
-        BackupDestination.Check(existing, db, media);
-        BackupDestination.Check(Path.Combine(sibling.FullName, "new", "archive"), db, media);
+        BackupDestination.Check(existing, db, media, Token);
+        BackupDestination.Check(Path.Combine(sibling.FullName, "new", "archive"), db, media, Token);
         File.ReadAllText(existing).ShouldBe("archive");
         Directory.Exists(Path.Combine(sibling.FullName, "new")).ShouldBeFalse();
     }
@@ -132,9 +134,34 @@ public sealed class BackupDestinationTests : IDisposable
         var archive = Sentinel(_root, "previous.zip");
         var media = _root.CreateSubdirectory("média");
         var sibling = _root.CreateSubdirectory("backups");
-        BackupDestination.Check(archive, db, media);
-        BackupDestination.Check(Path.Combine(sibling.FullName, "future.zip"), db, media);
+        BackupDestination.Check(archive, db, media, Token);
+        BackupDestination.Check(Path.Combine(sibling.FullName, "future.zip"), db, media, Token);
         File.ReadAllText(archive).ShouldBe("previous.zip");
+    }
+
+    [Fact]
+    public void TheTargetOfALinkedMediaFileIsNotAnArchiveDestination()
+    {
+        var db = Sentinel(_root, "database");
+        var media = _root.CreateSubdirectory("media");
+        var library = media.CreateSubdirectory("library");
+        var target = Sentinel(_root.CreateSubdirectory("originals"), "previous.zip");
+        var original = Path.Combine(library.FullName, "original.bin");
+        try
+        {
+            File.CreateSymbolicLink(original, target);
+        }
+        catch (IOException exception) when (OperatingSystem.IsWindows() && (exception.HResult & 0xffff) == 1314)
+        {
+            Assert.Skip("File symlinks require Windows developer mode or the symlink privilege.");
+        }
+
+        Refuses(target, db, media);
+        var safe = Sentinel(_root.CreateSubdirectory("backups"), "backup.zip");
+        BackupDestination.Check(safe, db, media, Token).Select(file => file.FullName).ShouldBe([original]);
+        File.ReadAllText(original).ShouldBe("previous.zip");
+        File.ReadAllText(target).ShouldBe("previous.zip");
+        File.ReadAllText(safe).ShouldBe("backup.zip");
     }
 
     private static string Extended(string path) => path.StartsWith(@"\\", StringComparison.Ordinal) ? @"\\?\UNC\" + path[2..] : @"\\?\" + path;
@@ -147,5 +174,5 @@ public sealed class BackupDestinationTests : IDisposable
     }
 
     private static void Refuses(string output, string database, DirectoryInfo? media) =>
-        Should.Throw<CommandException>(() => BackupDestination.Check(output, database, media)).Code.ShouldBe(TransferCommandErrorCodes.UnsafeBackupDestination);
+        Should.Throw<CommandException>(() => BackupDestination.Check(output, database, media, Token)).Code.ShouldBe(TransferCommandErrorCodes.UnsafeBackupDestination);
 }

@@ -129,6 +129,113 @@ public sealed partial class BackupCommandTests : IDisposable
     }
 
     [SqliteFact("paths of a SQLite backup")]
+    public async Task BackupRefusesLinkedMediaDirectoriesBeforeOpeningSqlite()
+    {
+        var media = _directory.CreateSubdirectory("media");
+        var library = media.CreateSubdirectory("library");
+        var external = _directory.CreateSubdirectory("originals");
+        var archive = Path.Combine(external.FullName, "previous.zip");
+        var missing = Path.Combine(external.FullName, "new", "backup.zip");
+        await File.WriteAllTextAsync(archive, "prior archive and live original", Token);
+        var link = Path.Combine(library.FullName, "linked");
+        await LinkDirectoryAsync(link, external.FullName);
+        try
+        {
+            using var host = Host(_database, media.FullName);
+            foreach (var output in new[] { archive, missing })
+            {
+                var (exitCode, _, error) = await RunAsync(host, "backup", "--output", output);
+                exitCode.ShouldBe(1);
+                error.ShouldStartWith("FCMS3254: ");
+            }
+
+            File.Exists(DatabasePath).ShouldBeFalse();
+            (await File.ReadAllTextAsync(archive, Token)).ShouldBe("prior archive and live original");
+            (await File.ReadAllTextAsync(Path.Combine(link, "previous.zip"), Token)).ShouldBe("prior archive and live original");
+            Directory.Exists(Path.GetDirectoryName(missing)).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(link);
+        }
+    }
+
+    [SqliteFact("paths of a SQLite backup")]
+    public async Task BackupRefusesAMediaDirectoryCycleWithoutFollowingIt()
+    {
+        var media = _directory.CreateSubdirectory("media");
+        var link = Path.Combine(media.CreateSubdirectory("library").FullName, "again");
+        await LinkDirectoryAsync(link, media.FullName);
+        try
+        {
+            using var host = Host(_database, media.FullName);
+            var (exitCode, _, error) = await RunAsync(host, "backup", "--output", Archive);
+            exitCode.ShouldBe(1);
+            error.ShouldStartWith("FCMS3254: ");
+            File.Exists(Archive).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(link);
+        }
+    }
+
+    [SqliteFact("paths of a SQLite backup")]
+    public async Task BackupDoesNotFollowAMediaDirectoryLinkIntroducedAfterPreflight()
+    {
+        var media = _directory.CreateSubdirectory("media");
+        var originals = _directory.CreateSubdirectory("originals");
+        var original = Path.Combine(originals.FullName, "image.bin");
+        await File.WriteAllTextAsync(original, "live original", Token);
+        await File.WriteAllTextAsync(Archive, "prior archive", Token);
+        var prepared = Path.Combine(_directory.FullName, "prepared-link");
+        var inside = Path.Combine(media.FullName, "linked");
+        await LinkDirectoryAsync(prepared, originals.FullName);
+        try
+        {
+            using var host = Host(_database, media.FullName);
+            (await RunAsync(host, "migrate")).ExitCode.ShouldBe(0);
+            ((SqliteFileDatabase)_database).AfterSnapshot = () => Directory.Move(prepared, inside);
+
+            var (exitCode, _, error) = await RunAsync(host, "backup", "--output", Archive);
+
+            exitCode.ShouldBe(1);
+            error.ShouldStartWith("FCMS3254: ");
+            (await File.ReadAllTextAsync(Archive, Token)).ShouldBe("prior archive");
+            (await File.ReadAllTextAsync(original, Token)).ShouldBe("live original");
+        }
+        finally
+        {
+            Directory.Delete(Directory.Exists(inside) ? inside : prepared);
+        }
+    }
+
+    [SqliteFact("paths of a SQLite backup")]
+    public async Task BackupCanReadALinkedMediaRootWhenTheArchiveIsElsewhere()
+    {
+        var storage = _directory.CreateSubdirectory("originals");
+        var original = Path.Combine(storage.FullName, "image.bin");
+        await File.WriteAllTextAsync(original, "live original", Token);
+        var root = Path.Combine(_directory.FullName, "media");
+        await LinkDirectoryAsync(root, storage.FullName);
+        try
+        {
+            using var host = Host(_database, root);
+            (await RunAsync(host, "migrate")).ExitCode.ShouldBe(0);
+            var backup = await RunAsync(host, "backup", "--output", Archive);
+            backup.ExitCode.ShouldBe(0, backup.Error);
+            using var archive = ZipFile.OpenRead(Archive);
+            using var text = new StreamReader(await archive.GetEntry("media/image.bin")!.OpenAsync(Token));
+            (await text.ReadToEndAsync(Token)).ShouldBe("live original");
+            (await File.ReadAllTextAsync(original, Token)).ShouldBe("live original");
+        }
+        finally
+        {
+            Directory.Delete(root);
+        }
+    }
+
+    [SqliteFact("paths of a SQLite backup")]
     public async Task BackupCanReplaceAnArchiveInASiblingOfTheMediaRoot()
     {
         var media = _directory.CreateSubdirectory("media");

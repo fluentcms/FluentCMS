@@ -8,7 +8,7 @@ internal static class BackupDestination
 {
     private static readonly string[] JournalSuffixes = ["-wal", "-shm", "-journal"];
 
-    public static void Check(string output, string database, DirectoryInfo? media)
+    public static IEnumerable<FileInfo> Check(string output, string database, DirectoryInfo? media, CancellationToken cancellationToken)
     {
         var destinations = Names(output);
         var databaseNames = Names(database);
@@ -18,6 +18,87 @@ internal static class BackupDestination
         {
             throw new CommandException(TransferCommandErrorCodes.UnsafeBackupDestination,
                 $"{output} could name the database, a journal file or a path in the local media storage. Choose an archive outside those paths.");
+        }
+
+        if (media is null)
+        {
+            return [];
+        }
+
+        // Check before SQLite or any writes, then use a fresh checked walk to include uploads made since the snapshot.
+        foreach (var file in Files(media, cancellationToken))
+        {
+            CheckFileLink(file, destinations);
+        }
+
+        return Files(media, cancellationToken).Where(file => CheckFileLink(file, destinations));
+    }
+
+    private static bool CheckFileLink(FileInfo file, HashSet<string> destinations)
+    {
+        if ((file.Attributes & FileAttributes.ReparsePoint) != 0)
+        {
+            var canonical = CanonicalPath(file.FullName);
+            var target = file.LinkTarget;
+            if (canonical is null && target is null)
+            {
+                return false; // The file disappeared since enumeration.
+            }
+
+            if (target is null || canonical is null)
+            {
+                throw Uncertain(file.FullName);
+            }
+
+            if (Names(file.FullName).Any(input => destinations.Any(path => CouldMatch(input, path, descendants: false))))
+            {
+                throw new CommandException(TransferCommandErrorCodes.UnsafeBackupDestination,
+                    $"The backup destination could replace the target of the media file link '{file.FullName}'. Choose another archive path.");
+            }
+        }
+
+        return true;
+    }
+
+    private static IEnumerable<FileInfo> Files(DirectoryInfo root, CancellationToken cancellationToken)
+    {
+        var directories = new Stack<DirectoryInfo>();
+        directories.Push(root);
+        while (directories.TryPop(out var directory))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            FileSystemInfo[] entries;
+            try
+            {
+                if (directory != root && (File.GetAttributes(directory.FullName) & FileAttributes.ReparsePoint) != 0)
+                {
+                    throw new CommandException(TransferCommandErrorCodes.UnsafeBackupDestination,
+                        $"The media directory '{directory.FullName}' is a link. Backup does not follow directory links below the local media root.");
+                }
+
+                entries = directory.GetFileSystemInfos();
+            }
+            catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+            {
+                continue;
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                throw Uncertain(directory.FullName);
+            }
+
+            foreach (var entry in entries)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (entry is DirectoryInfo child)
+                {
+                    directories.Push(child);
+                }
+                else
+                {
+                    yield return (FileInfo)entry;
+                }
+            }
         }
     }
 

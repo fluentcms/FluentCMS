@@ -34,7 +34,7 @@ internal sealed class BackupCommand : HostCommand
         var services = context.Services;
         var (database, databasePath) = BackupArchive.DatabaseOf(services, Name);
         var root = BackupArchive.LocalMediaRoot(services);
-        BackupDestination.Check(path, databasePath, root);
+        var mediaFiles = BackupDestination.Check(path, databasePath, root, cancellationToken);
         if (!File.Exists(databasePath))
         {
             throw new CommandException(TransferCommandErrorCodes.NoDatabaseFile, $"{databasePath} does not exist, so there is nothing to back up.");
@@ -62,7 +62,7 @@ internal sealed class BackupCommand : HostCommand
             await using (var archive = await ZipArchive.CreateAsync(stream, ZipArchiveMode.Create, leaveOpen: false, entryNameEncoding: null, cancellationToken))
             {
                 await AddFileAsync(archive, BackupArchive.Database, snapshot, cancellationToken);
-                files = root is null ? 0 : await AddMediaAsync(archive, root, namedTemporaryKeys, cancellationToken);
+                files = root is null ? 0 : await AddMediaAsync(archive, root, mediaFiles, namedTemporaryKeys, cancellationToken);
 
                 var manifest = new BackupManifest(
                     BackupArchive.FormatVersion,
@@ -116,15 +116,10 @@ internal sealed class BackupCommand : HostCommand
     }
 
     // Leave out upload scratch files, but an import can name a real original with a .tmp key.
-    private static async Task<int> AddMediaAsync(ZipArchive archive, DirectoryInfo root, HashSet<string> namedTemporaryKeys, CancellationToken cancellationToken)
+    private static async Task<int> AddMediaAsync(ZipArchive archive, DirectoryInfo root, IEnumerable<FileInfo> files, HashSet<string> namedTemporaryKeys, CancellationToken cancellationToken)
     {
-        if (!root.Exists)
-        {
-            return 0;
-        }
-
         var count = 0;
-        foreach (var file in root.EnumerateFiles("*", SearchOption.AllDirectories))
+        foreach (var file in files)
         {
             var key = Path.GetRelativePath(root.FullName, file.FullName).Replace(Path.DirectorySeparatorChar, '/');
             if (key.EndsWith(".tmp", StringComparison.Ordinal) && !namedTemporaryKeys.Contains(key))
@@ -137,7 +132,7 @@ internal sealed class BackupCommand : HostCommand
                 await AddFileAsync(archive, BackupArchive.MediaFolder + key, file.FullName, cancellationToken);
                 count++;
             }
-            catch (FileNotFoundException)
+            catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
             {
                 // Deleted since it was listed.
             }
