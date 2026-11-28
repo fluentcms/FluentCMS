@@ -49,6 +49,26 @@ internal sealed class SqliteDatabaseFile(string connectionString) : IDatabaseFil
         Execute(target, "PRAGMA journal_mode = DELETE");
     }
 
+    public IEnumerable<SnapshotOriginal> LocalOriginals(string snapshot)
+    {
+        using var connection = new SqliteConnection(Unpooled(snapshot, SqliteOpenMode.ReadOnly));
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'cms_media_asset' COLLATE NOCASE";
+        if (command.ExecuteScalar() is null)
+        {
+            yield break;
+        }
+
+        // Include retained and shared originals, even after new uploads have moved to another storage.
+        command.CommandText = "SELECT DISTINCT storage_key, size, checksum FROM cms_media_asset WHERE storage_provider = 'local'";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            yield return new SnapshotOriginal(reader.GetString(0), reader.GetInt64(1), reader.GetString(2));
+        }
+    }
+
     // A connection in WAL mode holds a shared lock on the file from its first read until it closes, so the exclusive lock of
     // the exclusive locking mode is refused while any other connection, in this process or another, has the database open.
     // A host that keeps the rollback journal holds no lock while it is idle, so it is not seen; the guide says to stop the

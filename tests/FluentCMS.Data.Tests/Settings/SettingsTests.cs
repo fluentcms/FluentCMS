@@ -107,6 +107,7 @@ public sealed class SettingsTests
         heard.Area.ShouldBe("media");
         heard.Source.SiteId.ShouldBe(SiteA.Value);
         heard.Source.ActorId.ShouldBe(Admin.Id);
+        database.Inner.Rows().ShouldHaveSingleItem().EventId.ShouldBe(heard.EventId);
 
         var row = database.Inner.ActivityRows().ShouldHaveSingleItem();
         row.Action.ShouldBe("settings.changed");
@@ -145,6 +146,7 @@ public sealed class SettingsTests
         });
 
         database.Seen.Of<SettingsChangedEvent>().ShouldBeEmpty();
+        database.Inner.Rows().ShouldBeEmpty();
     }
 
     [Fact]
@@ -315,6 +317,7 @@ public sealed class SettingsTests
 
         exception.Message.ShouldContain("FCMS2807");
         database.Rows().ShouldBeEmpty();
+        database.Inner.Rows().ShouldBeEmpty();
     }
 
     [Fact]
@@ -413,6 +416,7 @@ public sealed class SettingsTests
         var stored = (await database.GetAsync(SiteA)).MaxUploadMb;
         stored.ShouldBeInRange(1, Writers);
         database.Seen.Of<SettingsChangedEvent>().Count().ShouldBe(Writers);
+        database.Inner.Rows().Count.ShouldBe(Writers);
 
         // The document is one writer's whole document and not a mix: the last write stands.
         JsonNode.Parse(row.Json)!["maxUploadMb"]!.GetValue<int>().ShouldBe(stored);
@@ -470,6 +474,8 @@ public sealed class SettingsTests
 
         results.Count(won => won).ShouldBe(1);
         database.Rows().ShouldHaveSingleItem().Version.ShouldBe(1);
+        database.Inner.Rows().ShouldHaveSingleItem();
+        database.Seen.Events.ShouldHaveSingleItem();
     }
 
     [Fact]
@@ -722,6 +728,7 @@ public sealed class SettingsTests
         database.Rows().ShouldBeEmpty();
         database.Seen.Events.Count.ShouldBe(3);
         (await Should.ThrowAsync<ValidationException>(() => ResetAsync(2))).Errors.ShouldHaveSingleItem().Code.ShouldBe("FCMS2808");
+        database.Inner.Rows().Count.ShouldBe(3);
     }
 
     [Fact]

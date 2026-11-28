@@ -235,7 +235,8 @@ public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<P
     [Fact]
     public async Task AStopDuringTheReadOfThePluginStateSettlesWhatWasDeliveredAndGivesTheRestBack()
     {
-        var stop = new StopAtTheSecondStateRead();
+        using var stopping = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        var stop = new StopAtTheSecondStateRead(stopping);
         var calls = new PluginCalls();
         await using var host = new FluentCmsTestHost()
             .WithServices(services => services.AddSingleton(calls))
@@ -255,26 +256,41 @@ public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<P
             await PublishAsync(host, docs, text);
         }
 
-        using var stopping = CancellationTokenSource.CreateLinkedTokenSource(Token);
         var state = host.Services.GetRequiredService<PluginState>();
-        stop.Arm(state, stopping);
+        stop.Arm(state);
         state.Invalidate();
-        await drainer.DrainAsync(stopping.Token);
-
-        calls.All.Where(call => call.StartsWith("sample.outbox:", StringComparison.Ordinal)).ShouldBe(["sample.outbox:first"]);
-        await using (var scope = host.Services.CreateAsyncScope())
+        var timeout = TimeSpan.FromSeconds(30);
+        Task<int> resumed;
+        Task<bool> live;
+        try
         {
-            (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking()
-                    .Where(message => message.Handler == "sample.note-added")
-                    .OrderBy(message => message.Sequence)
-                    .Select(message => new { message.Status, message.Attempts, Leased = message.LeaseOwner != null })
-                    .ToListAsync(Token))
-                .Select(row => (row.Status, row.Attempts, row.Leased))
-                .ShouldBe([(OutboxStatus.Delivered, 1, false), (OutboxStatus.Pending, 0, false), (OutboxStatus.Pending, 0, false)]);
+            await drainer.DrainAsync(stopping.Token).WaitAsync(timeout, Token);
+            stopping.IsCancellationRequested.ShouldBeTrue();
+            calls.All.Where(call => call.StartsWith("sample.outbox:", StringComparison.Ordinal)).ShouldBe(["sample.outbox:first"]);
+            await using (var scope = host.Services.CreateAsyncScope())
+            {
+                (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking()
+                        .Where(message => message.Handler == "sample.note-added")
+                        .OrderBy(message => message.Sequence)
+                        .Select(message => new { message.Status, message.Attempts, Leased = message.LeaseOwner != null })
+                        .ToListAsync(Token).WaitAsync(timeout, Token))
+                    .Select(row => (row.Status, row.Attempts, row.Leased))
+                    .ShouldBe([(OutboxStatus.Delivered, 1, false), (OutboxStatus.Pending, 0, false), (OutboxStatus.Pending, 0, false)]);
+            }
+
+            resumed = drainer.DrainAsync(Token);
+            // A live caller joins the held read even if the resumed lane hasn't been scheduled yet.
+            live = state.IsEnabledAsync("sample", new SiteId(docs), Token).AsTask();
+            live.IsCompleted.ShouldBeFalse();
+        }
+        finally
+        {
+            stop.Release();
         }
 
-        stop.Disarm();
-        await drainer.DrainAsync(Token);
+        await resumed.WaitAsync(timeout, Token);
+        (await live.WaitAsync(timeout, Token)).ShouldBeTrue();
+        stop.Reads.ShouldBe(2);
         calls.All.Where(call => call.StartsWith("sample.outbox:", StringComparison.Ordinal)).ShouldBe(texts.Select(text => $"sample.outbox:{text}"));
     }
 
@@ -538,29 +554,32 @@ public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<P
         }
     }
 
-    // Once armed, makes the first read of the state stale and cancels the second as a stopping host does.
-    private sealed class StopAtTheSecondStateRead : DbCommandInterceptor
+    // The first read goes stale. The second outlives the stopped drain and is still usable by a live reader.
+    private sealed class StopAtTheSecondStateRead(CancellationTokenSource stopping) : DbCommandInterceptor
     {
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private PluginState? _state;
-        private CancellationTokenSource? _stopping;
         private int _reads;
 
-        public void Arm(PluginState state, CancellationTokenSource stopping) => (_state, _stopping) = (state, stopping);
+        public int Reads => Volatile.Read(ref _reads);
 
-        public void Disarm() => (_state, _stopping) = (null, null);
+        public void Arm(PluginState state) => Volatile.Write(ref _state, state);
+
+        public void Release() => _release.TrySetResult();
 
         public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
         {
-            if (_stopping is { } stopping && command.CommandText.Contains("cms_plugin_site", StringComparison.Ordinal))
+            if (Volatile.Read(ref _state) is { } state && command.CommandText.Contains("cms_plugin_site", StringComparison.Ordinal))
             {
-                if (Interlocked.Increment(ref _reads) == 1)
+                var read = Interlocked.Increment(ref _reads);
+                if (read == 1)
                 {
-                    _state!.Invalidate();
+                    state.Invalidate();
                 }
-                else
+                else if (read == 2)
                 {
                     await stopping.CancelAsync();
-                    stopping.Token.ThrowIfCancellationRequested();
+                    await _release.Task;
                 }
             }
 
