@@ -1,5 +1,7 @@
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text.Json;
+using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Media;
@@ -9,8 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FluentCMS.Core.Commands;
 
 // A backup of a host on SQLite (spec 4.15): an online snapshot of the database, which is consistent while the host runs,
-// then the files of the local media storage, in that order, since a deleted asset keeps its file for a while and a file
-// written after the snapshot is only one more. Server databases are refused with the guide.
+// then the files of the local media storage. A file written after the snapshot is only one more; an original missing
+// from the archive may have been replaced in the meantime, so the backup must be retried.
 internal sealed class BackupCommand : HostCommand
 {
     public const string Output = "--output";
@@ -31,13 +33,14 @@ internal sealed class BackupCommand : HostCommand
         var path = Path.GetFullPath(file);
         var services = context.Services;
         var (database, databasePath) = BackupArchive.DatabaseOf(services, Name);
+        var root = BackupArchive.LocalMediaRoot(services);
+        var mediaFiles = BackupDestination.Check(path, databasePath, root, cancellationToken);
         if (!File.Exists(databasePath))
         {
             throw new CommandException(TransferCommandErrorCodes.NoDatabaseFile, $"{databasePath} does not exist, so there is nothing to back up.");
         }
 
         var streams = await services.GetRequiredService<MigrationRunner>().ListAsync(cancellationToken);
-        var root = BackupArchive.LocalMediaRoot(services);
         var storage = services.GetService<IFileStorage>()?.Name;
 
         var temporary = $"{path}.{Guid.NewGuid():N}.tmp";
@@ -51,12 +54,15 @@ internal sealed class BackupCommand : HostCommand
             await OwnerOnly(snapshot).DisposeAsync();
             database.Snapshot(snapshot);
             var createdAt = DateTimeOffset.UtcNow;
+            var originals = database.LocalOriginals(snapshot).ToArray();
+            var namedTemporaryKeys = originals.Where(original => original.Key.EndsWith(".tmp", StringComparison.Ordinal))
+                .Select(original => original.Key).ToHashSet(StringComparer.Ordinal);
 
             await using (var stream = OwnerOnly(temporary))
             await using (var archive = await ZipArchive.CreateAsync(stream, ZipArchiveMode.Create, leaveOpen: false, entryNameEncoding: null, cancellationToken))
             {
                 await AddFileAsync(archive, BackupArchive.Database, snapshot, cancellationToken);
-                files = root is null ? 0 : await AddMediaAsync(archive, root, cancellationToken);
+                files = root is null ? 0 : await AddMediaAsync(archive, root, mediaFiles, namedTemporaryKeys, cancellationToken);
 
                 var manifest = new BackupManifest(
                     BackupArchive.FormatVersion,
@@ -72,6 +78,7 @@ internal sealed class BackupCommand : HostCommand
                 await JsonSerializer.SerializeAsync(json, manifest, BackupArchive.Json, cancellationToken);
             }
 
+            await VerifyOriginalsAsync(temporary, originals, cancellationToken);
             File.Move(temporary, path, overwrite: true);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -108,24 +115,24 @@ internal sealed class BackupCommand : HostCommand
         return new FileStream(path, options);
     }
 
-    // A file the local storage is still writing is a temporary file beside its target, and is left out.
-    private static async Task<int> AddMediaAsync(ZipArchive archive, DirectoryInfo root, CancellationToken cancellationToken)
+    // Leave out upload scratch files, but an import can name a real original with a .tmp key.
+    private static async Task<int> AddMediaAsync(ZipArchive archive, DirectoryInfo root, IEnumerable<FileInfo> files, HashSet<string> namedTemporaryKeys, CancellationToken cancellationToken)
     {
-        if (!root.Exists)
-        {
-            return 0;
-        }
-
         var count = 0;
-        foreach (var file in root.EnumerateFiles("*", SearchOption.AllDirectories).Where(file => !file.Name.EndsWith(".tmp", StringComparison.Ordinal)))
+        foreach (var file in files)
         {
-            var name = BackupArchive.MediaFolder + Path.GetRelativePath(root.FullName, file.FullName).Replace(Path.DirectorySeparatorChar, '/');
+            var key = Path.GetRelativePath(root.FullName, file.FullName).Replace(Path.DirectorySeparatorChar, '/');
+            if (key.EndsWith(".tmp", StringComparison.Ordinal) && !namedTemporaryKeys.Contains(key))
+            {
+                continue;
+            }
+
             try
             {
-                await AddFileAsync(archive, name, file.FullName, cancellationToken);
+                await AddFileAsync(archive, BackupArchive.MediaFolder + key, file.FullName, cancellationToken);
                 count++;
             }
-            catch (FileNotFoundException)
+            catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
             {
                 // Deleted since it was listed.
             }
@@ -140,5 +147,27 @@ internal sealed class BackupCommand : HostCommand
         var entry = archive.CreateEntry(name, CompressionLevel.Fastest);
         await using var target = await entry.OpenAsync(cancellationToken);
         await source.CopyToAsync(target, cancellationToken);
+    }
+
+    private static async Task VerifyOriginalsAsync(string path, IEnumerable<SnapshotOriginal> originals, CancellationToken cancellationToken)
+    {
+        await using var archive = await ZipFile.OpenReadAsync(path, cancellationToken);
+        foreach (var original in originals)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var entry = archive.GetEntry(BackupArchive.MediaFolder + original.Key);
+            if (entry is not null && entry.Length == original.Size)
+            {
+                await using var stream = await entry.OpenAsync(cancellationToken);
+                var hash = await SHA256.HashDataAsync(stream, cancellationToken);
+                if (string.Equals(Convert.ToHexStringLower(hash), original.Checksum, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+            }
+
+            throw new CommandException(TransferCommandErrorCodes.IncompleteBackupMedia,
+                $"The archive does not contain the local original '{PrintableText.Escape(original.Key)}' with the bytes named by the database snapshot. Check the media file and retry the backup.");
+        }
     }
 }

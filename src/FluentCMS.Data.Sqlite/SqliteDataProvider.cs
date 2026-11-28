@@ -154,6 +154,8 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
 
     void IDatabaseFile.Snapshot(string destination) => _file.Snapshot(destination);
 
+    IEnumerable<SnapshotOriginal> IDatabaseFile.LocalOriginals(string snapshot) => _file.LocalOriginals(snapshot);
+
     bool IDatabaseFile.IsInUse() => _file.IsInUse();
 
     string? IDatabaseFile.Check(string snapshot) => _file.Check(snapshot);
