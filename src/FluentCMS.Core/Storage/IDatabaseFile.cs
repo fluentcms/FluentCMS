@@ -10,6 +10,9 @@ internal interface IDatabaseFile
     // Writes a consistent copy of the database to a file that is new or empty, while the host may be writing to it.
     void Snapshot(string destination);
 
+    // The local originals named by a completed snapshot, not by the live database.
+    IEnumerable<SnapshotOriginal> LocalOriginals(string snapshot);
+
     // Whether another connection, such as one of a running host, has the database open.
     bool IsInUse();
 
@@ -20,3 +23,5 @@ internal interface IDatabaseFile
     // replaces, which is put back when the move fails. Nothing may have the database open.
     void Restore(string snapshot);
 }
+
+internal sealed record SnapshotOriginal(string Key, long Size, string Checksum);

@@ -359,6 +359,7 @@ public static class ErrorCodeRegistry
         Startup("FCMS3252", "Instance not reached for a transfer"),
         Startup("FCMS3253", "Unexpected transfer answer"),
         Startup(TransferCommandErrorCodes.UnsafeBackupDestination, "Unsafe backup destination"),
+        Startup(TransferCommandErrorCodes.IncompleteBackupMedia, "Local original missing or changed in the backup"),
 
         // 315x the reference host (FluentCMS.Host, which this assembly does not reference, so its codes are written out) and the schema sync it allows, found when it starts
         Startup("FCMS3150", "Unknown data provider"),

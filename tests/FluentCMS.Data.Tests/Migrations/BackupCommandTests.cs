@@ -14,7 +14,7 @@ namespace FluentCMS.Data.Tests.Migrations;
 
 // backup and restore on the provider of the run: a SQLite host takes a snapshot and gets it back, and a server database
 // refuses both with the code that names the guide.
-public sealed class BackupCommandTests : IDisposable
+public sealed partial class BackupCommandTests : IDisposable
 {
     private const string Production = "Production";
 

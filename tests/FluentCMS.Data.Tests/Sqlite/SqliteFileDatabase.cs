@@ -20,7 +20,9 @@ internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : TestDataba
 
     public override string ConnectionString => $"Data Source={Path.Combine(_directory.FullName, "cms.db")};Pooling=False";
 
-    public override void UseProvider(FluentCmsBuilder cms) => cms.UseDataProvider(new UnflushedSqliteProvider(new SqliteDataProvider(ConnectionString, writeAheadLog)));
+    public Action? AfterSnapshot { get; set; }
+
+    public override void UseProvider(FluentCmsBuilder cms) => cms.UseDataProvider(new UnflushedSqliteProvider(new SqliteDataProvider(ConnectionString, writeAheadLog), this));
 
     public override void UseDriver(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable) =>
         options.UseSqlite(ConnectionString, sqlite => sqlite.MigrationsAssembly(migrationsAssembly).MigrationsHistoryTable(historyTable));
@@ -41,7 +43,7 @@ internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : TestDataba
     protected override DbConnection NewConnection() => new SqliteConnection(ConnectionString);
 
     // A commit of a file database waits for the disk to flush, and the tests seed rows and create tables one commit at a time, which is most of what they cost on a Windows runner. The locks behave the same without it, and the file is deleted after the test.
-    private sealed class UnflushedSqliteProvider(SqliteDataProvider inner) : IDataProvider, IDatabaseFile
+    private sealed class UnflushedSqliteProvider(SqliteDataProvider inner, SqliteFileDatabase fixture) : IDataProvider, IDatabaseFile
     {
         private static readonly NoFlush Interceptor = new();
 
@@ -85,9 +87,15 @@ internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : TestDataba
 
         public string? FilePath => ((IDatabaseFile)inner).FilePath;
 
-        public void Snapshot(string destination) => ((IDatabaseFile)inner).Snapshot(destination);
+        public void Snapshot(string destination)
+        {
+            ((IDatabaseFile)inner).Snapshot(destination);
+            fixture.AfterSnapshot?.Invoke();
+        }
 
         public bool IsInUse() => ((IDatabaseFile)inner).IsInUse();
+
+        public IEnumerable<SnapshotOriginal> LocalOriginals(string snapshot) => ((IDatabaseFile)inner).LocalOriginals(snapshot);
 
         public string? Check(string snapshot) => ((IDatabaseFile)inner).Check(snapshot);
 
