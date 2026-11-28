@@ -10,6 +10,11 @@ internal static class BackupDestination
 
     public static IEnumerable<FileInfo> Check(string output, string database, DirectoryInfo? media, CancellationToken cancellationToken)
     {
+        if (Directory.Exists(output))
+        {
+            throw new CommandException(TransferCommandErrorCodes.UnsafeBackupDestination, $"{output} is a directory. Choose an archive file instead.");
+        }
+
         var destinations = Names(output);
         var databaseNames = Names(database);
         var journals = databaseNames.SelectMany(name => JournalSuffixes.SelectMany(suffix => Names(name + suffix)));

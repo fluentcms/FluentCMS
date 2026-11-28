@@ -13,6 +13,35 @@ public sealed class BackupDestinationTests : IDisposable
     public void Dispose() => _root.Delete(recursive: true);
 
     [Fact]
+    public void TheArchiveCannotBeAnExistingDirectory()
+    {
+        var db = Sentinel(_root, "database");
+        var directory = _root.CreateSubdirectory("archives");
+        var existing = Sentinel(directory, "previous.zip");
+
+        Refuses(directory.FullName, db, null);
+        File.ReadAllText(existing).ShouldBe("previous.zip");
+    }
+
+    [Fact]
+    public void UnixRefusesAnExternalDirectoryLinkOnThePathToAMediaOriginal()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "POSIX directory and file links.");
+        var db = Sentinel(_root, "database");
+        var media = _root.CreateSubdirectory("media");
+        var originals = _root.CreateSubdirectory("originals");
+        Sentinel(originals, "original.bin");
+        var link = Path.Combine(_root.FullName, "linked-originals");
+        Directory.CreateSymbolicLink(link, originals.FullName);
+        var original = Path.Combine(media.FullName, "asset.bin");
+        File.CreateSymbolicLink(original, Path.Combine(link, "original.bin"));
+
+        Refuses(link, db, media);
+        new DirectoryInfo(link).LinkTarget.ShouldBe(originals.FullName);
+        File.ReadAllText(original).ShouldBe("original.bin");
+    }
+
+    [Fact]
     public void WindowsExtendedNamesCannotHideEitherEndOfACollision()
     {
         Assert.SkipUnless(OperatingSystem.IsWindows(), "Windows extended paths.");
